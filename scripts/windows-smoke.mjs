@@ -1,0 +1,10 @@
+import { openNotepad } from '../dist/tools/notepad.mjs';
+import { resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+const script = resolve('dist/tools/notepad.ps1');
+const first = await openNotepad(script, AbortSignal.timeout(20000));
+const second = await openNotepad(script, AbortSignal.timeout(20000));
+if (!second.alreadyOpen || second.pid !== first.pid) throw new Error('Reuse verification failed');
+const result = { platform: process.platform, at: new Date().toISOString(), first, second, passed: true };
+await mkdir('test-results', { recursive: true }); await writeFile('test-results/windows.json', JSON.stringify(result, null, 2));
+console.log(JSON.stringify(result, null, 2));

@@ -1,0 +1,34 @@
+{
+  "name": "zen-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.cjs", "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && node scripts/build.mjs && vite build",
+    "start": "electron .",
+    "dev": "npm run build && electron .",
+    "test": "vitest run",
+    "test:windows": "node scripts/windows-smoke.mjs",
+    "test:api": "node scripts/api-smoke.mjs",
+    "test:electron": "node scripts/electron-smoke.mjs",
+    "test:integration": "node scripts/live-integration.mjs"
+  },
+  "dependencies": {
+    "openai": "7.25.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "ws": "^8.22.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.2",
+    "electron": "44.5.1",
+    "esbuild": "^0.28.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.3"
+  }
+}

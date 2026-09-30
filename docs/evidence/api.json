@@ -1,0 +1,45 @@
+{
+  "at": "2026-09-30T12:29:14.950Z",
+  "sdk": "7.25.0",
+  "rows": [
+    {
+      "check": "model-access",
+      "model": "gpt-6-astra",
+      "passed": true
+    },
+    {
+      "check": "model-access",
+      "model": "gpt-realtime-2.1",
+      "passed": true
+    },
+    {
+      "check": "model-access",
+      "model": "gpt-4o-mini-transcribe",
+      "passed": true
+    },
+    {
+      "check": "responses-function-calling",
+      "model": "gpt-6-astra",
+      "status": "completed",
+      "requestId": "req_aa452eaedc294de08e3e64c79cfdbba7",
+      "passed": true,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 19,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 166
+      }
+    },
+    {
+      "check": "realtime-client-secret",
+      "passed": true,
+      "expiresAt": 1790771954
+    }
+  ]
+}

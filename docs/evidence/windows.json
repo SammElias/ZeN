@@ -1,0 +1,19 @@
+{
+  "platform": "win32",
+  "at": "2026-09-30T12:41:00.495Z",
+  "first": {
+    "application": "notepad",
+    "pid": 21456,
+    "windowHandle": "919566",
+    "alreadyOpen": false,
+    "verifiedAt": "2026-09-30T12:40:59.7250074Z"
+  },
+  "second": {
+    "application": "notepad",
+    "pid": 21456,
+    "windowHandle": "919566",
+    "alreadyOpen": true,
+    "verifiedAt": "2026-09-30T12:41:00.4350044Z"
+  },
+  "passed": true
+}

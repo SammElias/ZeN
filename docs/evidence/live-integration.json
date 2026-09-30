@@ -1,0 +1,316 @@
+{
+  "at": "2026-09-30T12:36:04.903Z",
+  "text": {
+    "id": "8c5e5474-351a-43b2-b159-f996cb0e8774",
+    "state": "completed",
+    "message": "He abierto Bloc de notas y verificado su ventana.",
+    "evidence": {
+      "application": "notepad",
+      "pid": 48364,
+      "windowHandle": "2032410",
+      "alreadyOpen": false,
+      "verifiedAt": "2026-09-30T12:35:43.0180532Z"
+    }
+  },
+  "voice": {
+    "transcript": "Abre el bloc de notas.",
+    "spoken": "Bloc de notas ya estaba abierto. He verificado su ventana.",
+    "receivedAudio": true,
+    "toolReturned": true,
+    "types": [
+      "session.created",
+      "session.updated",
+      "input_audio_buffer.speech_started",
+      "input_audio_buffer.speech_stopped",
+      "input_audio_buffer.committed",
+      "conversation.item.added",
+      "conversation.item.done",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.completed",
+      "response.created",
+      "response.output_item.added",
+      "conversation.item.added",
+      "response.content_part.added",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "output_audio_buffer.started",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_item.added",
+      "conversation.item.added",
+      "response.function_call_arguments.delta",
+      "response.output_audio.done",
+      "response.output_audio_transcript.done",
+      "response.content_part.done",
+      "conversation.item.done",
+      "response.output_item.done",
+      "response.function_call_arguments.done",
+      "conversation.item.done",
+      "response.output_item.done",
+      "response.done",
+      "rate_limits.updated",
+      "output_audio_buffer.stopped",
+      "conversation.item.added",
+      "conversation.item.done",
+      "response.created",
+      "response.output_item.added",
+      "conversation.item.added",
+      "response.content_part.added",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "output_audio_buffer.started",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio.done",
+      "response.output_audio_transcript.done",
+      "response.content_part.done",
+      "conversation.item.done",
+      "response.output_item.done",
+      "response.done"
+    ]
+  },
+  "voiceTask": {
+    "id": "418cee2c-56ba-4202-bbfa-00d502e9b41b",
+    "state": "completed",
+    "message": "Bloc de notas ya estaba abierto. He verificado su ventana.",
+    "evidence": {
+      "application": "notepad",
+      "pid": 48364,
+      "windowHandle": "2032410",
+      "alreadyOpen": true,
+      "verifiedAt": "2026-09-30T12:35:59.7247967Z"
+    }
+  },
+  "metadata": [
+    {
+      "type": "usage",
+      "taskId": "8c5e5474-351a-43b2-b159-f996cb0e8774",
+      "channel": "tokens",
+      "model": "gpt-6-astra",
+      "requestId": "req_90bfb149c9514fedb446be988a45a112",
+      "usage": {
+        "input_tokens": 219,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 19,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 238
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "tool",
+      "taskId": "8c5e5474-351a-43b2-b159-f996cb0e8774",
+      "channel": "tools",
+      "tool": "open_application",
+      "evidence": {
+        "application": "notepad",
+        "pid": 48364,
+        "windowHandle": "2032410",
+        "alreadyOpen": false,
+        "verifiedAt": "2026-09-30T12:35:43.0180532Z"
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "usage",
+      "taskId": "8c5e5474-351a-43b2-b159-f996cb0e8774",
+      "channel": "tokens",
+      "model": "gpt-6-astra",
+      "requestId": "req_5d9d00d6f5714371bda94e107b06f218",
+      "usage": {
+        "input_tokens": 293,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 9,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 302
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "task",
+      "taskId": "8c5e5474-351a-43b2-b159-f996cb0e8774",
+      "state": "completed",
+      "durationMs": 11379,
+      "toolCalls": 1,
+      "evidence": {
+        "application": "notepad",
+        "pid": 48364,
+        "windowHandle": "2032410",
+        "alreadyOpen": false,
+        "verifiedAt": "2026-09-30T12:35:43.0180532Z"
+      }
+    },
+    {
+      "type": "voice_session",
+      "channel": "voice",
+      "model": "gpt-realtime-2.1",
+      "state": "connected"
+    },
+    {
+      "type": "usage",
+      "channel": "voice",
+      "model": "gpt-realtime-2.1",
+      "responseId": "resp_ETnpMxJm4cbsvSsUmjHNj",
+      "usage": {
+        "total_tokens": 538,
+        "input_tokens": 414,
+        "output_tokens": 124,
+        "input_token_details": {
+          "text_tokens": 387,
+          "audio_tokens": 27,
+          "image_tokens": 0,
+          "cached_tokens": 0,
+          "cached_tokens_details": {
+            "text_tokens": 0,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 47,
+          "audio_tokens": 77
+        }
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "usage",
+      "taskId": "418cee2c-56ba-4202-bbfa-00d502e9b41b",
+      "channel": "tokens",
+      "model": "gpt-6-astra",
+      "requestId": "req_31080e5e87a64adaa9ff2e1fcd64080b",
+      "usage": {
+        "input_tokens": 220,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 19,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 239
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "tool",
+      "taskId": "418cee2c-56ba-4202-bbfa-00d502e9b41b",
+      "channel": "tools",
+      "tool": "open_application",
+      "evidence": {
+        "application": "notepad",
+        "pid": 48364,
+        "windowHandle": "2032410",
+        "alreadyOpen": true,
+        "verifiedAt": "2026-09-30T12:35:59.7247967Z"
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "usage",
+      "taskId": "418cee2c-56ba-4202-bbfa-00d502e9b41b",
+      "channel": "tokens",
+      "model": "gpt-6-astra",
+      "requestId": "req_9272db2ee2e54153bd5acfea3ad11eb9",
+      "usage": {
+        "input_tokens": 294,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 18,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 312
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "task",
+      "taskId": "418cee2c-56ba-4202-bbfa-00d502e9b41b",
+      "state": "completed",
+      "durationMs": 5777,
+      "toolCalls": 1,
+      "evidence": {
+        "application": "notepad",
+        "pid": 48364,
+        "windowHandle": "2032410",
+        "alreadyOpen": true,
+        "verifiedAt": "2026-09-30T12:35:59.7247967Z"
+      }
+    },
+    {
+      "type": "usage",
+      "channel": "voice",
+      "model": "gpt-realtime-2.1",
+      "responseId": "resp_ETnpTkln1fJIJZ4bcJj5G",
+      "usage": {
+        "total_tokens": 610,
+        "input_tokens": 477,
+        "output_tokens": 133,
+        "input_token_details": {
+          "text_tokens": 450,
+          "audio_tokens": 27,
+          "image_tokens": 0,
+          "cached_tokens": 0,
+          "cached_tokens_details": {
+            "text_tokens": 0,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 48,
+          "audio_tokens": 85,
+          "reasoning_tokens": 21
+        }
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "voice_session",
+      "channel": "voice",
+      "state": "closed",
+      "finalUsageConfirmed": false,
+      "costEstimate": null
+    }
+  ],
+  "passed": true
+}
