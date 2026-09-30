@@ -1,0 +1,27 @@
+{
+  "tools": [
+    {
+      "type": "web_search",
+      "mode": "live",
+      "context_size": "medium",
+      "allowed_domains": null,
+      "location": null
+    }
+  ],
+  "multi_agent": {
+    "enabled": true,
+    "max_concurrent_subagents": 3
+  },
+  "name": "ZeN",
+  "model": "gpt-6.1-sol",
+  "reasoning": {
+    "effort": "low",
+    "summary": "auto"
+  },
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "low"
+  }
+}

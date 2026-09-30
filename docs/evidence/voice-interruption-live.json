@@ -1,0 +1,309 @@
+{
+  "at": "2026-09-30T14:55:19.047Z",
+  "text": {
+    "id": "a8cc16df-e9b4-4025-9567-deacdbdd72aa",
+    "state": "completed",
+    "message": "Bloc de notas ya estaba abierto. Ventana verificada.",
+    "evidence": {
+      "application": "notepad",
+      "pid": 28008,
+      "windowHandle": "1311376",
+      "alreadyOpen": true,
+      "verifiedAt": "2026-09-30T14:54:29.4133118Z"
+    }
+  },
+  "voice": {
+    "transcript": "Busca qué es Microsoft 365 Business Basic, con fuentes oficiales de Microsoft.",
+    "spoken": "Déjame revisar esto con ZEN y te leo el resultado tal cual.",
+    "written": "Microsoft 365 Business Basic, llamado Microsoft 365 Empresa Básico en español, es una suscripción para uso empresarial que reúne correo profesional, aplicaciones de productividad y servicios de colaboración en la nube. Admite hasta 300 usuarios. [Ficha oficial de Microsoft](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nIncluye versiones web y móviles de Word, Excel, PowerPoint y Outlook; correo empresarial con dominio personalizado; 1 TB de almacenamiento en OneDrive por usuario; SharePoint para compartir información y archivos; y herramientas como Forms, Planner y Bookings. [Funciones del plan](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nHay modalidades con y sin Microsoft Teams. La modalidad con Teams permite chat, llamadas y reuniones online de hasta 300 participantes. Conviene comprobar qué variante se contrata. [Modalidades oficiales](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nSu principal limitación es que no incluye las aplicaciones completas de escritorio de Office. Para disponer de esas aplicaciones instalables, Microsoft ofrece planes como Empresa Estándar. [Comparación oficial](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nNo debe confundirse con Microsoft 365 Basic para particulares: Business Basic está destinado a clientes empresariales. [Documentación de Microsoft Learn](https://learn.microsoft.com/es-es/microsoft-365/admin/setup/signup-business-basic?view=o365-worldwide).",
+    "receivedAudio": true,
+    "toolReturned": true,
+    "interrupted": true,
+    "cleared": true,
+    "clearRoundTripMs": 886.1000000238419,
+    "types": [
+      "session.created",
+      "session.updated",
+      "input_audio_buffer.speech_started",
+      "input_audio_buffer.speech_stopped",
+      "input_audio_buffer.committed",
+      "conversation.item.added",
+      "conversation.item.done",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.delta",
+      "conversation.item.input_audio_transcription.completed",
+      "response.created",
+      "response.output_item.added",
+      "conversation.item.added",
+      "response.content_part.added",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "output_audio_buffer.started",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_audio_transcript.delta",
+      "response.output_item.added",
+      "conversation.item.added",
+      "response.function_call_arguments.delta",
+      "response.output_audio.done",
+      "response.output_audio_transcript.done",
+      "response.content_part.done",
+      "conversation.item.done",
+      "response.output_item.done",
+      "response.function_call_arguments.done",
+      "conversation.item.done",
+      "response.output_item.done",
+      "response.done",
+      "rate_limits.updated",
+      "output_audio_buffer.cleared",
+      "conversation.item.truncated",
+      "conversation.item.added"
+    ]
+  },
+  "voiceTask": {
+    "id": "b5ff71c0-806f-48d2-92b6-6c36da917d94",
+    "state": "completed",
+    "message": "Microsoft 365 Business Basic, llamado Microsoft 365 Empresa Básico en español, es una suscripción para uso empresarial que reúne correo profesional, aplicaciones de productividad y servicios de colaboración en la nube. Admite hasta 300 usuarios. [Ficha oficial de Microsoft](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nIncluye versiones web y móviles de Word, Excel, PowerPoint y Outlook; correo empresarial con dominio personalizado; 1 TB de almacenamiento en OneDrive por usuario; SharePoint para compartir información y archivos; y herramientas como Forms, Planner y Bookings. [Funciones del plan](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nHay modalidades con y sin Microsoft Teams. La modalidad con Teams permite chat, llamadas y reuniones online de hasta 300 participantes. Conviene comprobar qué variante se contrata. [Modalidades oficiales](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nSu principal limitación es que no incluye las aplicaciones completas de escritorio de Office. Para disponer de esas aplicaciones instalables, Microsoft ofrece planes como Empresa Estándar. [Comparación oficial](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic).\nNo debe confundirse con Microsoft 365 Basic para particulares: Business Basic está destinado a clientes empresariales. [Documentación de Microsoft Learn](https://learn.microsoft.com/es-es/microsoft-365/admin/setup/signup-business-basic?view=o365-worldwide)."
+  },
+  "metadata": [
+    {
+      "type": "task",
+      "taskId": "a8cc16df-e9b4-4025-9567-deacdbdd72aa",
+      "state": "completed",
+      "durationMs": 2853,
+      "toolCalls": 1,
+      "evidence": {
+        "application": "notepad",
+        "pid": 28008,
+        "windowHandle": "1311376",
+        "alreadyOpen": true,
+        "verifiedAt": "2026-09-30T14:54:29.4133118Z"
+      }
+    },
+    {
+      "type": "voice_session",
+      "channel": "voice",
+      "model": "gpt-realtime-2.1",
+      "state": "connected"
+    },
+    {
+      "type": "usage",
+      "channel": "voice",
+      "model": "gpt-realtime-2.1",
+      "responseId": "resp_ETpzf0nKwEiYqqhD5SWsO",
+      "usage": {
+        "total_tokens": 585,
+        "input_tokens": 461,
+        "output_tokens": 124,
+        "input_token_details": {
+          "text_tokens": 388,
+          "audio_tokens": 73,
+          "image_tokens": 0,
+          "cached_tokens": 0,
+          "cached_tokens_details": {
+            "text_tokens": 0,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 49,
+          "audio_tokens": 75
+        }
+      },
+      "costEstimate": null
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.created",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_080bb1b831817f09006abd22b674e081978e752d3570e73aba",
+      "turnId": "turn_080bb1b831817f09006abd22bb3ff08197bcb5242796cd1ae1",
+      "usage": null,
+      "costEstimate": null
+    },
+    {
+      "type": "task",
+      "taskId": "b5ff71c0-806f-48d2-92b6-6c36da917d94",
+      "state": "completed",
+      "durationMs": 29145,
+      "toolCalls": 0
+    },
+    {
+      "type": "voice_session",
+      "channel": "voice",
+      "state": "closed",
+      "finalUsageConfirmed": false,
+      "costEstimate": null
+    }
+  ],
+  "busyAtInterrupt": true,
+  "passed": true
+}

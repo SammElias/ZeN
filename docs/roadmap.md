@@ -1,13 +1,11 @@
-# Backlog
+# Pendientes vigentes
 
-## Propuesto, fuera de esta entrega
+Fuente actual: [objective-verification.md](objective-verification.md).
 
-1. Capturas autorizadas y visión con Astra; archivos solo en carpetas seleccionadas; búsqueda web con fuentes.
-2. Automatización de interfaz en VM/entorno aislado; monitores, DPI y foco; aprobación concreta para operaciones con efectos difíciles de revertir.
-3. Memoria editable/eliminable, recordatorios y recuperación tras reinicios.
-4. Evaluar activación «Hola Zen» con OpenAI, coste, consentimiento y falsos positivos. VAD no es palabra de activación. Mantener botón/atajo si no hay una solución adecuada; sin modelo local añadido por defecto.
-5. Instalador, firma, actualización, arquitectura de credenciales para distribución y métricas de éxito/latencia/coste.
+Ampliación zen_desktop autorizada y puente implementado/probado. [Alcance y evidencia](desktop-tools-proposal.md). Pendiente: control general de interfaces Windows con verificación/política.
 
-## Mejoras posteriores a la prueba inicial
+Trabajo independiente pendiente: presupuesto monetario duro, captura de monitor elegible, observación autorizada continua, activación fiable con consentimiento, aislamiento efectivo si se habilita código generado.
 
-Ampliar lenguaje permitido sin trasladar autorización al modelo, contexto conversacional entre tareas, registros de uso al cierre de Realtime con reconciliación de facturación, tarifas verificadas para estimaciones, accesibilidad y pruebas físicas de dispositivos, red degradada y múltiples sesiones de Windows.
+Validación física pendiente: Teams real/foco/audio, micrófono ocupado, eco, varios monitores/DPI, escritorio bloqueado/UAC y red interrumpida. Portable disponible; instalador/firma/actualizaciones pendientes.
+
+GPT-Live se aplica al terminar requisitos anteriores, conforme a [orden del usuario](handoffs/order.md). No declarar cumplimiento final antes.

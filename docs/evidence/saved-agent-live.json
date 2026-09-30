@@ -1,0 +1,127 @@
+{
+  "at": "2026-09-30T14:02:59.058Z",
+  "durationMs": 19418,
+  "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+  "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005",
+  "structured": true,
+  "result": "Microsoft 365 Business Basic, denominado Microsoft 365 Empresa Básico en España, es una suscripción de uso comercial destinada a empresas. Combina aplicaciones de productividad web y móviles con correo profesional y servicios de colaboración en la nube. Fuente: [Microsoft Learn: Microsoft 365 Empresa Básico](https://learn.microsoft.com/es-es/microsoft-365/admin/setup/signup-business-basic?view=o365-worldwide).\nIncluye versiones web y móviles de Word, Excel, PowerPoint y Outlook; correo empresarial con dominio personalizado; 1 TB de almacenamiento en la nube por usuario; y aplicaciones como Bookings, Planner y Forms. Admite hasta 300 usuarios e incluye administración básica de identidad y acceso. Fuente: [Microsoft: características de Empresa Básico](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic/).\nSu principal límite es que no incluye las aplicaciones de escritorio de Office. Microsoft ofrece modalidades con Teams —para chat, llamadas y reuniones— y sin Teams, por lo que debe comprobarse la variante contratada. Fuente: [Microsoft: modalidades y comparación de planes](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic/).\nFecha de consulta: 30 de septiembre de 2026.",
+  "metadata": [
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.created",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd168541608195b3a73e4443cf0005",
+      "usage": null,
+      "costEstimate": null
+    }
+  ],
+  "remoteActions": false
+}

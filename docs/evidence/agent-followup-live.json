@@ -1,0 +1,80 @@
+{
+  "at": "2026-09-30T15:03:30.340Z",
+  "durationMs": 9802,
+  "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+  "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf",
+  "continuedSameSession": true,
+  "structured": true,
+  "result": "Microsoft 365 Business Basic es una suscripción empresarial para hasta 300 usuarios que incluye aplicaciones web y móviles, correo profesional y 1 TB de almacenamiento por usuario, con modalidades con o sin Teams, pero sin las aplicaciones de escritorio de Office.",
+  "metadata": [
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_0ad5565f3cfd0516006abd1680ae18819589fa075b1681fa82",
+      "turnId": "turn_0ad5565f3cfd0516006abd24bdfabc81959c18fc0d1c7d8fbf",
+      "usage": null,
+      "costEstimate": null
+    }
+  ]
+}

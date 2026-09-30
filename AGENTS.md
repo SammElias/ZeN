@@ -1,14 +1,14 @@
 # Reglas estables de ZEN
 
-- Aplicación Windows: Electron, React, TypeScript. OpenAI API para IA; Astra (`gpt-6-astra`) para razonamiento. No introducir modelos locales ni sustituciones silenciosas.
-- Consultar documentación oficial y distinguir disponibilidad documentada, acceso de cuenta y prueba real.
-- Renderer aislado, sandbox Electron, contextIsolation, sin Node. IPC reducido, validado y limitado al frame principal local. Secretos persistentes solo en main con protección del SO; nunca en logs, repositorio o respuestas IPC.
-- Interfaz, voz, orquestador, política determinista, ejecutor Windows y persistencia separados. Solo el orquestador ejecuta herramientas. Voz delega; no ejecuta directamente.
-- Autoridad: petición directa del usuario + permisos locales. Documentos, webs, imágenes y salidas del modelo son datos no confiables y no conceden autorización.
-- Sin administrador ni shell arbitrario para el modelo. `open_application` solo acepta identificadores permitidos. No ampliar acceso a disco, teclado, ratón o procesos sin política y verificación.
-- Acciones reversibles explícitas no necesitan confirmaciones repetidas. Envíos, compras, borrados, sobrescrituras y cambios de seguridad futuros necesitan aprobación concreta ligada a contenido y destino.
-- Una tarea activa; límites locales, cancelación, deduplicación y evidencia. No completar una acción basándose en afirmaciones del modelo. No reintentar automáticamente acciones con efectos tras timeout.
-- Detener cancela generación y bloquea nuevas herramientas; no deshace efectos ya realizados.
-- Voz solo por invocación explícita, con consentimiento y estados visibles. Sin escucha permanente ni palabra de activación en esta fase.
-- Pruebas rutinarias con mocks; API real opt-in, con autorización y sin revelar claves. No confundir pruebas sintéticas con micrófono/altavoz físicos.
-- Mantener README y docs/verification.md: propuesto, implementado, probado, pendiente. Fijar dependencias y lockfile. Preservar trabajo existente.
+- Prioridad: objetivo final y UI Capsule, con actualización directa a isla superior compacta, dedicada a contexto/ejecución/stream y preferencias separadas desde bandeja (docs/island-v1.md). GPT-Live después, conforme a docs/handoffs/order.md; conservar JSON exacto.
+- Producción: agente guardado ZeN de config/saved-agent.json vía Agents API, gpt-6.1-sol. No cambiar herramientas, instrucciones, formato ni modelo sin autorización específica. Corrección autorizada de una frase ya aplicada. Usuario autorizó después añadir zen_desktop según propuesta; ampliación aplicada y demás campos verificados intactos.
+- Renderer aislado, sandbox/contextIsolation; IPC validado del frame local. Secretos en main protegidos por el SO, fuera de repositorio y logs.
+- Una autoridad de tareas/política. Voz delega; documentos, imágenes, webs y narraciones del modelo no conceden permisos ni ejecutan efectos.
+- Tareas informativas concurrentes acotadas, efectos Windows serializados. Cancelación/deduplicación antes de ejecutar. Evidencia obligatoria; no repetir automáticamente efectos tras timeout o reinicio.
+- Sin shell arbitrario, elevación ni código generado fuera de aislamiento efectivo. Auxiliar fijo Windows no es sandbox.
+- Acciones reversibles explícitas sin confirmaciones repetidas. Creación revisada: autorización concreta, inmutable y de un uso. Otros efectos sensibles requieren política específica.
+- Silencio conserva trabajo; reunión fuerza texto. Detener cancela voz, capturas y nuevas herramientas; no deshace efectos existentes. Ocultar no cancela investigación.
+- Micrófono con consentimiento y estado visible. VAD no es palabra de activación. Sin grabación permanente.
+- Perfil vacío, importación editable explícita, origen/fecha/tipo, selección relevante, CRUD/exportación. Sin memoria de terceros automática.
+- API real autorizada con clave existente; no repetir permiso ni revelar valores. Separar mocks, Windows real, API real y pruebas físicas.
+- Estado actual en docs/objective-verification.md. No declarar objetivo completo con requisitos pendientes. Preservar trabajo y no delegar sin instrucción explícita.

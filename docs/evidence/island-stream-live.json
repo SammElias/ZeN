@@ -1,0 +1,133 @@
+{
+  "at": "2026-09-30T17:26:05.081Z",
+  "passed": true,
+  "durationMs": 13399,
+  "structured": true,
+  "streamUpdates": [
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 9707,
+      "characters": 2
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 9797,
+      "characters": 15
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 9891,
+      "characters": 51
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 9994,
+      "characters": 87
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 10081,
+      "characters": 90
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 10172,
+      "characters": 97
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 10270,
+      "characters": 106
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 10371,
+      "characters": 109
+    },
+    {
+      "beforeCompletion": true,
+      "elapsedMs": 10455,
+      "characters": 119
+    }
+  ],
+  "resultLength": 124,
+  "configurationChanged": false,
+  "desktopEffects": false,
+  "requestCount": 1,
+  "metadata": [
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.created",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_01d52124f5ed90f3006abd4621a8a08193a1e35844d18930ca",
+      "turnId": "turn_01d52124f5ed90f3006abd462862cc81938a1a6b67a6bd6653",
+      "usage": null,
+      "costEstimate": null
+    }
+  ]
+}

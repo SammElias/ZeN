@@ -1,0 +1,16 @@
+{
+  "at": "2026-09-30T14:26:32.953Z",
+  "sessionId": "sess_0d654c5c66da8d59006abd1b5d15088196b9ef5048f1cfe681",
+  "turnId": "turn_0d654c5c66da8d59006abd1b62b7888196878950c29177d128",
+  "result": {
+    "texto_observado": "Mensaje de prueba\n\nHola. ¿Te interesaría participar en un proyecto de diseño?\n\nDocumento de prueba, sin datos personales.",
+    "borrador": "¡Hola! Sí, me interesa participar. Mi objetivo es aprender diseño y puedo dedicar dos horas semanales. ¿Podrías contarme de qué trata el proyecto, qué tareas realizaría y si esa disponibilidad encaja?"
+  },
+  "structured": true,
+  "realImageInput": true,
+  "testDataOnly": true,
+  "noMessageSent": true,
+  "rawCapturePersistedLocally": false,
+  "durationMs": null,
+  "notes": "Captura real de ventana de prueba enviada; resultado recuperado de items tras corregir presentación de result como objeto. No se repitió la entrada."
+}

@@ -2,7 +2,8 @@
   "name": "zen-desktop",
   "version": "0.1.0",
   "private": true,
-  "main": "dist/main.cjs", "type": "module",
+  "main": "dist/main.cjs",
+  "type": "module",
   "scripts": {
     "build": "tsc --noEmit && node scripts/build.mjs && vite build",
     "start": "electron .",
@@ -11,7 +12,15 @@
     "test:windows": "node scripts/windows-smoke.mjs",
     "test:api": "node scripts/api-smoke.mjs",
     "test:electron": "node scripts/electron-smoke.mjs",
-    "test:integration": "node scripts/live-integration.mjs"
+    "test:integration": "node scripts/live-integration.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs",
+    "preview:ui": "vite preview --host 127.0.0.1 --port 4173",
+    "build:native": "node scripts/build-native.mjs",
+    "test:agent": "node scripts/saved-agent-smoke.mjs",
+    "test:native": "node scripts/native-smoke.mjs",
+    "test:objective": "node scripts/electron-smoke.mjs --objective",
+    "package:win": "npm run build:native && npm run build && node scripts/package-win.mjs",
+    "test:desktop-agent": "node scripts/desktop-bridge-smoke.mjs"
   },
   "dependencies": {
     "openai": "7.25.0",
@@ -27,6 +36,7 @@
     "@types/ws": "^8.18.2",
     "electron": "44.5.1",
     "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
     "typescript": "7.0.2",
     "vite": "8.3.1",
     "vitest": "5.0.3"

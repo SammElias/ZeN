@@ -1,6 +1,10 @@
 node_modules/
+**/bin/
+**/obj/
 dist/
+release/
 .env*
 !.env.example
 test-results/
+.reference/
 *.log

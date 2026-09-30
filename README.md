@@ -1,63 +1,56 @@
-# ZEN · primera entrega
+# ZEN · isla superior para Windows
 
-Asistente de escritorio para Windows con conversación en español, Astra en Responses API y voz Realtime. Su única acción local es abrir Bloc de notas y verificar una ventana visible del proceso permitido, también si ya estaba abierto.
+Asistente Electron + React + TypeScript con el agente guardado **ZeN / gpt-6.1-sol**, voz Realtime, memoria personal editable, tareas en segundo plano y operaciones Windows verificadas. El objetivo completo sigue incompleto; consulta [implementación, pruebas y bloqueos](docs/objective-verification.md).
 
-## Arranque
+## Probar
 
-Requisitos: Windows 10/11 con sesión de escritorio interactiva, Node.js **22.12 o superior** (probado con 22.17.1), conexión a Internet y proyecto OpenAI con saldo y acceso a los modelos. No requiere administrador.
+La ruta portable más reciente figura en [portable-package.json](docs/evidence/portable-package.json), campo executable. Ejecuta ZEN.exe desde su carpeta completa: arranca como isla de **320×48 DIP**, anclada arriba y sin tomar foco. Haz clic en ZEN o pulsa **Ctrl+Alt+Z** para desplegar. La isla contiene Actividad, Tareas y Contexto; muestra el stream público y los resultados. **Preferencias** se abre por separado desde la bandeja de Windows. [Primera versión compacta y pruebas](docs/island-v1.md). Requiere Windows interactivo y **.NET Desktop Runtime 10** para el auxiliar Windows. Electron va incluido; el paquete no contiene claves ni datos personales. No es un instalador firmado.
+
+Compilación: Node 22.12 o superior y .NET SDK 10.
 
 ```powershell
 cd C:\Users\samme\Desktop\ZeN
 npm ci
+npm run build:native
 npm run build
 npm start
 ```
 
-`npm run dev` compila y abre Electron; para editar hay que volver a ejecutarlo. No hay servidor de desarrollo ni recarga automática. Se han instalado las dependencias y compilado esta entrega en la carpeta actual.
-
-1. Abre Configuración. Introduce tu clave en el campo de contraseña y pulsa **Guardar clave**. ZEN la cifra con `safeStorage` de Electron / DPAPI de Windows en `key.bin`, bajo `%APPDATA%\ZEN`. Nunca se devuelve desde main al renderer. El campo se vacía al guardarla. La clave del entorno utilizada en las pruebas no se ha copiado a la configuración de ZEN.
-2. Conserva `gpt-6-astra` y `gpt-realtime-2.1`, o cambia los modelos explícitamente. Si falta acceso, ZEN muestra un diagnóstico y no sustituye el modelo.
-3. Para texto escribe **Abre el Bloc de notas** y pulsa Enviar. La respuesta válida incluye PID y ventana verificada.
-4. Para voz, acepta el envío de audio a OpenAI y guarda la configuración. Pulsa **Conversar por voz** o **Ctrl+Alt+Z**. Autoriza el micrófono si Windows lo solicita y di **Abre el Bloc de notas**. Recibirás la respuesta de Realtime después de la verificación. El audio de respuesta es una voz generada por IA.
-5. Usa **Detener** para cancelar la tarea, apagar el micrófono y desconectar la voz. Cerrar la ventana la oculta en la bandeja y detiene voz/tarea. Salir desde la bandeja termina la aplicación. ZEN no arranca automáticamente con Windows.
-
-El atajo es configurable usando la sintaxis de aceleradores Electron (`Control+Alt+Z`, por ejemplo). Si está ocupado se conserva el anterior; si el predeterminado no se pudo registrar se avisa. El botón de bandeja «Abrir ZEN» solo muestra la ventana; «Conversar por voz» invoca voz. Cuando ya hay voz activa, el atajo muestra la ventana sin abrir una segunda sesión.
+1. La configuración existente se conserva. Si falta la conexión, abre Preferencias desde la bandeja; la clave personal se protege con safeStorage/DPAPI. La clave de entorno de las pruebas no se copia a ZEN. Requiere acceso a Agents API y al agente configurado en config/.
+2. Prueba «Abre el Bloc de notas», «Abre https://www.microsoft.com» o una búsqueda con fuentes. Órdenes locales breves se ejecutan mediante política determinista; las narraciones del modelo no ejecutan Windows.
+3. Contexto permite elegir una ventana, revisar texto o captura y adjuntarlo a la siguiente petición. Abrir aplicaciones, páginas, archivos y pausar medios sigue disponible mediante peticiones autorizadas al agente.
+4. Para crear carpeta/archivo nuevo, elige directorio en Contexto, pide al agente que prepare la creación y revisa la tarjeta antes de Permitir. No sobrescribe archivos.
+5. El perfil personal queda en Preferencias: revisa, corrige, exporta o borra datos. El perfil inicial está vacío.
+6. Voz requiere consentimiento existente. **Modo reunión** silencia respuestas; Preferencias permite resultados discretos sin foco. Push-to-talk conecta silenciado: mantén el botón o Ctrl+Espacio con ZEN enfocado para hablar; soltar o cambiar de ventana silencia. **Detener** cancela tareas, voz y nuevas operaciones/capturas, sin deshacer efectos existentes; también está disponible en la isla recogida cuando hay trabajo activo. Esc oculta y desconecta voz conservando investigación y resultados. Tareas permite continuar una sesión o cancelar una tarea concreta.
 
 ## Límites y privacidad
 
-- Una tarea activa, diez llamadas como máximo y noventa segundos por tarea. Son decisiones de producto ajustables hacia abajo en Configuración.
-- Sesión de voz máxima de cinco minutos; cerrar/ocultar la ventana desconecta la captura. Disponible, micrófono activo y voz conectada se muestran por separado.
-- La política inicial exige una orden directa y breve (`Abre el Bloc de notas`, `Por favor abre el Bloc de notas`, `Open notepad`). Peticiones indirectas, compuestas, citas y negaciones se bloquean aunque Astra solicite la herramienta. Esta restricción conservadora está implementada; ampliar lenguaje autorizado queda en el backlog.
-- No hay acceso general a disco, correo, compras, ratón, teclado, grabación permanente, memoria ni «Hola Zen».
-- No hay shell arbitrario para el modelo. El ejecutor usa un script PowerShell fijo incluido con la aplicación, transmitido con `EncodedCommand` para evitar problemas de Unicode y archivos .ps1; no cambia la política de ejecución de Windows. **No es un sandbox para ejecutar código generado.**
-- Las conversaciones/transcripciones quedan en memoria de la ventana (100 mensajes); no se guardan en el registro local. El audio se transmite a OpenAI solo durante una sesión explícita. Responses usa `store:false`; esto no es una promesa sobre todas las políticas de retención del proveedor.
-- `settings.json`, `key.bin`, `execution.json` quedan en el directorio de datos del usuario, fuera del repositorio. El registro conserva metadatos, errores saneados, usos API y evidencia técnica; limita a 500 eventos y elimina los mayores de siete días al escribir. Configuración permite borrar la clave y el registro.
-- Costes estimados: **no calculados** (`null`), sin importes inventados. El registro separa uso de voz, tokens de Astra y herramientas locales. El uso final tras desconectar bruscamente una sesión de voz no se garantiza completo. Comprueba la facturación en OpenAI.
-- Sin reintento automático de API ni de la acción Windows. Si una verificación falla después del lanzamiento, comprueba el escritorio antes de volver a pedirla. Detener no cierra aplicaciones ya abiertas.
+El agente guardado conserva web_search y añade zen_desktop con autorización específica. Su puente ejecuta operaciones verificadas sujetas a política y capacidades elegidas; no controla arbitrariamente Windows ni ejecuta acciones narrativas de su JSON. Aplicaciones disponibles: Windows App Paths; visor: txt/md/json/csv/png/jpg/jpeg hasta 2 MB. No hay shell generado, envíos, compras, borrados o sobrescrituras; tampoco activación permanente «Hola Zen» o detección automática fiable de llamadas Teams.
 
-## Pruebas
+Dos tareas informativas simultáneas por defecto (configurable 1–3), hasta ocho pendientes (configurable 1–10), prioridad alta/normal/baja y 90 segundos por tarea; efectos locales serializados. El límite de diez herramientas se aplica a llamadas locales antes de ejecutar y búsquedas según eventos observados; no es presupuesto duro del servidor. Pausa frena nuevos efectos, mientras investigación puede terminar. El máximo monetario por sesión sigue pendiente; registra uso recibido sin inventar importes. Reiniciar no reproduce efectos pendientes.
+
+Capturas de ventanas seleccionadas expiran en dos minutos y no se guardan en disco por defecto. Perfil y resultados de tareas sí persisten localmente y pueden contener texto solicitado. Agents API crea sesiones remotas; no se promete retención nula del proveedor. No importa memoria de ChatGPT ni graba reuniones automáticamente.
+
+## Pruebas reproducibles
 
 ```powershell
-npm test                 # mocks; no saldo API
-npm run build            # tipos y compilación
-npm run test:electron    # Electron oculto, IPC, bandeja, DPAPI con clave ficticia
-npm run test:windows     # abre Bloc de notas, verifica ventana y reutilización
+npm test
+npm run build:native
+npm run build
+npm run test:objective
+npm run test:native
+npm run test:ui
+npm run package:win
 ```
 
-Las dos pruebas siguientes requieren una `OPENAI_API_KEY` ya proporcionada de forma segura al entorno del proceso. No la pegues en el chat ni en un archivo del repositorio. El proyecto no carga `.env` y no necesita `.env.example`.
+Las pruebas API reales requieren autorización y OPENAI_API_KEY segura en el entorno; consumen saldo. test:agent utiliza la clave presente; test:integration también exige ZEN_LIVE_API=1. No pegues claves en el chat ni en el repositorio.
 
 ```powershell
-$env:ZEN_LIVE_API='1'     # opt-in explícito; las pruebas pueden consumir saldo
-npm run test:api          # acceso a modelos, function calling y credencial Realtime
-npm run test:integration  # Astra + Windows y Realtime/WebRTC con audio sintético OpenAI
+npm run test:agent
+$env:ZEN_LIVE_API='1'
+npm run test:integration
 ```
 
-`test:integration` usa `gpt-4o-mini-tts` solo para generar la frase de prueba y `gpt-4o-mini-transcribe` para transcribirla; en la aplicación normal no se usa TTS separado. La prueba recibe audio remoto sin emitirlo por el altavoz. No comprueba tu micrófono, escucha física, pulsación real del atajo ni calidad acústica. Esas pruebas manuales están descritas en [docs/verification.md](docs/verification.md). Los resultados JSON se guardan en `test-results/`, ignorado por Git; la evidencia de esta entrega se conserva saneada en docs/evidence/.
+ZEN_TEST_MEDIA=1 amplía test:native con un reproductor silencioso de prueba; ZEN_TEST_VISION=1 añade imagen enviada a OpenAI. ZEN_TEST_INTERRUPT=1 amplía integración con interrupción durante investigación. Audio sintético no acredita micrófono/altavoz físicos ni una reunión real. Evidencia saneada en docs/evidence; test-results/ y release/ excluidos de Git.
 
-## Diagnósticos
-
-Clave ausente/inválida: vuelve a Configuración. 403/404: verifica acceso al modelo en el proyecto OpenAI. 429: revisa saldo/cuota o espera según el diagnóstico. Conectividad: revisa Internet, proxy/firewall y acceso HTTPS/WebRTC/WSS a OpenAI. Micrófono denegado: activa consentimiento en ZEN y permisos de micrófono de Windows. Sin micrófono: conecta uno y vuelve a invocar. Un modelo de transcripción sin acceso produce un error de voz, sin cambiarlo automáticamente.
-
-Distribución futura necesita instalador, firma y arquitectura de credenciales propia. DPAPI protege una clave personal bajo el usuario de Windows; no permite ocultar una clave compartida en una aplicación distribuida.
-
-Detalles: [arquitectura](docs/architecture.md), [capacidades OpenAI](docs/openai-capabilities.md), [permisos](docs/permissions.md), [verificación](docs/verification.md), [backlog](docs/roadmap.md).
+GPT-Live conserva el JSON exacto del guion en [docs/handoffs](docs/handoffs/order.md), pendiente de terminar requisitos anteriores según el orden solicitado. Voz activa: Realtime.

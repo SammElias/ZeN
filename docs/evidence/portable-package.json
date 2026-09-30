@@ -1,0 +1,150 @@
+{
+  "at": "2026-09-30T17:26:15.132Z",
+  "destination": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20260930172605727",
+  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20260930172605727\\ZEN.exe",
+  "smoke": {
+    "bridge": true,
+    "nodeAbsent": true,
+    "rendered": true,
+    "settings": {
+      "ok": true,
+      "value": {
+        "settings": {
+          "reasoningModel": "gpt-6.1-sol",
+          "voiceModel": "gpt-realtime-2.1",
+          "shortcut": "Control+Alt+Z",
+          "maxToolCalls": 10,
+          "maxConcurrentTasks": 2,
+          "maxQueuedTasks": 8,
+          "taskTimeoutMs": 90000,
+          "allowNotepad": true,
+          "voiceConsent": false,
+          "listenOnInvoke": false,
+          "autoHideSuccess": false,
+          "showResultsInMeeting": false,
+          "excludedWindows": []
+        },
+        "hasKey": false,
+        "shortcutRegistered": false,
+        "protectedStorage": true
+      }
+    },
+    "objective": {
+      "pageVerified": true,
+      "fileVerified": true,
+      "notepadVerified": true,
+      "pageKeptFocus": true,
+      "fileKeptFocus": true,
+      "profileImported": true,
+      "profileDeleted": true,
+      "meetingTextOnly": true,
+      "concreteApprovalVisible": true,
+      "approvedCreationVerified": true,
+      "repeatedApprovalBlocked": true,
+      "meetingDefaultStaysHidden": true,
+      "meetingOptInWithoutFocus": true
+    },
+    "protectedRoundTrip": true,
+    "preferencesIsolated": true,
+    "shortcutRegistered": false,
+    "trayCreated": true,
+    "invalidIpcBlocked": true,
+    "startedCompact": true,
+    "shownOnTop": true,
+    "hiddenNotOnTop": true,
+    "topAnchorStable": true,
+    "collapsedHeightVerified": true,
+    "positionLocked": true,
+    "capsuleBounds": {
+      "x": 800,
+      "y": 0,
+      "width": 320,
+      "height": 48
+    },
+    "cardBounds": {
+      "x": 680,
+      "y": 0,
+      "width": 560,
+      "height": 260
+    }
+  },
+  "files": [
+    {
+      "path": "dist\\main.cjs",
+      "sha256": "835919f211132d59230ec857e9b9af67bf55c1ced7f16ced167a392e673c7604"
+    },
+    {
+      "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
+      "sha256": "0ec371d93798852e36461c8adddbeadce0f963a04752f0b64e54fe19c1c834a7"
+    },
+    {
+      "path": "dist\\native\\WinRT.Runtime.dll",
+      "sha256": "bcf3a14e8712a90837fc5c0d8c8a24696af2bd7f74e9767597ec81ededfb23db"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.deps.json",
+      "sha256": "9a48b1c8262122e22350bc1dc3d0d8849cc72dce06403476b3a0b4709743aa70"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.dll",
+      "sha256": "e07fcdc95d3b285587b00c228acb7d3a2e045b035b83c44de6b572b2f7d8a3a0"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.exe",
+      "sha256": "9ae210ae757811de4d86b2b42513cee6300e909c9e853a4c456137b9a0249f64"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.pdb",
+      "sha256": "56fbb8b74d3081d287b97382a96da92c0b2edfe09131e00d60a1164944509dc4"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
+      "sha256": "96bc2946dff8790400d652ec7f8de7bb043e954980d59470c112788b68a1fbd3"
+    },
+    {
+      "path": "dist\\preload.cjs",
+      "sha256": "64b0f182788e69f37875d8e061b6776af12754a59c0e282e505cac321e6630a0"
+    },
+    {
+      "path": "dist\\renderer\\assets\\main-CfmMBljh.js",
+      "sha256": "fb36c6d1e44c0f5bf7bc5765f6691f42490c6d81ae082eb903e4d3c086963615"
+    },
+    {
+      "path": "dist\\renderer\\assets\\Preferences-AcmxNhX7.js",
+      "sha256": "d3e4ee4ec0e2236905b2393aaf66954181309cc3d0399ae389940e7944df5348"
+    },
+    {
+      "path": "dist\\renderer\\assets\\Preferences-rXAZrZVw.css",
+      "sha256": "36d13116a2b92b28d769ec22dfecab33535cc632c60b5194cbae9f0bf41cc204"
+    },
+    {
+      "path": "dist\\renderer\\assets\\preview-DVTOiqv-.js",
+      "sha256": "0fbcb35d630d2ff3305a6df0989e4f7f05d36eadf7fa248df50ab133429b754f"
+    },
+    {
+      "path": "dist\\renderer\\index.html",
+      "sha256": "95f9889881ebf2c2e97361946041ca40cfd5f16fd9f634b8e93e6c130bb218ec"
+    },
+    {
+      "path": "dist\\renderer\\preview.html",
+      "sha256": "b040a33d338f37e38497a8fc4cce818645e544e7314cf3d2a0980b7de5b10617"
+    },
+    {
+      "path": "dist\\tools\\notepad.mjs",
+      "sha256": "965ebc214ccbd1577752f5bd77a43c423eb2fc432f4665ee575152d66ded80d2"
+    },
+    {
+      "path": "dist\\tools\\notepad.ps1",
+      "sha256": "c2aeef3374ec94d9e5270f1fce073e469c9af325c8b967adb3f57061bae836e2"
+    },
+    {
+      "path": "package.json",
+      "sha256": "05d8464500161b88d7af8846c3b45e6f42b9785a93a03245795a9aa69e5bf657"
+    }
+  ],
+  "credentialsIncluded": false,
+  "selfContainedElectron": true,
+  "requiresDotNetDesktop10": true,
+  "installer": false,
+  "customApplicationSigning": false
+}

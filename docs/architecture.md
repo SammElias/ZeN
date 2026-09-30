@@ -1,29 +1,15 @@
-# Arquitectura de la primera entrega
+# Arquitectura actual de ZEN
 
-## Implementado
+Estado y alcance verificable: [objective-verification.md](objective-verification.md). La primera entrega Responses/Astra se conserva en pruebas históricas; producción utiliza el agente guardado ZeN.
 
-`src/main/index.ts` mantiene instancia única, ventana Electron, bandeja, atajos, manejadores IPC, configuración y permisos de medios. Renderer local bajo CSP, sin Node, `contextIsolation:true`, `sandbox:true`, navegación y nuevas ventanas bloqueadas. Se aceptan solo mensajes del frame principal local; los argumentos se validan con Zod.
+Main Electron posee credenciales DPAPI, persistencia, política y cola Windows. Renderer sandbox sin Node comunica contratos Zod desde el único frame local autorizado. Preload expone operaciones específicas, nunca filesystem, shell o claves.
 
-`src/preload/index.ts` expone métodos concretos mediante `window.zen`; no expone `ipcRenderer`, shell, filesystem ni credenciales persistentes.
+SavedAgent usa Agents API con agent_id y environment none: conserva opciones guardadas y no adjunta un ejecutor cloud que supuestamente controle Windows. Sesiones separadas, seguimiento turn.completed real, eventos deduplicados y final_answer público. Continuación subscribe-before-input e idempotencia. requires_action se resuelve con zen_desktop autorizado: política original, capacidades elegidas, deduplicación y tool_result ligado a sesión/turno/call. Solicitudes desconocidas se bloquean. Se omiten reasoning_steps y acciones narrativas.
 
-`src/renderer/` implementa conversación, configuración, estado/progreso, botón Detener y transporte WebRTC. El micrófono empieza deshabilitado hasta que el proceso principal tiene conexión de control; la negociación SDP viaja por IPC, sin clave API en esa respuesta.
+TaskManager permite investigación concurrente con cola acotada y prioridades, conservando FIFO entre iguales, y serializa efectos locales. Cada tarea tiene UUID/estado, cancelación y límites; directOperation reconoce órdenes humanas acotadas. Aprovals prepara destinos/contenidos inmutables, concesiones de directorio y permiso de un uso. El modelo no aprueba. No se repiten efectos al reiniciar.
 
-`src/agent/orchestrator.ts` es el único propietario de ejecución. Responses usa Astra, function calling estricto, `parallel_tool_calls:false`, `store:false`, contexto en memoria de cada tarea y reasoning cifrado cuando es necesario para continuar. No hay memoria de conversación entre tareas en esta fase. Una tarea no termina satisfactoriamente para Bloc de notas sin evidencia local. Generación y herramientas reciben AbortSignal; se comprueba cancelación antes y después de cada llamada.
+Auxiliar .NET 10 ejecuta comandos fijos Win32/UI Automation/SMTC: ventanas, lectura, captura elegida, aplicaciones registradas y pausa verificable. No recibe código generado ni elevación. PrintWindow no garantiza leer contenido protegido; fallo o ventana no accesible no constituye éxito de lectura. Navegador/visor separados con sandbox, sin IPC de ZEN; sin cookies heredadas.
 
-`src/agent/voice.ts` negocia `/v1/realtime/calls` desde main y abre un WebSocket sideband autenticado con la clave personal. La clave persistente nunca sale de main; esta alternativa oficial al token efímero evita incluso devolver credenciales temporales al renderer. Solo main procesa transcripciones, herramientas y uso. Cada turno transcrito dispara una respuesta Realtime con delegación obligatoria. `delegate_to_astra` no acepta texto del modelo: main usa la transcripción recibida directamente desde OpenAI. Una vez devuelve el resultado, Realtime responde por voz con `tool_choice:none`.
+PersonalStore guarda perfil, modo y resultados limitados localmente. Observaciones temporales en RAM, single-use y caducidad dos minutos; no audio/capturas persistentes por defecto. Perfil relevante explícito se etiqueta como datos, no autoridad.
 
-Detección de voz: server VAD, `create_response:false`, `interrupt_response:true`. Al comenzar otro turno main invalida la autorización pendiente y cancela el orquestador; se descartan resultados tardíos. Se deduplican transcripciones, call IDs y request IDs; una nueva call ID tampoco repite el efecto de abrir Bloc de notas dentro de una tarea. La caché de request IDs está limitada a 200 entradas, en memoria; no es deduplicación durable tras reinicios.
-
-`src/policy/policy.ts` autoriza fuera del modelo una petición directa exacta y la operación habilitada. `src/tools/windows/` lanza únicamente el ejecutable de sistema y enumera ventanas visibles usando Win32, comprobando PID y ruta admitida del proceso. Una ventana de Notepad existente es evidencia suficiente; no se promete llevarla a primer plano ni crear un documento nuevo.
-
-`src/storage/store.ts` guarda secretos con safeStorage/DPAPI y rechaza almacenamiento no protegido. Preferencias y registros se escriben de forma atómica. El directorio es el userData de Electron, no la carpeta del proyecto.
-
-## Decisiones de producto
-
-Una tarea, diez llamadas y noventa segundos. Configuración permite ajustar de 1 a 10 llamadas y de 5 a 90 segundos. Sesión de voz limitada a cinco minutos. Chat de texto bloqueado mientras la voz está conectada para evitar propietarios concurrentes. Modelos configurables explícitamente, sin fallback.
-
-## Límites
-
-Un renderer comprometido podría emitir peticiones de texto con la misma autoridad que la UI; el aislamiento y CSP reducen esa superficie, pero no prueban intención humana por sí mismos. No se cargan documentos ni páginas remotas en esta fase. Una transcripción es interpretación de audio por OpenAI y puede contener errores. La política conservadora reduce acciones equivocadas; no sustituye pruebas acústicas reales.
-
-No se implementan operaciones irreversibles ni aprobaciones interactivas: `awaiting_approval` está en el contrato para futuras fases, sin usar para abrir Bloc de notas. No hay VM ni ejecución de código generado.
+VoiceBackend controla Realtime vía sideband, transcripciones y delegación al mismo TaskManager; VoiceClient transporta WebRTC y reproducción local. Modo texto/reunión se reconsulta antes de responder. Silencio no cancela investigación; emergencia cancela voz, capturas y efectos pendientes. Esc desconecta voz conservando tareas. GPT-Live está [en cola](handoffs/order.md), sin activación anticipada.

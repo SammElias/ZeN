@@ -14,7 +14,7 @@ function setup(sequence: any[], overrides = {}) {
   return { o, create, execute, emit, log };
 }
 describe('single execution owner', () => {
-  it('only completes an action with window evidence', async () => { const { o, execute, create } = setup([response([fn()]), response()]); const r = await o.run('Abre el Bloc de notas', randomUUID()); expect(r.state).toBe('completed'); expect(r.evidence).toEqual(evidence); expect(execute).toHaveBeenCalledTimes(1); expect(create.mock.calls[0][0].model).toBe('gpt-6-astra'); expect(create.mock.calls[0][0].store).toBe(false); });
+  it('only completes an action with window evidence', async () => { const { o, execute, create } = setup([response([fn()]), response()]); const r = await o.run('Abre el Bloc de notas', randomUUID()); expect(r.state).toBe('completed'); expect(r.evidence).toEqual(evidence); expect(execute).toHaveBeenCalledTimes(1); expect(create.mock.calls[0][0].model).toBe('gpt-6.1-sol'); expect(create.mock.calls[0][0].store).toBe(false); });
   it('deduplicates incoming requests', async () => { const { o, execute } = setup([response([fn()]), response()]); const id = randomUUID(); const a = o.run('Abre el Bloc de notas', id); expect(o.run('Abre el Bloc de notas', id)).toBe(a); await a; expect(execute).toHaveBeenCalledTimes(1); });
   it('rejects competing tasks', async () => { const { o } = setup([response()]); const a = o.run('Hola', randomUUID()); await expect(o.run('Hola', randomUUID())).rejects.toThrow('activa'); await a; });
   it('does not believe model success without evidence', async () => { const { o } = setup([response([], 'He abierto Bloc de notas')]); expect((await o.run('Abre el Bloc de notas', randomUUID())).state).toBe('failed'); });

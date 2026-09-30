@@ -1,4 +1,8 @@
+> Informe histórico. Estado vigente y nuevas pruebas: [objective-verification.md](objective-verification.md). Las limitaciones y conteos siguientes describen aquella entrega, no el producto actual.
+
 # Verificación · primera entrega · 30 de septiembre de 2026
+
+La revisión **ZEN Capsule** tiene su informe propio en [ui-verification.md](ui-verification.md). Actualiza el comportamiento de ocultar: Esc/cierre desconecta voz sin cancelar una tarea activa; Detener sigue cancelando. Las 49 pruebas mencionadas abajo corresponden a la primera entrega; la revisión de interfaz amplía a 70 y añade capturas/pruebas UI. Este documento conserva la evidencia histórica de la base funcional.
 
 ## Resultado
 

@@ -1,4 +1,4 @@
 {
- "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "strict": true, "esModuleInterop": true, "skipLibCheck": true, "types": ["node", "vite/client"], "lib": ["ES2022", "DOM"], "noEmit": true },
+ "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "resolveJsonModule": true, "jsx": "react-jsx", "strict": true, "esModuleInterop": true, "skipLibCheck": true, "types": ["node", "vite/client"], "lib": ["ES2022", "DOM"], "noEmit": true },
  "include": ["src", "tests", "vite.config.ts"]
 }

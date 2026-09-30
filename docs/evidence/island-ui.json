@@ -1,0 +1,29 @@
+{
+  "at": "2026-09-30T17:24:40.726Z",
+  "browser": "Edge headless",
+  "passed": true,
+  "checks": [
+    "top edge in every view",
+    "collapse and expand without losing context",
+    "execution island excludes configuration",
+    "context and tasks navigation",
+    "preferences in separate view",
+    "public streaming and task selection preserved",
+    "stream follows updates and respects manual scroll",
+    "stop available while compact",
+    "full result available on demand",
+    "suggestions fill input without executing",
+    "representative states",
+    "approval demo single use, no execution",
+    "Enter submits",
+    "Shift+Enter newline",
+    "Escape hides without Stop",
+    "history retained on hide",
+    "settings scroll panel",
+    "profile import editable preview, correction, export and deletion",
+    "reduced motion",
+    "small viewport",
+    "no page errors"
+  ],
+  "screenshots": "docs/ui-preview"
+}

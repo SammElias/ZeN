@@ -1,0 +1,54 @@
+{
+  "at": "2026-09-30T15:59:15.679Z",
+  "durationMs": 83587,
+  "passed": true,
+  "list": {
+    "ok": true,
+    "value": {
+      "state": "completed",
+      "message": "Prueba omitida en este recorrido; evidencia previa independiente."
+    }
+  },
+  "openPage": {
+    "ok": true,
+    "value": {
+      "state": "completed",
+      "message": "Prueba omitida en este recorrido; evidencia previa independiente."
+    }
+  },
+  "preparedByAgent": {
+    "ok": true,
+    "value": {
+      "id": "c7c75cb1-b2a7-4d85-b087-de506de4807c",
+      "state": "awaiting_input",
+      "message": "Creación pendiente de aprobación humana. No se creó ningún elemento.\n\nPendiente de tu aprobación humana. No se creó ningún archivo ni se realizaron otras operaciones.",
+      "sessionId": "sess_093f048c5a3f5572006abd31811fd88197b8af51a8b86e2dbc",
+      "turnId": "turn_093f048c5a3f5572006abd31c1c7b48197a8986764a5d698ee"
+    }
+  },
+  "preparedWithoutEffect": true,
+  "agentApprovalVisible": true,
+  "agentCreationVerified": true,
+  "toolCalls": [
+    {
+      "at": "2026-09-30T15:59:03.703Z",
+      "type": "desktop_tool",
+      "sessionId": "sess_093f048c5a3f5572006abd31811fd88197b8af51a8b86e2dbc",
+      "turnId": "turn_093f048c5a3f5572006abd31c1c7b48197a8986764a5d698ee",
+      "callId": "call_Eh1goVDlxswp6pRQSEGntdI3",
+      "success": true
+    },
+    {
+      "at": "2026-09-30T15:59:08.557Z",
+      "type": "desktop_tool",
+      "sessionId": "sess_093f048c5a3f5572006abd31811fd88197b8af51a8b86e2dbc",
+      "turnId": "turn_093f048c5a3f5572006abd31c1c7b48197a8986764a5d698ee",
+      "callId": "call_ptJLM1w6A4xZSw3PiStw9UYh",
+      "success": true
+    }
+  ],
+  "creationOnly": true,
+  "testDataOnly": true,
+  "originalUserRequestPolicy": true,
+  "backgroundFocusPreserved": false
+}

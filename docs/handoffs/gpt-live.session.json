@@ -1,0 +1,24 @@
+{
+  "model": "gpt-live-1",
+  "instructions": "Habla siempre en español de España, con pronunciación natural, tono tranquilo y respuestas breves.",
+  "audio": {
+    "output": {
+      "voice": "echo"
+    }
+  },
+  "delegation": {
+    "type": "responses",
+    "responses": {
+      "parallel_tool_calls": false,
+      "model": "gpt-6.1-sol",
+      "reasoning": {
+        "effort": "low"
+      },
+      "tools": [
+        {
+          "type": "web_search"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "bridge": true,
+  "nodeAbsent": true,
+  "rendered": true,
+  "settings": {
+    "ok": true,
+    "value": {
+      "settings": {
+        "reasoningModel": "gpt-6.1-sol",
+        "voiceModel": "gpt-realtime-2.1",
+        "shortcut": "Control+Alt+Z",
+        "maxToolCalls": 10,
+        "maxConcurrentTasks": 2,
+        "maxQueuedTasks": 8,
+        "taskTimeoutMs": 90000,
+        "allowNotepad": true,
+        "voiceConsent": false,
+        "listenOnInvoke": false,
+        "autoHideSuccess": false,
+        "showResultsInMeeting": false,
+        "excludedWindows": []
+      },
+      "hasKey": false,
+      "shortcutRegistered": false,
+      "protectedStorage": true
+    }
+  },
+  "objective": {
+    "pageVerified": true,
+    "fileVerified": true,
+    "notepadVerified": true,
+    "pageKeptFocus": true,
+    "fileKeptFocus": true,
+    "profileImported": true,
+    "profileDeleted": true,
+    "meetingTextOnly": true,
+    "concreteApprovalVisible": true,
+    "approvedCreationVerified": true,
+    "repeatedApprovalBlocked": true,
+    "meetingDefaultStaysHidden": true,
+    "meetingOptInWithoutFocus": true
+  },
+  "protectedRoundTrip": true,
+  "shortcutRegistered": false,
+  "trayCreated": true,
+  "invalidIpcBlocked": true,
+  "startedHidden": true,
+  "shownOnTop": true,
+  "hiddenNotOnTop": true,
+  "topAnchorStable": true,
+  "collapsedHeightVerified": true,
+  "positionLocked": true,
+  "capsuleBounds": {
+    "x": 600,
+    "y": 0,
+    "width": 720,
+    "height": 68
+  },
+  "cardBounds": {
+    "x": 580,
+    "y": 0,
+    "width": 760,
+    "height": 260
+  }
+}

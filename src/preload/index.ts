@@ -1,16 +1,39 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { ZenBridge, TaskEvent } from '../shared/contracts';
 const bridge: ZenBridge = {
+  chooseDirectory: () => ipcRenderer.invoke('zen:choose-directory'),
+  prepare: value => ipcRenderer.invoke('zen:prepare', value),
+  approve: value => ipcRenderer.invoke('zen:approve', value),
+  reject: value => ipcRenderer.invoke('zen:reject', value),
+  apps: () => ipcRenderer.invoke('zen:apps'),
+  openApp: value => ipcRenderer.invoke('zen:open-app', value),
+  openPage: value => ipcRenderer.invoke('zen:open-page', value),
+  openFile: () => ipcRenderer.invoke('zen:open-file'),
+  windows: () => ipcRenderer.invoke('zen:windows'),
+  observe: value => ipcRenderer.invoke('zen:observe', value),
+  media: () => ipcRenderer.invoke('zen:media'),
+  pauseMedia: value => ipcRenderer.invoke('zen:pause-media', value),
+  profile: () => ipcRenderer.invoke('zen:profile'),
+  saveProfile: value => ipcRenderer.invoke('zen:save-profile', value),
+  mode: () => ipcRenderer.invoke('zen:mode'),
+  setMode: value => ipcRenderer.invoke('zen:set-mode', value),
+  tasks: () => ipcRenderer.invoke('zen:tasks'),
+  onMode: callback => { const handler = (_event: unknown, mode: Parameters<typeof callback>[0]) => callback(mode); ipcRenderer.on('zen:mode', handler); return () => ipcRenderer.removeListener('zen:mode', handler); },
   settings: () => ipcRenderer.invoke('zen:settings'),
   saveSettings: value => ipcRenderer.invoke('zen:save-settings', value),
   saveKey: value => ipcRenderer.invoke('zen:save-key', value),
   deleteKey: () => ipcRenderer.invoke('zen:delete-key'),
   run: value => ipcRenderer.invoke('zen:run', value),
   stop: () => ipcRenderer.invoke('zen:stop'),
+  cancelTask: value => ipcRenderer.invoke('zen:cancel-task', value),
+  hide: () => ipcRenderer.invoke('zen:hide'),
+  layout: value => ipcRenderer.invoke('zen:layout', value),
+  voiceInterrupt: () => ipcRenderer.invoke('zen:voice-interrupt'),
   voiceStart: sdp => ipcRenderer.invoke('zen:voice-start', sdp),
   voiceEnd: value => ipcRenderer.invoke('zen:voice-end', value),
   clearLogs: () => ipcRenderer.invoke('zen:clear-logs'),
   onTask: callback => { const handler = (_event: unknown, data: TaskEvent) => callback(data); ipcRenderer.on('zen:task', handler); return () => ipcRenderer.removeListener('zen:task', handler); },
-  onInvoke: callback => { const handler = () => callback(); ipcRenderer.on('zen:invoke', handler); return () => ipcRenderer.removeListener('zen:invoke', handler); }
+  onInvoke: callback => { const handler = (_event: unknown, mode: 'configured' | 'voice' | 'focus') => callback(mode); ipcRenderer.on('zen:invoke', handler); return () => ipcRenderer.removeListener('zen:invoke', handler); },
+  onVisibility: callback => { const handler = (_event: unknown, visible: boolean) => callback(visible); ipcRenderer.on('zen:visibility', handler); return () => ipcRenderer.removeListener('zen:visibility', handler); }
 };
 contextBridge.exposeInMainWorld('zen', bridge);

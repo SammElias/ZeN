@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-30T16:10:26.866Z",
+  "browser": "Edge headless",
+  "passed": true,
+  "checks": [
+    "representative states",
+    "approval demo single use, no execution",
+    "Enter submits",
+    "Shift+Enter newline",
+    "Escape hides without Stop",
+    "history retained on hide",
+    "settings scroll panel",
+    "profile import editable preview, correction, export and deletion",
+    "reduced motion",
+    "small viewport",
+    "no page errors"
+  ],
+  "screenshots": "docs/ui-preview"
+}
