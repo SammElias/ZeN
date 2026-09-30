@@ -4,10 +4,10 @@ import type { WindowInfo, MediaInfo } from '../tools/windows/native';
 import type { Approval, Prepare } from './approval';
 export const SettingsSchema = z.object({
   reasoningModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-6.1-sol'),
-  voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-realtime-2.1'),
+  voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-realtime-2.1-mini'),
   shortcut: z.string().min(3).max(80).default('Control+Alt+Z'),
-  maxToolCalls: z.number().int().min(1).max(10).default(10),
-  maxConcurrentTasks: z.number().int().min(1).max(3).default(2),
+  maxToolCalls: z.number().int().min(1).max(10).default(4),
+  maxConcurrentTasks: z.number().int().min(1).max(3).default(1),
   maxQueuedTasks: z.number().int().min(1).max(10).default(8),
   taskTimeoutMs: z.number().int().min(5000).max(90000).default(90000),
   allowNotepad: z.boolean().default(true),
@@ -15,6 +15,13 @@ export const SettingsSchema = z.object({
   listenOnInvoke: z.boolean().default(false),
   autoHideSuccess: z.boolean().default(false),
   showResultsInMeeting: z.boolean().default(false),
+  costControlsVersion: z.literal(1).default(1),
+  monthlyBudgetEur: z.number().min(.1).max(1000).default(100),
+  dailyTargetEur: z.number().min(.1).max(100).default(1),
+  eurPerUsd: z.number().min(.1).max(3).default(1),
+  maxContextChars: z.number().int().min(1000).max(12000).default(4000),
+  interfaceSounds: z.boolean().default(true),
+  interfaceAnimations: z.boolean().default(true),
   excludedWindows: z.array(z.string().min(1).max(120)).max(40).default([])
 }).strict();
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -24,7 +31,8 @@ export type Evidence = { application: 'notepad'; pid: number; windowHandle: stri
 export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional() }).strict();
 export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string };
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
-export type PublicSettings = { settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean };
+export type SpendingSummary = { month: string; estimatedMonthEur: number; committedMonthEur: number; estimatedDayEur: number; pendingEur: number; inputTokens: number; outputTokens: number; cachedTokens: number; uncertainCalls: number; pricingDate: string };
+export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean };
 export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel']), height: z.number().int().min(48).max(1000), reducedMotion: z.boolean().default(false) }).strict();
 export type OverlayLayout = z.infer<typeof OverlayLayoutSchema>;
 export interface ZenBridge {

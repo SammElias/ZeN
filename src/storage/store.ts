@@ -10,7 +10,7 @@ export class Store {
   private write(name: string, value: string | Buffer) { const path = this.path(name); writeFileSync(path + '.tmp', value, { mode: 0o600 }); renameSync(path + '.tmp', path); }
   settings(): Settings {
     if (!existsSync(this.path('settings.json'))) return SettingsSchema.parse({});
-    try { return SettingsSchema.parse(JSON.parse(readFileSync(this.path('settings.json'), 'utf8'))); }
+    try { const raw = JSON.parse(readFileSync(this.path('settings.json'), 'utf8')); if (raw.costControlsVersion === undefined) { raw.maxConcurrentTasks = 1; raw.maxToolCalls = Math.min(raw.maxToolCalls ?? 4, 4); raw.listenOnInvoke = false; if (raw.voiceModel === 'gpt-realtime-2.1') raw.voiceModel = 'gpt-realtime-2.1-mini'; } return SettingsSchema.parse(raw); }
     catch { throw new ZenError('Configuración local dañada. Revisa settings.json en los datos de ZEN.'); }
   }
   saveSettings(value: Settings) { this.write('settings.json', JSON.stringify(SettingsSchema.parse(value), null, 2)); }

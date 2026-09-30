@@ -6,7 +6,7 @@ import { App } from './App';
 import { Preferences } from './Preferences';
 const state = new URLSearchParams(location.search).get('state') ?? 'idle';
 const messages: Partial<Record<TaskState, string>> = { executing: 'Abriendo Bloc de notas y comprobando que su ventana está visible.', completed: 'Bloc de notas está abierto. He comprobado su ventana.', failed: 'No se pudo conectar con OpenAI. Revisa tu conexión y vuelve a intentarlo.', cancelled: 'Tarea detenida. Una aplicación ya abierta puede permanecer abierta.' };
-const config = { settings: SettingsSchema.parse({}), hasKey: true, shortcutRegistered: true, protectedStorage: false };
+const config = { settings: SettingsSchema.parse({}), hasKey: true, shortcutRegistered: true, protectedStorage: false, spending: { month: '2026-09', estimatedMonthEur: .08, committedMonthEur: .58, estimatedDayEur: .03, pendingEur: .5, inputTokens: 1400, outputTokens: 200, cachedTokens: 700, uncertainCalls: 1, pricingDate: '2026-09-30' } };
 let callback: ((event: TaskEvent) => void) | undefined; let visibility: ((value: boolean) => void) | undefined;
 window.zenDemo = true;
 window.demoState = { id: 'simulation', state: (['idle','listening','thinking','executing','completed','failed','cancelled','awaiting_approval'].includes(state) ? state : 'idle') as TaskState, message: messages[state as TaskState] ?? '' };

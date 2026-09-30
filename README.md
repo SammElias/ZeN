@@ -8,6 +8,8 @@ La ruta portable más reciente figura en [portable-package.json](docs/evidence/p
 
 Compilación: Node 22.12 o superior y .NET SDK 10.
 
+La isla incluye un compañero original animado, tarjetas oscuras y sonidos suaves de interfaz. Puedes desactivar sonidos y animaciones en **Preferencias → Aspecto y sonidos**. Los avisos se silencian en reunión, modo texto y durante la voz; las animaciones respetan el movimiento reducido de Windows. Consulta [diseño y verificación](docs/companion-design.md).
+
 ```powershell
 cd C:\Users\samme\Desktop\ZeN
 npm ci
@@ -54,3 +56,6 @@ npm run test:integration
 ZEN_TEST_MEDIA=1 amplía test:native con un reproductor silencioso de prueba; ZEN_TEST_VISION=1 añade imagen enviada a OpenAI. ZEN_TEST_INTERRUPT=1 amplía integración con interrupción durante investigación. Audio sintético no acredita micrófono/altavoz físicos ni una reunión real. Evidencia saneada en docs/evidence; test-results/ y release/ excluidos de Git.
 
 GPT-Live conserva el JSON exacto del guion en [docs/handoffs](docs/handoffs/order.md), pendiente de terminar requisitos anteriores según el orden solicitado. Voz activa: Realtime.
+# Pago por uso
+
+Modo ahorro y contador mensual local: [costes de API](docs/api-costs.md). Por defecto, máximo mensual estimado de 100 EUR y objetivo diario orientativo de 1 EUR, editables en Preferencias. No son cuotas ni garantizan un máximo de factura.

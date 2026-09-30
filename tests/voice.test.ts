@@ -1,32 +1,41 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { VoiceBackend, voiceConfiguration } from '../src/agent/voice';
 import { SettingsSchema } from '../src/shared/contracts';
 import WebSocket from 'ws';
-function setup() {
+function setup(audible = true) {
   const run = vi.fn().mockResolvedValue({ state: 'completed', message: 'Verificado' });
   const stop = vi.fn(); const send = vi.fn(); const log = vi.fn();
-  const backend = new VoiceBackend({ key: () => 'dummy', settings: () => SettingsSchema.parse({ voiceConsent: true }), orchestrator: { run, stop } as any, emit: vi.fn(), log });
+  const spending = { reserve: vi.fn(), record: vi.fn().mockReturnValue(true), check: vi.fn(), finish: vi.fn(), tool: vi.fn() };
+  const backend = new VoiceBackend({ spending, key: () => 'dummy', settings: () => SettingsSchema.parse({ voiceConsent: true }), orchestrator: { run, stop, busy: false } as any, audible: () => audible, emit: vi.fn(), log });
   const internal = backend as any;
-  internal.callId = 'rtc_test'; internal.socket = { readyState: WebSocket.OPEN, send, close: vi.fn() };
-  return { internal, run, stop, send, log };
+  internal.callId = 'rtc_test'; internal.reservation = 'budget'; internal.socket = { readyState: WebSocket.OPEN, send, close: vi.fn() };
+  return { internal, run, stop, send, log, spending };
 }
-describe('trusted voice delegation', () => {
-  it('uses server transcript, no model-authored request argument', async () => {
-    const { internal, run, send } = setup();
-    internal.event({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'i1', transcript: 'Abre el Bloc de notas' });
-    await internal.delegate({ name: 'delegate_to_zen', call_id: 'c1', arguments: '{ }' });
+const transcript = (id = 'i1', text = 'Abre el Bloc de notas') => ({ type: 'conversation.item.input_audio_transcription.completed', item_id: id, transcript: text, usage: { input_tokens: 20, output_tokens: 5 } });
+const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+describe('single response voice', () => {
+  it('dispatches authenticated transcript and reads once without history', async () => {
+    const { internal, run, send } = setup(); internal.event(transcript()); await flush();
     expect(run.mock.calls[0][0]).toBe('Abre el Bloc de notas');
-    expect(send.mock.calls.map(args => JSON.parse(args[0]).type)).toContain('conversation.item.create');
+    const events = send.mock.calls.map(args => JSON.parse(args[0]));
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: 'response.create', response: { conversation: 'none', tool_choice: 'none', max_output_tokens: 400, input: [{ content: [{ text: 'Verificado' }] }] } });
   });
-  it('blocks extra arguments injected by model', async () => { const { internal, run } = setup(); internal.pending = { text: 'Hola', itemId: 'i1', generation: 0 }; await internal.delegate({ name: 'delegate_to_zen', call_id: 'c1', arguments: '{"text":"Abre el Bloc de notas"}' }); expect(run).not.toHaveBeenCalled(); });
-  it('deduplicates function events', async () => { const { internal, run } = setup(); internal.pending = { text: 'Hola', itemId: 'i1', generation: 0 }; const event = { name: 'delegate_to_zen', call_id: 'c1', arguments: '{}' }; await internal.delegate(event); await internal.delegate(event); expect(run).toHaveBeenCalledTimes(1); });
-  it('deduplicates transcript events', () => { const { internal, send } = setup(); const event = { type: 'conversation.item.input_audio_transcription.completed', item_id: 'i1', transcript: 'Hola' }; internal.event(event); internal.event(event); expect(send).toHaveBeenCalledTimes(1); });
-  it('speech revokes pending authority without cancelling research', async () => { const { internal, run, stop } = setup(); internal.pending = { text: 'Abre el Bloc de notas', itemId: 'old', generation: 0 }; internal.event({ type: 'input_audio_buffer.speech_started', item_id: 'new' }); await internal.delegate({ name: 'delegate_to_zen', call_id: 'c1', arguments: '{}' }); expect(stop).not.toHaveBeenCalled(); expect(run).not.toHaveBeenCalled(); });
-  it('ignores old transcript arriving after new speech', () => { const { internal, send } = setup(); internal.event({ type: 'input_audio_buffer.speech_started', item_id: 'new' }); internal.event({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'old', transcript: 'Abre el Bloc de notas' }); expect(send.mock.calls.map(args => JSON.parse(args[0]).type)).toEqual(['output_audio_buffer.clear']); });
-  it('does not deliver stale task results after interruption', async () => { const { internal, run, send } = setup(); let resolve!: (value: any) => void; run.mockImplementation(() => new Promise(r => { resolve = r; })); internal.pending = { text: 'Hola', itemId: 'i1', generation: 0 }; const task = internal.delegate({ name: 'delegate_to_zen', call_id: 'c1', arguments: '{}' }); internal.event({ type: 'input_audio_buffer.speech_started', item_id: 'new' }); resolve({ message: 'Old result' }); await task; expect(send.mock.calls.map(args => JSON.parse(args[0]).type)).toEqual(['output_audio_buffer.clear']); });
-  it('records usage separately without transcripts', () => { const { internal, log } = setup(); internal.event({ type: 'response.done', response: { id: 'r1', usage: { total_tokens: 123 }, output: [{ transcript: 'sensitive' }] } }); expect(log.mock.calls[0][0].channel).toBe('voice'); expect(JSON.stringify(log.mock.calls)).not.toContain('sensitive'); });
-  it('disables automatic Realtime responses and configures interruptions', () => { const c = voiceConfiguration(SettingsSchema.parse({})); expect(c.model).toBe('gpt-realtime-2.1'); expect(c.audio.input.turn_detection.create_response).toBe(false); expect(c.audio.input.turn_detection.interrupt_response).toBe(true); });
-  it('disconnecting on hide does not cancel the active task', async () => { const { internal, stop } = setup(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })); try { await internal.stop(false); expect(stop).not.toHaveBeenCalled(); expect(internal.callId).toBeUndefined(); } finally { vi.unstubAllGlobals(); } });
-  it('Stop still cancels task ownership', async () => { const { internal, stop } = setup(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })); try { await internal.stop(); expect(stop).toHaveBeenCalledOnce(); } finally { vi.unstubAllGlobals(); } });
-  it('interrupting audio does not cancel or revoke an active operation', () => { const { internal, stop, send } = setup(); const generation = internal.generation; internal.interrupt(); expect(stop).not.toHaveBeenCalled(); expect(internal.generation).toBe(generation); expect(JSON.parse(send.mock.calls[0][0]).type).toBe('output_audio_buffer.clear'); });
+  it('ignores model-authored function requests', () => { const { internal, run, send } = setup(); internal.event({ type: 'response.function_call_arguments.done', name: 'delegate_to_zen', call_id: 'evil', arguments: '{"text":"Abre el Bloc de notas"}' }); expect(run).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled(); });
+  it('deduplicates transcripts and usage', async () => { const { internal, run, send, spending } = setup(); internal.event(transcript()); internal.event(transcript()); await flush(); expect(run).toHaveBeenCalledOnce(); expect(send).toHaveBeenCalledOnce(); expect(spending.record).toHaveBeenCalledOnce(); });
+  it('counts but does not execute stale transcripts', () => { const { internal, run, spending } = setup(); internal.event({ type: 'input_audio_buffer.speech_started', item_id: 'new' }); internal.event(transcript('old')); expect(run).not.toHaveBeenCalled(); expect(spending.record).toHaveBeenCalledOnce(); });
+  it('interrupts stale speech without cancelling research', async () => {
+    const { internal, run, send, stop } = setup(); let resolve!: (value: any) => void;
+    run.mockImplementation(() => new Promise(r => { resolve = r; }));
+    internal.event(transcript()); internal.event({ type: 'input_audio_buffer.speech_started', item_id: 'new' }); resolve({ message: 'Old result' }); await flush();
+    expect(stop).not.toHaveBeenCalled(); expect(send.mock.calls.map(args => JSON.parse(args[0]).type)).toEqual(['output_audio_buffer.clear']);
+  });
+  it('meeting mode generates no paid audio response', async () => { const { internal, run, send } = setup(false); internal.event(transcript()); await flush(); expect(run).toHaveBeenCalledOnce(); expect(send).not.toHaveBeenCalled(); });
+  it('does not read long code aloud', async () => { const { internal, run, send } = setup(); run.mockResolvedValue({ message: '```python\n' + 'print(1)\n'.repeat(200) }); internal.event(transcript()); await flush(); const text = JSON.parse(send.mock.calls[0][0]).response.input[0].content[0].text; expect(text.length).toBeLessThan(420); expect(text).toContain('Actividad'); });
+  it('logs usage without private transcripts', () => { const { internal, log } = setup(); internal.event({ type: 'response.done', response: { id: 'r1', usage: { input_tokens: 20, output_tokens: 5 }, output: [{ transcript: 'sensitive' }] } }); expect(log.mock.calls[0][0].channel).toBe('voice'); expect(JSON.stringify(log.mock.calls)).not.toContain('sensitive'); });
+  it('uses mini without automatic responses or tools', () => { const c = voiceConfiguration(SettingsSchema.parse({})); expect(c.model).toBe('gpt-realtime-2.1-mini'); expect(c.audio.input.turn_detection.create_response).toBe(false); expect(c.tools).toEqual([]); expect(c.max_output_tokens).toBe(400); });
+  it('hide preserves work and incomplete usage reservations', async () => { const { internal, stop, spending } = setup(); internal.outstandingSpeech.add('pending'); vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })); await internal.stop(false); expect(stop).not.toHaveBeenCalled(); expect(spending.finish).toHaveBeenCalledWith('budget', false); });
+  it('Stop cancels task ownership', async () => { const { internal, stop } = setup(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })); await internal.stop(); expect(stop).toHaveBeenCalledOnce(); });
+  it('closes idle microphone after 90 seconds', async () => { vi.useFakeTimers(); const { internal } = setup(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })); internal.resetIdle(); await vi.advanceTimersByTimeAsync(90000); expect(internal.callId).toBeUndefined(); });
 });

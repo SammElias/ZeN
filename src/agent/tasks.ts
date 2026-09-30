@@ -16,7 +16,7 @@ export class TaskManager {
   private requests = new Map<string, Promise<TaskResult>>();
   private desktop = new DesktopQueue();
   private paused = false;
-  private pending: { id: string; requestId: string; text: string; memory?: string; image?: string; sessionId?: string; desktop?: DesktopHandler; priority: number; resolve: (result: TaskResult) => void }[] = [];
+  private pending: { id: string; requestId: string; text: string; memory?: string; image?: string; sessionId?: string; summary?: string; desktop?: DesktopHandler; priority: number; resolve: (result: TaskResult) => void }[] = [];
   constructor(private deps: Deps, private limit: () => number) {}
   get busy() { return this.active.size > 0 || this.pending.length > 0; }
   get activeCount() { return this.active.size + this.pending.length; }
@@ -32,10 +32,10 @@ export class TaskManager {
       const row = this.pending.shift()!;
       const owner = new Orchestrator({ ...this.deps, desktop: () => row.desktop!, direct: text => { const operation = this.deps.direct?.(text); return operation ? signal => this.desktopRun(signal, () => operation(signal)) : undefined; }, execute: signal => this.desktopRun(signal, () => this.deps.execute(signal)) });
       this.active.set(row.requestId, owner);
-      void owner.run(row.text, row.requestId, row.memory, row.image, row.sessionId, row.id).then(result => { this.active.delete(row.requestId); row.resolve(result); this.drain(); });
+      void owner.run(row.text, row.requestId, row.memory, row.image, row.sessionId, row.id, row.summary).then(result => { this.active.delete(row.requestId); row.resolve(result); this.drain(); });
     }
   }
-  run(text: string, requestId: string, memory?: string, image?: string, sessionId?: string, priority = 2) {
+  run(text: string, requestId: string, memory?: string, image?: string, sessionId?: string, priority = 2, summary?: string) {
     const existing = this.requests.get(requestId); if (existing) return existing;
     if (this.paused) return Promise.reject(new ZenError('ZEN está en pausa. Usa «Continúa».'));
     if (this.pending.length >= this.deps.settings().maxQueuedTasks) return Promise.reject(new ZenError('Se alcanzó el límite de tareas en cola. Espera o cancela una tarea.'));
@@ -43,7 +43,7 @@ export class TaskManager {
     const id = randomUUID(); let resolve!: (value: TaskResult) => void;
     const task = new Promise<TaskResult>(done => { resolve = done; });
     this.requests.set(requestId, task);
-    this.pending.push({ id, requestId, text, memory, image, sessionId, desktop: this.deps.desktop?.(text), priority, resolve });
+    this.pending.push({ id, requestId, text, memory, image, sessionId, summary, desktop: this.deps.desktop?.(text), priority, resolve });
     if (this.active.size >= this.limit()) this.deps.emit({ id, state: 'queued', message: `Tarea en cola · prioridad ${priority === 3 ? 'alta' : priority === 1 ? 'baja' : 'normal'}.` });
     this.drain();
     if (this.requests.size > 200) this.requests.delete(this.requests.keys().next().value!);

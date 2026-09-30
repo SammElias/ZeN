@@ -1,7 +1,7 @@
 {
-  "at": "2026-09-30T17:26:15.132Z",
-  "destination": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20260930172605727",
-  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20260930172605727\\ZEN.exe",
+  "at": "2026-09-30T18:55:51.001Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20260930185536315",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20260930185536315\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -11,10 +11,10 @@
       "value": {
         "settings": {
           "reasoningModel": "gpt-6.1-sol",
-          "voiceModel": "gpt-realtime-2.1",
+          "voiceModel": "gpt-realtime-2.1-mini",
           "shortcut": "Control+Alt+Z",
-          "maxToolCalls": 10,
-          "maxConcurrentTasks": 2,
+          "maxToolCalls": 4,
+          "maxConcurrentTasks": 1,
           "maxQueuedTasks": 8,
           "taskTimeoutMs": 90000,
           "allowNotepad": true,
@@ -22,7 +22,26 @@
           "listenOnInvoke": false,
           "autoHideSuccess": false,
           "showResultsInMeeting": false,
+          "costControlsVersion": 1,
+          "monthlyBudgetEur": 100,
+          "dailyTargetEur": 1,
+          "eurPerUsd": 1,
+          "maxContextChars": 4000,
+          "interfaceSounds": true,
+          "interfaceAnimations": true,
           "excludedWindows": []
+        },
+        "spending": {
+          "month": "2026-09",
+          "estimatedMonthEur": 0,
+          "committedMonthEur": 0,
+          "estimatedDayEur": 0,
+          "pendingEur": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedTokens": 0,
+          "uncertainCalls": 0,
+          "pricingDate": "2026-09-30"
         },
         "hasKey": false,
         "shortcutRegistered": false,
@@ -50,7 +69,7 @@
     "trayCreated": true,
     "invalidIpcBlocked": true,
     "startedCompact": true,
-    "shownOnTop": true,
+    "shownOnTop": false,
     "hiddenNotOnTop": true,
     "topAnchorStable": true,
     "collapsedHeightVerified": true,
@@ -71,7 +90,7 @@
   "files": [
     {
       "path": "dist\\main.cjs",
-      "sha256": "835919f211132d59230ec857e9b9af67bf55c1ced7f16ced167a392e673c7604"
+      "sha256": "e9da8759c3b0fe294001c58c635ee029c32f9aad71a54dec8f8a52c935ac4fda"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -87,15 +106,15 @@
     },
     {
       "path": "dist\\native\\Zen.Windows.dll",
-      "sha256": "e07fcdc95d3b285587b00c228acb7d3a2e045b035b83c44de6b572b2f7d8a3a0"
+      "sha256": "b0490dc6ba0f60af1e2f39bce3aa6fe1997c9705f1636aebb32e4d31009e3701"
     },
     {
       "path": "dist\\native\\Zen.Windows.exe",
-      "sha256": "9ae210ae757811de4d86b2b42513cee6300e909c9e853a4c456137b9a0249f64"
+      "sha256": "4af6ce6ebd4ce221a4191417558c17c76d095d9bc6a2c3ea09cabe79ccbae86e"
     },
     {
       "path": "dist\\native\\Zen.Windows.pdb",
-      "sha256": "56fbb8b74d3081d287b97382a96da92c0b2edfe09131e00d60a1164944509dc4"
+      "sha256": "8ba2629397e9985e8c0c1117aa89a128db1d560ec2da42444fc3097a71c28e5b"
     },
     {
       "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
@@ -106,28 +125,28 @@
       "sha256": "64b0f182788e69f37875d8e061b6776af12754a59c0e282e505cac321e6630a0"
     },
     {
-      "path": "dist\\renderer\\assets\\main-CfmMBljh.js",
-      "sha256": "fb36c6d1e44c0f5bf7bc5765f6691f42490c6d81ae082eb903e4d3c086963615"
+      "path": "dist\\renderer\\assets\\main-BGlV0-Sk.js",
+      "sha256": "0b00f348ed5f06c1185c8f9a33fddb075a4424677621f3d5296137d5a5f4bb92"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-AcmxNhX7.js",
-      "sha256": "d3e4ee4ec0e2236905b2393aaf66954181309cc3d0399ae389940e7944df5348"
+      "path": "dist\\renderer\\assets\\Preferences-BE-DI0-u.css",
+      "sha256": "e0993b635f17a925e6ef483b14b8fddcf8fdcfd064952dcdc88f54eb8b41e6fe"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-rXAZrZVw.css",
-      "sha256": "36d13116a2b92b28d769ec22dfecab33535cc632c60b5194cbae9f0bf41cc204"
+      "path": "dist\\renderer\\assets\\Preferences-sloNR5Wz.js",
+      "sha256": "6a62cc18a67cf08028136aa9d9c364472477fec1a881142fc76939b2e6490629"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-DVTOiqv-.js",
-      "sha256": "0fbcb35d630d2ff3305a6df0989e4f7f05d36eadf7fa248df50ab133429b754f"
+      "path": "dist\\renderer\\assets\\preview-w8Cq2bpY.js",
+      "sha256": "11eb8187252486c85f9de4bcfa67b7d128a47c1d13e81a1cdee12c1fdd57a2c2"
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "95f9889881ebf2c2e97361946041ca40cfd5f16fd9f634b8e93e6c130bb218ec"
+      "sha256": "95b79ff1978c249461128820914105608f7ff31f159926fa6091e48c73a8e9dd"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "b040a33d338f37e38497a8fc4cce818645e544e7314cf3d2a0980b7de5b10617"
+      "sha256": "dc1c7c0de6701d04d4728bba8e1cb4ef745bbdab03b3c120a071502871a35cc9"
     },
     {
       "path": "dist\\tools\\notepad.mjs",
@@ -135,7 +154,7 @@
     },
     {
       "path": "dist\\tools\\notepad.ps1",
-      "sha256": "c2aeef3374ec94d9e5270f1fce073e469c9af325c8b967adb3f57061bae836e2"
+      "sha256": "35cd74ceedf19466aa58c940a680ae9fb5efd15b24ea8a26fb0c3f958eef4fa4"
     },
     {
       "path": "package.json",

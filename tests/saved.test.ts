@@ -4,6 +4,8 @@ import expected from '../config/saved-agent.json';
 import instructions from '../config/saved-agent.instructions.txt?raw';
 import type { Agent } from 'openai/resources/beta/agents/agents';
 import { ZenError } from '../src/shared/errors';
+import { economyAgent, ECONOMY_VERSION } from '../src/agent/economy';
+import { SettingsSchema } from '../src/shared/contracts';
 describe('Agente guardado', () => {
   it('valida exactamente opciones e instrucciones', () => {
     const agent = { ...expected, instructions } as Agent;
@@ -25,12 +27,12 @@ describe('Agente guardado', () => {
     expect(presentAgentOutput(response).structured).toBe(true);
   });
 });
-function setup(events: any[]) {
+function setup(events: any[], economical = false, spending?: any) {
   const stream = { async *[Symbol.asyncIterator]() { yield* events; }, controller: { abort: vi.fn() } };
   const ordering: string[] = [];
   const create = vi.fn().mockImplementation(async () => { ordering.push('input'); });
   const agents = { retrieve: vi.fn().mockResolvedValue({ ...expected, instructions }), sessions: { create: vi.fn().mockResolvedValue(stream), retrieve: vi.fn().mockResolvedValue({ agent: { ...expected, instructions }, status: 'idle' }), events: { stream: vi.fn().mockImplementation(async () => { ordering.push('stream'); return stream; }), create } } };
-  const runner = new SavedAgent({ client: () => ({ beta: { agents } }) as any, log: vi.fn() });
+  const runner = new SavedAgent({ client: () => ({ beta: { agents } }) as any, log: vi.fn(), ...(economical ? { settings: () => SettingsSchema.parse({}), spending } : {}) });
   return { runner, agents, stream, ordering };
 }
 const final = [
@@ -40,6 +42,13 @@ const final = [
   { type: 'agent.session.turn.item.done', event_id: 'd', session_id: 'session-test', turn_id: 'turn-test', item: { type: 'message', role: 'assistant', id: 'answer', phase: 'final_answer' } },
   { type: 'agent.session.turn.completed', event_id: 'e', session_id: 'session-test', turn_id: 'turn-test', turn: { status: 'completed' }, usage: null }
 ];
+describe('economy sessions', () => {
+  it('overrides only the session with compact public JSON and no subagents', async () => { const f = setup(final, true); await f.runner.run('Hola', new AbortController().signal, vi.fn()); expect(f.agents.sessions.create.mock.calls[0][0]).toMatchObject({ agent_id: SAVED_AGENT_ID, agent: { multi_agent: { enabled: false }, text: { verbosity: 'low' }, reasoning: { effort: 'low' }, service_tier: 'default' } }); });
+  it('blocks paid session creation when reservation is rejected', async () => { const spending = { reserve: vi.fn(() => { throw new ZenError('Presupuesto agotado'); }) }; const f = setup(final, true, spending); await expect(f.runner.run('Hola', new AbortController().signal, vi.fn())).rejects.toThrow('Presupuesto'); expect(f.agents.sessions.create).not.toHaveBeenCalled(); });
+  it('rotates old sessions with bounded public context', async () => { const f = setup(final, true); const summary = 'Respuesta importante\n'.repeat(800); await f.runner.run('Continúa', new AbortController().signal, vi.fn(), undefined, { sessionId: 'old', requestId: 'request', summary }); expect(f.agents.sessions.events.stream).not.toHaveBeenCalled(); const input = f.agents.sessions.create.mock.calls[0][0].input[0].content[0].text; expect(input.length).toBeLessThan(4200); expect(input).toContain('partes omitidas'); });
+  it('continues verified economical sessions until the fourth turn', async () => { const f = setup(final, true); f.agents.sessions.retrieve.mockResolvedValue({ agent: { ...expected, ...economyAgent }, status: 'idle', metadata: { zen_economy: ECONOMY_VERSION, zen_turns: '2' } } as any); await f.runner.run('Sigue', new AbortController().signal, vi.fn(), undefined, { sessionId: 'session-test', requestId: 'request' }); expect(f.agents.sessions.events.stream).toHaveBeenCalledOnce(); expect(f.agents.sessions.create).not.toHaveBeenCalled(); });
+  it('retains reservation when completion usage is unavailable', async () => { const spending = { reserve: vi.fn().mockReturnValue('r'), record: vi.fn().mockReturnValue(false), check: vi.fn(), finish: vi.fn() }; const f = setup(final, true, spending); await f.runner.run('Hola', new AbortController().signal, vi.fn()); expect(spending.finish).toHaveBeenCalledWith('r', false); });
+});
 describe('Flujo de sesiones', () => {
   it('streams only the public result string from the final-answer JSON', async () => {
     const progress = vi.fn(); const f = setup([final[0], { type: 'agent.session.turn.item.added', event_id: 'answer-start', item: { type: 'message', role: 'assistant', phase: 'final_answer', id: 'answer' } }, { type: 'agent.session.turn.output_text.delta', event_id: 'answer-private', item_id: 'answer', content_index: 0, delta: '{"reasoning_steps":["privado"],"actions":[],"clarifications_requested":[],"result":"Respuesta' }, ...final.slice(1)]);

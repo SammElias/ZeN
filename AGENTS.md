@@ -2,6 +2,7 @@
 
 - Prioridad: objetivo final y UI Capsule, con actualización directa a isla superior compacta, dedicada a contexto/ejecución/stream y preferencias separadas desde bandeja (docs/island-v1.md). GPT-Live después, conforme a docs/handoffs/order.md; conservar JSON exacto.
 - Producción: agente guardado ZeN de config/saved-agent.json vía Agents API, gpt-6.1-sol. No cambiar herramientas, instrucciones, formato ni modelo sin autorización específica. Corrección autorizada de una frase ya aplicada. Usuario autorizó después añadir zen_desktop según propuesta; ampliación aplicada y demás campos verificados intactos.
+- Ahorro autorizado el 30/09/2026 («aplicalo todo», pago por uso): opciones económicas por sesión, JSON público compacto, sin subagentes, contexto web pequeño y voz mini. Conservar el agente guardado remoto, el modelo principal y el JSON del handoff GPT-Live. Presupuesto mensual estimado de 100 EUR, objetivo diario orientativo de 1 EUR; no presentarlos como cuota o límite de facturación garantizado.
 - Renderer aislado, sandbox/contextIsolation; IPC validado del frame local. Secretos en main protegidos por el SO, fuera de repositorio y logs.
 - Una autoridad de tareas/política. Voz delega; documentos, imágenes, webs y narraciones del modelo no conceden permisos ni ejecutan efectos.
 - Tareas informativas concurrentes acotadas, efectos Windows serializados. Cancelación/deduplicación antes de ejecutar. Evidencia obligatoria; no repetir automáticamente efectos tras timeout o reinicio.
