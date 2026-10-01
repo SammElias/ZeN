@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-01T14:29:36.338Z",
+  "passed": true,
+  "windowsReal": true,
+  "ownedFixturesOnly": true,
+  "actualScreenPixels": true,
+  "printWindowFallback": false,
+  "displays": 2,
+  "movedDisplayVerified": true,
+  "capsuleExcluded": true,
+  "sensitiveVisibleRegionMasked": true,
+  "changedPageCaptured": true,
+  "scope": "display",
+  "initialColours": {
+    "blue": 2064870,
+    "red": 1279,
+    "magenta": 8,
+    "black": 0
+  },
+  "status": [
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790864972775,
+      "sourceTitle": "Mensaje sintético actual",
+      "scope": "display",
+      "snapshotId": "4944ad9c-344f-4a9b-9010-355274fe8f95"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790864974268,
+      "sourceTitle": "Mensaje sintético actual",
+      "scope": "display",
+      "snapshotId": "b1150715-18ae-415e-b37e-97fc87acbf2a"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790864975429,
+      "sourceTitle": "Mensaje sintético actualizado",
+      "scope": "display",
+      "snapshotId": "f33731cc-99cf-41c1-8ffe-ee979b901533"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790864976321,
+      "sourceTitle": "Documentación sintética",
+      "scope": "display",
+      "snapshotId": "effc85a5-d63e-40fe-a8ab-2f94d6eb6875"
+    }
+  ],
+  "productionImagesPersisted": false
+}

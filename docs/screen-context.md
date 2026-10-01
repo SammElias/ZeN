@@ -1,5 +1,7 @@
 # Contexto visual al invocar ZEN · 01/10/2026
 
+**Estado vigente:** [chat con pegado de capturas y píxeles del monitor de ZEN](image-chat.md). Esa revisión sustituye la captura automática PrintWindow de ventana, añade vista previa exacta y corrige el reloj de transcripciones al reconectar. El recorrido nativo con cápsula oculta pasó después de corregir el acceso de lectura del escritorio. Los apartados siguientes conservan la implementación y evidencias históricas anteriores.
+
 Incluido en el portable actual `release/ZEN-20261001095454813/ZEN.exe`. Conserva config/live-session.json exactamente y el agente guardado con sus herramientas e instrucciones.
 
 ## Corrección actual: ventana detrás de la cápsula y estado de voz

@@ -15,15 +15,38 @@ internal static class Program {
   [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] private static extern IntPtr OpenInputDesktop(uint flags, bool inherit, uint access);
   [DllImport("user32.dll")] private static extern bool CloseDesktop(IntPtr desktop);
+  [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] private static extern IntPtr GetThreadDesktop(uint threadId);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetUserObjectInformation(IntPtr handle, int index, System.Text.StringBuilder value, int length, out int needed);
+  [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+  [DllImport("dwmapi.dll")] private static extern int DwmFlush();
   [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
   [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
   [DllImport("user32.dll")] private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
   [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+  [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
+  private static string DesktopName(IntPtr handle) {
+    var name = new System.Text.StringBuilder(256);
+    if (handle == IntPtr.Zero || !GetUserObjectInformation(handle, 2, name, name.Capacity * 2, out _)) throw new InvalidOperationException("Escritorio no verificable.");
+    return name.ToString();
+  }
+  private static Rect MonitorRect(IntPtr handle) {
+    var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+    var monitor = MonitorFromWindow(handle, 2);
+    if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref info)) throw new InvalidOperationException("Pantalla no verificable.");
+    return info.Monitor;
+  }
+  private static object Bounds(Rect rect) => new { x = rect.Left, y = rect.Top, width = rect.Right - rect.Left, height = rect.Bottom - rect.Top };
   private static void CheckDesktop() {
     stage = "desktop";
-    var desktop = OpenInputDesktop(0, false, 0x0100);
+    // Read objects only; no desktop switching permission is needed to observe.
+    var desktop = OpenInputDesktop(0, false, 0x0001);
     if (desktop == IntPtr.Zero) throw new InvalidOperationException("Escritorio bloqueado o privilegiado: acceso detenido.");
-    CloseDesktop(desktop);
+    try {
+      var input = DesktopName(desktop); var current = DesktopName(GetThreadDesktop(GetCurrentThreadId()));
+      if (!string.Equals(input, "Default", StringComparison.OrdinalIgnoreCase) || !string.Equals(input, current, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Escritorio bloqueado o privilegiado: acceso detenido.");
+    } finally { CloseDesktop(desktop); }
   }
   private static List<object> Windows(string? anchorId = null) {
     CheckDesktop(); var result = new List<object>(); var foreground = GetForegroundWindow();
@@ -35,7 +58,7 @@ internal static class Program {
       var text = new System.Text.StringBuilder(1024); GetWindowText(handle, text, text.Capacity);
       if (text.Length == 0) return true;
       GetWindowThreadProcessId(handle, out var pid);
-      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, foreground = handle == foreground, bounds = new { x = rect.Left, y = rect.Top, width = rect.Right - rect.Left, height = rect.Bottom - rect.Top } }); return true;
+      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, foreground = handle == foreground, bounds = Bounds(rect), monitorBounds = Bounds(MonitorRect(handle)) }); return true;
     }, IntPtr.Zero); return result;
   }
   private static Dictionary<string, string> Applications() {
@@ -108,6 +131,42 @@ internal static class Program {
     using var output = new System.IO.MemoryStream(); scaled.Save(output, System.Drawing.Imaging.ImageFormat.Png);
     return new { image = "data:image/png;base64," + Convert.ToBase64String(output.ToArray()), width = scaled.Width, height = scaled.Height };
   }
+  private static object CaptureScreen(string id, JsonElement excluded) {
+    CheckDesktop(); stage = "capture-screen";
+    var anchor = new IntPtr(long.Parse(id)); var rect = MonitorRect(anchor);
+    var width = rect.Right - rect.Left; var height = rect.Bottom - rect.Top;
+    if (width <= 0 || height <= 0 || width > 8000 || height > 8000 || (long)width * height > 25000000) throw new InvalidOperationException("Dimensiones fuera de límites.");
+    var masks = new HashSet<string>();
+    if (excluded.ValueKind != JsonValueKind.Undefined) {
+      if (excluded.ValueKind != JsonValueKind.Array || excluded.GetArrayLength() > 200) throw new InvalidOperationException("Exclusiones inválidas.");
+      foreach (var item in excluded.EnumerateArray()) { var value = item.GetString(); if (value == null || !long.TryParse(value, out var numeric) || numeric <= 0) throw new InvalidOperationException("Exclusión inválida."); masks.Add(value); }
+    }
+    // Main temporarily excludes its own capsule via display affinity. Wait for
+    // composition before copying actual screen pixels; never use PrintWindow here.
+    if (DwmFlush() != 0) throw new InvalidOperationException("Composición de pantalla no verificada.");
+    using var bitmap = new System.Drawing.Bitmap(width, height);
+    using (var graphics = System.Drawing.Graphics.FromImage(bitmap)) {
+      graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, new System.Drawing.Size(width, height), System.Drawing.CopyPixelOperation.SourceCopy);
+      var above = new List<System.Drawing.Rectangle>();
+      EnumWindows((handle, _) => {
+        if (handle == anchor || !IsWindowVisible(handle) || IsIconic(handle)) return true;
+        if (DwmGetWindowAttribute(handle, 14, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+        if (!GetWindowRect(handle, out var box)) return true;
+        var area = System.Drawing.Rectangle.Intersect(new System.Drawing.Rectangle(box.Left, box.Top, box.Right - box.Left, box.Bottom - box.Top), new System.Drawing.Rectangle(rect.Left, rect.Top, width, height));
+        if (area.Width <= 0 || area.Height <= 0) return true;
+        if (masks.Contains(handle.ToInt64().ToString())) {
+          using var region = new System.Drawing.Region(area);
+          foreach (var front in above) region.Exclude(front);
+          region.Translate(-rect.Left, -rect.Top); graphics.FillRegion(System.Drawing.Brushes.Black, region);
+        }
+        above.Add(area); return true;
+      }, IntPtr.Zero);
+    }
+    var ratio = Math.Min(1.0, 1920.0 / Math.Max(width, height));
+    using var scaled = new System.Drawing.Bitmap(bitmap, (int)(width * ratio), (int)(height * ratio));
+    using var output = new System.IO.MemoryStream(); scaled.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+    return new { image = "data:image/png;base64," + Convert.ToBase64String(output.ToArray()), bounds = Bounds(rect), scope = "display" };
+  }
   private static async Task<object> Media(string? id, bool pause) {
     CheckDesktop(); var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
     var sessions = manager.GetSessions();
@@ -145,6 +204,7 @@ internal static class Program {
         "open-app" => await OpenApplication(id ?? throw new InvalidOperationException("Falta aplicación.")),
         "read" => new { text = ReadWindow(id ?? throw new InvalidOperationException("Falta ventana.")) },
         "capture" => CaptureWindow(id ?? throw new InvalidOperationException("Falta ventana.")),
+        "capture-screen" => CaptureScreen(id ?? throw new InvalidOperationException("Falta cápsula."), json.RootElement.TryGetProperty("excludedIds", out var excluded) ? excluded : default),
         "media" => await Media(null, false),
         "pause" => await Media(id, true),
         _ => throw new InvalidOperationException("Operación desconocida; no hay shell ni teclado arbitrario.")

@@ -18,10 +18,15 @@ await mkdir(screenshots,{recursive:true});
 try {
   for (const state of ['idle', 'executing', 'completed', 'failed', 'awaiting_approval', 'streaming']) {
     await page.goto(`${base}?state=${state}`); await page.locator('.zen-overlay').waitFor();
-    assert.equal(Math.round((await page.locator('main').boundingBox()).height),48);
+    assert.equal(Math.round((await page.locator('main').boundingBox()).height),40);
+    assert.equal(Math.round((await page.locator('main').boundingBox()).width),240);
+    assert.equal(await page.locator('.brand').isVisible(),false);
+    assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),h=el.getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})));
+    await page.locator('main').screenshot({path:`${screenshots}/mini-${state}.png`,animations:'disabled'});
     await page.getByRole('button', {name:'Desplegar panel'}).click();
     await page.getByRole('region', {name:'Último mensaje'}).waitFor();
     assert.equal(await page.locator('.prompt, #request, .chat-turn, .chat-messages').count(),0);
+    assert(await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).isVisible());
     assert.equal((await page.locator('main').boundingBox()).width,1120);
     await page.screenshot({path: `${screenshots}/${state}.png`, animations:'disabled'});
     if(state==='awaiting_approval') { await page.getByRole('button',{name:'Permitir simulación'}).click(); assert.match(await page.locator('.approval-card').innerText(),/Ninguna acción ejecutada/); }
@@ -39,22 +44,22 @@ try {
   await page.getByText('Busca en la web',{exact:true}).waitFor();
   const beforeContext=await page.locator('.result-text').innerText();
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'queued',capturedAt:Date.now()}});
-  await page.getByText('Contexto visual enviado a SOL',{exact:true}).waitFor();
+  await page.getByText('Preparada',{exact:false}).waitFor();
   await page.screenshot({path:screenshots+'/screen-context.png',animations:'disabled'});
   assert.equal(await page.locator('.result-text').innerText(),beforeContext);
   await page.getByRole('button',{name:'Recoger panel'}).click();
-  assert(await page.getByRole('button',{name:'Actualizar contexto visual',exact:true}).isVisible());
+  assert.equal(await page.getByRole('button',{name:'Actualizar contexto visual',exact:true}).count(),0);
   await page.getByRole('button',{name:'Desplegar panel'}).click();
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'expired'}});
-  await page.getByText('Contexto visual caducado · actualiza la referencia',{exact:true}).waitFor();
+  await page.getByText('Caducada',{exact:false}).waitFor();
   await page.evaluate(()=>{window.fixtureRefreshes=0;window.zen.refreshScreen=async()=>{window.fixtureRefreshes++;return{ok:true,value:true};};});
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'queued',capturedAt:Date.now(),sourceTitle:'Gráfico de prueba · Navegador'}});
-  await page.getByText('Contexto visual enviado a SOL · Gráfico de prueba · Navegador',{exact:true}).waitFor();
+  assert.match(await page.locator('.screen-context-note').innerText(),/Pantalla[\s\S]*Preparada/);
   await page.getByRole('button',{name:'Actualizar contexto visual',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.fixtureRefreshes),1);
   assert.equal(await page.locator('.companion-eyes').first().evaluate(el=>getComputedStyle(el).animationName),'none');
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'idle'}});
-  assert.equal((await page.locator('.message-speaker').innerText()).replace(/\s+/g,''),'TúEndirecto');
+  assert.match((await page.locator('.message-speaker').innerText()).replace(/\s+/g,''),/^Tú/);
   await page.screenshot({path:screenshots+'/latest-user.png',animations:'disabled'});
   await emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'u1',text:'Busca en la web',phase:'done'}});
   await emit({id:'new',state:'thinking',request:'Busca en la web',message:'Procesando'});
@@ -88,12 +93,14 @@ try {
   await emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'u2',text:'Nueva petición',phase:'start'}});
   await page.getByRole('button',{name:'Recoger panel'}).click();await page.getByRole('button',{name:'Desplegar panel'}).click();
   assert.match(await page.locator('.result-text').innerText(),/Nueva petición/);
-  await page.getByRole('button',{name:'Adjuntar contexto',exact:true}).click();
-  await page.getByRole('dialog',{name:'Adjuntar contexto'}).waitFor();
-  await page.evaluate(()=>{window.zen.media=async()=>({ok:true,value:[{id:'fixture-player',title:'Canción de prueba',state:'Playing',canPause:true}]});window.demoMediaPauseIds=[];window.zen.pauseMedia=async id=>{window.demoMediaPauseIds.push(id);return{ok:true,value:{id,verified:true,alreadyPaused:false}};};});
-  await page.getByRole('button',{name:'Ver reproductores',exact:true}).click();await page.getByRole('button',{name:'Pausar este reproductor',exact:true}).click();await page.getByText('Canción de prueba · Paused',{exact:true}).waitFor();
-  assert.deepEqual(await page.evaluate(()=>window.demoMediaPauseIds),['fixture-player']);
-  await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.locator('main.hidden').count(),0);
+  assert.equal(await page.getByRole('button',{name:'Añadir contexto',exact:true}).count(),1);
+  await page.getByRole('button',{name:'Añadir contexto',exact:true}).click();await page.getByRole('menu',{name:'Añadir contexto'}).waitFor();assert.equal(await page.getByRole('menuitem').count(),3);assert.equal(await page.getByRole('button',{name:'Elegir ventana',exact:true}).count(),0);assert.equal(await page.getByRole('dialog',{name:'Adjuntar contexto'}).count(),0);
+  await page.screenshot({path:screenshots+'/attachment-menu.png',animations:'disabled'});
+  await page.getByRole('menu',{name:'Añadir contexto'}).screenshot({path:screenshots+'/attachment-menu-detail.png',animations:'disabled'});
+  await page.keyboard.press('ArrowDown');assert.match(await page.evaluate(()=>document.activeElement.textContent),/Captura automática/);await page.keyboard.press('Escape');assert.equal(await page.getByRole('menu').count(),0);assert.equal(await page.locator('main.hidden').count(),0);
+  await page.getByRole('button',{name:'Añadir contexto',exact:true}).click();await page.getByRole('menuitem',{name:/Carpeta del proyecto/}).click();await page.getByText('Carpeta adjunta para analizar',{exact:true}).waitFor();await page.screenshot({path:screenshots+'/folder-attached.png',animations:'disabled'});
+  await page.evaluate(()=>{window.folderRuns=[];window.zen.run=async request=>{window.folderRuns.push(request);const value={id:'88888888-8888-4888-8888-888888888888',request:request.text,state:'completed',message:'Arquitectura revisada.'};window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{...value,state:'thinking',message:'Procesando'}}));window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:value}));return{ok:true,value};};});await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).fill('Analiza la arquitectura de esta carpeta');await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).press('Enter');await page.getByText('Arquitectura revisada.',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.folderRuns[0].folderId),'77777777-7777-4777-8777-777777777777');
+  await page.getByRole('button',{name:'Quitar carpeta del proyecto'}).click();assert.equal(await page.getByText('Carpeta adjunta para analizar',{exact:true}).count(),0);
   await page.evaluate(()=>{window.demoStopCalls=0;const old=window.zen.stop;window.zen.stop=async()=>{window.demoStopCalls++;return old();};});
   await page.keyboard.press('Escape');await page.locator('[data-demo-hidden="true"]').waitFor();assert.equal(await page.evaluate(()=>window.demoStopCalls),0);
   await page.goto(`${base}?state=idle`);await page.getByRole('button',{name:'Desplegar panel'}).click();
@@ -111,7 +118,7 @@ try {
   await page.evaluate(()=>{window.zen.chooseDirectory=async()=>({ok:true,value:{grantId:'44444444-4444-4444-8444-444444444444',label:'C:\\Demo'}});window.projectApproveCalls=[];window.zen.projectApprove=async value=>{window.projectApproveCalls.push(value);return{ok:false,error:'Simulación: no se crean archivos.'};};});
   await page.getByRole('button',{name:'Elegir ubicación'}).click();await page.getByRole('button',{name:'Crear aquí',exact:true}).waitFor();
   assert.match(await page.locator('.project-destination').innerText(),/Demo/);
-  await page.getByRole('button',{name:'Ocultar contenido'}).click();await page.locator('.workspace-body').evaluate(element=>element.scrollTop=0);
+  await page.getByRole('button',{name:'Ocultar contenido'}).click();await page.locator('.workspace-body:visible').evaluate(element=>element.scrollTop=0);
   await page.locator('main').screenshot({path:screenshots+'/codex-project-review.png',animations:'disabled'});
   await page.getByRole('button',{name:'Crear aquí',exact:true}).click();
   assert.deepEqual(await page.evaluate(()=>window.projectApproveCalls),[{id:projectId,approvalId:'22222222-2222-4222-8222-222222222222'}]);
@@ -143,6 +150,24 @@ try {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await page.goto(`${base}?state=idle`); assert.equal(await page.locator('main').evaluate(element => getComputedStyle(element).animationName), 'none');
   await page.setViewportSize({ width: 320, height: 600 }); await page.goto(`${base}?state=failed`); await page.getByRole('button',{name:'Desplegar panel'}).click(); const box = await page.locator('main').boundingBox(); assert(box.width <= 320); await page.screenshot({ path: screenshots+'/small-screen.png', animations: 'disabled' });
   await page.setViewportSize({width:1400,height:740});
+  // Clipboard image stays in the renderer until the human sends the message.
+  await page.goto(`${base}?state=idle`);await page.getByRole('button',{name:'Desplegar panel'}).click();
+  await page.evaluate(async()=>{
+    const canvas=document.createElement('canvas');canvas.width=640;canvas.height=220;const ctx=canvas.getContext('2d');ctx.fillStyle='#185bd1';ctx.fillRect(0,0,640,220);ctx.fillStyle='#fff';ctx.font='54px Arial';ctx.fillText('739162',60,120);
+    window.fixtureImage=canvas.toDataURL('image/png');window.chatCalls=[];window.imageAttachments=[];
+    window.zen.attachImage=async image=>{window.imageAttachments.push(image);return{ok:true,value:{observationId:'66666666-6666-4666-8666-666666666666'}};};
+    window.zen.run=async value=>{window.chatCalls.push(value);await new Promise(resolve=>setTimeout(resolve,100));return{ok:true,value:{id:value.requestId,state:'completed',request:value.text,message:'Respuesta a tu captura.',verified:true}};};
+    window.zen.previewScreen=async()=>({ok:true,value:{id:'fixture-screen',image:window.fixtureImage,capturedAt:Date.now(),scope:'display',sourceTitle:'Pantalla sintética'}});
+    const blob=await(await fetch(window.fixtureImage)).blob(),clipboard=new DataTransfer();clipboard.items.add(new File([blob],'captura.png',{type:'image/png'}));document.querySelector('#chat-input').dispatchEvent(new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true}));
+  });
+  await page.getByRole('img',{name:'Captura pegada para enviar'}).waitFor();assert.equal(await page.evaluate(()=>window.imageAttachments.length),0);
+  const input=page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true});await input.fill('Ayúdame con este mensaje');await input.press('Shift+Enter');assert.equal(await page.evaluate(()=>window.chatCalls.length),0);
+  await page.screenshot({path:screenshots+'/paste-capture.png',animations:'disabled'});
+  await input.press('Enter');await page.getByText('Respuesta a tu captura.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.chatCalls.length),1);assert.equal(await page.evaluate(()=>window.imageAttachments.length),1);assert.equal(await page.evaluate(()=>window.chatCalls[0].observationId),'66666666-6666-4666-8666-666666666666');assert.equal(await input.inputValue(),'');assert.equal(await page.getByRole('img',{name:'Captura pegada para enviar'}).count(),0);
+  // A late voice caption cannot replace a typed request/result.
+  await emit({id:'voice',state:'listening',message:'',utterance:{speaker:'zen',id:'stale-caption',text:'Texto de voz anterior',phase:'delta',timeline:{startMs:10000,endMs:11000}}});assert.equal(await page.getByText('Texto de voz anterior',{exact:true}).count(),0);
+  await emit({id:'voice',state:'idle',message:'',screenContext:{state:'ready',snapshotId:'fixture-screen',scope:'display',sourceTitle:'Pantalla sintética',capturedAt:Date.now()}});await page.getByRole('button',{name:'Ver captura de referencia',exact:true}).click();await page.getByRole('dialog',{name:'Captura usada como contexto'}).waitFor();assert.equal(await page.getByRole('img',{name:'Captura exacta preparada para SOL'}).getAttribute('src'),await page.evaluate(()=>window.fixtureImage));await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.locator('main.hidden').count(),0);
   await page.goto(`${base}?state=long-result`); await page.getByRole('button',{name:'Desplegar panel'}).click();
   assert.match(await page.locator('.result-text').innerText(),/FINAL DEL RESULTADO/);
   assert.equal(await page.locator('.result-text').evaluate(el=>getComputedStyle(el).webkitLineClamp),'none');
@@ -163,8 +188,8 @@ try {
   await page.getByRole('button', { name: 'Desplegar panel' }).click();
   await page.waitForFunction(() => window.zenToneCount > 0);
   const faceBefore = await page.locator('.brand-home .companion-face').getAttribute('transform');
-  await page.mouse.move(800, 20);
-  await page.waitForFunction(() => !!document.querySelector('.brand-home .companion-face')?.getAttribute('transform'));
+  const companionBox=await page.locator('.brand-home .zen-companion').boundingBox();await page.mouse.move(companionBox.x-100,companionBox.y+100);
+  await page.waitForFunction(before => {const value=document.querySelector('.brand-home .companion-face')?.getAttribute('transform');return !!value&&value!==before;},faceBefore);
   assert.notEqual(await page.locator('.brand-home .companion-face').getAttribute('transform'), faceBefore);
   await page.getByRole('button', { name: 'Modo reunión', exact: true }).click();
   await page.waitForFunction(() => window.zenAudioGains[0]?.gain.value === 0);
@@ -202,7 +227,32 @@ try {
   await page.getByRole('button', { name: 'Guardar preferencias', exact: true }).click();
   const savedAppearance = await page.evaluate(async () => (await window.zen.settings()).value.settings);
   assert.equal(savedAppearance.interfaceSounds, false); assert.equal(savedAppearance.interfaceAnimations, false);
+  await page.goto(`${base}?state=completed`);await page.getByRole('button',{name:'Desplegar panel'}).click();
+  await page.waitForTimeout(850);
+  const compactHeight=(await page.locator('main').boundingBox()).height;assert(compactHeight<300);
+  await page.evaluate(()=>{
+    window.fixtureLayoutCalls=[];const old=window.zen.layout;window.zen.layout=async value=>{window.fixtureLayoutCalls.push(value);return old(value);};
+    window.fixtureHeaderChanges=0;window.fixtureTextChanges=0;window.fixtureArticle=document.querySelector('.live-message');window.fixtureBrand=document.querySelector('.brand-home');
+    new MutationObserver(()=>window.fixtureHeaderChanges++).observe(document.querySelector('header'),{subtree:true,childList:true,attributes:true,characterData:true});
+    new MutationObserver(()=>window.fixtureTextChanges++).observe(document.querySelector('.live-message'),{subtree:true,childList:true,characterData:true});
+  });
+  await emit({id:'fluid',state:'thinking',message:'Trabajando',streamText:'Texto'});await page.waitForTimeout(400);
+  await page.evaluate(()=>{window.fixtureLayoutCalls=[];window.fixtureHeaderChanges=0;window.fixtureTextChanges=0;window.fixtureArticle=document.querySelector('.live-message');});
+  await page.evaluate(async()=>{for(let n=1;n<=80;n++){window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'fluid',state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)}}));await new Promise(resolve=>setTimeout(resolve,4));}});
+  await page.waitForTimeout(70);
+  const streamMetrics=await page.evaluate(()=>({height:document.querySelector('main').getBoundingClientRect().height,layouts:window.fixtureLayoutCalls.length,header:window.fixtureHeaderChanges,textPaints:window.fixtureTextChanges,sameArticle:window.fixtureArticle===document.querySelector('.live-message'),sameBrand:window.fixtureBrand===document.querySelector('.brand-home'),animation:getComputedStyle(document.querySelector('.companion-float')).animationName,text:document.querySelector('.result-text').textContent}));
+  assert.equal(streamMetrics.height,340);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
+  await emit({id:'fluid',state:'completed',message:'Resultado final exacto.'});await page.getByRole('button',{name:'Copiar respuesta'}).waitFor();
+  await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.fixtureCopied=text;}}});});
+  await page.getByRole('button',{name:'Copiar respuesta'}).click();assert.equal(await page.evaluate(()=>window.fixtureCopied),'Resultado final exacto.');
+  await emit({id:'voice',state:'failed',message:'Voz desconectada por inactividad.'});await page.getByText('Voz desconectada por inactividad.',{exact:false}).waitFor();assert.equal(await page.locator('.result-text').innerText(),'Resultado final exacto.');
+  await page.waitForTimeout(350);assert.equal(await page.locator('.header-status').innerText(),'Listo');
+  await page.screenshot({path:screenshots+'/stable-compact.png',animations:'disabled'});
+  await emit({id:'fluid',state:'completed',message:'Respuesta extensa. '.repeat(180)+'FINAL'});await page.waitForTimeout(100);assert((await page.locator('main').boundingBox()).height>compactHeight);
+  await page.locator('.latest-message').evaluate(el=>{el.scrollTop=el.scrollHeight;});await page.locator('.latest-message').evaluate(el=>{el.scrollTop=0;});await page.getByRole('button',{name:'Ir al final ↓',exact:true}).click();
+  assert(await page.locator('.latest-message').evaluate(el=>el.scrollHeight-el.scrollTop-el.clientHeight<28));
+  await page.screenshot({path:screenshots+'/stable-long.png',animations:'disabled'});
   assert.deepEqual(errors, []);
-  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, checks: ['Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'only latest user/zen message, no composer/history', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'media picker mock in context dialog', 'original companion follows pointer',   'header drag captures pointer and suppresses click', '640px capsule and 1120px latest message', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'optional context attachment dialog', 'preferences in separate view',   'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution',  'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
+  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, streamMetrics, compactHeight, checks: ['streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with three context options; no window or media picker', 'original companion follows pointer',   'header drag captures pointer and suppresses click', '240×40 capsule and 1120px latest message', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view',   'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution',  'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
   await mkdir('test-results', { recursive: true }); await writeFile('test-results/ui.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

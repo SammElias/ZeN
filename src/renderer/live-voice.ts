@@ -21,7 +21,7 @@ export class LiveVoiceClient {
   constructor(private bridge:ZenBridge,private state:(status:VoiceStatus,microphone:boolean)=>void,private message:(text:string)=>void,private speaking:(value:boolean)=>void=()=>{},private transcript:(event:Utterance)=>void=()=>{}){this.audio.autoplay=true;this.activity=new SpeechActivity(speaking);}
   get active(){return this.starting||!!this.pc||!!this.closing;}
   level(){if(!this.analyser||this.muted)return 0;const data=new Uint8Array(this.analyser.fftSize);this.analyser.getByteTimeDomainData(data);return Math.min(1,Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length)*5);}
-  setMicrophoneEnabled(enabled:boolean){this.muted=!enabled;this.stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&this.ready&&!this.closing;});if(this.ready)this.state('connected',enabled);}
+  setMicrophoneEnabled(enabled:boolean){this.muted=!enabled;if(enabled&&this.ready&&!this.closing)this.audio.muted=!this.allowed;this.stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&this.ready&&!this.closing;});if(this.ready)this.state('connected',enabled);}
   mute(){this.setMicrophoneEnabled(this.muted);}
   setAudible(allowed:boolean){this.allowed=allowed;this.audio.muted=!allowed;if(!allowed)this.activity.reset();}
   async interrupt(){this.audio.muted=true;this.activity.reset();await this.bridge.voiceInterrupt();}

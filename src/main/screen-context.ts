@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { WindowInfo } from '../tools/windows/native';
 
-export type ScreenSnapshot = { id:string; image:string; capturedAt:number; sourceTitle?:string };
-export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'; capturedAt?:number;sourceTitle?:string };
+export type ScreenSnapshot = { id:string; image:string; capturedAt:number; sourceTitle?:string;scope?:'display'|'window' };
+export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'; capturedAt?:number;sourceTitle?:string;scope?:'display'|'window';snapshotId?:string };
 type Deps = {
   windows:(signal:AbortSignal)=>Promise<WindowInfo[]>;
-  capture:(id:string,signal:AbortSignal)=>Promise<string>;
+  capture:(id:string,signal:AbortSignal)=>Promise<string|{image:string;scope:'display';bounds:{x:number;y:number;width:number;height:number}}>;
   own:(window:WindowInfo)=>boolean;
   anchorId?:()=>string;
   blocked:(window:WindowInfo)=>boolean;
@@ -28,7 +28,7 @@ export class ScreenContext {
     if(this.snapshot){this.snapshot=undefined;this.deps.status({state:'expired'});}
     return undefined;
   }
-  queued(id:string){if(this.current()?.id===id)this.deps.status({state:'queued',capturedAt:this.snapshot!.capturedAt,sourceTitle:this.snapshot!.sourceTitle});}
+  queued(id:string){if(this.current()?.id===id)this.deps.status({state:'queued',capturedAt:this.snapshot!.capturedAt,sourceTitle:this.snapshot!.sourceTitle,scope:this.snapshot!.scope,snapshotId:id});}
   cancel(){++this.generation;this.controller?.abort();this.controller=undefined;this.pending=undefined;this.snapshot=undefined;clearTimeout(this.expiry);this.deps.status({state:'idle'});}
   ensure(){return this.pending??(this.current()?Promise.resolve(this.current()):this.refresh());}
   refresh(){
@@ -49,14 +49,15 @@ export class ScreenContext {
         const selected=anchorId?rows.find(row=>!this.deps.own(row)&&below(row)):
           foreground&&!this.deps.own(foreground)?foreground:rows.find(row=>!this.deps.own(row));
         if(!selected||this.deps.own(selected)||this.deps.blocked(selected))throw new Error('No eligible window');
-        const image=await this.deps.capture(selected.id,controller.signal);controller.signal.throwIfAborted();
+        const captured=await this.deps.capture(selected.id,controller.signal);const image=typeof captured==='string'?captured:captured.image;controller.signal.throwIfAborted();
         const afterRows=await this.deps.windows(controller.signal);const after=afterRows.find(row=>row.id===selected.id);
         controller.signal.throwIfAborted();
         if(!after||after.pid!==selected.pid||after.title!==selected.title||this.deps.blocked(after))throw new Error('Window changed');
         if(anchorId){const latest=afterRows.find(row=>row.id===anchorId);if(!latest?.bounds)throw new Error('Anchor unavailable');const x=latest.bounds.x+latest.bounds.width/2,y=latest.bounds.y+latest.bounds.height+1;const underneath=afterRows.find(row=>!this.deps.own(row)&&row.bounds&&x>=row.bounds.x&&x<row.bounds.x+row.bounds.width&&y>=row.bounds.y&&y<row.bounds.y+row.bounds.height);if(underneath?.id!==selected.id)throw new Error('Underlying window changed');}
+        if(typeof captured!=='string'){const latest=afterRows.find(row=>row.id===anchorId);if(!anchor?.monitorBounds||!latest?.monitorBounds||JSON.stringify(anchor.monitorBounds)!==JSON.stringify(captured.bounds)||JSON.stringify(latest.monitorBounds)!==JSON.stringify(captured.bounds))throw new Error('Captured display changed');const beforeBlocked=rows.filter(row=>!this.deps.own(row)&&this.deps.blocked(row)).map(row=>[row.id,row.title,row.bounds]);const afterBlocked=afterRows.filter(row=>!this.deps.own(row)&&this.deps.blocked(row)).map(row=>[row.id,row.title,row.bounds]);if(JSON.stringify(beforeBlocked)!==JSON.stringify(afterBlocked))throw new Error('Exclusions changed');}
         if(!/^data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+=*$/.test(image)||image.length>3000000)throw new Error('Invalid image');
         if(generation!==this.generation)return;
-        this.snapshot={id:randomUUID(),image,capturedAt:this.now(),sourceTitle:selected.title};this.deps.status({state:'ready',capturedAt:this.snapshot.capturedAt,sourceTitle:selected.title});
+        this.snapshot={id:randomUUID(),image,capturedAt:this.now(),sourceTitle:selected.title,scope:typeof captured==='string'?'window':'display'};this.deps.status({state:'ready',capturedAt:this.snapshot.capturedAt,sourceTitle:selected.title,scope:this.snapshot.scope,snapshotId:this.snapshot.id});
         this.expiry=setTimeout(()=>{if(generation===this.generation){this.snapshot=undefined;this.deps.status({state:'expired'});}},this.deps.ttlMs??120000);this.expiry.unref?.();
         return this.snapshot;
       }catch{if(generation===this.generation)this.deps.status({state:'unavailable'});return undefined;}

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { latestTask, latestUtterance } from '../src/renderer/latest-message';
+import { beginLiveSession,latestTask, latestUtterance } from '../src/renderer/latest-message';
 describe('Último mensaje de voz', () => {
+  it('starts a new Live timeline instead of rejecting new captions against the previous session clock',()=>{
+    const previous=latestUtterance({}, {speaker:'zen',id:'old-session',phase:'delta',text:'Documentación anterior',timeline:{startMs:80000,endMs:85000}});
+    expect(previous.captionEnd).toBe(85000);let current=beginLiveSession();expect(current.message).toBeUndefined();expect(latestTask(current,{id:'old-task',state:'completed',message:'Resultado anterior'})).toBe(current);
+    expect(latestTask(current,{id:'voice',state:'failed',message:'No se pudo conectar'})).toBe(current);
+    current=latestUtterance(current,{speaker:'user',id:'new-session',phase:'start',text:'Ayúdame con LinkedIn',timeline:{startMs:100,endMs:400}});expect(current.message?.text).toBe('Ayúdame con LinkedIn');expect(current.captionEnd).toBe(400);expect(current.waitingForLiveUser).toBe(false);
+  });
   it('reemplaza el mensaje, conserva usuario mientras procesa y pasa al stream de ZEN', () => {
     let state = latestUtterance({}, { speaker: 'user', id: 'u1', text: 'Busca en la web', phase: 'done' });
     expect(state.message?.speaker).toBe('user');

@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-01T14:29:17.055Z",
+  "passed": false,
+  "error": "Sensitive fixture not masked: {\"masked\":true,\"colours\":{\"blue\":2034665,\"red\":1279,\"magenta\":8,\"black\":29462},\"owned\":[{\"title\":\"Password fixture\",\"bounds\":{\"x\":2712,\"y\":500,\"width\":236,\"height\":128}},{\"title\":\"Cápsula sintética\",\"bounds\":{\"x\":2012,\"y\":10,\"width\":456,\"height\":208}},{\"title\":\"Mensaje sintético actual\",\"bounds\":{\"x\":1912,\"y\":0,\"width\":1936,\"height\":1040}},{\"title\":\"Documentación sintética\",\"bounds\":{\"x\":-8,\"y\":0,\"width\":1936,\"height\":1040}}],\"status\":{\"state\":\"ready\",\"capturedAt\":1790864957041,\"sourceTitle\":\"Mensaje sintético actual\",\"scope\":\"display\",\"snapshotId\":\"2653ac20-7bd3-4946-8731-aa2e4e5d0a91\"}}",
+  "ownedFixturesOnly": true
+}

@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-01T14:54:09.692Z",
+  "realElectron": true,
+  "productionImagePolicy": "img-src 'self' data:",
+  "syntheticImage": true,
+  "blobImageBlocked": true,
+  "oldError": "The source image cannot be decoded.",
+  "dataImageDecoded": true,
+  "passed": true
+}

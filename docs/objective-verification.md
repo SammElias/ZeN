@@ -2,7 +2,45 @@
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
-## Revisión actual: captura detrás de ZEN y voz estable
+## Revisión vigente: mini cápsula, despliegue conservado
+
+Cápsula recogida de 240×40 DIP con icono, estado, micrófono y controles esenciales. Despliegue completo conservado: último mensaje/stream, escritura, capturas y carpeta de análisis. Arrastre entre pantallas y anclaje superior conservados. Hablar no abre automáticamente la mini barra. [Uso y verificación](mini-capsule.md).
+
+**Probado:** 238 pruebas en 27 archivos, build, [Edge](evidence/mini-capsule-ui.json) y [Electron/Windows empaquetado](evidence/mini-capsule-electron.json), `release/ZEN-20261001155525543/ZEN.exe`. 240×40 nativo, caption sin desplegar, controles sin recortes, despliegue completo y arrastre a dos monitores. **Pendiente:** recorrido físico de ratón/voz/DPI y fallos generales de foco anteriores. El objetivo completo sigue incompleto.
+
+## Revisión anterior: interfaz compacta y streaming estable
+
+Aplicadas las seis mejoras autorizadas: actualización separada y agrupada del streaming ZEN/Codex, altura compacta estable durante trabajo, avisos de voz que conservan conversación, estados estabilizados, ficha visual de pantalla y controles agrupados con Copiar/Ir al final. JSON, modelos, herramientas y política conservados. [Implementación y límites](stable-interface.md).
+
+**Probado:** 238 pruebas en 27 archivos, build, [Edge](evidence/stable-interface-ui.json), [Electron/Windows](evidence/stable-interface-electron.json) y [portable](evidence/portable-interface.json), `release/ZEN-20261001152044381/ZEN.exe`. Ráfagas sintéticas con texto exacto, DOM/cabecera/bounds estables, altura breve/extendida, copia, scroll y aviso de voz separado. Sin nueva llamada API.
+
+**Pendiente:** confirmación física del parpadeo con la sesión del usuario, GPU/pantallas/DPI, voz/Teams y fallos generales de foco anteriores. El objetivo completo sigue incompleto. Los apartados siguientes conservan el historial.
+
+## Revisión anterior: error al pegar capturas
+
+Corregido el error «The source image cannot be decoded.», reproducido con la política de imágenes de producción. Lectura como `data:` mediante FileReader, manteniendo protección y límites; error en español para imágenes dañadas, captura válida anterior conservada y aviso limpiado al añadir una imagen válida. La vista previa aplica ahora la misma restricción de imágenes. [Causa, uso y límites](image-decoding.md).
+
+**Probado:** 235 pruebas en 26 archivos, build, [reproducción Electron](evidence/image-decoding-policy.json), [pegado en renderer real](evidence/image-decoding-electron.json), [Edge](evidence/image-decoding-ui.json) y [portable](evidence/portable-interface.json), `release/ZEN-20261001145815191/ZEN.exe`. Imagen sintética válida y dañada, miniatura, conservación del adjunto y cero infracciones CSP; un único clip. Sin nueva llamada API en esta revisión.
+
+**Pendiente:** portapapeles físico del usuario y aplicaciones personales; voz/Teams/DPI y fallos generales de foco anteriores. El objetivo completo sigue incompleto. Los apartados siguientes conservan el historial.
+
+## Revisión anterior: clip compacto y carpeta del proyecto
+
+Menú «Añadir» con tres opciones: captura automática, captura manual y carpeta del proyecto. Un único clip; retirada de la ventana anterior y sus selectores de ventanas/reproductores. Carpeta adjunta para analizar estructura, código y documentación de texto con fragmentos locales acotados; capacidad temporal de solo lectura, sin subir ni indexar toda la carpeta. Conserva la voz, las herramientas y el JSON exacto. [Uso y límites](attachment-menu.md).
+
+**Probado:** 235 pruebas en 26 archivos, build, [Edge](evidence/attachment-menu-ui.json), [IPC Windows](evidence/folder-context-electron.json) y [ejecutable empaquetado](evidence/portable-interface.json), `release/ZEN-20261001144927997/ZEN.exe`. [API real](evidence/folder-context-live.json): lectura del código 582941 desde documentación sintética de la carpeta adjunta. Sin proyectos personales enviados. Un [primer smoke agotó tiempo](evidence/attachment-electron-attempt.json); repetición y paquetes posteriores pasaron.
+
+**Pendiente:** extracción PDF/Office, recorrido físico del selector con proyectos del usuario, voz/Teams/DPI y fallos generales de foco anteriores. El objetivo completo sigue incompleto. Los apartados siguientes conservan el historial.
+
+## Revisión anterior: chat con capturas y contexto del monitor de ZEN
+
+Portable `release/ZEN-20261001143713064/ZEN.exe`: campo para escribir/pegar una captura, miniatura local antes de enviar y prioridad de la imagen elegida. Captura automática de los píxeles visibles del monitor donde está ZEN, cápsula excluida, regiones excluidas enmascaradas y «Ver captura» para comprobar la imagen exacta. Reloj de captions reiniciado al reconectar Live y texto protegido frente a captions antiguos. JSON Live/agente guardado conservados. [Uso, implementación y límites](image-chat.md).
+
+**Probado:** 232 pruebas en 25 archivos; build de aplicación y auxiliar; [interfaz Edge](evidence/image-chat-ui.json), [IPC Electron/Windows](evidence/image-chat-electron.json) y [arranque del ejecutable empaquetado](evidence/portable-interface.json). [Windows con dos monitores y ventanas propias](evidence/screen-display-windows.json): monitor real, cambio de pantalla/página, cápsula fuera de la imagen y región visible excluida en negro. [API real de imagen adjunta mediante IPC](evidence/image-chat-live.json): código 739162 leído solo desde la imagen. [API real/WebRTC](evidence/screen-replacement-live.json): referencia de monitor sustituida en la misma sesión, lectura 222222 → 384729 y cierre confirmado, con voz sintética. También se repitió satisfactoriamente la prueba de cápsula oculta después de corregir la lectura del escritorio. No se capturaron/subieron páginas personales.
+
+**Pendiente:** recorrido manual con LinkedIn y tus otras aplicaciones, micrófono/altavoces, DPI y Teams reales; los fallos generales de foco documentados no se revalidaron ni se declaran resueltos. El objetivo completo continúa incompleto. Los apartados siguientes conservan el historial anterior.
+
+## Revisión anterior: captura detrás de ZEN y voz estable
 
 Portable corregido `release/ZEN-20261001095454813/ZEN.exe`: referencia de la ventana situada detrás de la cápsula, renovación al abrir/activar voz, título visible y botón para actualizar; presentación de voz estable y sin destellos repetidos. JSON Live y agente guardado conservados. [Detalles y límites](screen-context.md).
 

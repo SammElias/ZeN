@@ -1,10 +1,12 @@
 {
-  "at": "2026-10-01T09:50:00.353Z",
+  "at": "2026-10-01T14:23:06.186Z",
   "passed": true,
   "ownedFixtureOnly": true,
   "windowsReal": true,
   "displays": 2,
-  "otherForegroundIgnored": true,
+  "foregroundOnDocsConfirmed": false,
+  "targetChosenByCapsule": true,
+  "hiddenCapsuleCaptured": true,
   "movedCapsuleRetargeted": true,
   "changedPageCaptured": true,
   "sourceTitles": [
@@ -22,8 +24,10 @@
     },
     {
       "state": "ready",
-      "capturedAt": 1790848198447,
-      "sourceTitle": "Gráfico de prueba"
+      "capturedAt": 1790864583322,
+      "sourceTitle": "Gráfico de prueba",
+      "scope": "window",
+      "snapshotId": "228fd9e4-25b1-4619-a429-c34a5857300d"
     },
     {
       "state": "idle"
@@ -33,8 +37,10 @@
     },
     {
       "state": "ready",
-      "capturedAt": 1790848199382,
-      "sourceTitle": "Documentación de prueba"
+      "capturedAt": 1790864584119,
+      "sourceTitle": "Gráfico de prueba",
+      "scope": "window",
+      "snapshotId": "41cd6c89-e1b7-4682-84cb-30abcad2675c"
     },
     {
       "state": "idle"
@@ -44,9 +50,23 @@
     },
     {
       "state": "ready",
-      "capturedAt": 1790848200353,
-      "sourceTitle": "Gráfico actualizado"
+      "capturedAt": 1790864585131,
+      "sourceTitle": "Documentación de prueba",
+      "scope": "window",
+      "snapshotId": "488e30c8-c024-497d-b3c3-811db1968fae"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790864586186,
+      "sourceTitle": "Gráfico actualizado",
+      "scope": "window",
+      "snapshotId": "f7a8f9b5-3abf-4278-a313-81d89facb629"
     }
-  ],
-  "verificationNote": "La selección por cápsula se verificó por identificadores y colores; no se registró prueba independiente del foco real de la ventana de documentación. El foco en otro monitor se comprueba con mocks."
+  ]
 }

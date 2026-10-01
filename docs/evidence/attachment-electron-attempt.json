@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "test": "Electron interface smoke",
+  "exitCode": null,
+  "subsequentStandaloneAttemptPassed": true,
+  "diagnosticAvailable": false,
+  "timeoutMs": 30000,
+  "recordedAt": "2026-10-01T14:52:05.9918456Z",
+  "attemptTimestampAvailable": false
+}

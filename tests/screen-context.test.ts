@@ -7,6 +7,13 @@ const deferred=<T>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T>
 function fixture(){const status=vi.fn(),capture=vi.fn().mockResolvedValue(image),windows=vi.fn().mockResolvedValue([external]);const context=new ScreenContext({windows,capture,own:row=>row.pid===200,blocked:row=>/password/i.test(row.title),status,ttlMs:50});return{context,status,capture,windows};}
 afterEach(()=>vi.useRealTimers());
 describe('automatic invocation context',()=>{
+  it('retains actual display pixels only when their monitor matches the capsule before and after capture',async()=>{
+    const f=fixture(),monitor={x:1920,y:0,width:1920,height:1080},anchor={...zen,bounds:{x:2000,y:0,width:640,height:48},monitorBounds:monitor},behind={...external,bounds:monitor};
+    f.windows.mockResolvedValue([anchor,behind]);f.capture.mockResolvedValue({image,scope:'display',bounds:monitor} as any);
+    const context=new ScreenContext({windows:f.windows,capture:f.capture,own:row=>row.pid===200,anchorId:()=>zen.id,blocked:()=>false,status:f.status});const snapshot=await context.refresh();expect(snapshot?.scope).toBe('display');expect(f.status).toHaveBeenLastCalledWith(expect.objectContaining({scope:'display',snapshotId:snapshot?.id}));context.cancel();
+    f.capture.mockResolvedValue({image,scope:'display',bounds:{...monitor,x:0}} as any);expect(await context.refresh()).toBeUndefined();context.cancel();
+    f.capture.mockResolvedValue({image,scope:'display',bounds:monitor} as any);f.windows.mockResolvedValueOnce([anchor,behind]).mockResolvedValueOnce([anchor,behind,{id:'777',pid:300,title:'Password',foreground:false,bounds:monitor}]);const privateContext=new ScreenContext({windows:f.windows,capture:f.capture,own:row=>row.pid===200,anchorId:()=>zen.id,blocked:row=>/password/i.test(row.title),status:f.status});expect(await privateContext.refresh()).toBeUndefined();privateContext.cancel();
+  });
   it('does nothing at startup; captures once per invocation and renews its identity',async()=>{
     const f=fixture();expect(f.capture).not.toHaveBeenCalled();const first=await f.context.refresh();expect(first?.image).toBe(image);expect(f.capture).toHaveBeenCalledWith('12',expect.any(AbortSignal));
     expect(await f.context.ensure()).toBe(first);expect(f.capture).toHaveBeenCalledOnce();const second=await f.context.refresh();expect(second?.id).not.toBe(first?.id);expect(f.capture).toHaveBeenCalledTimes(2);f.context.cancel();

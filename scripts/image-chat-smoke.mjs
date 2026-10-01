@@ -1,0 +1,13 @@
+import {spawn} from 'node:child_process';
+import electron from 'electron';
+import {writeFile} from 'node:fs/promises';
+if(!process.env.OPENAI_API_KEY)throw Error('Falta la clave autorizada de entorno.');
+const env={...process.env,ZEN_LIVE_API:'1'};delete env.ELECTRON_RUN_AS_NODE;
+const folder=process.argv.includes('--folder');
+const child=spawn(electron,['.',folder?'--zen-folder-context-smoke':'--zen-image-chat-smoke'],{env,windowsHide:true});let output='',errors='';
+child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>errors+=chunk);
+const timer=setTimeout(()=>child.kill(),60000);
+const code=await new Promise(resolve=>{child.on('error',()=>resolve(1));child.on('exit',resolve);});clearTimeout(timer);
+const line=output.split(/\r?\n/).find(row=>row.startsWith('{'));
+const report=line?JSON.parse(line):{passed:false,exitCode:code,failure:'No se completó el recorrido IPC/API de imagen sintética.'};
+await writeFile(folder?'docs/evidence/folder-context-live.json':'docs/evidence/image-chat-live.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));if(!report.passed||code!==0)process.exitCode=1;

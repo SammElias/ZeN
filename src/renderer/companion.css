@@ -25,7 +25,14 @@ button:hover { background: #232329; border-color: #4f465f; }
 }
 .island.capsule { border-radius: 0 0 18px 18px; }
 .island.live-only { width: min(1120px, 100vw); }
-.island.live-only.capsule { width: min(640px, 100vw); }
+.island.live-only.capsule { width: min(240px, 100vw); max-height: 40px; }
+.island.live-only.capsule .overlay-header { height: 40px; min-height: 40px; padding: 0 9px; gap: 6px; }
+.island.live-only.capsule .brand { display: none; }
+.island.live-only.capsule .zen-companion { width: 26px; height: 26px; }
+.island.live-only.capsule .header-status { min-width: 0; width: 76px; flex: 1; font-size: 10px; gap: 5px; justify-content: flex-end; }
+.island.live-only.capsule .header-actions { gap: 1px; }
+.island.live-only.capsule .icon-button, .island.live-only.capsule .fold-button { width: 24px; height: 26px; padding: 5px; }
+.island.live-only.capsule .icon-button svg, .island.live-only.capsule .fold-button svg { width: 14px; height: 14px; }
 .latest-message { padding: 10px 24px 14px; }
 .live-message { width: 100%; padding: 0; }
 .message-speaker { display: flex; align-items: center; gap: 10px; color: var(--accent); font-size: 11px; font-weight: 600; }
@@ -147,6 +154,31 @@ button:hover { background: #232329; border-color: #4f465f; }
 .island.live-only .companion-eyes { animation: none; }
 .island.live-only .mood-speaking .companion-orbit { animation: none; }
 .island.live-only .header-status.working i { animation: none; }
+.island.live-only .companion-float, .island.live-only .companion-satellite, .island.live-only .companion-orbit { animation: none; }
+.island.live-only .workspace-body { animation: none; }
+.island.live-only .header-status { min-width: 95px; justify-content: flex-end; }
+.conversation-pane { display: flex; flex: 1; min-height: 0; }
+.hidden-pane { display: none; }
+.approval-stack { overflow: auto; min-height: 0; max-height: 55%; flex-shrink: 0; }
+.message-stage { display: flex; flex: 1; min-height: 0; position: relative; }
+.message-stage .workspace-body { width: 100%; scrollbar-gutter: stable; }
+.island .latest-message { padding: 8px 20px 10px; }
+.island .live-message .result-text { font-size: 14px; line-height: 1.65; margin-top: 7px; }
+.copy-response { margin-top: 10px; background: transparent; border: 0; padding: 3px 0; color: var(--secondary); font-size: 11px; }
+.follow-response { position: absolute; right: 24px; bottom: 8px; z-index: 2; font-size: 11px; padding: 5px 10px; background: #25212e; border-radius: 18px; }
+.island .screen-context-note { padding: 3px 18px; gap: 4px; min-height: 30px; }
+.island .screen-context-chip { border: 1px solid #2b2932; border-radius: 8px; background: #121216; padding: 5px 8px; margin-left: 0; max-width: min(700px,80%); overflow: hidden; text-overflow: ellipsis; color: #b5adbf; font-size: 10px; }
+.screen-context-chip small { color: #8f8999; font-size: 9px; margin-left: 6px; }
+.screen-context-chip.ready { color: #cbbde2; }
+.screen-context-chip:disabled { opacity: 1; }
+.island .execution-controls { padding: 5px 20px 12px; gap: 8px; min-height: 38px; align-items: center; }
+.island .microphone-group { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.microphone-group>span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.island .execution-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.voice-notice { color: #c5bbd4; font-size: 10px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+.island .voice-notice button { padding: 0 3px; flex-shrink: 0; font-size: 15px; }
+.island.live-only .text-composer { margin: 6px 16px; }
+@media(max-width:650px) { .island .execution-controls { flex-wrap: wrap; } .island .microphone-group { flex-wrap: wrap; } .voice-notice { max-width: 220px; } .screen-context-chip small { display: none; } }
 .mood-completed .companion-float { animation: zen-celebrate 650ms cubic-bezier(.2,.8,.3,1) 1, zen-float 4.8s 650ms ease-in-out infinite; }
 .mood-completed .companion-eyes { opacity: 0; animation: none; }
 .mood-completed .companion-smile { opacity: 1; }
