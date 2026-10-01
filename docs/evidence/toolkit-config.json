@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-01T08:19:08.342Z",
+  "agentId": "agent_98652f2661104ff282e5e5c9ca817ef1325ffa8195414c009f",
+  "model": "gpt-6.1-sol",
+  "added": [
+    "tool_search",
+    "zen_files",
+    "zen_cloud"
+  ],
+  "refreshed": [
+    "zen_cloud"
+  ],
+  "preserved": [
+    "name",
+    "model",
+    "multi_agent",
+    "reasoning",
+    "text",
+    "instructions"
+  ],
+  "verified": true,
+  "hostedViaResponses": true,
+  "localShell": false,
+  "localFilesUploaded": false
+}

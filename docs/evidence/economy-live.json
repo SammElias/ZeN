@@ -1,7 +1,189 @@
 {
-  "at": "2026-09-30T18:53:00.493Z",
+  "at": "2026-10-01T06:57:26.187Z",
   "mode": "live",
-  "paidTasks": 0,
-  "error": "Request timed out.",
-  "metadata": []
+  "paidTasks": 2,
+  "agent": {
+    "completed": true,
+    "continuedSameSession": true,
+    "model": "gpt-6.1-sol",
+    "multiAgent": {
+      "enabled": false,
+      "max_concurrent_subagents": null
+    },
+    "metadata": {
+      "zen_economy": "zen-economy-v1",
+      "zen_turns": "2"
+    },
+    "reasoning": {
+      "effort": "low",
+      "summary": null
+    },
+    "serviceTier": "default",
+    "usage": null
+  },
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0,
+    "committedMonthEur": 1,
+    "estimatedDayEur": 0,
+    "pendingEur": 1,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cachedTokens": 0,
+    "uncertainCalls": 2,
+    "pricingDate": "2026-09-30"
+  },
+  "savedAgentUnchanged": true,
+  "voiceConfiguration": {
+    "accepted": true,
+    "model": "gpt-realtime-2.1-mini",
+    "automaticResponse": false,
+    "tools": 0,
+    "generatedAudio": false
+  },
+  "metadata": [
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.created",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe045e4488819596d5bfec3c3d817f",
+      "usage": null,
+      "costEstimate": null
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.created",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.in_progress",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.in_progress",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.added",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.output_text.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.content_part.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.item.done",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "agent_event",
+      "eventType": "agent.session.turn.completed",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426"
+    },
+    {
+      "type": "usage",
+      "channel": "tokens",
+      "model": "gpt-6.1-sol",
+      "sessionId": "sess_073ce05aea568ec4006abe0459b7008195a2c7e0b23d478cf2",
+      "turnId": "turn_073ce05aea568ec4006abe046b311481959cce56bc0658a426",
+      "usage": null,
+      "costEstimate": null
+    }
+  ]
 }

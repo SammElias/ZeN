@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-01T08:23:24.481Z",
+  "kind": "files",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "state": "completed",
+  "result": "El archivo `zen-toolkit-fixture.txt` contiene el número de verificación **7319**.",
+  "sessionId": "sess_012eb6ad1f272fc9006abe187ee41481978264b643270e48ab",
+  "toolNames": [
+    {
+      "name": "zen_files",
+      "success": true
+    },
+    {
+      "name": "zen_files",
+      "success": true
+    }
+  ],
+  "webSearchCompleted": false,
+  "sourceLinks": [],
+  "cloudItems": [],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0,
+    "committedMonthEur": 0.5,
+    "estimatedDayEur": 0,
+    "pendingEur": 0.5,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cachedTokens": 0,
+    "uncertainCalls": 1,
+    "pricingDate": "2026-09-30"
+  }
+}

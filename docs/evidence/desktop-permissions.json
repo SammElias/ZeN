@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-01T07:38:56.772Z",
+  "implemented": [
+    "natural Spanish direct commands and compound requests",
+    "Google and YouTube site aliases",
+    "original human request policy, bounded target matching",
+    "source-bound media selection and no toggle",
+    "optional clip media session picker",
+    "local failure and verified partial outcomes override model narration"
+  ],
+  "tests": {
+    "unit": {
+      "passed": 165,
+      "files": 15
+    },
+    "build": true,
+    "mockDesktopAuthority": true,
+    "mockAgentRequiredActions": true,
+    "mockUi": "desktop-permissions-ui.json",
+    "realWindowsMedia": "native-media.json",
+    "packagedExecutable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261001073819410\\ZEN.exe",
+    "packageScope": "interface"
+  },
+  "savedAgentConfigChanged": false,
+  "newLiveApiCalls": false,
+  "personalMediaModified": false,
+  "pending": [
+    "physical YouTube and microphone scenario",
+    "automatic YouTube service identification when SMTC provides browser only",
+    "general mouse/keyboard/UIA execution",
+    "full-objective meeting focus precondition"
+  ]
+}

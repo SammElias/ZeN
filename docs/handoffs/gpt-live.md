@@ -1,3 +1,5 @@
+> Referencia histórica. La petición del 01/10/2026 adelanta la integración y aporta otro JSON exacto, activo en [config/live-session.json](../../config/live-session.json). No ejecutar este saludo ni estas instrucciones anteriores junto a la nueva configuración. [Estado](../live-status.md).
+
 # ZEN — Integrar GPT-Live después de las tareas anteriores
 
 ## Momento de ejecución y prioridad

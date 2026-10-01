@@ -1,0 +1,111 @@
+{
+  "bridge": true,
+  "nodeAbsent": true,
+  "rendered": true,
+  "settings": {
+    "ok": true,
+    "value": {
+      "settings": {
+        "reasoningModel": "gpt-6.1-sol",
+        "voiceModel": "gpt-live-1",
+        "shortcut": "Control+Alt+Z",
+        "maxToolCalls": 4,
+        "maxConcurrentTasks": 1,
+        "maxQueuedTasks": 8,
+        "taskTimeoutMs": 90000,
+        "allowNotepad": true,
+        "voiceConsent": false,
+        "listenOnInvoke": false,
+        "autoHideSuccess": false,
+        "showResultsInMeeting": false,
+        "costControlsVersion": 1,
+        "monthlyBudgetEur": 100,
+        "dailyTargetEur": 1,
+        "eurPerUsd": 1,
+        "maxContextChars": 4000,
+        "interfaceSounds": true,
+        "interfaceAnimations": true,
+        "excludedWindows": []
+      },
+      "spending": {
+        "month": "2026-10",
+        "estimatedMonthEur": 0,
+        "committedMonthEur": 0,
+        "estimatedDayEur": 0,
+        "pendingEur": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cachedTokens": 0,
+        "uncertainCalls": 0,
+        "pricingDate": "2026-10-01"
+      },
+      "hasKey": false,
+      "shortcutRegistered": true,
+      "protectedStorage": true
+    }
+  },
+  "projectIpcVerified": true,
+  "unknownProjectBlocked": true,
+  "protectedRoundTrip": true,
+  "preferencesIsolated": true,
+  "shortcutRegistered": true,
+  "trayCreated": true,
+  "invalidIpcBlocked": true,
+  "startedCompact": true,
+  "shownOnTop": true,
+  "hiddenNotOnTop": true,
+  "topAnchorStable": true,
+  "collapsedHeightVerified": true,
+  "latestOnlyExpanded": true,
+  "latestTranscriptVerified": true,
+  "latestInterruptionVerified": true,
+  "unknownArtifactBlocked": true,
+  "invalidLiveSessionBlocked": true,
+  "mcpSecretProtectionVerified": true,
+  "libraryRootsLocal": true,
+  "localFileWithoutApiVerified": true,
+  "invalidDragBlocked": true,
+  "horizontalDragVerified": true,
+  "dragPositionPersisted": true,
+  "dragChecks": [
+    {
+      "displayId": 3375922673,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 3375922673,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 754163228,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 754163228,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    }
+  ],
+  "dragInput": "synthetic cursor on real displays",
+  "widthsVerified": true,
+  "positionLocked": true,
+  "capsuleBounds": {
+    "x": 2560,
+    "y": 0,
+    "width": 640,
+    "height": 48
+  },
+  "cardBounds": {
+    "x": 2320,
+    "y": 0,
+    "width": 1120,
+    "height": 210
+  }
+}

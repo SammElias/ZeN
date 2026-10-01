@@ -1,12 +1,10 @@
 # Orden de entregas de ZEN
 
-Petición directa del usuario: terminar las tareas anteriores antes de aplicar `gpt-live.md`.
+La petición explícita del 01/10/2026 adelanta GPT-Live, aunque siga incompleto el objetivo general. Esta petición sustituye la condición anterior de esperar a terminar todas las tareas.
 
-1. Completar ZEN_FINAL_OBJECTIVE (1).md con ZEN_UI_SPEC.md, conservar integraciones y documentar implementación, pruebas y bloqueos. No declarar completo el objetivo mientras queden requisitos sin cumplir.
-2. Después aplicar el guion GPT-Live conservado íntegro en `gpt-live.md`. Su objeto JSON literal se conserva en `gpt-live.session.json`; todavía no es una configuración de ejecución activa.
+1. Mantener objetivo final, UI Capsule, políticas e integraciones existentes; documentar pendientes sin declarar el objetivo completo.
+2. Integrar ahora GPT-Live con el **último JSON exacto**, activo en [config/live-session.json](../../config/live-session.json): instrucciones «Te llamas ZeN…», gpt-live-1/echo, delegación Responses gpt-6.1-sol, low, web_search y parallel_tool_calls false.
 
-Estado de esta segunda entrega: registrada y pendiente; no implementada ni probada. No sustituir anticipadamente la ruta de voz existente.
+Integración aplicada y probada por separado con mocks, Windows y API real/WebRTC. [Estado actual](../live-status.md). El agente guardado sigue independiente y no se modifica para esta migración. No añadir herramientas ni campos omitidos al JSON Live. No generar nuevos .exe hasta instrucción explícita del usuario.
 
-La futura ruta Live usa gpt-live-1, voz echo y delegación Responses gpt-6.1-sol con web_search. La ruta del agente guardado es independiente; no modificarlo. No ejecutar órdenes narrativas ni añadir herramientas al JSON. Verificar documentación y acceso real antes de implementar eventos.
-
-Integrar transcripciones literales por intervalos, saludo único tras session.started, silencio local inmediato y persistente, modo reunión y cierre confirmado por session.closed. Los mocks no acreditan voz real; timeout o desconexión durante cierre se registran como finalización incompleta.
+`gpt-live.md` y `gpt-live.session.json` conservan el handoff anterior íntegro como referencia histórica; sus instrucciones y saludo adicional no se mezclan con la configuración vigente.

@@ -20,6 +20,6 @@ export class PersonalStore {
     if (!Array.isArray(raw)) throw new ZenError('Historial de tareas dañado.');
     return raw.slice(-100).filter((row): row is TaskEvent => row && typeof row.id === 'string' && typeof row.message === 'string' && ['idle', 'queued', 'listening', 'thinking', 'awaiting_approval', 'awaiting_input', 'executing', 'completed', 'failed', 'cancelled'].includes(row.state));
   }
-  recover() { const tasks = this.tasks().map(row => ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state) ? { ...row, state: 'failed' as const, message: 'Tarea interrumpida por cierre o reinicio. No se reanuda ni se repiten acciones automáticamente.' } : row); this.write('tasks.json', tasks); }
+  recover() { const tasks = this.tasks().map(row => (['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state) || row.workContext?.phase === 'review') ? { ...row, ...(row.workContext?{workContext:{owner:'codex' as const,phase:'incomplete' as const}}:{}), state: 'failed' as const, message: 'Tarea interrumpida por cierre o reinicio. No se reanuda ni se repiten acciones automáticamente.' } : row); this.write('tasks.json', tasks); }
   task(event: TaskEvent) { if (event.id === 'voice' || event.id === 'storage' || event.streamText !== undefined) return; const tasks = this.tasks().filter(row => row.id !== event.id); const persisted = event.approval ? { ...event, approval: { ...event.approval, content: undefined } } : event; this.write('tasks.json', [...tasks, persisted].slice(-100)); }
 }

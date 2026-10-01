@@ -1,5 +1,5 @@
-import type { ZenBridge } from '../shared/contracts';
-export type VoiceStatus = 'disconnected' | 'connecting' | 'connected';
+import type { Utterance, ZenBridge } from '../shared/contracts';
+export type VoiceStatus = 'disconnected' | 'connecting' | 'connected' | 'closing';
 export class VoiceClient {
   private pc?: RTCPeerConnection;
   private stream?: MediaStream;
@@ -12,7 +12,8 @@ export class VoiceClient {
   private muted = false;
   private outputAllowed = true;
   private ready = false;
-  constructor(private bridge: ZenBridge, private state: (status: VoiceStatus, microphone: boolean) => void, private message: (text: string) => void, private speaking: (value: boolean) => void = () => {}) { this.audio.autoplay = true; }
+  private outputResponse?: { id: string; sourceItemId?: string; text: string };
+  constructor(private bridge: ZenBridge, private state: (status: VoiceStatus, microphone: boolean) => void, private message: (text: string) => void, private speaking: (value: boolean) => void = () => {}, private transcript: (event: Utterance) => void = () => {}) { this.audio.autoplay = true; }
   level() {
     if (!this.analyser || this.muted) return 0;
     const data = new Uint8Array(this.analyser.fftSize); this.analyser.getByteTimeDomainData(data);
@@ -43,12 +44,16 @@ export class VoiceClient {
       pc.addTrack(stream.getAudioTracks()[0], stream);
       const dc = pc.createDataChannel('oai-events');
       dc.onmessage = event => {
+        if (generation !== this.generation) return;
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'output_audio_buffer.started') { this.audio.muted = !this.outputAllowed; this.speaking(this.outputAllowed); }
           if (data.type === 'output_audio_buffer.stopped' || data.type === 'output_audio_buffer.cleared') this.speaking(false);
-          if (data.type === 'conversation.item.input_audio_transcription.completed') this.message(`Tú: ${data.transcript}`);
-          if (data.type === 'response.output_audio_transcript.done') this.message(`ZEN (voz): ${data.transcript}`);
+          if (data.type === 'input_audio_buffer.speech_started') { this.outputResponse = undefined; this.audio.muted = true; this.speaking(false); }
+          if (data.type === 'response.created' && typeof data.response?.id === 'string') this.outputResponse = { id: data.response.id, sourceItemId: data.response.metadata?.zen_utterance_id, text: '' };
+          const output = this.outputResponse;
+          if (output && data.response_id === output.id && data.type === 'response.output_audio_transcript.delta' && typeof data.delta === 'string') { output.text = (output.text + data.delta).slice(0, 12000); this.transcript({ speaker: 'zen', id: output.id, sourceItemId: output.sourceItemId, text: output.text, phase: 'delta' }); }
+          if (output && data.response_id === output.id && data.type === 'response.output_audio_transcript.done' && typeof data.transcript === 'string') { this.transcript({ speaker: 'zen', id: output.id, sourceItemId: output.sourceItemId, text: data.transcript.slice(0, 12000), phase: 'done' }); }
         } catch { this.message('Evento de audio ilegible.'); }
       };
       const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
@@ -78,6 +83,7 @@ export class VoiceClient {
   }
   async stop() {
     this.ready = false;
+    this.outputResponse = undefined;
     ++this.generation;
     const id = this.sessionId; this.sessionId = undefined;
     const pc = this.pc; this.pc = undefined;

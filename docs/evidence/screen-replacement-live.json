@@ -1,0 +1,744 @@
+{
+  "at": "2026-10-01T09:51:40.740Z",
+  "realApi": true,
+  "realWebRTC": true,
+  "syntheticAudio": true,
+  "physicalMicrophone": false,
+  "exactSession": {
+    "model": "gpt-live-1",
+    "instructions": "Te llamas ZeN. Eres un compañero amigable y directo que ayuda al usuario con sus tareas y su vida cotidiana.",
+    "audio": {
+      "output": {
+        "voice": "echo"
+      }
+    },
+    "delegation": {
+      "type": "responses",
+      "responses": {
+        "parallel_tool_calls": false,
+        "model": "gpt-6.1-sol",
+        "reasoning": {
+          "effort": "low"
+        },
+        "tools": [
+          {
+            "type": "web_search"
+          }
+        ]
+      }
+    }
+  },
+  "passed": true,
+  "visualFixture": true,
+  "ownedFixtureOnly": true,
+  "previousVisionVerified": true,
+  "visualReferenceReplaced": true,
+  "spokenResultObserved": true,
+  "remoteAudioReceived": true,
+  "sessionStarted": true,
+  "captions": [
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta",
+      "phase": "start",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 4800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 5200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 5600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 6000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 6400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 7000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 7200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 7600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 8000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 8400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 8800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 9000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 9400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 9600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 9800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 10200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 10400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 11000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 11800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 12200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 12400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una descripción",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 13000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-4600",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una descripción anterior",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 4600,
+        "endMs": 13600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale,",
+      "phase": "start",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 14000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 14200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 14400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 14600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo.",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 14800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo. Es ",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 15600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo. Es 222222",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 15800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo. Es 222222:",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 16000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo. Es 222222: seis",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 16400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-13800",
+      "text": " Vale, voy a mirarlo. Es 222222: seis doses.",
+      "phase": "delta",
+      "sourceItemId": "live-user-4600",
+      "timeline": {
+        "startMs": 13800,
+        "endMs": 16600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta",
+      "phase": "start",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 19200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 19600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 20000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 20400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 20800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 21200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 21400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 22000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 22400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 22800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 23200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 23400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 23800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 24000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 24200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 24600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 24800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 25400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 26200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 26600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 26800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una descripción",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 27400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-19000",
+      "text": " Consulta con SOL la nueva captura de mi ventana actual y dime el código de seis cifras que aparece. No uses una descripción anterior",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 19000,
+        "endMs": 28000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-28200",
+      "text": " Vale,",
+      "phase": "start",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 28200,
+        "endMs": 28400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-28200",
+      "text": " Vale, reviso",
+      "phase": "delta",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 28200,
+        "endMs": 28600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-28200",
+      "text": " Vale, reviso la",
+      "phase": "delta",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 28200,
+        "endMs": 28800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-28200",
+      "text": " Vale, reviso la nueva",
+      "phase": "delta",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 28200,
+        "endMs": 29000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-28200",
+      "text": " Vale, reviso la nueva captura.",
+      "phase": "delta",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 28200,
+        "endMs": 29200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-30600",
+      "text": " Es ",
+      "phase": "start",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 30600,
+        "endMs": 30800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-30600",
+      "text": " Es 384729",
+      "phase": "delta",
+      "sourceItemId": "live-user-19000",
+      "timeline": {
+        "startMs": 30600,
+        "endMs": 31000
+      }
+    }
+  ],
+  "messages": [],
+  "delegations": [
+    {
+      "type": "live_delegation",
+      "model": "gpt-6.1-sol",
+      "state": "completed",
+      "usageConfirmed": true
+    },
+    {
+      "type": "live_delegation",
+      "model": "gpt-6.1-sol",
+      "state": "completed",
+      "usageConfirmed": true
+    }
+  ],
+  "finalization": {
+    "type": "voice_session",
+    "channel": "voice",
+    "model": "gpt-live-1",
+    "state": "closed",
+    "reason": "close_requested"
+  },
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.03387643333333333,
+    "committedMonthEur": 0.03387643333333333,
+    "estimatedDayEur": 0.03387643333333333,
+    "pendingEur": 0,
+    "inputTokens": 12475,
+    "outputTokens": 45,
+    "cachedTokens": 9831,
+    "uncertainCalls": 0,
+    "pricingDate": "2026-10-01"
+  },
+  "webCompleted": false,
+  "outputSoundDetected": true,
+  "imageQueued": true,
+  "solVisionVerified": true,
+  "states": [
+    {
+      "status": "connecting",
+      "microphone": false
+    },
+    {
+      "status": "connected",
+      "microphone": true
+    },
+    {
+      "status": "closing",
+      "microphone": false
+    },
+    {
+      "status": "disconnected",
+      "microphone": false
+    }
+  ]
+}

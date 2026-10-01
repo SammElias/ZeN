@@ -1,8 +1,13 @@
 {
-  "at": "2026-09-30T14:28:10.021Z",
+  "at": "2026-10-01T07:39:01.147Z",
   "realSmtc": true,
   "testPlayerOnly": true,
+  "candidateScope": "owned fixture only",
+  "naturalRequestAuthorized": true,
+  "targetBoundToSelectedSession": true,
   "pausedVerified": true,
   "repeatedPauseDidNotResume": true,
-  "noUserPlayerModified": true
+  "noUserPlayerModified": true,
+  "liveApi": false,
+  "physicalYoutube": false
 }

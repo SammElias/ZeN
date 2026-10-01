@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-01T08:58:54.965Z",
+  "passed": true,
+  "windowsReal": true,
+  "ownedFixtureOnly": true,
+  "nativeHelperReused": true,
+  "newExecutableCreated": false,
+  "width": 760,
+  "height": 460,
+  "statuses": [
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790845134961
+    }
+  ],
+  "productionImagesPersisted": false,
+  "syntheticFixtureSavedForApiProbe": true
+}

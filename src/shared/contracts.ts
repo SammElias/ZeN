@@ -2,9 +2,12 @@ import { z } from 'zod';
 import type { Profile, ResponseMode } from './personal';
 import type { WindowInfo, MediaInfo } from '../tools/windows/native';
 import type { Approval, Prepare } from './approval';
+import type { PublicMcpConnection } from './mcp';
+import type { ScreenContextStatus } from '../main/screen-context';
+import type { WorkContext, ProjectDraft, ProjectBundle } from './project';
 export const SettingsSchema = z.object({
   reasoningModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-6.1-sol'),
-  voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-realtime-2.1-mini'),
+  voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-live-1'),
   shortcut: z.string().min(3).max(80).default('Control+Alt+Z'),
   maxToolCalls: z.number().int().min(1).max(10).default(4),
   maxConcurrentTasks: z.number().int().min(1).max(3).default(1),
@@ -26,16 +29,26 @@ export const SettingsSchema = z.object({
 }).strict();
 export type Settings = z.infer<typeof SettingsSchema>;
 export type TaskState = 'idle' | 'queued' | 'listening' | 'thinking' | 'awaiting_approval' | 'awaiting_input' | 'executing' | 'completed' | 'failed' | 'cancelled';
-export type TaskEvent = { id: string; state: TaskState; message: string; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string };
+export type Utterance = { speaker: 'user' | 'zen'; id: string; text: string; phase: 'start' | 'delta' | 'done'; sourceItemId?: string; timeline?: {startMs:number;endMs:number} };
+export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text'])}).strict();
+export type Artifact = z.infer<typeof ArtifactSchema>;
+export type TaskEvent = { id: string; state: TaskState; message: string; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext };
 export type Evidence = { application: 'notepad'; pid: number; windowHandle: string; alreadyOpen: boolean; verifiedAt: string };
 export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional() }).strict();
-export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string };
+export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type SpendingSummary = { month: string; estimatedMonthEur: number; committedMonthEur: number; estimatedDayEur: number; pendingEur: number; inputTokens: number; outputTokens: number; cachedTokens: number; uncertainCalls: number; pricingDate: string };
 export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean };
 export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel']), height: z.number().int().min(48).max(1000), reducedMotion: z.boolean().default(false) }).strict();
 export type OverlayLayout = z.infer<typeof OverlayLayoutSchema>;
+export const OverlayPositionSchema = z.object({ displayId: z.number().int(), horizontalRatio: z.number().min(0).max(1) }).strict();
+export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
+export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
+  projectPreview(id:string):Promise<Result<ProjectBundle>>;
+  projectDestination(value:{id:string;grantId:string}):Promise<Result<ProjectDraft>>;
+  projectApprove(value:{id:string;approvalId:string}):Promise<Result<{message:string;verified:true;destination:string}>>;
+  projectDiscard(id:string):Promise<Result<boolean>>;
   chooseDirectory(): Promise<Result<{ grantId: string; label: string } | null>>;
   prepare(request: Prepare): Promise<Result<Approval>>;
   approve(id: string): Promise<Result<{ message: string; verified: true }>>;
@@ -44,6 +57,12 @@ export interface ZenBridge {
   openApp(id: string): Promise<Result<{ id: string; pid: number; windowHandle: string; verified: true }>>;
   openPage(url: string): Promise<Result<{ url: string; title: string; verified: true }>>;
   openFile(): Promise<Result<{ selected: boolean; verified: boolean; name?: string }>>;
+  openArtifact(id: string): Promise<Result<boolean>>;
+  libraryRoots(): Promise<Result<string[]>>;
+  saveLibraryRoots(paths:string[]): Promise<Result<string[]>>;
+  mcpConnection(): Promise<Result<PublicMcpConnection|null>>;
+  saveMcpConnection(value:{label:string;url:string;tools:string[];token?:string}):Promise<Result<PublicMcpConnection|null>>;
+  deleteMcpConnection():Promise<Result<boolean>>;
   windows(): Promise<Result<WindowInfo[]>>;
   observe(request: { id: string; capture: boolean }): Promise<Result<{ observationId: string; text?: string; image?: string }>>;
   media(): Promise<Result<MediaInfo[]>>;
@@ -62,9 +81,15 @@ export interface ZenBridge {
   cancelTask(id: string): Promise<Result<boolean>>;
   hide(): Promise<Result<boolean>>;
   layout(layout: OverlayLayout): Promise<Result<boolean>>;
+  drag(phase: z.infer<typeof OverlayDragSchema>): Promise<Result<boolean>>;
   voiceInterrupt(): Promise<Result<boolean>>;
+  voiceContext(observationId: string | null): Promise<Result<boolean>>;
+  refreshScreen():Promise<Result<boolean>>;
   voiceStart(sdp: string): Promise<Result<{ sessionId: string; sdp: string }>>;
   voiceEnd(sessionId: string): Promise<Result<boolean>>;
+  liveReady(sessionId:string):Promise<Result<boolean>>;
+  liveEnd(sessionId:string):Promise<Result<{finalized:boolean;reason?:string}>>;
+  liveSubmit(requestId:string):Promise<Result<boolean>>;
   clearLogs(): Promise<Result<boolean>>;
   onTask(callback: (event: TaskEvent) => void): () => void;
   onInvoke(callback: (mode: 'configured' | 'voice' | 'focus') => void): () => void;

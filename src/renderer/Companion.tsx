@@ -7,7 +7,7 @@ export function Companion({ state = 'idle', size = 'small', animated = true }: {
   const host = useRef<HTMLSpanElement>(null);
   const gradient = useId().replace(/:/g, '');
   useEffect(() => {
-    if (!animated || size !== 'large') return;
+    if (!animated) return;
     let frame = 0;
     const move = (event: PointerEvent) => {
       cancelAnimationFrame(frame);

@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-01T08:15:18.337Z",
+  "kind": "mcp",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "result": "[Documentación de herramientas de la API de OpenAI](https://developers.openai.com/api/docs/guides/tools)",
+  "artifacts": [],
+  "localFilesChanged": false,
+  "cloudItems": [
+    {
+      "type": "mcp_list_tools"
+    },
+    {
+      "type": "mcp_approval_request"
+    },
+    {
+      "type": "mcp_call",
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.00379,
+    "committedMonthEur": 0.5,
+    "estimatedDayEur": 0.00379,
+    "pendingEur": 0.49621,
+    "inputTokens": 1280,
+    "outputTokens": 59,
+    "cachedTokens": 0,
+    "uncertainCalls": 1,
+    "pricingDate": "2026-09-30"
+  }
+}

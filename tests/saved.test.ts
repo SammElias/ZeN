@@ -81,6 +81,25 @@ describe('Flujo de sesiones', () => {
     expect(result.needsInput).toBe(true); expect(result.message).toContain('Destino no autorizado');
     expect(f.agents.sessions.events.create.mock.calls[0][1].events[0].success).toBe(false);
   });
+  it('un fallo local muestra la evidencia parcial y el diagnóstico real, sin inventar permisos', async () => {
+    const actions = [{ operation: 'open_page' }, { operation: 'pause_media' }].map((args, index) => ({ type: 'function_call', turn_id: 'turn-test', call_id: `call-${index}`, name: 'zen_desktop', arguments: args }));
+    const pending = { type: 'agent.session.requires_action', event_id: 'pending', session: { id: 'session-test', required_actions: actions } };
+    const outputs = final.slice(1).map(event => event.event_id === 'c' ? { ...event, text: JSON.stringify({ reasoning_steps: [], actions: [], clarifications_requested: [], result: 'Habilita permisos multimedia en la configuración. Ya hice todo.' }) } : event);
+    const f = setup([final[0], pending,
+      { type: 'agent.session.turn.item.added', event_id: 'answer-start', item: { type: 'message', role: 'assistant', phase: 'final_answer', id: 'answer' } },
+      { type: 'agent.session.turn.output_text.delta', event_id: 'misleading-stream', item_id: 'answer', content_index: 0, delta: '{"result":"Habilita permisos multimedia' },
+      ...outputs]);
+    const handler = vi.fn().mockResolvedValueOnce({ verified: true, userMessage: 'Página cargada y verificada: https://www.google.com/' }).mockRejectedValueOnce(new ZenError('La pausa está autorizada, pero el reproductor es ambiguo. Usa el clip del chat.'));
+    const progress = vi.fn();
+    const result = await f.runner.run('Abre Google y pausa la música', new AbortController().signal, progress, undefined, undefined, handler);
+    expect(result.needsInput).toBe(true);
+    expect(result.message).toContain('Página cargada y verificada');
+    expect(result.message).toContain('La pausa está autorizada');
+    expect(result.message).not.toContain('Habilita permisos');
+    expect(result.message).not.toContain('Ya hice todo');
+    expect(JSON.stringify(progress.mock.calls)).not.toContain('Habilita permisos');
+    expect(progress).toHaveBeenCalledWith('Operación local no completada', expect.stringContaining('La pausa está autorizada'));
+  });
   it('resuelve required_actions, deduplica efectos y devuelve resultados por turno/call con idempotencia', async () => {
     const action = { type: 'function_call', turn_id: 'turn-test', call_id: 'call-test', name: 'zen_desktop', arguments: { operation: 'list_apps' } };
     const pending = (event_id: string) => ({ type: 'agent.session.requires_action', event_id, session: { id: 'session-test', required_actions: [action] } });

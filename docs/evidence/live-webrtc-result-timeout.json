@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-01T08:44:57.579Z",
+  "realApi": true,
+  "realWebRTC": true,
+  "syntheticAudio": true,
+  "physicalMicrophone": false,
+  "exactSession": {
+    "model": "gpt-live-1",
+    "instructions": "Te llamas ZeN. Eres un compañero amigable y directo que ayuda al usuario con sus tareas y su vida cotidiana.",
+    "audio": {
+      "output": {
+        "voice": "echo"
+      }
+    },
+    "delegation": {
+      "type": "responses",
+      "responses": {
+        "parallel_tool_calls": false,
+        "model": "gpt-6.1-sol",
+        "reasoning": {
+          "effort": "low"
+        },
+        "tools": [
+          {
+            "type": "web_search"
+          }
+        ]
+      }
+    }
+  },
+  "passed": false,
+  "error": "page.waitForFunction: Timeout 30000ms exceeded."
+}

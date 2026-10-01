@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-01T08:23:24.572Z",
+  "kind": "web",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "state": "completed",
+  "result": "**Microsoft 365 Business Basic** (en español, **Microsoft 365 Empresa Básico**) es una suscripción de productividad en la nube para empresas de hasta **300 usuarios**.\n\nIncluye principalmente:\n- Versiones **web y móviles** de Word, Excel, PowerPoint y Outlook.\n- Correo electrónico empresarial con dominio personalizado, como `nombre@tuempresa.com`.\n- **1 TB de almacenamiento en la nube por usuario**.\n- Herramientas de colaboración; existen modalidades **con y sin Microsoft Teams**.\n\n**Diferencia importante:** no incluye las aplicaciones completas de escritorio de Office; estas se ofrecen en otros planes, como Empresa Estándar.\n\nFuentes oficiales: [Microsoft 365 Empresa Básico: características y modalidades](https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic) y [Microsoft Support: diferencias entre Microsoft 365 Básico y Empresa Básico](https://support.microsoft.com/es-es/accounts-billing/subscriptions/frequently-asked-questions-about-microsoft-365-basic).",
+  "sessionId": "sess_0d68b8322233d39f006abe187ed9a48194aa7171b568a68a28",
+  "toolNames": [],
+  "webSearchCompleted": true,
+  "sourceLinks": [
+    "https://www.microsoft.com/es-es/microsoft-365/business/microsoft-365-business-basic",
+    "https://support.microsoft.com/es-es/accounts-billing/subscriptions/frequently-asked-questions-about-microsoft-365-basic"
+  ],
+  "cloudItems": [],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.02,
+    "committedMonthEur": 0.5,
+    "estimatedDayEur": 0.02,
+    "pendingEur": 0.48,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "cachedTokens": 0,
+    "uncertainCalls": 1,
+    "pricingDate": "2026-09-30"
+  }
+}

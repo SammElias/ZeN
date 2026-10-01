@@ -7,7 +7,7 @@ import { ZenError } from '../shared/errors';
 
 // Official standard USD rates checked 2026-09-30. Estimates exclude taxes/fees.
 // Unknown models or incomplete usage never become a fabricated zero-cost receipt.
-export const PRICING_DATE = '2026-09-30';
+export const PRICING_DATE = '2026-10-01';
 const rates: Record<string, { input: number; cached: number; output: number; audioInput?: number; audioCached?: number; audioOutput?: number }> = {
   'gpt-6.1-sol': { input: 2.5, cached: .1, output: 10 }, // maximum of input/cache-write rates
   'gpt-realtime-2.1': { input: 4, cached: .4, output: 24, audioInput: 32, audioCached: .4, audioOutput: 64 },
@@ -16,6 +16,7 @@ const rates: Record<string, { input: number; cached: number; output: number; aud
 };
 const count = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 export function estimateUsd(model: string, usage: any): number | undefined {
+  if (model === 'gpt-live-1') { const seconds=count(usage?.seconds); return seconds===undefined?undefined:seconds*.05/60; }
   const rate = rates[model]; const input = count(usage?.input_tokens); const output = count(usage?.output_tokens);
   if (!rate || input === undefined || output === undefined) return;
   const details = usage.input_tokens_details ?? usage.input_token_details ?? {};
@@ -33,7 +34,7 @@ export function estimateUsd(model: string, usage: any): number | undefined {
   return ((input - cached) * rate.input + cached * rate.cached + output * rate.output) / 1e6;
 }
 
-const Entry = z.object({ id: z.string(), at: z.string().datetime(), channel: z.enum(['agent', 'voice']), model: z.string(), reserveUsd: z.number().nonnegative(), costUsd: z.number().nonnegative(), state: z.enum(['active', 'settled', 'uncertain']), inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), cachedTokens: z.number().nonnegative(), receipts: z.array(z.string()) });
+const Entry = z.object({ id: z.string(), at: z.string().datetime(), channel: z.enum(['agent', 'voice']), model: z.string(), reserveUsd: z.number().nonnegative(), costUsd: z.number().nonnegative(), state: z.enum(['active', 'settled', 'uncertain']), inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), cachedTokens: z.number().nonnegative(), receipts: z.array(z.string()),liveSeconds:z.number().nonnegative().default(0) });
 type Entry = z.infer<typeof Entry>;
 export interface SpendingGuard {
   reserve(channel: 'agent' | 'voice', model: string, amountUsd: number): string;
@@ -63,16 +64,17 @@ export class Spending implements SpendingGuard {
   }
   reserve(channel: 'agent' | 'voice', model: string, amountUsd: number) {
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new ZenError('Reserva de gasto no válida.');
-    if (!rates[model]) throw new ZenError('No hay tarifa verificada para ese modelo. Revisa el modelo de voz antes de gastar.');
+    if (!rates[model] && model!=='gpt-live-1') throw new ZenError('No hay tarifa verificada para ese modelo. Revisa el modelo de voz antes de gastar.');
     const settings = this.settings();
     if (this.summary().committedMonthEur + amountUsd * settings.eurPerUsd > settings.monthlyBudgetEur) throw new ZenError('Límite mensual de ZeN alcanzado o reservado. Las operaciones locales siguen disponibles.');
-    const row: Entry = { id: randomUUID(), at: this.now().toISOString(), channel, model, reserveUsd: amountUsd, costUsd: 0, state: 'active', inputTokens: 0, outputTokens: 0, cachedTokens: 0, receipts: [] };
+    const row: Entry = { id: randomUUID(), at: this.now().toISOString(), channel, model, reserveUsd: amountUsd, costUsd: 0, state: 'active', inputTokens: 0, outputTokens: 0, cachedTokens: 0, receipts: [],liveSeconds:0 };
     this.entries.push(row); this.save(); return row.id;
   }
   private entry(id: string) { const row = this.entries.find(row => row.id === id); if (!row) throw new ZenError('Reserva de gasto no válida.'); return row; }
   record(id: string, receipt: string, model: string, usage: any) {
     const row = this.entry(id); if (row.receipts.includes(receipt)) return true;
     const cost = estimateUsd(model, usage); if (cost === undefined) return false;
+    if(model==='gpt-live-1'){row.receipts.push(receipt);row.costUsd+=Math.max(0,usage.seconds-row.liveSeconds)*.05/60;row.liveSeconds=Math.max(row.liveSeconds,usage.seconds);this.save();return true;}
     row.receipts.push(receipt); row.costUsd += cost;
     row.inputTokens += usage.input_tokens; row.outputTokens += usage.output_tokens;
     row.cachedTokens += Math.min(usage.input_tokens, count((usage.input_tokens_details ?? usage.input_token_details)?.cached_tokens) ?? 0);

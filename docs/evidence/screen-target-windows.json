@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-01T09:50:00.353Z",
+  "passed": true,
+  "ownedFixtureOnly": true,
+  "windowsReal": true,
+  "displays": 2,
+  "otherForegroundIgnored": true,
+  "movedCapsuleRetargeted": true,
+  "changedPageCaptured": true,
+  "sourceTitles": [
+    "Gráfico de prueba",
+    "Documentación de prueba",
+    "Gráfico actualizado"
+  ],
+  "productionImagesPersisted": false,
+  "statuses": [
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790848198447,
+      "sourceTitle": "Gráfico de prueba"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790848199382,
+      "sourceTitle": "Documentación de prueba"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "capturing"
+    },
+    {
+      "state": "ready",
+      "capturedAt": 1790848200353,
+      "sourceTitle": "Gráfico actualizado"
+    }
+  ],
+  "verificationNote": "La selección por cápsula se verificó por identificadores y colores; no se registró prueba independiente del foco real de la ventana de documentación. El foco en otro monitor se comprueba con mocks."
+}

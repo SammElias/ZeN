@@ -1,7 +1,9 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { SettingsSchema, type Settings } from '../shared/contracts';
+import { SettingsSchema, OverlayPositionSchema, type Settings, type OverlayPosition } from '../shared/contracts';
 import { ZenError } from '../shared/errors';
+import { z } from 'zod';
+import { McpConnectionSchema, type McpConnection, type PublicMcpConnection } from '../shared/mcp';
 type Protection = { isEncryptionAvailable(): boolean; encryptString(value: string): Buffer; decryptString(value: Buffer): string };
 export class Store {
   private directory: string;
@@ -10,10 +12,26 @@ export class Store {
   private write(name: string, value: string | Buffer) { const path = this.path(name); writeFileSync(path + '.tmp', value, { mode: 0o600 }); renameSync(path + '.tmp', path); }
   settings(): Settings {
     if (!existsSync(this.path('settings.json'))) return SettingsSchema.parse({});
-    try { const raw = JSON.parse(readFileSync(this.path('settings.json'), 'utf8')); if (raw.costControlsVersion === undefined) { raw.maxConcurrentTasks = 1; raw.maxToolCalls = Math.min(raw.maxToolCalls ?? 4, 4); raw.listenOnInvoke = false; if (raw.voiceModel === 'gpt-realtime-2.1') raw.voiceModel = 'gpt-realtime-2.1-mini'; } return SettingsSchema.parse(raw); }
+    try { const raw = JSON.parse(readFileSync(this.path('settings.json'), 'utf8')); if (raw.costControlsVersion === undefined) { raw.maxConcurrentTasks = 1; raw.maxToolCalls = Math.min(raw.maxToolCalls ?? 4, 4); raw.listenOnInvoke = false; } raw.voiceModel='gpt-live-1'; return SettingsSchema.parse(raw); }
     catch { throw new ZenError('Configuración local dañada. Revisa settings.json en los datos de ZEN.'); }
   }
   saveSettings(value: Settings) { this.write('settings.json', JSON.stringify(SettingsSchema.parse(value), null, 2)); }
+  libraryRoots(): string[] { if(!existsSync(this.path('library.json')))return [];try{return z.array(z.string().min(3).max(1000)).max(10).parse(JSON.parse(readFileSync(this.path('library.json'),'utf8')));}catch{throw new ZenError('Las carpetas de consulta locales están dañadas.');} }
+  saveLibraryRoots(roots:string[]) {this.write('library.json',JSON.stringify(z.array(z.string().min(3).max(1000)).max(10).parse(roots),null,2));}
+  mcpConnection(includeToken=false): McpConnection | undefined {
+    if(!existsSync(this.path('mcp.json')))return;
+    try {const connection=McpConnectionSchema.parse(JSON.parse(readFileSync(this.path('mcp.json'),'utf8')));if(includeToken&&existsSync(this.path('mcp-token.bin'))){if(!this.protectedStorage())throw new Error('Unavailable protection');const secret=z.object({url:z.string(),token:z.string().min(1).max(8000)}).strict().parse(JSON.parse(this.protection.decryptString(readFileSync(this.path('mcp-token.bin')))));if(secret.url!==connection.url)throw new Error('Token/server mismatch');return {...connection,authorization:secret.token};}return connection;}catch{throw new ZenError('La conexión MCP local no pudo verificarse.');}
+  }
+  publicMcp():PublicMcpConnection|null {const connection=this.mcpConnection();return connection?{...connection,hasToken:existsSync(this.path('mcp-token.bin'))}:null;}
+  saveMcp(connection:unknown,token?:string) {
+    const parsed=McpConnectionSchema.parse(connection);if(token!==undefined){if(!this.protectedStorage())throw new ZenError('No hay protección de Windows para el token MCP.');this.write('mcp-token.bin',this.protection.encryptString(JSON.stringify({url:parsed.url,token})));}else if(this.publicMcp()?.url!==parsed.url && existsSync(this.path('mcp-token.bin')))unlinkSync(this.path('mcp-token.bin'));
+    this.write('mcp.json',JSON.stringify(parsed,null,2));return this.publicMcp();
+  }
+  deleteMcp(){for(const name of ['mcp.json','mcp-token.bin'])if(existsSync(this.path(name)))unlinkSync(this.path(name));}
+  overlayPosition(): OverlayPosition | undefined {
+    try { const result = OverlayPositionSchema.safeParse(JSON.parse(readFileSync(this.path('overlay-position.json'), 'utf8'))); return result.success ? result.data : undefined; } catch { return undefined; }
+  }
+  saveOverlayPosition(value: OverlayPosition) { this.write('overlay-position.json', JSON.stringify(OverlayPositionSchema.parse(value))); }
   protectedStorage() { return process.platform === 'win32' && this.protection.isEncryptionAvailable(); }
   hasKey() { return existsSync(this.path('key.bin')); }
   saveKey(value: string) {

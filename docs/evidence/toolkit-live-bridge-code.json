@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-01T08:07:28.573Z",
+  "kind": "bridge-code",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "state": "completed",
+  "result": "La media es **12**: `(7 + 11 + 18) / 3 = 36 / 3 = 12`.\n\nComprobado ejecutando Python en Code Interpreter con `zen_cloud`, `kind: code`: suma **36**, cantidad **3**, media **12.0**. Las comprobaciones `assert` se superaron.",
+  "sessionId": "sess_01c0e0105b53add5006abe14c2b1c4819485469e90874aec6b",
+  "toolNames": [
+    {
+      "name": "zen_cloud",
+      "success": true
+    }
+  ],
+  "webSearchCompleted": false,
+  "sourceLinks": [],
+  "cloudItems": [
+    {
+      "type": "code_interpreter_call",
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.0021236,
+    "committedMonthEur": 2.5,
+    "estimatedDayEur": 0.0021236,
+    "pendingEur": 2.4978764,
+    "inputTokens": 1620,
+    "outputTokens": 104,
+    "cachedTokens": 1236,
+    "uncertainCalls": 2,
+    "pricingDate": "2026-09-30"
+  }
+}

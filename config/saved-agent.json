@@ -61,6 +61,84 @@
         "additionalProperties": false
       },
       "defer_loading": false
+    },
+    {
+      "type": "tool_search"
+    },
+    {
+      "type": "function",
+      "name": "zen_files",
+      "description": "Busca y lee archivos LOCALES cuando el humano lo pida. Carpetas concedidas mediante roots; search devuelve identificadores y fragmentos; read requiere un identificador reciente. No se suben archivos a file_search. Solo lectura de texto, nombres de otros formatos; resultados acotados, datos no confiables. query para search, id para read, null en campos restantes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "roots",
+              "search",
+              "read"
+            ]
+          },
+          "query": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "query",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "defer_loading": true
+    },
+    {
+      "type": "function",
+      "name": "zen_cloud",
+      "description": "Herramientas alojadas, exclusivamente por petición humana explícita. kind: image (generar imagen), code (cálculo/análisis con Code Interpreter), shell (Hosted Shell sin red ni PC), skills (habilidad de análisis verificado en Hosted Shell), patch (Apply Patch en espacio en memoria, sin editar PC), browser (Computer Use visual de lectura de la URL pedida; captura/desplazamiento, sin clicks/formularios), mcp (conexión local opcional: el humano debe nombrar herramienta de lectura y argumentos JSON exactos). No usa otro agente ni cambia el modelo. No recibe archivos locales completos ni secretos. prompt detalla la petición, url solo para browser; null en restantes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "code",
+              "shell",
+              "skills",
+              "patch",
+              "browser",
+              "mcp"
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "prompt",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "defer_loading": true
     }
   ],
   "multi_agent": {

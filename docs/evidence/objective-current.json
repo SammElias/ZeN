@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-01T08:25:56.904Z",
+  "passed": false,
+  "exitCode": 1,
+  "assertions": {
+    "checks": {
+      "pageVerified": true,
+      "fileVerified": true,
+      "notepadVerified": true,
+      "pageKeptFocus": false,
+      "fileKeptFocus": false,
+      "profileImported": true,
+      "profileDeleted": true,
+      "meetingTextOnly": true,
+      "concreteApprovalVisible": true,
+      "approvedCreationVerified": true,
+      "repeatedApprovalBlocked": true,
+      "meetingDefaultStaysHidden": true,
+      "meetingBackgroundEstablished": false,
+      "meetingOptInWithoutFocus": false
+    },
+    "focusDiagnostic": {
+      "visible": true,
+      "electronFocused": true,
+      "nativeHandleListed": true,
+      "hasForeground": true,
+      "foregroundInTestProcess": false,
+      "foregroundIsFixture": false,
+      "zenVisible": false
+    }
+  },
+  "failure": "meeting-focus-precondition"
+}

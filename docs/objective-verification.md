@@ -1,22 +1,105 @@
-# ZEN: estado verificable · 30 de septiembre de 2026
+# ZEN: estado verificable · 1 de octubre de 2026
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
+
+## Revisión actual: captura detrás de ZEN y voz estable
+
+Portable corregido `release/ZEN-20261001095454813/ZEN.exe`: referencia de la ventana situada detrás de la cápsula, renovación al abrir/activar voz, título visible y botón para actualizar; presentación de voz estable y sin destellos repetidos. JSON Live y agente guardado conservados. [Detalles y límites](screen-context.md).
+
+**Probado:** 228 pruebas en 24 archivos, build/auxiliar, [Edge](evidence/screen-target-ui.json) y [arranque/interfaz del portable](evidence/portable-interface.json). [API real](evidence/screen-replacement-live.json): sustitución de imagen y lectura nueva en la misma sesión Live/SOL, con audio sintético y cierre confirmado. [Windows propio sobre dos monitores](evidence/screen-target-windows.json): ventana bajo la cápsula, movimiento y contenido renovado. [Repetición nativa bloqueada](evidence/screen-target-attempt.json) por acceso al escritorio interactivo; recorrido ampliado con cápsula oculta y prueba física con aplicaciones/micrófono del usuario pendientes. Los fallos generales de foco y el objetivo completo siguen pendientes.
+
+## Paquete anterior: primera compilación autorizada
+
+El usuario pidió explícitamente compilar el .exe el 01/10/2026. Portable generado en `release/ZEN-20261001092421154/ZEN.exe`, incluyendo GPT-Live, contexto visual automático y proyectos con Codex. Conservar toda su carpeta; no incluye claves ni perfil, usa la configuración local existente y requiere .NET Desktop Runtime 10.
+
+**Probado en esta compilación:** 218 pruebas en 23 archivos, compilación TypeScript/renderer y auxiliar Windows, y arranque real del ejecutable empaquetado: aislamiento, anclaje, captions, controles Live, biblioteca local y aprobación de proyectos de un uso. [Evidencia y hashes de archivos](evidence/portable-interface.json). Alcance de arranque/interfaz; no se repitió la API real ni el recorrido completo de foco. Pruebas físicas de voz/reunión y fallos anteriores de foco siguen pendientes. El objetivo completo continúa incompleto. Los apartados siguientes conservan el historial previo al empaquetado.
+
+## Revisión: proyectos y carpetas con Codex
+
+Creación delegada al harness Codex alojado, sesión gpt-6.1-sol independiente del agente guardado/Live. Cápsula con transición ZEN → Codex, conversación y proyecto alternables, revisión de archivos/destino y guardado de un uso sin sobrescribir. [Uso, implementación y límites](codex-projects.md).
+
+**Probado:** 218 pruebas en 23 archivos y build; [API real de preparación y exportación de un proyecto sintético](evidence/codex-project-live.json), [IPC/Windows](evidence/codex-project-electron.json) y [Edge](evidence/codex-project-ui.json). Pendientes prueba física por voz, proyectos complejos/existentes y los fallos de foco generales anteriores. Sin nuevo .exe; el objetivo completo continúa incompleto.
+
+## Revisión anterior: contexto visual automático
+
+Una instantánea de ventana al invocar ZEN, disponible para SOL antes de activar una nueva sesión de voz; sin captura continua ni guardado local. Estado visible, caducidad, cancelación y permisos existentes conservados. JSON exacto de Live y agente guardado intactos. [Implementación, uso y límites](screen-context.md).
+
+**Probado:** 207 pruebas en 22 archivos, build, captura de ventana propia en [Windows real](evidence/screen-context-windows.json) y [API real/WebRTC](evidence/screen-context-live.json): SOL leyó un código presente solo en la imagen, Live lo habló y cerró con confirmación. Interfaz y Electron comprobados de nuevo. Pendientes el recorrido manual con aplicaciones personales/dispositivos físicos y los fallos generales de foco registrados anteriormente. No se creó nuevo .exe ni se declara completo el objetivo general.
+
+## Revisión anterior: GPT-Live
+
+La nueva petición adelanta Live: **voz gpt-live-1 / echo**, delegación Responses **gpt-6.1-sol**, con el JSON exacto del último handoff en config/live-session.json. Agente guardado, herramientas locales y permisos conservados; la sesión automática Live solo incluye web_search. Peticiones a herramientas propias se revisan con su transcripción exacta antes de ejecutarlas.
+
+**Probado:** 198 pruebas en 21 archivos, build, [Edge](evidence/live-ui.json), [Electron/Windows](evidence/live-electron.json) y [API real/WebRTC con voz sintética](evidence/live-webrtc.json): sesión, captions literales, audio remoto, delegación web/SOL, respuesta hablada observada y cierre confirmado. Se conservó un intento previo de comprobación del resultado que agotó tiempo: [evidencia](evidence/live-webrtc-result-timeout.json); después se corrigió el fixture de audio continuo y el timeout de la prueba. No representa una prueba física.
+
+**No se generó un nuevo .exe.** Los portables existentes siguen con la voz anterior. [Implementación y cómo probar el proyecto](live-status.md). Pendientes dispositivos físicos, interrupciones en conversación real, Teams y los fallos de foco del recorrido general registrados antes. El objetivo completo sigue incompleto.
+
+Los apartados posteriores describen revisiones anteriores; esta sección es el estado vigente de voz.
+
+## Revisión anterior: última intervención y herramientas
+
+La cápsula muestra únicamente el último mensaje de Tú/ZEN, transcripción parcial y stream público; sin historial visible ni campo de escritura. Conserva contexto opcional, aprobaciones, voz, reunión, Detener y preferencias separadas. Recogida 640×48 DIP y expandida 1120×210 DIP, con arrastre lateral entre pantallas siempre anclado arriba.
+
+La ampliación autorizada añadió `tool_search`, `zen_files` y `zen_cloud`. [Configuración remota verificada](evidence/toolkit-config.json): gpt-6.1-sol, instrucciones, formato y demás campos conservados. Los escritorios autorizados son `C:\Users\Gamming\Desktop` y `C:\Users\samme\Desktop`; búsqueda/lectura local, sin subir carpetas completas. Se añadió lectura explícita totalmente local sin enviar el resultado al razonamiento ni al TTS. La transcripción de la petición hablada sigue remota. Codex implementó el módulo dentro de ZEN, sin delegación permanente a este chat.
+
+**Probado:** 188 pruebas en 19 archivos y build; [28 comprobaciones de interfaz Edge](evidence/latest-ui.json); [Electron/Windows](evidence/latest-electron.json), incluyendo lectura local sin clave, captions/interrupciones, aislamiento, DPAPI con secreto ficticio y anclaje. API real para web, lectura sintética, código, shell alojado, skill propio, parche en memoria, generación de imagen, navegador visual de lectura y MCP público: [detalle y límites](toolkit-status.md). Sin carpetas personales subidas ni cuentas personales MCP conectadas.
+
+**Falló el recorrido completo actual:** [objective-current.json](evidence/objective-current.json). Página/archivo/Notepad, perfil y creación aprobada pasaron; mantener foco al abrir página/archivo falló. Tampoco se estableció la precondición de foco de reunión, por lo que no se acredita mostrar resultados sin activación. Los éxitos históricos no sustituyen este resultado. Pruebas físicas, formatos binarios, conexiones personales y control general de Windows siguen pendientes. GPT-Live conserva su orden y JSON.
+
+El paquete anterior a la última instrucción figura en [portable-interface.json](evidence/portable-interface.json): alcance de interfaz, `fullObjectivePassed: false`. **No generar nuevos .exe hasta que el usuario lo indique.** Los ajustes siguientes se realizan sobre el proyecto.
+
+Los apartados siguientes conservan la evolución y evidencias de revisiones anteriores; el diseño y el estado actuales son los descritos arriba.
+
+## Continuación del 1 de octubre
+
+Se integró mediante avance directo el commit `0de7665` de `origin/main`: compañero visual, sonidos locales y ahorro por sesión. Se corrigió el rechazo real de la API al contexto web `small`: ahora se usa `low`, tipado contra el SDK y protegido por una prueba de regresión. No se modificó el agente guardado remoto.
+
+**Probado hoy:** 141 pruebas unitarias en 14 archivos, compilación de la aplicación y auxiliar Windows, [interfaz Edge](evidence/continuation-ui.json), [Electron/Windows](evidence/objective-current.json) y [API real de ahorro](evidence/economy-live.json). Esta última completó dos tareas sintéticas en la misma sesión y aceptó la configuración de voz mini; no generó audio. El uso de tokens llegó como `null`: se conservan dos reservas pendientes de 0,50 EUR estimados, no gasto confirmado ni ahorro porcentual medido.
+
+La comprobación de foco falló inicialmente. Ahora el recorrido establece una ventana propia y verifica su foco tanto con Electron como con Windows antes de mostrar el resultado sin activación. Un recorrido anterior al ajuste de chat superó esa precondición y el resultado conservó el foco; el paquete posterior falló al establecerla, como se detalla abajo. La prueba registra también los fallos actuales sin sustituir evidencia previa de éxito. Esto no sustituye Teams real ni garantiza ausencia de variaciones del escritorio durante pruebas automatizadas.
+
+## Ajuste de interfaz: chat único y ancho doble
+
+Aplicado a petición del usuario el 01/10/2026: recogida de **640×48 DIP**, despliegue de **1120 DIP**, centrados en el borde superior y limitados al área útil. Sin pestañas Actividad/Tareas/Contexto, fichas horizontales, solicitud desplegable ni tarjeta de bienvenida. Las respuestas y el stream público se presentan completos en el chat, con scroll; las aprobaciones permanecen visibles cuando son necesarias. Adjuntos mediante clip con revisión opcional, preferencias separadas, voz/reunión/Detener y continuidad por respuesta conservados. No se modificaron integraciones ni configuración remota del agente.
+
+**Probado:** build, 141 pruebas en 14 archivos, [Edge headless](evidence/chat-ui.json) y [ejecutable Windows](evidence/chat-electron.json). Este último verifica 640×48 y 1120×260 DIP, chat sin navegación, mismo anclaje, aislamiento y preferencias. El paquete nuevo existe y pasó la comprobación de interfaz; su prueba funcional completa **falló la precondición de foco de reunión**. Páginas, archivos, Notepad, perfil y aprobación revisada pasaron en ese recorrido, pero no se etiqueta el paquete completo como validado. La evidencia portable anterior se conserva. Pendiente: repetir el recorrido completo con foco estable y validación física de voz/Teams/DPI; ninguna prueba API adicional fue necesaria para este ajuste.
+
+## Arrastre superior y chat simplificado
+
+Nueva petición aplicada el 01/10/2026: cabecera/personaje arrastrables lateralmente y entre pantallas, siempre en el borde superior del área útil. Posición horizontal conservada al expandir, recoger y reabrir; guardada fuera del repositorio. Coordenadas obtenidas en main desde Windows; el IPC solo admite comenzar/terminar y está bloqueado en Preferencias. Pérdida de foco, ocultar, salir o timeout detienen el seguimiento del cursor. Clic normal abre el chat; arrastrar no lo abre accidentalmente.
+
+Campo de escritura simplificado: se quitaron «Te leo», las otras etiquetas permanentes y el medidor inactivo; los controles quedan en una fila y se evita duplicar el micrófono entre cabecera/campo. Estado del micrófono, reunión, push-to-talk y cancelación siguen disponibles.
+
+**Probado:** build, 145 pruebas en 14 archivos, [gestos y diseño en Edge](evidence/drag-ui.json), [paquete de interfaz](evidence/portable-interface.json). El controlador movió la ventana nativa por los extremos de dos pantallas reales con cursor sintético, conservando el borde superior al expandir/recoger y guardando la posición. No valida movimiento físico del ratón, DPI reales variados ni desconexión física de monitor. La prueba de paquete es de interfaz y conserva por separado el pendiente funcional de foco en reunión. No se hicieron nuevas llamadas API.
+
+## Órdenes humanas y autorización de medios
+
+Corrección del 01/10/2026 ante el bloqueo comunicado por el usuario. El filtro local ahora reconoce preguntas directas como «¿Puedes pausar la música?» y «Oye, Cem, ¿Puedes abrirme Google y pausarme la música de YouTube?», imperativos/infinitivos, nombre ZEN y cortesía. Google y YouTube se resuelven como páginas; las peticiones compuestas se conservan para el agente sin convertirlas en un único nombre de aplicación. La comparación de URLs tolera la barra final equivalente, sin autorizar otro origen, ruta o parámetros. Notepad conserva su permiso local previo. Agente guardado, herramientas, instrucciones, modelo y JSON de configuración sin cambios.
+
+Una petición reconocida autoriza la operación reversible solicitada; no existe un interruptor adicional de «permisos multimedia». La autorización se calcula exclusivamente con la petición humana original, no con memoria, documentos, capturas ni resultados del modelo. Negaciones, citas y destinos alternativos siguen bloqueados. No se ha activado acceso general de administrador, shell, ratón o teclado.
+
+La pausa directa y la del puente comparten selección de sesión: solo un reproductor en reproducción que corresponda a la fuente pedida; si ninguno reproduce, una única sesión pausada. Se rechazan identificadores duplicados, fuentes distintas, sesiones obsoletas y falta de Pause explícito. Nombrar Spotify permite elegirlo aunque haya otro reproductor; pedir YouTube no autoriza pausar cualquier aplicación ni inferir YouTube a partir de Chrome/Edge o del título de una canción. Windows SMTC puede informar únicamente la aplicación del navegador: en ese caso la identificación automática del servicio **queda pendiente** y el clip del chat permite **Ver reproductores → Pausar este reproductor**, mostrando el título y el estado. Es selección para una acción concreta, no configuración en el chat.
+
+Los fallos de herramientas presentan el diagnóstico local y los efectos anteriores verificados. Después de un fallo, el stream y el resultado del modelo no sustituyen la evidencia ni muestran su recomendación inventada de activar permisos. Si se preparó una creación junto con un fallo, su aprobación continúa pendiente. No se repiten efectos automáticamente.
+
+**Probado:** 165 pruebas en 15 archivos, build y [regresiones/alcance](evidence/desktop-permissions.json). [Edge headless](evidence/desktop-permissions-ui.json): selector desde el clip, llamada al identificador elegido y estado Paused con mock, conservando chat compacto y aislamiento. [Windows SMTC real](evidence/native-media.json): autorización de una petición cortés, selección **acotada al reproductor propio de prueba**, pausa verificada y segunda pausa sin reanudar. [Portable actualizado](evidence/portable-interface.json): arranque, IPC, chat y anclaje; alcance de interfaz, sin acreditar el objetivo funcional completo. Ninguna llamada API adicional; ningún reproductor personal modificado. **Pendiente:** prueba con YouTube real, control general por ratón/teclado/UI Automation y el recorrido completo de reunión ya documentado.
 
 ## Implementado y probado
 
 | Capacidad | Implementación y evidencia |
 |---|---|
-| Agente guardado | Agents API, ZeN/gpt-6.1-sol, sin overrides. Se corrigió la frase autorizada y después se añadió zen_desktop con autorización específica: [corrección](evidence/saved-agent-config.json) y [ampliación](evidence/desktop-agent-config.json). Validación de turno/resultado, sin mostrar reasoning_steps ni ejecutar acciones narrativas. |
+| Agente guardado | Estado actual y ampliación de herramientas en [toolkit-status.md](toolkit-status.md). Agents API, ZeN/gpt-6.1-sol. Se corrigió la frase autorizada y después se añadió zen_desktop con autorización específica: [corrección](evidence/saved-agent-config.json) y [ampliación](evidence/desktop-agent-config.json). Las opciones económicas autorizadas se aplican por sesión; [agente remoto conservado](evidence/economy-live.json). Validación de turno/resultado, sin mostrar reasoning_steps ni ejecutar acciones narrativas. |
 | Búsqueda/continuación | [Búsqueda real Microsoft](evidence/saved-agent-live.json), 19.418 ms; [continuación real](evidence/agent-followup-live.json), 9.802 ms. Suscripción antes de entrada, idempotencia y una entrada activa por sesión. Mocks prueban idle distinto de éxito, ejecución/idempotencia de required_actions autorizadas y bloqueo de solicitudes incompatibles. |
-| Interfaz | [Isla compacta v1](island-v1.md), 320×48 DIP y anclaje superior. Exclusiva para actividad/stream/contexto/tareas, preferencias separadas desde bandeja. Resultados completos bajo demanda, permisos concretos, micrófono y Detener visibles. Edge headless, Electron/Windows y stream público API real verificados por separado. DPI/monitores físicos y confort en llamada pendientes. |
+| Interfaz | [Isla compacta v1](island-v1.md), 640×48 DIP y anclaje superior, última intervención desplegada de 1120 DIP, con [compañero original y sonidos locales](companion-design.md). Vista expandida exclusiva de última intervención y stream, preferencias separadas desde bandeja. Resultados completos con scroll, permisos concretos, micrófono y Detener visibles. [Edge headless actual](evidence/drag-ui.json), Electron/Windows y stream público API real verificados por separado. DPI/monitores físicos, escucha de sonidos y confort en llamada pendientes. |
 | Página/archivo/aplicación | Órdenes directas acotadas, navegador aislado, visor de lectura y aplicaciones registradas/Notepad con ventana verificada. [Electron real](evidence/objective-electron.json): páginas/archivos propios, Notepad y foco conservado en modo reunión. |
 | Creación revisada | Directorio elegido, destino/contenido inmutables, permiso de un uso, sin sobrescritura. Tests filesystem y Electron real: tarjeta visible, clic Permitir, archivo leído y segunda aprobación rechazada. |
 | Visión/lectura | Auxiliar .NET: UI Automation y PrintWindow de ventana elegida, límites, exclusiones y revalidación. [Observación Windows](evidence/native-observation.json). [Imagen enviada y borrador](evidence/vision-agent-live.json): datos de prueba, perfil de prueba, sin enviar mensaje; resultado recuperado tras corregir presentación como objeto, sin repetir petición. Captura no persistida localmente. |
-| Medios | SMTC con selección inequívoca y Pause verificado. [Reproductor real de prueba](evidence/native-media.json): segunda pausa no reanuda; reproductores personales no modificados. |
+| Medios | Órdenes directas naturales y SMTC con selección vinculada al origen pedido; clip del chat para una sesión concreta. Pause verificado. [Reproductor real de prueba](evidence/native-media.json): segunda pausa no reanuda; reproductores personales no modificados. |
 | Memoria | Vacía inicialmente, importación con preview editable; hechos/preferencias/tentativos, origen/fecha, búsqueda, corrección, exportación y borrado. Tests persistencia/reinicio/UI, Electron guarda y elimina. Solo contexto relevante. |
-| Tareas | IDs/estados y progreso de eventos reales, concurrencia 1–3, cola de pendientes acotada, prioridades alta/normal/baja y FIFO entre iguales, cola serial de efectos, cancelación individual/global, tiempo/pasos, resultados persistentes y recuperación sin repetir efectos. **114 tests en doce archivos**; build y auxiliar compilados. |
-| Voz/reunión | Realtime/WebRTC + sideband, transcripción y mismo gestor. Silencio persistente, reunión manual y opción de resultados sin foco (Electron real). Push-to-talk implementado: conecta silenciado, botón mantenido/Ctrl+Espacio con ZEN enfocado, suelta/cambio de foco silencia; tres mocks prueban negociación y cancelación. Hardware físico pendiente. [Interrupción real](evidence/voice-interruption-live.json): audio limpiado con investigación activa, tarea completa por escrito. Audio sintético; no valida hardware físico. |
-| Ejecutable | [Paquete portable ejecutado](evidence/portable-package.json), ruta/hashes/pruebas. Sin claves ni datos personales; requiere .NET Desktop Runtime 10. Sin instalador/firma propia. |
+| Tareas | IDs/estados y progreso de eventos reales, concurrencia 1–3 (una por defecto), cola de pendientes acotada, prioridades alta/normal/baja y FIFO entre iguales, cola serial de efectos, cancelación individual/global, tiempo/pasos, resultados persistentes y recuperación sin repetir efectos. **165 tests en 15 archivos**; build y auxiliar compilados. |
+| Ahorro | [Opciones por sesión y contador local](api-costs.md), reservas antes de llamadas de pago, recibos deduplicados y conservación de reservas con uso desconocido. Dos tareas API reales completas, continuación y configuración mini aceptadas. Consumo real y ahorro comparativo no cuantificados; no es un límite garantizado de factura. |
+| Voz/reunión | Realtime/WebRTC + sideband, transcripción autenticada al mismo gestor; voz mini y lectura breve del resultado implementadas. [Configuración mini aceptada](evidence/economy-live.json), sin generar audio en ese recorrido. Silencio persistente, reunión manual y resultados sin foco (Electron real). Push-to-talk: conecta silenciado, botón mantenido/Ctrl+Espacio con ZEN enfocado, suelta/cambio de foco silencia; mocks de negociación/cancelación. [Interrupción real anterior](evidence/voice-interruption-live.json): audio sintético limpiado con investigación activa, tarea completa por escrito. No valida hardware físico ni acredita audio del nuevo modelo mini. |
+| Ejecutable | [Interfaz actual ejecutada](evidence/portable-interface.json), arranque/aislamiento/geometría y controlador de arrastre verificados; recorrido completo pendiente por precondición de foco. [Portable anterior](evidence/portable-package.json), ruta/hashes/pruebas completas anteriores. Sin claves ni datos personales; requiere .NET Desktop Runtime 10. Sin instalador/firma propia. |
 
 clearRoundTripMs = 886,1 ms en voz incluye espera deliberada hasta investigación activa y transporte remoto: **no mide mute local ni interrupción hablada**. No se midió primera respuesta física o calidad acústica. Duración de visión no registrada: null.
 
@@ -44,4 +127,4 @@ El usuario autorizó añadir zen_desktop manteniendo intactas las demás opcione
 
 ## Entorno
 
-Windows; Node 22.17.1; Electron 44.5.1; .NET SDK 10.0.401; OpenAI SDK 7.25.0. [README](../README.md) contiene comandos. Cambios nuevos todavía no publicados en GitHub; remoto conserva la primera entrega.
+Windows; Node 22.17.1; Electron 44.5.1; .NET SDK 10.0.401; OpenAI SDK 7.25.0. [README](../README.md) contiene comandos. Se incorporó `origin/main` hasta `0de7665`; las correcciones y evidencias de esta continuación son locales, todavía sin publicar en GitHub.

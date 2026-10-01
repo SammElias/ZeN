@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-01T07:15:34.107Z",
+  "passed": true,
+  "scope": "packaged-interface-smoke",
+  "executable": "C:/Users/samme/Desktop/ZeN/release/ZEN-20261001071418930/ZEN.exe",
+  "result": {
+    "bridge": true,
+    "nodeAbsent": true,
+    "rendered": true,
+    "settings": {
+      "ok": true,
+      "value": {
+        "settings": {
+          "reasoningModel": "gpt-6.1-sol",
+          "voiceModel": "gpt-realtime-2.1-mini",
+          "shortcut": "Control+Alt+Z",
+          "maxToolCalls": 4,
+          "maxConcurrentTasks": 1,
+          "maxQueuedTasks": 8,
+          "taskTimeoutMs": 90000,
+          "allowNotepad": true,
+          "voiceConsent": false,
+          "listenOnInvoke": false,
+          "autoHideSuccess": false,
+          "showResultsInMeeting": false,
+          "costControlsVersion": 1,
+          "monthlyBudgetEur": 100,
+          "dailyTargetEur": 1,
+          "eurPerUsd": 1,
+          "maxContextChars": 4000,
+          "interfaceSounds": true,
+          "interfaceAnimations": true,
+          "excludedWindows": []
+        },
+        "spending": {
+          "month": "2026-10",
+          "estimatedMonthEur": 0,
+          "committedMonthEur": 0,
+          "estimatedDayEur": 0,
+          "pendingEur": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedTokens": 0,
+          "uncertainCalls": 0,
+          "pricingDate": "2026-09-30"
+        },
+        "hasKey": false,
+        "shortcutRegistered": false,
+        "protectedStorage": true
+      }
+    },
+    "protectedRoundTrip": true,
+    "preferencesIsolated": true,
+    "shortcutRegistered": false,
+    "trayCreated": true,
+    "invalidIpcBlocked": true,
+    "startedCompact": true,
+    "shownOnTop": true,
+    "hiddenNotOnTop": true,
+    "topAnchorStable": true,
+    "collapsedHeightVerified": true,
+    "chatOnlyExpanded": true,
+    "widthsVerified": true,
+    "positionLocked": true,
+    "capsuleBounds": {
+      "x": 2560,
+      "y": 0,
+      "width": 640,
+      "height": 48
+    },
+    "cardBounds": {
+      "x": 2320,
+      "y": 0,
+      "width": 1120,
+      "height": 260
+    }
+  },
+  "fullObjectivePassed": false,
+  "objectiveFailure": "meeting-focus-precondition",
+  "credentialsIncluded": false
+}

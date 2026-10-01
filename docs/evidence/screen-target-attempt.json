@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-01T09:53:31.5693308Z",
+  "passed": false,
+  "ownedFixtureOnly": true,
+  "scope": "latest-native-recheck",
+  "error": "Operación Windows no verificada: InvalidOperationException, desktop. El auxiliar no pudo acceder al escritorio interactivo; no se acredita la comprobación de cápsula oculta."
+}

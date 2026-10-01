@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import type { Settings } from '../shared/contracts';
 import { ZenError } from '../shared/errors';
+import { humanCommand } from './command';
 const Arguments = z.object({ application: z.literal('notepad') }).strict();
 // Authority is the direct user turn, never the model's chosen arguments.
 export function authorizesNotepad(text: string): boolean {
-  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalized = humanCommand(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   return /^(?:por favor[, ]+)?(?:zen[, ]+)?(?:abre|abrir|inicia|iniciar|lanza|lanzar|open)(?:me)?\s+(?:el\s+)?(?:bloc de notas|notepad)(?:\s+por favor)?[.!?]*$/.test(normalized);
 }
 export function authorize(name: string, args: unknown, directUserText: string, settings: Settings) {

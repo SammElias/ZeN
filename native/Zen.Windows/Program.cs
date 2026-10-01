@@ -8,6 +8,8 @@ internal static class Program {
   private delegate bool WindowCallback(IntPtr hwnd, IntPtr data);
   [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, IntPtr data);
   [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
+  [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hwnd);
+  [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hwnd, uint attribute, out int value, int size);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hwnd, System.Text.StringBuilder text, int length);
   [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
   [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
@@ -23,14 +25,17 @@ internal static class Program {
     if (desktop == IntPtr.Zero) throw new InvalidOperationException("Escritorio bloqueado o privilegiado: acceso detenido.");
     CloseDesktop(desktop);
   }
-  private static List<object> Windows() {
+  private static List<object> Windows(string? anchorId = null) {
     CheckDesktop(); var result = new List<object>(); var foreground = GetForegroundWindow();
     EnumWindows((handle, _) => {
-      if (!IsWindowVisible(handle)) return true;
+      var anchor = handle.ToInt64().ToString() == anchorId;
+      if (!anchor && (!IsWindowVisible(handle) || IsIconic(handle))) return true;
+      if (!anchor && DwmGetWindowAttribute(handle, 14, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+      if (!GetWindowRect(handle, out var rect) || rect.Right <= rect.Left || rect.Bottom <= rect.Top) return true;
       var text = new System.Text.StringBuilder(1024); GetWindowText(handle, text, text.Capacity);
       if (text.Length == 0) return true;
       GetWindowThreadProcessId(handle, out var pid);
-      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, foreground = handle == foreground }); return true;
+      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, foreground = handle == foreground, bounds = new { x = rect.Left, y = rect.Top, width = rect.Right - rect.Left, height = rect.Bottom - rect.Top } }); return true;
     }, IntPtr.Zero); return result;
   }
   private static Dictionary<string, string> Applications() {
@@ -135,7 +140,7 @@ internal static class Program {
       using var json = JsonDocument.Parse(input); var command = json.RootElement.GetProperty("command").GetString();
       var id = json.RootElement.TryGetProperty("id", out var value) ? value.GetString() : null;
       object result = command switch {
-        "windows" => Windows(),
+        "windows" => Windows(id),
         "apps" => Applications().Keys.Order().Select(id => new { id }).ToArray(),
         "open-app" => await OpenApplication(id ?? throw new InvalidOperationException("Falta aplicación.")),
         "read" => new { text = ReadWindow(id ?? throw new InvalidOperationException("Falta ventana.")) },

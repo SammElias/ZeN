@@ -4,12 +4,12 @@ import expected from '../../config/saved-agent.json';
 import original from '../../config/saved-agent.original.json';
 import instructions from '../../config/saved-agent.instructions.txt?raw';
 import { z } from 'zod';
-import { ZenError } from '../shared/errors';
+import { diagnose, ZenError } from '../shared/errors';
 import type { DesktopHandler } from '../shared/desktop';
 import { publicResultPreview } from './public-stream';
 import { economyAgent, economyInstructions, ECONOMY_VERSION, compactContext, extendedOutput } from './economy';
 import type { SpendingGuard } from '../storage/spending';
-import type { Settings } from '../shared/contracts';
+import { ArtifactSchema, type Artifact, type Settings } from '../shared/contracts';
 export const SAVED_AGENT_ID = 'agent_98652f2661104ff282e5e5c9ca817ef1325ffa8195414c009f';
 const Compact = z.object({ result: z.string(), clarifications_requested: z.array(z.string()) }).strict();
 const Structured = z.object({ reasoning_steps: z.array(z.unknown()), actions: z.array(z.unknown()), clarifications_requested: z.array(z.string()), result: z.union([z.string(), z.array(z.unknown()), z.record(z.string(), z.unknown())]) });
@@ -41,13 +41,13 @@ type Deps = { settings?: () => Settings; spending?: SpendingGuard; client: () =>
 export class SavedAgent {
   private runningSessions = new Set<string>();
   constructor(private deps: Deps) {}
-  async run(input: string, signal: AbortSignal, progress: (message: string, streamText?: string) => void, image?: string, followup?: { sessionId: string; requestId: string; summary?: string }, desktop?: DesktopHandler) {
+  async run(input: string, signal: AbortSignal, progress: (message: string, streamText?: string) => void, image?: string, followup?: { sessionId: string; requestId: string; summary?: string }, desktop?: DesktopHandler, toolkit?: (name:string,arguments_:unknown,signal:AbortSignal)=>Promise<unknown>) {
     if (followup && this.runningSessions.has(followup.sessionId)) throw new ZenError('Esa sesión ya tiene una petición activa. No se mezclan turnos.');
     if (followup) this.runningSessions.add(followup.sessionId);
-    try { return await this.perform(input, signal, progress, image, followup, desktop); }
+    try { return await this.perform(input, signal, progress, image, followup, desktop, toolkit); }
     finally { if (followup) this.runningSessions.delete(followup.sessionId); }
   }
-  private async perform(input: string, signal: AbortSignal, progress: (message: string, streamText?: string) => void, image?: string, followup?: { sessionId: string; requestId: string; summary?: string }, desktop?: DesktopHandler) {
+  private async perform(input: string, signal: AbortSignal, progress: (message: string, streamText?: string) => void, image?: string, followup?: { sessionId: string; requestId: string; summary?: string }, desktop?: DesktopHandler, toolkit?: (name:string,arguments_:unknown,signal:AbortSignal)=>Promise<unknown>) {
     const client = this.deps.client();
     validateSavedAgent(await client.beta.agents.retrieve(SAVED_AGENT_ID, { signal }));
     const economical = !!this.deps.settings;
@@ -83,12 +83,15 @@ export class SavedAgent {
     const publish = (key: string, flush = false) => {
       const text = publicText.get(key) ?? '';
       // Only explicitly public commentary. Structured final JSON and reasoning events stay private.
-      if (!text.trim() || /^[\s]*[\{\["`]/.test(text) || /reasoning_steps/.test(text)) return;
+      if (blockedOperations.length || !text.trim() || /^[\s]*[\{\["`]/.test(text) || /reasoning_steps/.test(text)) return;
       if (flush || Date.now() - lastPublish >= 80) { progress('Actividad en directo', text); lastPublish = Date.now(); }
     };
     const toolResults = new Map<string, { turn_id: string; call_id: string; success: boolean; output?: AgentFunctionCallOutputParam; error?: string }>();
     let pendingApproval = false;
     const blockedOperations: string[] = [];
+    let toolkitBlocked = false;
+    const verifiedOperations: string[] = [];
+    const artifacts: Artifact[] = [];
     const cancel = () => { if (sessionId) void client.beta.agents.sessions.events.create(sessionId, { events: [{ type: 'agent.session.input.cancel' }] }, { timeout: 10000 }).catch(() => this.deps.log({ type: 'agent_cancel', sessionId, confirmed: false })); };
     signal.addEventListener('abort', cancel, { once: true });
     try {
@@ -111,22 +114,23 @@ export class SavedAgent {
         }
         if (event.type === 'agent.session.turn.output_text.done' && publicItems.has(event.item_id)) { const key = `${event.item_id}:${event.content_index}`; publicText.set(key, event.text.slice(0, 12000)); publish(key, true); }
         if (event.type === 'agent.session.turn.output_text.done') outputs.set(`${event.item_id}:${event.content_index}`, event.text);
-        if (event.type === 'agent.session.turn.item.done' && event.item.type === 'web_search_call') { if (reservation) this.deps.spending!.tool(reservation, `web:${event.item.id}`); if (++tools > (this.deps.maxToolCalls?.() ?? 10)) throw new ZenError('Límite local de herramientas alcanzado. Resultado incompleto.'); progress('Consultando fuentes web…'); }
+        if (event.type === 'agent.session.turn.item.done' && event.item.type === 'web_search_call') { this.deps.log({type:'web_tool',callId:event.item.id,status:event.item.status}); if (reservation) this.deps.spending!.tool(reservation, `web:${event.item.id}`); if (++tools > (this.deps.maxToolCalls?.() ?? 10)) throw new ZenError('Límite local de herramientas alcanzado. Resultado incompleto.'); progress('Consultando fuentes web…'); }
         if (event.type === 'agent.session.turn.item.done' && event.item.type === 'message' && event.item.role === 'assistant' && event.item.phase === 'final_answer') finalItems.add(event.item.id);
         if (event.type === 'agent.session.requires_action') {
-          if (!desktop || !sessionId || event.session.id !== sessionId) throw new ZenError('No hay un puente autorizado compatible para esta sesión.');
+          if (!desktop && !toolkit || !sessionId || !event.session || event.session.id !== sessionId) throw new ZenError('No hay un puente autorizado compatible para esta sesión.');
           for (const action of event.session.required_actions) {
-            if (action.type !== 'function_call' || action.name !== 'zen_desktop' || !action.turn_id || !action.call_id || turnId && action.turn_id !== turnId) throw new ZenError('Solicitud de herramienta incompatible o de otro turno.');
+            if (action.type !== 'function_call' || !['zen_desktop','zen_files','zen_cloud'].includes(action.name) || !action.turn_id || !action.call_id || turnId && action.turn_id !== turnId) throw new ZenError('Solicitud de herramienta incompatible o de otro turno.');
+            if (action.name === 'zen_desktop' ? !desktop : !toolkit) throw new ZenError('No hay un puente autorizado compatible para esta herramienta.');
             turnId = action.turn_id;
             const key = `${turnId}:${action.call_id}`;
             let result = toolResults.get(key);
             if (!result) {
               if (++tools > (this.deps.maxToolCalls?.() ?? 10)) throw new ZenError('Límite local de herramientas alcanzado. Resultado incompleto.');
-              signal.throwIfAborted(); progress('Verificando la operación Windows solicitada…');
-              try { const value = await desktop(action.arguments, signal); if (value && typeof value === 'object' && 'pendingHumanApproval' in value && value.pendingHumanApproval === true) pendingApproval = true; const output = value && typeof value === 'object' && 'agentContent' in value ? (value as { agentContent: AgentFunctionCallOutputParam }).agentContent : JSON.stringify(value); result = { turn_id: turnId, call_id: action.call_id, success: true, output }; }
-              catch (error) { signal.throwIfAborted(); const message = error instanceof ZenError ? error.message : 'La operación local no pudo verificarse. No se reintenta.'; blockedOperations.push(message); result = { turn_id: turnId, call_id: action.call_id, success: false, error: message }; }
+              signal.throwIfAborted(); progress(action.name==='zen_desktop'?'Verificando la operación Windows solicitada…':action.name==='zen_files'?'Consultando archivos localmente…':'Usando la herramienta alojada solicitada…');
+              try { const value = await (action.name==='zen_desktop'?desktop!(action.arguments,signal):toolkit!(action.name,action.arguments,signal)); if(value&&typeof value==='object'&&'artifacts'in value){const data=z.array(ArtifactSchema).max(8).parse(value.artifacts);artifacts.push(...data);} if (value && typeof value === 'object' && 'userMessage' in value && typeof value.userMessage === 'string') verifiedOperations.push(value.userMessage); if (value && typeof value === 'object' && 'pendingHumanApproval' in value && value.pendingHumanApproval === true) pendingApproval = true; const output = value && typeof value === 'object' && 'agentContent' in value ? (value as { agentContent: AgentFunctionCallOutputParam }).agentContent : JSON.stringify(value); result = { turn_id: turnId, call_id: action.call_id, success: true, output }; }
+              catch (error) { signal.throwIfAborted();const isToolkit=action.name!=='zen_desktop';toolkitBlocked ||= isToolkit; const message = error instanceof ZenError ? error.message : isToolkit ? diagnose(error) : 'La operación local no pudo verificarse. No se reintenta.'; blockedOperations.push(message); progress(isToolkit?'Herramienta no completada':'Operación local no completada', message); result = { turn_id: turnId, call_id: action.call_id, success: false, error: message }; }
               toolResults.set(key, result);
-              this.deps.log({ type: 'desktop_tool', sessionId, turnId, callId: action.call_id, success: result.success });
+              this.deps.log({ type: action.name==='zen_desktop'?'desktop_tool':'toolkit_tool', name:action.name, sessionId, turnId, callId: action.call_id, success: result.success });
             }
             await client.beta.agents.sessions.events.create(sessionId, { events: [{ type: 'agent.session.input.tool_result', ...result }], 'Idempotency-Key': `${sessionId}:${key}` }, { signal });
           }
@@ -143,7 +147,7 @@ export class SavedAgent {
       if (!completed) throw new ZenError('La conexión terminó sin confirmación del turno. Resultado incompleto; no se reintenta la entrada.');
       if (economical && sessionId) { try { await client.beta.agents.sessions.update(sessionId, { metadata: { zen_economy: ECONOMY_VERSION, zen_turns: String(turns) } }, { signal }); } catch { this.deps.log({ type: 'economy_metadata', updated: false }); } }
       const raw = [...outputs.entries()].filter(([key]) => finalItems.has(key.split(':')[0])).map(([, text]) => text).join('\n');
-      try { const presented = presentAgentOutput(raw); if (pendingApproval) return { ...presented, message: `Creación pendiente de aprobación humana. No se creó ningún elemento.\n\n${presented.message}`, needsInput: true, sessionId, turnId }; if (blockedOperations.length) return { ...presented, message: `Operación local bloqueada o no verificada:\n${blockedOperations.join('\n')}\n\n${presented.message}`, needsInput: true, sessionId, turnId }; return { ...presented, sessionId, turnId }; }
+      try { const presented = presentAgentOutput(raw); if (blockedOperations.length) return { ...presented, message: [verifiedOperations.join('\n'), pendingApproval ? 'Creación pendiente de aprobación humana. No se creó ningún elemento.' : '', `${toolkitBlocked ? 'Herramienta no completada' : 'Operación local no completada'}:\n${[...new Set(blockedOperations)].join('\n')}`].filter(Boolean).join('\n\n'), needsInput: true, sessionId, turnId, artifacts }; if (pendingApproval) return { ...presented, message: `Creación pendiente de aprobación humana. No se creó ningún elemento.\n\n${presented.message}`, needsInput: true, sessionId, turnId, artifacts }; return { ...presented, sessionId, turnId, artifacts }; }
       catch (error) {
         let shape: unknown = { validJson: false, textLength: raw.length };
         try { const parsed = JSON.parse(raw); shape = { validJson: true, fields: Object.entries(parsed).map(([key, value]) => ({ key, type: Array.isArray(value) ? 'array' : typeof value })) }; } catch {}

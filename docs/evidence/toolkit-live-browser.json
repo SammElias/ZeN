@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-01T08:16:58.731Z",
+  "passed": true,
+  "realApi": true,
+  "realElectronBrowser": true,
+  "scope": "isolated read-only public page",
+  "userDesktopCaptured": false,
+  "clicksOrTyping": false,
+  "result": "La página indica que este dominio puede utilizarse en ejemplos de documentación sin pedir permiso. Advierte que no es un servicio y que no debe usarse para pruebas ni monitorización. También muestra un enlace «Learn more» («Más información»). ",
+  "items": [
+    {
+      "type": "computer_call",
+      "status": "completed",
+      "fields": [
+        "id",
+        "type",
+        "status",
+        "actions",
+        "call_id"
+      ],
+      "actions": [
+        "screenshot"
+      ]
+    },
+    {
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.006482,
+    "committedMonthEur": 0.006482,
+    "estimatedDayEur": 0.006482,
+    "pendingEur": 0,
+    "inputTokens": 3496,
+    "outputTokens": 85,
+    "cachedTokens": 1295,
+    "uncertainCalls": 0,
+    "pricingDate": "2026-09-30"
+  }
+}

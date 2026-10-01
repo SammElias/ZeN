@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-01T08:08:15.553Z",
+  "kind": "patch",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "result": "Creado `demo.py` en el espacio aislado en memoria mediante `apply_patch`:\n\n```python\nassert 6 * 7 == 42\n```\n\nLa herramienta confirmó el cambio. No se ejecutó código ni se editó el PC.",
+  "artifacts": [
+    {
+      "id": "1e7222b7-d9e7-4d13-a646-669a4b41eee4",
+      "title": "Archivos del parche (espacio aislado)",
+      "kind": "text",
+      "bytes": 39
+    }
+  ],
+  "localFilesChanged": false,
+  "cloudItems": [
+    {
+      "type": "apply_patch_call",
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.0055775,
+    "committedMonthEur": 0.0055775,
+    "estimatedDayEur": 0.0055775,
+    "pendingEur": 0,
+    "inputTokens": 1859,
+    "outputTokens": 93,
+    "cachedTokens": 0,
+    "uncertainCalls": 0,
+    "pricingDate": "2026-09-30"
+  }
+}

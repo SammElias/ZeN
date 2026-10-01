@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import OpenAI from 'openai';
 import { SavedAgent } from '../src/agent/saved';
+import { desktopAuthority, requestedPauses } from '../src/policy/desktop';
+import { selectMedia } from '../src/policy/media';
 app.commandLine.appendSwitch('force-renderer-accessibility');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 void app.whenReady().then(async () => {
@@ -29,11 +31,18 @@ void app.whenReady().then(async () => {
         let target: z.infer<typeof MediaSchema> | undefined;
         for (let attempt = 0; attempt < 30; attempt++) { const sessions = await native(directory, 'media', z.array(MediaSchema)); target = sessions.find(row => row.title === 'ZEN_MEDIA_TEST'); if (target) break; await new Promise(resolve => setTimeout(resolve, 200)); }
         if (!target) throw Error('El reproductor de prueba no registró sesión SMTC; pausa real pendiente.');
+        const request = 'Zen, ¿puedes pausar la música, por favor?';
+        const authorize = desktopAuthority(request);
+        const call = { operation: 'list_media', target: null, name: null, content: null };
+        authorize(call);
+        // Candidate scope is only the owned fixture. Never pause a personal player.
+        const selected = selectMedia([target], requestedPauses(request), target.id);
+        authorize({ ...call, operation: 'pause_media', target: selected.id });
         const schema = z.object({ id: z.string(), verified: z.literal(true), alreadyPaused: z.boolean() });
         const first = await native(directory, 'pause', schema, target.id); const second = await native(directory, 'pause', schema, target.id);
         const paused = await player.webContents.executeJavaScript('document.getElementById("audio").paused');
         if (!first.verified || !second.alreadyPaused || !paused) throw Error('No se verificó la pausa sin toggle.');
-        writeFileSync('docs/evidence/native-media.json', JSON.stringify({ at: new Date().toISOString(), realSmtc: true, testPlayerOnly: true, pausedVerified: true, repeatedPauseDidNotResume: true, noUserPlayerModified: true }, null, 2));
+        writeFileSync('docs/evidence/native-media.json', JSON.stringify({ at: new Date().toISOString(), realSmtc: true, testPlayerOnly: true, candidateScope: 'owned fixture only', naturalRequestAuthorized: true, targetBoundToSelectedSession: true, pausedVerified: true, repeatedPauseDidNotResume: true, noUserPlayerModified: true, liveApi: false, physicalYoutube: false }, null, 2));
         console.log(JSON.stringify({ mediaPausePassed: true, repeatedPauseDidNotResume: true }));
       } finally { player.destroy(); }
     }

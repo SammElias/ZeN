@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-01T08:08:16.005Z",
+  "kind": "image",
+  "model": "gpt-6.1-sol",
+  "realApi": true,
+  "passed": true,
+  "syntheticDataOnly": true,
+  "localFilesUploaded": false,
+  "windowsEffects": false,
+  "result": "Resultado generado y disponible para visualizar.",
+  "artifacts": [
+    {
+      "id": "f42f0e1d-57d3-4650-82e6-62d45f2eb74e",
+      "title": "Imagen generada",
+      "kind": "image",
+      "bytes": 796710
+    }
+  ],
+  "localFilesChanged": false,
+  "cloudItems": [
+    {
+      "type": "image_generation_call",
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.0053275,
+    "committedMonthEur": 1,
+    "estimatedDayEur": 0.0053275,
+    "pendingEur": 0.9946725,
+    "inputTokens": 1859,
+    "outputTokens": 68,
+    "cachedTokens": 0,
+    "uncertainCalls": 1,
+    "pricingDate": "2026-09-30"
+  }
+}

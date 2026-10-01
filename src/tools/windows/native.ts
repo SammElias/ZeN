@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { ZenError } from '../../shared/errors';
-export const WindowSchema = z.object({ id: z.string().regex(/^\d+$/), title: z.string(), pid: z.number().int(), foreground: z.boolean() });
+export const WindowSchema = z.object({ id: z.string().regex(/^\d+$/), title: z.string(), pid: z.number().int(), foreground: z.boolean(), bounds:z.object({x:z.number().int(),y:z.number().int(),width:z.number().int().positive(),height:z.number().int().positive()}).optional() });
 export const MediaSchema = z.object({ id: z.string(), title: z.string().default(''), state: z.string(), canPause: z.boolean() });
 export type WindowInfo = z.infer<typeof WindowSchema>;
 export type MediaInfo = z.infer<typeof MediaSchema>;
