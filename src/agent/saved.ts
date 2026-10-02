@@ -114,7 +114,8 @@ export class SavedAgent {
         }
         if (event.type === 'agent.session.turn.output_text.done' && publicItems.has(event.item_id)) { const key = `${event.item_id}:${event.content_index}`; publicText.set(key, event.text.slice(0, 12000)); publish(key, true); }
         if (event.type === 'agent.session.turn.output_text.done') outputs.set(`${event.item_id}:${event.content_index}`, event.text);
-        if (event.type === 'agent.session.turn.item.done' && event.item.type === 'web_search_call') { this.deps.log({type:'web_tool',callId:event.item.id,status:event.item.status}); if (reservation) this.deps.spending!.tool(reservation, `web:${event.item.id}`); if (++tools > (this.deps.maxToolCalls?.() ?? 10)) throw new ZenError('Límite local de herramientas alcanzado. Resultado incompleto.'); progress('Consultando fuentes web…'); }
+        if(event.type==='agent.session.turn.item.added'&&event.item.type==='web_search_call')progress('Consultando fuentes web…');
+        if (event.type === 'agent.session.turn.item.done' && event.item.type === 'web_search_call') { this.deps.log({type:'web_tool',callId:event.item.id,status:event.item.status}); if (reservation) this.deps.spending!.tool(reservation, `web:${event.item.id}`); if (++tools > (this.deps.maxToolCalls?.() ?? 10)) throw new ZenError('Límite local de herramientas alcanzado. Resultado incompleto.'); }
         if (event.type === 'agent.session.turn.item.done' && event.item.type === 'message' && event.item.role === 'assistant' && event.item.phase === 'final_answer') finalItems.add(event.item.id);
         if (event.type === 'agent.session.requires_action') {
           if (!desktop && !toolkit || !sessionId || !event.session || event.session.id !== sessionId) throw new ZenError('No hay un puente autorizado compatible para esta sesión.');

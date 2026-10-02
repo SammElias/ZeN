@@ -1,8 +1,16 @@
-# ZEN: estado verificable · 1 de octubre de 2026
+# ZEN: estado verificable · 2 de octubre de 2026
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
-## Revisión vigente: mini cápsula, despliegue conservado
+## Revisión vigente: seis mejoras de cápsula y lectura local
+
+Aplicadas señal real del micro recogido, progreso concreto, renovación al cambiar de monitor y aviso de referencia caducada, interrupción de reproducción sin cancelar tareas, lectores PDF/DOCX/XLSX y voz/reunión sin activar la cápsula. JSON y agente remoto conservados. [Implementación, pruebas y límites](capsule-improvements.md).
+
+**Probado:** 246 pruebas en 29 archivos, build, interfaz Edge con señal Web Audio sintética, Windows/Electron incluyendo lectores, foco real conservado y [API real/WebRTC](evidence/live-webrtc.json) con búsqueda, audio y cierre confirmado. Nuevo portable `release/ZEN-20261002115323397/ZEN.exe`, [evidencia](evidence/portable-interface.json). Los fallos de foco de páginas/archivos se revalidaron; el test de reunión usa ahora el HWND real estable del fondo cuando Windows no activa la ventana sintética.
+
+**Pendiente:** micrófono/altavoces humanos, interrupciones reales, Teams, proyectos personales y varias pantallas/DPI físicos. PDF escaneado/OCR y formatos antiguos .doc/.xls no están implementados. El objetivo completo sigue incompleto. Las revisiones siguientes conservan el historial de entregas y fallos anteriores, no el estado vigente.
+
+## Revisión anterior: mini cápsula, despliegue conservado
 
 Cápsula recogida de 240×40 DIP con icono, estado, micrófono y controles esenciales. Despliegue completo conservado: último mensaje/stream, escritura, capturas y carpeta de análisis. Arrastre entre pantallas y anclaje superior conservados. Hablar no abre automáticamente la mini barra. [Uso y verificación](mini-capsule.md).
 

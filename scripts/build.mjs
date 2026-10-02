@@ -1,7 +1,12 @@
 import { build } from 'esbuild';
-import { mkdir, copyFile } from 'node:fs/promises';
+import { mkdir, copyFile, cp } from 'node:fs/promises';
 await mkdir('dist/tools', { recursive: true });
+await mkdir('dist/documents', { recursive: true });
+await build({entryPoints:['src/tools/document-worker.ts'],bundle:true,platform:'node',format:'esm',outfile:'dist/documents/worker.mjs'});
+for (const name of ['pdf.mjs','pdf.worker.mjs']) await copyFile(`node_modules/pdfjs-dist/legacy/build/${name}`,`dist/documents/${name}`);
+await cp('node_modules/pdfjs-dist/standard_fonts','dist/documents/standard_fonts',{recursive:true});
 await build({ entryPoints: ['src/main/index.ts'], bundle: true, platform: 'node', format: 'cjs', outfile: 'dist/main.cjs', external: ['electron'], loader: { '.txt': 'text' } });
 await build({ entryPoints: ['src/preload/index.ts'], bundle: true, platform: 'node', format: 'cjs', outfile: 'dist/preload.cjs', external: ['electron'] });
 await build({ entryPoints: ['src/tools/windows/notepad.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'dist/tools/notepad.mjs' });
+await build({entryPoints:['tests/document-fixtures.ts'],bundle:true,platform:'node',format:'esm',outfile:'dist/tools/document-fixtures.mjs'});
 await copyFile('src/tools/windows/notepad.ps1', 'dist/tools/notepad.ps1');

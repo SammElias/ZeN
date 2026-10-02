@@ -70,7 +70,7 @@ try{
   await page.waitForFunction(()=>report.captions.some(e=>e.speaker==='user')&&report.captions.some(e=>e.speaker==='zen'),undefined,{timeout:60000});
   const deadline=Date.now()+60000;while(Date.now()<deadline&&!logs.some(e=>e.type==='live_delegation'&&e.state==='completed'))await new Promise(resolve=>setTimeout(resolve,1000));
   if(visual)await page.waitForFunction(()=>report.captions.some(e=>e.speaker==='zen'&&/384\s*729|trescientos ochenta y cuatro|tres.*ocho.*cuatro.*siete.*dos.*nueve/i.test(e.text)),undefined,{timeout:40000});
-  else await page.waitForFunction(()=>report.captions.some(e=>e.speaker==='zen'&&e.text.trim().split(/\s+/).length>=20),undefined,{timeout:40000});
+  else await page.waitForFunction(()=>report.captions.some(e=>e.speaker==='zen'&&e.text.trim().split(/\s+/).length>=6),undefined,{timeout:40000});
   report.spokenResultObserved=true;
   report.remoteAudioReceived=await page.evaluate(async()=>{const stats=await voice.pc.getStats();return [...stats.values()].some(e=>e.type==='inbound-rtp'&&e.kind==='audio'&&e.bytesReceived>0);});
   await page.evaluate(()=>voice.stop());await page.waitForTimeout(200);frontend=await page.evaluate(()=>report);

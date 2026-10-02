@@ -6,6 +6,7 @@ import type { PublicMcpConnection } from './mcp';
 import type { ScreenContextStatus, ScreenSnapshot } from '../main/screen-context';
 import type { WorkContext, ProjectDraft, ProjectBundle } from './project';
 import type {FolderAttachment} from '../main/folder-context';
+import type {TaskActivity} from './activity';
 export const SettingsSchema = z.object({
   reasoningModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-6.1-sol'),
   voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-live-1'),
@@ -33,7 +34,7 @@ export type TaskState = 'idle' | 'queued' | 'listening' | 'thinking' | 'awaiting
 export type Utterance = { speaker: 'user' | 'zen'; id: string; text: string; phase: 'start' | 'delta' | 'done'; sourceItemId?: string; timeline?: {startMs:number;endMs:number} };
 export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text'])}).strict();
 export type Artifact = z.infer<typeof ArtifactSchema>;
-export type TaskEvent = { id: string; state: TaskState; message: string; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext };
+export type TaskEvent = { id: string; state: TaskState; message: string; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext;activity?:TaskActivity;preparation?:{requestId:string;active:boolean} };
 export type Evidence = { application: 'notepad'; pid: number; windowHandle: string; alreadyOpen: boolean; verifiedAt: string };
 export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional() }).strict();
 export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };

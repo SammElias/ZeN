@@ -30,6 +30,7 @@ import { selectMedia } from '../policy/media';
 import type { DesktopHandler } from '../shared/desktop';
 import { LiveVoiceBackend } from '../agent/live-voice';
 import { openNotepad } from '../tools/windows/notepad';
+import {extractDocument} from '../tools/document-reader';
 import { LocalLibrary } from '../tools/library';
 import { Toolkit } from '../tools/toolkit';
 import { Artifacts } from '../tools/artifacts';
@@ -123,21 +124,22 @@ void app.whenReady().then(async () => {
       cancelResize = () => { clearInterval(timer); resolve(); cancelResize = undefined; };
     });
   };
-  let drag: { origin: Electron.Point; grabRatio: number; moved: boolean } | undefined;
+  let drag: { origin: Electron.Point; grabRatio: number; moved: boolean; displayId:number; contextChanged:boolean } | undefined;
   let dragTimer: ReturnType<typeof setInterval> | undefined;
   let dragDeadline: ReturnType<typeof setTimeout> | undefined;
   const moveDrag = (point: Electron.Point) => {
     if (!drag) return;
     if (!drag.moved && Math.hypot(point.x - drag.origin.x, point.y - drag.origin.y) < 4) return;
     drag.moved = true;
-    display = screen.getDisplayNearestPoint(point);
+    const destination=screen.getDisplayNearestPoint(point);if(destination.id!==display.id){drag.contextChanged=true;screenContext?.cancel();}display=destination;
     horizontalRatio = draggedRatio(display.workArea, layout, point.x, drag.grabRatio);
     void position();
   };
   const endDrag = () => {
     if (dragTimer) clearInterval(dragTimer); if (dragDeadline) clearTimeout(dragDeadline);
     dragTimer = undefined; dragDeadline = undefined;
-    const moved = drag?.moved; drag = undefined;
+    const moved = drag?.moved; const monitorChanged=!!drag&&drag.contextChanged;drag = undefined;
+    if(monitorChanged&&window.isVisible()){screenContext?.cancel();const generation=hideGeneration;void screenContext?.refresh().then(async()=>{if(generation===hideGeneration&&window.isVisible())await queueScreen();});}
     if (moved) { try { store.saveOverlayPosition({ displayId: display.id, horizontalRatio }); } catch { emit({ id: 'storage', state: 'failed', message: 'La posición funciona, pero no se pudo guardar para el próximo inicio.' }); } }
   };
   const startDrag = () => {
@@ -145,12 +147,12 @@ void app.whenReady().then(async () => {
     if (drag) endDrag();
     cancelResize?.();
     const origin = screen.getCursorScreenPoint(); const bounds = window.getBounds();
-    drag = { origin, grabRatio: Math.max(0, Math.min(1, (origin.x - bounds.x) / bounds.width)), moved: false };
+    drag = { origin, grabRatio: Math.max(0, Math.min(1, (origin.x - bounds.x) / bounds.width)), moved: false, displayId:display.id, contextChanged:false };
     // Only Windows supplies coordinates; IPC cannot place or free the window vertically.
     dragTimer = setInterval(() => moveDrag(screen.getCursorScreenPoint()), 16);
     dragDeadline = setTimeout(endDrag, 30000);
   };
-  const invoke = async (mode: 'configured' | 'voice' | 'focus' = 'configured') => {
+  const invoke = async (invocation: 'configured' | 'voice' | 'focus' = 'configured') => {
     const generation = ++hideGeneration;
     // Select and capture while the user's app still owns foreground focus.
     await screenContext?.refresh();
@@ -159,8 +161,9 @@ void app.whenReady().then(async () => {
     if (generation !== hideGeneration || window.isDestroyed()) return;
     const visible = window.isVisible();
     if (!visible) { position(); }
-    window.setAlwaysOnTop(true); window.show(); window.focus();
-    window.webContents.send('zen:invoke', mode);
+    window.setAlwaysOnTop(true);
+    if(invocation==='focus'||invocation==='configured'&&!settings.listenOnInvoke&&!mode.meeting){window.show();window.focus();}else window.showInactive();
+    window.webContents.send('zen:invoke', invocation);
   };
   invokeFromInstance = () => { void invoke('focus'); };
   const register = (next: string) => {
@@ -176,7 +179,7 @@ void app.whenReady().then(async () => {
   window.on('show', () => { window.setAlwaysOnTop(true); window.webContents.send('zen:visibility', true); });
   window.on('hide', () => { window.setAlwaysOnTop(false); window.webContents.send('zen:visibility', false); });
   window.on('blur', endDrag);
-  const reposition = () => { endDrag(); display = screen.getAllDisplays().find(row => row.id === display.id) ?? screen.getDisplayMatching(window.getBounds()); void position(); };
+  const reposition = () => { endDrag(); display = screen.getAllDisplays().find(row => row.id === display.id) ?? screen.getDisplayMatching(window.getBounds()); void position();screenContext?.cancel(); };
   screen.on('display-metrics-changed', reposition); screen.on('display-removed', reposition); screen.on('display-added', reposition);
   const hide = async () => {
     endDrag();
@@ -432,7 +435,7 @@ void app.whenReady().then(async () => {
     const previous = replyTaskId ? personal.tasks().find(row => row.id === replyTaskId) : undefined;
     if (replyTaskId && !previous?.sessionId) throw new ZenError('Esa tarea no tiene una sesión del agente para continuar.');
     let context = memory.length ? JSON.stringify(memory.map(({ field, kind, content }) => ({ field, kind, content }))) : undefined;
-    if(folderId){const folder=await folderContext.read(folderId,text,signal,settings.maxContextChars);signal.throwIfAborted();context=`${context??''}\n${folder.content}`;if(/sin\s+API|solo\s+local(?:mente)?/i.test(text)){const result:TaskResult={id:requestId,state:'completed',message:folder.content,localOnly:true};emit({...result,request:text});return result;}}
+    if(folderId){let folder;emit({id:'control',state:'idle',message:'',preparation:{requestId,active:true}});try{folder=await folderContext.read(folderId,text,signal,settings.maxContextChars);}finally{emit({id:'control',state:'idle',message:'',preparation:{requestId,active:false}});}signal.throwIfAborted();context=`${context??''}\n${folder.content}`;if(/sin\s+API|solo\s+local(?:mente)?/i.test(text)){const result:TaskResult={id:requestId,state:'completed',message:folder.content,localOnly:true};emit({...result,request:text});return result;}}
     if (observationId) {
 
       const observation = observations.get(observationId);
@@ -494,6 +497,8 @@ void app.whenReady().then(async () => {
   app.on('before-quit', event => { if(quitting)return;quitting = true;endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
   await window.loadFile(rendererPath);
   window.showInactive();
+  let documentReaderVerified=false;
+  if(smoke){const modulePath=pathToFileURL(join(__dirname,'tools/document-fixtures.mjs')).href;const fixtures=await import(modulePath);const signal=new AbortController().signal;const pdf=await extractDocument(fixtures.textPdf(),'.pdf',signal),docx=await extractDocument(fixtures.docxFixture(),'.docx',signal),xlsx=await extractDocument(fixtures.xlsxFixture(),'.xlsx',signal);documentReaderVerified=pdf.text.includes('7319')&&docx.text.includes('7319')&&xlsx.text.includes('valor guardado; fórmula sin ejecutar');}
   if(process.argv.includes('--zen-folder-context-smoke')){
     const fixture=await mkdtemp(join(app.getPath('temp'),'zen-folder-api-'));await writeFile(join(fixture,'README.md'),'Proyecto sintético: el código de referencia es 582941.');
     let passed=false;try{const attachment=await folderContext.grant(fixture,new AbortController().signal);const request={text:'Lee la documentación adjunta de este proyecto y dime únicamente su código de referencia de seis cifras.',requestId:randomUUID(),folderId:attachment.id};const result=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);passed=result.ok&&/582\s*941/.test(result.value.message);console.log(JSON.stringify({at:new Date().toISOString(),realApi:true,realElectronIpc:true,syntheticFolder:true,dialogSelectionInjected:true,personalFilesUploaded:false,folderContextVerified:passed,passed}));folderContext.clear();await voice.stop(false);tray.destroy();}finally{await unlink(join(fixture,'README.md'));await rmdir(fixture);}app.exit(passed?0:1);return;
@@ -601,6 +606,7 @@ void app.whenReady().then(async () => {
     await hide();
     const hiddenNotOnTop = !window.isAlwaysOnTop();
     let objective: Record<string, unknown> | undefined;
+    let focusProbe: {source:'fixture'|'existing-background'|'unavailable';stable:boolean}|undefined;
       if (process.argv.includes('--zen-objective-smoke') || desktopLive) {
       const testDirectory = join(app.getPath('temp'), 'zen-objective-fixture'); await mkdir(testDirectory, { recursive: true });
       const fixture = join(testDirectory, 'mensaje-de-prueba.txt'); await writeFile(fixture, 'Contenido de prueba seguro. Sin datos personales.');
@@ -609,7 +615,7 @@ void app.whenReady().then(async () => {
       try {
         const invokeRequest = (text: string) => window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({ text, requestId: randomUUID() })})`);
         await window.webContents.executeJavaScript(`window.zen.setMode({response:'text',meeting:true})`);
-        invoke('focus');
+        await invoke('focus');
         const foreground = async () => (await native(nativeDirectory, 'windows', z.array(WindowSchema))).find(row => row.foreground)?.id;
           let before = await foreground();
           const address = server.address(); if (!address || typeof address === 'string') throw Error('Fixture server unavailable');
@@ -634,7 +640,7 @@ void app.whenReady().then(async () => {
             const sessionIds = [listed.value?.sessionId, opened.value?.sessionId, preparedByAgent.value?.sessionId];
             const toolCalls = execution.filter((row: Record<string, unknown>) => row.type === 'desktop_tool' && sessionIds.includes(row.sessionId));
             await writeFile(join(process.cwd(), `docs/evidence/${creationOnly ? 'desktop-creation-live' : 'desktop-bridge-live'}.json`), JSON.stringify({ at: new Date().toISOString(), durationMs: Date.now() - started, passed: desktopBridgeLive, list: listed, openPage: opened, preparedByAgent, preparedWithoutEffect, agentApprovalVisible, agentCreationVerified, toolCalls, creationOnly, testDataOnly: true, originalUserRequestPolicy: true, backgroundFocusPreserved: before === await foreground() }, null, 2));
-            invoke('focus'); await new Promise(resolve => setTimeout(resolve, 100)); before = await foreground();
+            await invoke('focus'); await new Promise(resolve => setTimeout(resolve, 100)); before = await foreground();
           }
         const page = await invokeRequest(`Abre http://127.0.0.1:${address.port}/`);
         const pageKeptFocus = before === await foreground();
@@ -664,7 +670,10 @@ void app.whenReady().then(async () => {
           const handle = backgroundWindow.getNativeWindowHandle();
           const backgroundFocus = handle.length === 8 ? handle.readBigUInt64LE().toString() : handle.readUInt32LE().toString();
           for (let attempt = 0; attempt < 20 && (!backgroundWindow.isFocused() || await foreground() !== backgroundFocus); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
-          const meetingBackgroundEstablished = backgroundWindow.isFocused() && await foreground() === backgroundFocus;
+          const actualBackground=await foreground();await new Promise(resolve=>setTimeout(resolve,150));
+          const zenHandle=window.getNativeWindowHandle().readBigUInt64LE().toString();
+          const meetingBackgroundEstablished=!!actualBackground&&actualBackground!==zenHandle&&actualBackground===await foreground();
+          focusProbe={source:meetingBackgroundEstablished?(actualBackground===backgroundFocus?'fixture':'existing-background'):'unavailable',stable:meetingBackgroundEstablished};
           let focusDiagnostic: Record<string, boolean> | undefined;
           if (!meetingBackgroundEstablished) {
             const windows = await native(nativeDirectory, 'windows', z.array(WindowSchema));
@@ -677,8 +686,10 @@ void app.whenReady().then(async () => {
           settings = { ...settings, showResultsInMeeting: true };
           emit({ id: 'meeting-test', state: 'completed', message: 'Resultado discreto autorizado de prueba.' });
           await new Promise(resolve => setTimeout(resolve, 100));
-          const meetingOptInWithoutFocus = meetingBackgroundEstablished && window.isVisible() && !window.isFocused() && backgroundWindow.isFocused() && backgroundFocus === await foreground();
+          const meetingOptInWithoutFocus = meetingBackgroundEstablished && window.isVisible() && !window.isFocused() && actualBackground === await foreground();
+          await invoke('voice');const voiceInvocationWithoutFocus=meetingBackgroundEstablished&&actualBackground===await foreground();
           objective = { pageVerified: page.ok && page.value.state === 'completed', fileVerified: file.ok && file.value.state === 'completed', notepadVerified: notepad.ok && !!notepad.value.evidence, pageKeptFocus, fileKeptFocus, profileImported: imported.ok && imported.value.length === 1, profileDeleted: deleted.ok && deleted.value.length === 0, meetingTextOnly: modeState.ok && modeState.value.meeting && modeState.value.response === 'text', concreteApprovalVisible, approvedCreationVerified: creationVerified, repeatedApprovalBlocked: !repeated.ok, meetingDefaultStaysHidden, meetingBackgroundEstablished, meetingOptInWithoutFocus };
+          objective.voiceInvocationWithoutFocus=voiceInvocationWithoutFocus;
           if (desktopLive) objective.desktopBridgeLive = desktopBridgeLive;
           if (Object.values(objective).some(value => value !== true)) throw Error('Objective assertions failed: ' + JSON.stringify({ checks: objective, focusDiagnostic }));
       } finally { server.close(); await unlink(fixture); BrowserWindow.getAllWindows().filter(viewer => viewer !== window).forEach(viewer => viewer.destroy()); }
@@ -695,7 +706,7 @@ void app.whenReady().then(async () => {
     const projectRepeated=await window.webContents.executeJavaScript(`window.zen.projectApprove(${JSON.stringify(projectApproval)})`);
     const projectIpcVerified=projectSaved.ok&&projectSaved.value.verified&&!projectRepeated.ok&&(await readFile(join(projectParent,'Proyecto prueba','src/index.js'),'utf8'))==='export const fixture = 719;';
     const unknownProjectBlocked=!(await window.webContents.executeJavaScript(`window.zen.projectPreview('${randomUUID()}')`)).ok;
-    console.log(JSON.stringify({ ...result, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    console.log(JSON.stringify({ ...result, documentReaderVerified, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, focusProbe, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

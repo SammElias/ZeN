@@ -10,6 +10,7 @@ import { MessageStore } from './message-store';
 import { StreamingMessage } from './StreamingMessage';
 import { ScreenContextChip } from './ScreenContextChip';
 import { CAPSULE_HEIGHT } from '../shared/island';
+import {activityLabels} from '../shared/activity';
 import './capsule.css';
 import './companion.css';
 import { Companion } from './Companion';
@@ -39,6 +40,7 @@ export function App() {
   const [liveRequest,setLiveRequest]=useState<{id:string;captionId:string;text:string}|null>(null);
   const [reviewRequest,setReviewRequest]=useState<typeof liveRequest>(null);
   const [records, setRecords] = useState<TaskEvent[]>([]);
+  const [preparations,setPreparations]=useState<string[]>([]);
   const messages = useMemo(() => new MessageStore(window.demoState ? latestTask({}, window.demoState) : {}), []);
   const projectMessages = useMemo(() => new MessageStore(), []);
   const messageMeta = useSyncExternalStore(messages.subscribeMetadata, messages.metadata);
@@ -98,15 +100,16 @@ export function App() {
     void window.zen.tasks().then(result => { if (result.ok && result.value.length) { setRecords(result.value); const last = result.value.filter(row => !['voice', 'storage', 'control'].includes(row.id)).at(-1); if (last) { setTask(last); if(!messages.snapshot().message)messages.task(last); } } });
     void window.zen.settings().then(result => { if (result.ok) { setConfig(result.value); if (!result.value.shortcutRegistered) setNotice('Atajo ocupado. Puedes abrir ZEN desde la bandeja.'); } else fail(result.error); });
     const offTask = window.zen.onTask(event => {
+      if(event.preparation){const preparation=event.preparation;setPreparations(previous=>preparation.active?[...new Set([...previous,preparation.requestId])]:previous.filter(id=>id!==preparation.requestId));return;}
       if(event.workContext){projectMessages.task(event);setProjectTask(previous=>event.streamText&&previous?.id===event.id&&previous.state===event.state&&previous.workContext?.phase===event.workContext?.phase?previous:event);if(event.workContext.phase==='review'&&!microphoneRef.current){setProjectFocus(true);setCollapsed(false);}}
       if(event.screenContext){setScreenContext(event.screenContext);setScreenPreview(previous=>previous?.id===event.screenContext?.snapshotId?previous:undefined);return;}
       if(event.liveRequest!==undefined)setLiveRequest(event.liveRequest);
       if (event.contextConsumed) { setObservationId(undefined); return; }
       if (event.utterance) { caption(event.utterance);if(manualMode.current)return; if (event.utterance.phase === 'start'&&event.utterance.speaker==='user')setProjectFocus(false); return; }
       if(event.id==='voice'){if(['failed','cancelled'].includes(event.state)){setVoiceNotice(event.message);void voice.current?.stop();}return;}
-      if (!['storage', 'control'].includes(event.id)) setRecords(previous => {const old=previous.find(row=>row.id===event.id);if(event.streamText&&old?.state===event.state&&old.workContext?.phase===event.workContext?.phase)return previous;return old?previous.map(row=>row.id===event.id?event:row):[...previous,event].slice(-100);});
+      if (!['storage', 'control'].includes(event.id)) setRecords(previous => {const old=previous.find(row=>row.id===event.id);if(event.streamText&&old?.state===event.state&&old.workContext?.phase===event.workContext?.phase&&old.activity===event.activity)return previous;return old?previous.map(row=>row.id===event.id?event:row):[...previous,event].slice(-100);});
       messages.task(event);
-      setTask(previous => event.streamText&&previous.id===event.id&&previous.state===event.state?previous:event);
+      setTask(previous => event.streamText&&previous.id===event.id&&previous.state===event.state&&previous.activity===event.activity?previous:event);
       if (event.state === 'awaiting_approval') { setCollapsed(false); }
       if (event.id === 'voice' && ['failed', 'cancelled'].includes(event.state)) void voice.current?.stop();
     });
@@ -120,7 +123,7 @@ export function App() {
     return () => { offMode(); offTask(); offInvoke(); offVisibility(); document.removeEventListener('keydown', keyboard); document.removeEventListener('keyup', releaseKey); window.removeEventListener('blur', releaseTalk); window.removeEventListener('focus', refreshSettings); timer.current?.dispose(); messages.dispose(); projectMessages.dispose(); void voice.current?.stop(); };
   }, []);
   const pendingApprovals = records.filter(row => row.state === 'awaiting_approval');
-  const busy = records.some(row => ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state)) || ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(task.state);
+  const busy = preparations.length>0 || records.some(row => ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state)) || ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(task.state);
   const mode = collapsed ? 'capsule' : 'card';
   const desiredHeight = collapsed ? CAPSULE_HEIGHT : Math.round(Math.min(screenPreview?820:projectFocus&&projectTask?.workContext?.draft?520:pendingApprovals.length ? 500 : reviewRequest?430:(streaming||speaking||busy)?340:Math.max(220,Math.min(440,messageHeight+chromeHeight)), Math.floor(window.screen.availHeight * .8)));
   useLayoutEffect(()=>{if(collapsed)return;const rows=Array.from(root.current?.children??[]).filter(el=>!el.classList.contains('conversation-pane')&&!el.classList.contains('workspace-body')&&el.tagName!=='DIALOG');const update=()=>setChromeHeight(Math.ceil(rows.reduce((height,child)=>{const css=getComputedStyle(child);return height+child.getBoundingClientRect().height+parseFloat(css.marginTop||'0')+parseFloat(css.marginBottom||'0');},24)));const observer=new ResizeObserver(update);rows.forEach(el=>observer.observe(el));update();return()=>observer.disconnect();},[collapsed,!!screenContext,!!notice,!!voiceNotice,!!liveRequest,!!projectTask?.workContext,projectFocus,pendingApprovals.length]);
@@ -131,11 +134,13 @@ export function App() {
   const connectPushToTalk = async () => { if (!config?.hasKey || !config.settings.voiceConsent) { notify('Voz no disponible. Revisa Preferencias desde la bandeja.'); return; } pushToTalkRef.current = true; setPushToTalk(true); held.current = false; voice.current?.setMicrophoneEnabled(false); if (!window.zenDemo) await voice.current?.start(true); };
   const changeMode = async (next: ResponseMode) => { voice.current?.setAudible(audible(next)); setResponseMode(next); const result = await window.zen.setMode(next); if (!result.ok) fail(result.error); };
   const attention = pendingApprovals.length > 0 || ['awaiting_approval', 'awaiting_input', 'failed'].includes(task.state);
-  const rawStatus = voiceState === 'connecting' ? 'Conectando…' : voiceState==='closing'?'Finalizando voz…': attention ? 'Te necesito' : speaking ? 'Respondiendo' : busy ? 'Trabajando' : microphone ? 'Escuchando' : responseMode.meeting ? 'Reunión' : 'Listo';
+  const activeTask=records.filter(row=>['thinking','executing'].includes(row.state)).at(-1);
+  const progressLabel=preparations.length?'Leyendo':activityLabels[(activeTask??task).activity!]??'Trabajando';
+  const rawStatus = voiceState === 'connecting' ? 'Conectando…' : voiceState==='closing'?'Finalizando voz…': attention ? 'Te necesito' : speaking ? 'Respondiendo' : busy ? progressLabel : microphone ? 'Escuchando' : responseMode.meeting ? 'Reunión' : 'Listo';
   const [islandStatus,setIslandStatus]=useState(rawStatus);
   useEffect(()=>{if(attention||voiceState==='closing'){setIslandStatus(rawStatus);return;}const timer=setTimeout(()=>setIslandStatus(rawStatus),300);return()=>clearTimeout(timer);},[rawStatus,attention,voiceState]);
   const navigate = (_next?:null) => { playSound('open');if(collapsed)void refreshScreen(); setCollapsed(false); };
-  const companionState:TaskState|'speaking' = islandStatus==='Respondiendo'?'speaking':islandStatus==='Escuchando'?'listening':attention?'awaiting_approval':islandStatus==='Trabajando'?'thinking':'idle';
+  const companionState:TaskState|'speaking' = islandStatus==='Respondiendo'?'speaking':islandStatus==='Escuchando'?'listening':attention?'awaiting_approval':busy?'thinking':'idle';
   const fold = () => { playSound(collapsed ? 'open' : 'close');if(collapsed)void refreshScreen(); setCollapsed(value => !value); };
   const showScreenPreview=async()=>{const result=await window.zen.previewScreen();if(!result.ok)return notify(result.error);if(!result.value)return notify('La captura ya no está disponible. Actualiza la referencia.');setScreenPreview(result.value);};
   const chooseFolder=async()=>{if(choosingFolder.current)return;choosingFolder.current=true;voice.current?.setMicrophoneEnabled(false);try{const result=await window.zen.chooseContextFolder();if(!result.ok)return notify(result.error);if(result.value){setFolder(result.value);playSound('attach');}}finally{choosingFolder.current=false;}};
@@ -158,7 +163,7 @@ export function App() {
       <span className={`header-status ${busy || speaking ? 'working' : ''}`} role="status" title={voiceNotice||islandStatus}><i />{islandStatus}</span>
       {!collapsed&&projectTask?.workContext&&<button className={`codex-pill ${projectTask.workContext.phase}`} onClick={()=>{setProjectFocus(true);setCollapsed(false);}} aria-label="Ver trabajo de Codex"><span aria-hidden="true">✧</span>Codex{projectTask.workContext.phase==='preparing'&&<i/>}</button>}
       {!collapsed&&screenContext&&screenContext.state!=='idle'&&<button className="screen-context-indicator" aria-label="Actualizar contexto visual" disabled={screenContext.state==='capturing'} onClick={()=>void refreshScreen()} title={`Actualizar captura de la ventana detrás de ZEN${screenContext.sourceTitle?` · ${screenContext.sourceTitle}`:''}`}>{['ready','queued'].includes(screenContext.state)?'◉':'◌'}</button>}
-      {<IconButton name={microphone ? 'mic' : 'mute'} label={microphone ? 'Micrófono activo · silenciar' : voiceState==='closing'?'Finalizando voz': voiceState === 'connected' ? 'Micrófono silenciado · activar' : 'Micrófono apagado · comenzar voz'} className={`icon-button island-microphone ${microphone ? 'active' : ''}`} aria-pressed={microphone} disabled={voiceState === 'connecting'||voiceState==='closing'} onClick={toggleVoice} />}
+      <IconButton name={microphone ? 'mic' : 'mute'} label={microphone ? 'Micrófono activo · silenciar' : voiceState==='closing'?'Finalizando voz': voiceState === 'connected' ? 'Micrófono silenciado · activar' : 'Micrófono apagado · comenzar voz'} className={`icon-button island-microphone ${microphone ? 'active' : ''}`} aria-pressed={microphone} disabled={voiceState === 'connecting'||voiceState==='closing'} onClick={toggleVoice} />{collapsed&&microphone&&<VoiceIndicator active compact visible={visible} client={voice}/>}
       <div className="header-actions"><button className="fold-button" onClick={fold} aria-expanded={!collapsed} aria-label={collapsed ? 'Desplegar panel' : 'Recoger panel'}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ transform: collapsed ? undefined : 'rotate(180deg)' }}><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg></button>{collapsed && busy ? <IconButton name="stop" label="Detener todas las tareas" className="icon-button danger" onClick={() => void stop()} /> : <IconButton name="close" label="Ocultar ZEN (Esc)" onClick={() => void hide()} />}</div>
     </header>
     {!collapsed && <>

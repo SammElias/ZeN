@@ -135,8 +135,9 @@ export class LiveVoiceBackend {
   }
   private response(envelope:any){
     const task=this.delegated.get(envelope.delegation_id);const e=envelope.event;if(!task||!e||task.complete)return;
-    if(e.type==='response.output_text.delta'&&typeof e.delta==='string'){task.text+=e.delta;if(task.text.length>48000){this.fail('Resultado delegado demasiado largo; no se repetirá.');return;}this.deps.emit({id:task.id,state:'thinking',message:'SOL 6.1 está trabajando…',request:task.request,streamText:task.text});}
+    if(e.type==='response.output_text.delta'&&typeof e.delta==='string'){task.text+=e.delta;if(task.text.length>48000){this.fail('Resultado delegado demasiado largo; no se repetirá.');return;}this.deps.emit({id:task.id,state:'thinking',message:'SOL 6.1 está trabajando…',request:task.request,streamText:task.text,activity:'writing'});}
     if(e.type==='response.output_item.done'&&e.item?.type==='web_search_call'&&e.item.status==='completed'&&!task.webCalls.has(e.item.id)){task.webCalls.add(e.item.id);if(task.reserve)this.deps.spending!.tool(task.reserve,`web:${e.item.id}`);this.deps.log({type:'live_web',status:'completed'});if(task.webCalls.size>this.deps.settings().maxToolCalls){this.fail('Límite observado de búsquedas alcanzado; se cierra Live sin reintentar.');return;}}
+    if(['response.web_search_call.in_progress','response.web_search_call.searching'].includes(e.type))this.deps.emit({id:task.id,state:'thinking',message:'Consultando fuentes web…',request:task.request,activity:'searching'});
     if(e.type==='response.output_text.annotation.added'&&e.annotation?.type==='url_citation'&&typeof e.annotation.url==='string'){try{const url=new URL(e.annotation.url);if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password&&task.sources.length<30){const link=`[${String(e.annotation.title??'Fuente').replace(/[\[\]\n]/g,' ').slice(0,120)}](${url.href})`;if(!task.sources.includes(link))task.sources.push(link);}}catch{}}
     if(['response.completed','response.failed','response.incomplete'].includes(e.type)){
       task.complete=true;task.usage=task.reserve?this.deps.spending!.record(task.reserve,`response:${task.responseId??envelope.delegation_id}`,'gpt-6.1-sol',e.response?.usage):true;
@@ -160,7 +161,7 @@ export class LiveVoiceBackend {
     this.send({type:this.deps.audible()?'session.commentary.append':'session.thinking.append',delegation_id:null,event_id:randomUUID(),content});
     return true;
   }
-  interrupt(){if(this.ready&&!this.closing)this.send({type:'session.instructions.append',delegation_id:null,event_id:randomUUID(),content:'Deja de hablar ahora y espera a la siguiente petición. No canceles ni declares completadas tareas en segundo plano.'});}
+  interrupt(){if(this.ready&&!this.closing)this.send({type:'session.instructions.append',delegation_id:null,event_id:randomUUID(),content:'Deja de hablar ahora, escucha la nueva petición del usuario y responde cuando corresponda. No canceles ni declares completadas tareas en segundo plano.'});}
   private fail(message:string){this.deps.emit({id:'voice',state:'failed',message});void this.stop(false);}
   private lost(message:string){this.final={finalized:false,reason:'disconnect'};this.closeResolve?.(this.final);this.fail(message);}
   async end(id:string){if(id===this.lastClosed?.id)return this.lastClosed.result;if(id!==this.sessionId)throw new ZenError('Sesión Live distinta o caducada.');return this.stop(false);}

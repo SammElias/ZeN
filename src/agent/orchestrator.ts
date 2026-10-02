@@ -8,6 +8,8 @@ import type { SavedAgent } from './saved';
 import type { DesktopHandler } from '../shared/desktop';
 import { diagnose, ZenError } from '../shared/errors';
 import type { ProjectDraft, WorkContext } from '../shared/project';
+import {localFileRequest} from '../tools/local-files';
+import {progressActivity,type TaskActivity} from '../shared/activity';
 export const tool = { type: 'function' as const, name: 'open_application', description: 'Abre exclusivamente Bloc de notas cuando el usuario lo solicita directamente y verifica su ventana.', strict: true, parameters: { type: 'object', properties: { application: { type: 'string', enum: ['notepad'] } }, required: ['application'], additionalProperties: false } };
 type Client = Pick<OpenAI, 'responses'>;
 type Dependencies = { project?:(text:string)=>((signal:AbortSignal,progress:(message:string,stream?:string)=>void,image?:string)=>Promise<ProjectDraft>)|undefined;client: () => Client; saved?: SavedAgent; desktop?: (text: string) => DesktopHandler; toolkit?: (text:string)=>(name:string,raw:unknown,signal:AbortSignal)=>Promise<unknown>; direct?: (text: string) => ((signal: AbortSignal) => Promise<{ message: string;localOnly?:boolean }>) | undefined; settings: () => Settings; execute: (signal: AbortSignal) => Promise<Evidence>; emit: (event: TaskEvent) => void; log: (metadata: Record<string, unknown>) => void };
@@ -44,7 +46,8 @@ export class Orchestrator {
     let calls = 0;
     const seen = new Set<string>();
     let workContext:WorkContext|undefined;
-    const emit = (state: TaskEvent['state'], message: string, streamText?: string) => this.deps.emit({ id, state, message, request: text, evidence, ...(streamText ? { streamText } : {}),...(workContext?{workContext}:{}) });
+    let activity:TaskActivity|undefined;
+    const emit = (state: TaskEvent['state'], message: string, streamText?: string) => {activity=workContext?.phase==='preparing'?'project':progressActivity(message,streamText)??activity;this.deps.emit({ id, state, message, request: text, evidence, ...(streamText ? { streamText } : {}),...(workContext?{workContext}:{}),...(['thinking','executing'].includes(state)&&activity?{activity}:{}) });};
     try {
       const project=this.deps.project?.(text);
       if(project){
@@ -56,6 +59,7 @@ export class Orchestrator {
       const direct = this.deps.direct?.(text);
       if (direct) {
         if (this.paused) throw new ZenError('Las acciones están en pausa.');
+        const local=localFileRequest(text);if(local)activity=local.kind==='read'?'reading':'searching';
         emit('executing', 'Ejecutando la operación solicitada y verificando el resultado…');
         const result = await direct(controller.signal); controller.signal.throwIfAborted();
         emit('completed', result.message); this.deps.log({ type: 'task', taskId: id, state: 'completed', durationMs: Date.now() - started, toolCalls: 1 });
