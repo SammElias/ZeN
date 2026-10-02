@@ -1,0 +1,85 @@
+/* The companion reacts to local execution state. No animation changes layout. */
+.preview .zen-overlay.capsule { max-height: 72px; }
+.preview .zen-overlay.capsule:is(.dock-left,.dock-right) { max-height: 320px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .header-status { font-size: 12px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) :is(.icon-button,.fold-button) { height: 28px; }
+.with-robot { gap: 0; min-width: 0; }
+.robot-dock-slot { --robot-preferred-height: 219px; flex: 0 0 154px; min-height: 0; padding: 4px 2px 14px 16px; display: flex; flex-direction: column; }
+.robot-dock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px; height: 201px; max-height: 100%; min-height: 0; }
+.robot-dock .robot-greet { display: flex; flex: 0 1 144px; min-height: 0; padding: 0; border: 0; border-radius: 24px; background: radial-gradient(ellipse at 50% 65%,#c2a0ff15,transparent 68%); cursor: pointer; }
+.robot-dock .robot-greet:hover { background-color: #b99de90b; }
+.robot-dock .robot-greet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.robot-dock .zen-companion.large { width: 128px; height: 144px; max-height: 100%; }
+.robot-dock strong { flex-shrink: 0; color: #dfd4f0; font-size: 12px; font-weight: 550; line-height: 17px; }
+.robot-dock>span { flex-shrink: 0; color: #9b96a8; font-size: 10px; line-height: 15px; max-width: 125px; }
+.with-robot .workspace-body { min-width: 0; flex: 1; width: auto; }
+.island .with-robot .latest-message { padding: 12px 16px 12px 10px; }
+.island .with-robot .live-message { border-top-left-radius: 5px; }
+.island.live-only .with-robot .live-empty { min-height: 126px; border-top-left-radius: 5px; }
+.with-robot .welcome-copy strong { font-size: 20px; line-height: 26px; }
+.with-robot .welcome-copy>span { font-size: 13px; line-height: 20px; }
+.zen-robot .companion-float { animation: none; transform: none; }
+.zen-robot .robot-head { transform-origin: 64px 84px; }
+.zen-robot .arm-left { transform-origin: 40px 95px; }
+.zen-robot .arm-right { transform-origin: 88px 95px; }
+.zen-robot :is(.robot-head,.robot-arm) { transition: transform 280ms ease; }
+.zen-robot .robot-mouth { transform: none; transform-origin: 64px 69px; }
+.zen-robot .companion-eyes { transform-origin: 64px 56px; opacity: 1; animation: none; }
+.zen-robot .companion-smile { opacity: 0; }
+.zen-robot :is(.robot-loupe,.robot-keyboard) { opacity: 0; }
+.zen-robot .robot-beacon { fill: #a5eed6; }
+.zen-robot.pose-idle .robot-head { animation: robot-breathe 5s ease-in-out infinite; }
+.zen-robot.pose-curious .robot-head { transform: rotate(-7deg); }
+.zen-robot.pose-curious .arm-right { transform: rotate(-35deg); }
+.zen-robot.pose-listening .robot-head { transform: rotate(6deg); }
+.zen-robot.pose-listening .arm-left { transform: rotate(120deg); }
+.zen-robot.pose-listening .robot-heart { animation: robot-light 1.8s ease-in-out infinite; }
+.zen-robot.pose-thinking .robot-head { transform: rotate(-8deg); }
+.zen-robot.pose-thinking .arm-right { transform: rotate(150deg); }
+.zen-robot.pose-thinking .robot-beacon { fill: #ccb5ff; animation: robot-light 1.6s ease-in-out infinite; }
+.zen-robot.pose-reading .arm-right { transform: rotate(-28deg); }
+.zen-robot.pose-reading .robot-loupe { opacity: 1; }
+.zen-robot.pose-reading .robot-head { animation: robot-read 3s ease-in-out infinite; }
+.zen-robot.pose-typing .robot-keyboard { opacity: 1; }
+.zen-robot.pose-typing .arm-left { transform: rotate(-38deg); animation: robot-type-left .7s ease-in-out infinite; }
+.zen-robot.pose-typing .arm-right { transform: rotate(38deg); animation: robot-type-right .7s .35s ease-in-out infinite; }
+.zen-robot.pose-working .arm-right { transform: rotate(-55deg); animation: robot-work 1.8s ease-in-out infinite; }
+.zen-robot.pose-working .robot-beacon { fill: #a7cffb; }
+.zen-robot.pose-speaking .arm-left { transform: rotate(55deg); animation: robot-talk 2s ease-in-out infinite; }
+.zen-robot.pose-speaking .robot-mouth { animation: robot-mouth .7s ease-in-out infinite; }
+.zen-robot.pose-approval .arm-right { transform: rotate(-105deg); }
+.zen-robot.pose-approval :is(.robot-beacon,.robot-heart) { fill: #ffd89c; }
+.zen-robot.pose-success .arm-left { transform: rotate(115deg); }
+.zen-robot.pose-success .arm-right { transform: rotate(-115deg); }
+.zen-robot.pose-success .robot-head { animation: robot-nod 650ms ease-in-out 1; }
+.zen-robot:is(.pose-success,.robot-waving) .companion-eyes { opacity: 0; }
+.zen-robot:is(.pose-success,.robot-waving) .companion-smile { opacity: 1; }
+.zen-robot.pose-concerned .robot-head { transform: rotate(7deg); }
+.zen-robot.pose-concerned .robot-mouth { transform: rotate(180deg); }
+.zen-robot.pose-concerned .arm-left { transform: rotate(35deg); }
+.zen-robot.pose-concerned .arm-right { transform: rotate(-35deg); }
+.zen-robot.pose-concerned :is(.robot-beacon,.robot-heart) { fill: #ff99a9; }
+.zen-robot.pose-paused .robot-head { transform: translateY(2px); }
+.zen-robot.pose-paused .companion-eyes { transform: scaleY(.6); }
+.zen-robot.pose-paused .robot-beacon { fill: #a8a1b7; }
+.zen-robot.robot-waving .arm-right { transform: rotate(-125deg); animation: robot-wave .4s ease-in-out 4; }
+@keyframes robot-breathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes robot-light { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes robot-read { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes robot-type-left { 0%,100% { transform: rotate(-38deg); } 50% { transform: rotate(-48deg); } }
+@keyframes robot-type-right { 0%,100% { transform: rotate(38deg); } 50% { transform: rotate(48deg); } }
+@keyframes robot-work { 0%,100% { transform: rotate(-55deg); } 50% { transform: rotate(-75deg); } }
+@keyframes robot-talk { 0%,100% { transform: rotate(55deg); } 50% { transform: rotate(75deg); } }
+@keyframes robot-mouth { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(1.6); } }
+@keyframes robot-nod { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-9deg); } }
+@keyframes robot-wave { 0%,100% { transform: rotate(-125deg); } 50% { transform: rotate(-100deg); } }
+@media(max-width:420px) {
+  .robot-dock-slot { --robot-preferred-height: 126px; flex-basis: 86px; padding: 8px 0 10px 8px; }
+  .robot-dock { height: 108px; }
+  .robot-dock .zen-companion.large { width: 76px; height: 86px; }
+  .robot-dock>span { display: none; }
+  .robot-dock strong { font-size: 10px; }
+  .island .with-robot .latest-message { padding-left: 8px; padding-right: 10px; }
+  .with-robot .welcome-copy strong { font-size: 17px; line-height: 23px; }
+  .island .with-robot .live-message { padding: 10px; }
+}

@@ -1,7 +1,7 @@
 import {installWorkspace} from './workspace';
 import {requestRoute} from '../shared/workspace';
 import {clipboard} from 'electron';
-import { CAPSULE_HEIGHT } from '../shared/island';
+import { CAPSULE_HEIGHT, CAPSULE_WIDTH } from '../shared/island';
 import { app, BrowserWindow, Tray, Menu, nativeImage, globalShortcut, ipcMain, safeStorage, session, screen, dialog, shell } from 'electron';
 import { basename, extname } from 'node:path';
 import { join } from 'node:path';
@@ -635,7 +635,7 @@ void app.whenReady().then(async () => {
     const startedCompact = window.isVisible() && window.getBounds().height === CAPSULE_HEIGHT;
     emit({id:'voice',state:'listening',message:'',utterance:{id:'mini-voice',speaker:'zen',phase:'start',text:'Prueba sintética de voz.'}});
     await new Promise(resolve=>setTimeout(resolve,60));
-    const miniCapsuleVerified=window.getBounds().width===240&&window.getBounds().height===CAPSULE_HEIGHT&&await window.webContents.executeJavaScript(`document.querySelector('main').classList.contains('capsule')&&getComputedStyle(document.querySelector('.brand')).display==='none'&&!document.querySelector('.screen-context-indicator,.codex-pill')&&Array.from(document.querySelectorAll('header button')).every(button=>{const b=button.getBoundingClientRect(),h=document.querySelector('header').getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})`);
+    const miniCapsuleVerified=window.getBounds().width===CAPSULE_WIDTH&&window.getBounds().height===CAPSULE_HEIGHT&&await window.webContents.executeJavaScript(`document.querySelector('main').classList.contains('capsule')&&getComputedStyle(document.querySelector('.brand')).display==='none'&&!document.querySelector('.screen-context-indicator,.codex-pill')&&Array.from(document.querySelectorAll('header button')).every(button=>{const b=button.getBoundingClientRect(),h=document.querySelector('header').getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})`);
     await invoke('focus');
     for (let attempt = 0; attempt < 20 && !window.isAlwaysOnTop(); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
     const shownOnTop = window.isAlwaysOnTop();
@@ -747,7 +747,7 @@ void app.whenReady().then(async () => {
         if(ready)break;await new Promise(resolve=>setTimeout(resolve,25));
       }
       const controlsFit = await window.webContents.executeJavaScript(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const h=document.querySelector('header').getBoundingClientRect();resolve(Array.from(document.querySelectorAll('header button')).every(button=>{const b=button.getBoundingClientRect();return b.left>=h.left-.5&&b.right<=h.right+.5&&b.top>=h.top-.5&&b.bottom<=h.bottom+.5;}));})))`);
-      const railValid = dockEdge===edge && (edge==='top'?rail.height===40:rail.width===40&&rail.height===240);
+      const railValid = dockEdge===edge && (edge==='top'?rail.height===CAPSULE_HEIGHT:rail.width===CAPSULE_HEIGHT&&rail.height===CAPSULE_WIDTH);
       layout = { mode:'card',height:260,reducedMotion:true }; await position(); const card=window.getBounds();
       const inward = card.x>=area.x&&card.y>=area.y&&card.x+card.width<=area.x+area.width&&card.y+card.height<=area.y+area.height;
       layout = { mode:'capsule',height:CAPSULE_HEIGHT,reducedMotion:true }; await position();

@@ -1,3 +1,7 @@
+# Dimensiones actualizadas el 02/10/2026
+
+La ampliación posterior del robot usa **320×72 DIP** arriba y **72×320 DIP** en ambos laterales, con chat de 640 DIP. Sustituye las medidas iniciales descritas abajo; arrastre, anclaje, barra de tareas y captura al volver conservan su comportamiento. Véase [robot-interface.md](robot-interface.md).
+
 # Bordes, barra de tareas y chat
 
 Petición autorizada del 01/10/2026: mover ZEN por el borde superior y ambos laterales, orientar la cápsula como una línea vertical y poder recuperarla desde la barra de tareas con contexto nuevo. La petición posterior de ordenar el chat corrige la distribución demasiado ancha de la captura, el campo de texto y los controles.

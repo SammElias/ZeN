@@ -17,16 +17,19 @@ const screenshots='docs/ui-preview/latest-'+Date.now();
 await mkdir(screenshots,{recursive:true});
 try {
   // Match Electron: mount the composer in a narrow capsule, then widen the window.
-  const chatPage=await browser.newPage({viewport:{width:240,height:40}});
+  const chatPage=await browser.newPage({viewport:{width:320,height:72}});
   await chatPage.addInitScript(()=>Object.defineProperty(window.screen,'availHeight',{get:()=>1040}));
   await chatPage.goto(`${base}?state=idle`);
   await chatPage.evaluate(()=>{document.body.classList.remove('preview');window.zen.layout=async value=>{window.lastChatLayout=value;return{ok:true,value:true};};window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'voice',state:'idle',message:'',screenContext:{state:'idle'}}}));});
   await chatPage.getByRole('button',{name:'Desplegar panel'}).click();
   await chatPage.setViewportSize({width:640,height:600});
   await chatPage.waitForFunction(()=>document.querySelector('textarea').getBoundingClientRect().height===36&&document.querySelector('.latest-message').scrollHeight<=document.querySelector('.latest-message').clientHeight);
+  await chatPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const withoutContext=(await chatPage.locator('main').boundingBox()).height;
   await chatPage.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'voice',state:'idle',message:'',screenContext:{state:'ready',sourceTitle:'Pantalla de prueba - ChatGPT',capturedAt:Date.now()}}})));
   await chatPage.waitForFunction(()=>document.querySelector('.screen-context-note')&&document.querySelector('.latest-message').scrollHeight<=document.querySelector('.latest-message').clientHeight);
+  await chatPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await chatPage.locator('main').screenshot({path:screenshots+'/robot-layout.png'});
   const withContext=(await chatPage.locator('main').boundingBox()).height;
   assert.equal(withContext-withoutContext,34,'Context appearing after idle must reserve its full row');
   await chatPage.setViewportSize({width:640,height:withContext});
@@ -48,8 +51,8 @@ try {
   await chatPage.close();
   for (const state of ['idle', 'executing', 'completed', 'failed', 'awaiting_approval', 'streaming']) {
     await page.goto(`${base}?state=${state}`); await page.locator('.zen-overlay').waitFor();
-    assert.equal(Math.round((await page.locator('main').boundingBox()).height),40);
-    assert.equal(Math.round((await page.locator('main').boundingBox()).width),240);
+    assert.equal(Math.round((await page.locator('main').boundingBox()).height),72);
+    assert.equal(Math.round((await page.locator('main').boundingBox()).width),320);
     assert.equal(await page.locator('.brand').isVisible(),false);
     assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),h=el.getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})));
     await page.locator('main').screenshot({path:`${screenshots}/mini-${state}.png`,animations:'disabled'});
@@ -65,13 +68,13 @@ try {
     await page.goto(`${base}?state=idle`);
     await page.evaluate(edge=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:edge})),edge);
     await page.waitForFunction(edge=>document.querySelector('main').classList.contains('dock-'+edge),edge);
-    const rail=await page.locator('main').boundingBox(); assert.equal(Math.round(rail.width),40); assert.equal(Math.round(rail.height),240);
+    const rail=await page.locator('main').boundingBox(); assert.equal(Math.round(rail.width),72); assert.equal(Math.round(rail.height),320);
     assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),h=el.getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})));
     assert.equal(await page.locator('.header-status').evaluate(el=>getComputedStyle(el).writingMode),'vertical-rl');
     await page.locator('main').screenshot({path:`${screenshots}/dock-${edge}.png`,animations:'disabled'});
     await page.getByRole('button',{name:'Desplegar panel'}).click();
     await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).waitFor(); assert.equal((await page.locator('main').boundingBox()).width,640);
-    await page.getByRole('button',{name:'Recoger panel'}).click(); assert.equal(Math.round((await page.locator('main').boundingBox()).width),40);
+    await page.getByRole('button',{name:'Recoger panel'}).click(); assert.equal(Math.round((await page.locator('main').boundingBox()).width),72);
   }
   await page.goto(`${base}?state=idle`);
   await page.evaluate(()=>{window.demoDragPhases=[];const old=window.zen.drag;window.zen.drag=async phase=>{window.demoDragPhases.push(phase);return old(phase);};});
@@ -301,7 +304,7 @@ try {
   assert.equal(savedAppearance.interfaceSounds, false); assert.equal(savedAppearance.interfaceAnimations, false);
   await page.goto(`${base}?state=completed`);await page.getByRole('button',{name:'Desplegar panel'}).click();
   await page.waitForTimeout(850);
-  const compactHeight=(await page.locator('main').boundingBox()).height;assert(compactHeight>=304&&compactHeight<480,`Compact height: ${compactHeight}`);
+  const compactHeight=(await page.locator('main').boundingBox()).height;assert(compactHeight>=400&&compactHeight<560,`Compact height: ${compactHeight}`);
   await page.evaluate(()=>{
     window.fixtureLayoutCalls=[];const old=window.zen.layout;window.zen.layout=async value=>{window.fixtureLayoutCalls.push(value);return old(value);};
     window.fixtureHeaderChanges=0;window.fixtureTextChanges=0;window.fixtureArticle=document.querySelector('.live-message');window.fixtureBrand=document.querySelector('.brand-home');
@@ -313,7 +316,7 @@ try {
   await page.evaluate(async()=>{for(let n=1;n<=80;n++){window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'fluid',state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)}}));await new Promise(resolve=>setTimeout(resolve,4));}});
   await page.waitForTimeout(70);
   const streamMetrics=await page.evaluate(()=>({height:document.querySelector('main').getBoundingClientRect().height,layouts:window.fixtureLayoutCalls.length,header:window.fixtureHeaderChanges,textPaints:window.fixtureTextChanges,sameArticle:window.fixtureArticle===document.querySelector('.live-message'),sameBrand:window.fixtureBrand===document.querySelector('.brand-home'),animation:getComputedStyle(document.querySelector('.companion-float')).animationName,text:document.querySelector('.result-text').textContent}));
-  assert.equal(streamMetrics.height,424);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
+  assert.equal(streamMetrics.height,544);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
   await emit({id:'fluid',state:'completed',message:'Resultado final exacto.'});await page.getByRole('button',{name:'Copiar respuesta'}).waitFor();
   await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.fixtureCopied=text;}}});});
   await page.getByRole('button',{name:'Copiar respuesta'}).click();assert.equal(await page.evaluate(()=>window.fixtureCopied),'Resultado final exacto.');
@@ -338,13 +341,13 @@ try {
   });
   await page.getByRole('button',{name:'Micrófono apagado · comenzar voz',exact:true}).click();
   await page.locator('.compact-meter').waitFor();await page.waitForFunction(()=>Number(document.querySelector('.compact-meter').style.getPropertyValue('--level'))>.05);
-  assert.equal(Math.round((await page.locator('main').boundingBox()).width),240);assert.equal(Math.round((await page.locator('main').boundingBox()).height),40);
+  assert.equal(Math.round((await page.locator('main').boundingBox()).width),320);assert.equal(Math.round((await page.locator('main').boundingBox()).height),72);
   assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>button.getBoundingClientRect().right<=el.getBoundingClientRect().right)));
   await page.locator('main').screenshot({path:screenshots+'/mini-microphone.png',animations:'disabled'});
   for(const edge of ['left','right']){
     await page.evaluate(edge=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:edge})),edge);
-    await page.waitForFunction(()=>document.querySelector('main').getBoundingClientRect().width===40);
-    assert.equal(Math.round((await page.locator('main').boundingBox()).height),240);
+    await page.waitForFunction(()=>document.querySelector('main').getBoundingClientRect().width===72);
+    assert.equal(Math.round((await page.locator('main').boundingBox()).height),320);
     assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button,.compact-meter')).every(control=>{
       const bounds=control.getBoundingClientRect(),header=el.getBoundingClientRect();
       return bounds.left>=header.left&&bounds.right<=header.right&&bounds.top>=header.top&&bounds.bottom<=header.bottom;
@@ -352,7 +355,7 @@ try {
     await page.locator('main').screenshot({path:screenshots+`/mini-microphone-${edge}.png`,animations:'disabled'});
   }
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:'top'})));
-  await page.waitForFunction(()=>document.querySelector('main').getBoundingClientRect().width===240);
+  await page.waitForFunction(()=>document.querySelector('main').getBoundingClientRect().width===320);
   await page.getByRole('button',{name:'Micrófono activo · silenciar',exact:true}).click();assert.equal(await page.locator('.compact-meter').count(),0);
   await page.getByRole('button',{name:'Desplegar panel',exact:true}).click();await page.getByRole('button',{name:'Desconectar',exact:true}).click();await page.evaluate(()=>window.fixtureInputContext.close());
   assert.deepEqual(errors, []);
@@ -424,6 +427,30 @@ try {
   await page.evaluate(()=>{const c=document.createElement('canvas');c.width=400;c.height=200;const ctx=c.getContext('2d');ctx.fillStyle='purple';ctx.fillRect(0,0,400,200);window.zen.previewScreen=async()=>({ok:true,value:{id:'region-fixture',image:c.toDataURL(),capturedAt:Date.now(),scope:'display'}});window.zen.attachImage=async image=>{window.croppedImage=image;return {ok:true,value:{observationId:'crop-observation'}};};});
   await page.getByRole('button',{name:'Añadir contexto',exact:true}).click();await page.getByRole('menuitem',{name:/Zona de pantalla/}).click();const regionBox=await page.getByRole('img',{name:'Pantalla para seleccionar una zona'}).boundingBox();await page.mouse.move(regionBox.x+regionBox.width*.1,regionBox.y+regionBox.height*.1);await page.mouse.down();await page.mouse.move(regionBox.x+regionBox.width*.6,regionBox.y+regionBox.height*.6);await page.mouse.up();await page.getByRole('button',{name:'Usar esta zona',exact:true}).click();await page.getByRole('textbox',{name:'Mensaje para ZEN'}).fill('Explica la zona');await page.getByRole('textbox',{name:'Mensaje para ZEN'}).press('Enter');await page.waitForFunction(()=>window.workspaceCalls.length===3);assert.equal(await page.evaluate(()=>window.workspaceCalls[2].observationId),'crop-observation');assert.deepEqual(await page.evaluate(async()=>{const img=new Image();img.src=window.croppedImage;await img.decode();return [img.width,img.height];}),[200,100]);
   assert.deepEqual(errors,[]);
-  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, streamMetrics, compactHeight, checks: ['compact real Web Audio microphone meter with mock transport; mute removes meter', 'observed local reading and Live progress', 'actual activity stages, bounded timeline, no duplicate steps or resizing per delta', 'capsule shows only current status without text clipping', 'GIF assets decode, reduced motion uses static SVG', 'cancelled task never becomes completed; small viewport controls remain usable', 'computer task leaves chat available; exact preview and chat confirmation continue the same task', 'confirmation code visible; chat confirmation avoids screen capture', 'desktop Codex handoff stays awaiting input', 'streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with six context options; no window or media picker', 'favorites persist locally, editable resume carries task id, selected text and cropped image sent only on submit, per-task budget travels with request', 'original companion follows pointer', 'header drag captures pointer and suppresses click', '240×40 top capsule, 40×240 side rail and 640px chat', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view', 'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution', 'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
+  // The robot reacts only to observed state; greeting never invokes a tool/model.
+  await page.setViewportSize({width:1000,height:900});await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.goto(base);await page.getByRole('button',{name:'Desplegar panel'}).click();
+  assert.equal(await page.locator('.robot-dock .robot-hand').count(),2);
+  assert.equal((await page.locator('.robot-dock .zen-companion').boundingBox()).height,144);
+  await page.evaluate(()=>{window.robotRunCalls=0;window.zen.run=async()=>{window.robotRunCalls++;throw Error('Greeting must stay local');};});
+  await page.getByRole('button',{name:'Saludar a ZEN'}).click();await page.locator('.robot-dock .robot-waving').waitFor();
+  assert.equal(await page.evaluate(()=>window.robotRunCalls),0);
+  await page.locator('main').screenshot({path:screenshots+'/robot-greeting.png'});
+  for(const [state,activity,pose] of [['thinking','thinking','thinking'],['thinking','reading','reading'],['thinking','writing','typing'],['executing','executing','working'],['awaiting_approval','approval','approval'],['failed','failed','concerned'],['completed','completed','success'],['cancelled','cancelled','paused']]){
+    await emit({id:'robot-poses',state,activity,message:'Vista previa local de los gestos.'});
+    await page.waitForFunction(pose=>document.querySelector('.robot-dock').dataset.pose===pose,pose);
+    assert.equal(await page.locator('.brand-home .zen-companion').getAttribute('data-pose'),pose);
+    assert.equal(await page.locator('.robot-dock .robot-waving').count(),0);
+    await page.waitForTimeout(350);
+    await page.locator('main').screenshot({path:screenshots+'/robot-'+pose+'.png',animations:'disabled'});
+  }
+  await emit({id:'robot-poses',state:'thinking',activity:'reading',paused:true,message:'Pausado'});
+  await page.waitForFunction(()=>document.querySelector('.robot-dock').dataset.pose==='paused');
+  await emit({id:'robot-poses',state:'thinking',activity:'writing',paused:false,message:'Escribiendo'});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.waitForFunction(()=>document.querySelector('main').classList.contains('motion-off'));
+  assert(await page.locator('.zen-robot').evaluateAll(robots=>robots.every(robot=>[...robot.querySelectorAll('*')].every(el=>getComputedStyle(el).animationName==='none'))));
+  assert.deepEqual(errors,[]);
+  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, streamMetrics, compactHeight, checks: ['larger full-body robot, two hands, observed task gestures, greeting without API, paused/failure/approval semantics and reduced-motion gestures', 'compact real Web Audio microphone meter with mock transport; mute removes meter', 'observed local reading and Live progress', 'actual activity stages, bounded timeline, no duplicate steps or resizing per delta', 'capsule shows only current status without text clipping', 'GIF assets decode, reduced motion uses static SVG', 'cancelled task never becomes completed; small viewport controls remain usable', 'computer task leaves chat available; exact preview and chat confirmation continue the same task', 'confirmation code visible; chat confirmation avoids screen capture', 'desktop Codex handoff stays awaiting input', 'streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with six context options; no window or media picker', 'favorites persist locally, editable resume carries task id, selected text and cropped image sent only on submit, per-task budget travels with request', 'original companion follows pointer', 'header drag captures pointer and suppresses click', '320×72 top capsule, 72×320 side rail and 640px chat', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view', 'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution', 'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
   await mkdir('test-results', { recursive: true }); await writeFile('test-results/ui.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

@@ -25,13 +25,13 @@ button:hover { background: #232329; border-color: #4f465f; }
 }
 .island.capsule { border-radius: 0 0 18px 18px; }
 .island.live-only { width: min(640px, 100vw); }
-.island.live-only.capsule { width: min(240px, 100vw); max-height: 40px; }
-.island.live-only.capsule .overlay-header { height: 40px; min-height: 40px; padding: 0 6px; gap: 4px; }
+.island.live-only.capsule { width: min(320px, 100vw); max-height: 72px; }
+.island.live-only.capsule .overlay-header { height: 72px; min-height: 72px; padding: 0 8px; gap: 6px; }
 .island.live-only.capsule .brand { display: none; }
-.island.live-only.capsule .zen-companion { width: 36px; height: 36px; }
-.island.live-only.capsule .header-status { min-width: 0; width: 76px; flex: 1; font-size: 10px; gap: 5px; justify-content: flex-end; }
+.island.live-only.capsule .zen-companion { width: 64px; height: 68px; }
+.island.live-only.capsule .header-status { min-width: 0; width: auto; max-width: none; flex: 1; font-size: 12px; gap: 6px; justify-content: flex-start; }
 .island.live-only.capsule .header-actions { gap: 1px; margin-left: 0; }
-.island.live-only.capsule .icon-button, .island.live-only.capsule .fold-button { width: 24px; height: 26px; padding: 5px; }
+.island.live-only.capsule .icon-button, .island.live-only.capsule .fold-button { width: 28px; height: 30px; padding: 6px; }
 .island.live-only.capsule .icon-button svg, .island.live-only.capsule .fold-button svg { width: 14px; height: 14px; }
 .latest-message { padding: 10px 24px 14px; }
 .live-message { width: 100%; padding: 0; }
@@ -213,8 +213,8 @@ button:hover { background: #232329; border-color: #4f465f; }
 /* Edge rails keep controls upright; the chat expands toward the work area. */
 .island.dock-left { border-radius: 0 20px 20px 0; border-left: 0; border-top: 1px solid #24242a; }
 .island.dock-right { border-radius: 20px 0 0 20px; border-right: 0; border-top: 1px solid #24242a; }
-.island.live-only.capsule:is(.dock-left,.dock-right) { width: 40px; height: min(240px,100vh); max-height: 240px; }
-.island.live-only.capsule:is(.dock-left,.dock-right) .overlay-header { flex-direction: column; width: 40px; height: 100%; min-height: 0; padding: 6px 0; gap: 4px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) { width: 72px; height: min(320px,100vh); max-height: 320px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .overlay-header { flex-direction: column; width: 72px; height: 100%; min-height: 0; padding: 4px 0; gap: 4px; }
 .island.live-only.capsule:is(.dock-left,.dock-right) .brand-home { flex: 0 0 auto; }
 .island.live-only.capsule:is(.dock-left,.dock-right) .header-status { flex: 1; writing-mode: vertical-rl; text-orientation: mixed; width: 20px; min-width: 20px; min-height: 24px; align-items: center; justify-content: center; gap: 5px; font-size: 10px; }
 .island.live-only.capsule:is(.dock-left,.dock-right) .header-actions { flex-direction: column; margin: 0; gap: 2px; }

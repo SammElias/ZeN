@@ -1,3 +1,7 @@
+# Dimensiones actualizadas el 02/10/2026
+
+La petición posterior de ampliar el robot sustituye las medidas de esta primera versión por **320×72 DIP** arriba y **72×320 DIP** en ambos laterales. Detalles y evidencia en [robot-interface.md](robot-interface.md); los contratos funcionales descritos abajo permanecen vigentes.
+
 # Mini cápsula con despliegue conservado · 01/10/2026
 
 El usuario pidió reducir la interfaz recogida a icono, estados y micrófono, y confirmó que debe mantenerse el despliegue.

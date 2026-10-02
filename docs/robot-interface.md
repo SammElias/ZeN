@@ -1,5 +1,19 @@
 # Robot ZEN y mirada local · 02/10/2026
 
+## Ampliación vigente: cuerpo, manos y gestos
+
+La petición posterior «hazlo más grande» sustituye las medidas compactas iniciales: cápsula superior **320×72 DIP**, laterales **72×320**, chat de 640 DIP. Robot original con cuerpo, manos articuladas, visor y corazón; 64×68 en cápsula y 128×144 junto al mensaje desplegado. En pantallas estrechas se adapta a 76×86; dentro de paneles con poco alto se reduce sin cubrir controles. Solo se mantiene el último mensaje de Tú/ZEN.
+
+`robotPresentation` traduce metadatos locales de ejecución a gestos: atender, pensar, leer con lupa, escribir con teclado, trabajar, hablar, esperar aprobación, terminar, revisar un fallo o descansar en pausa. Las confirmaciones tienen prioridad, un fallo nunca se presenta como éxito y las pausas conservan una pose quieta. El texto del modelo no elige gestos ni concede permisos. Pulsar «Saludar a ZEN» produce un saludo local de 1,6 segundos, sin ocultar aprobaciones, fallos o pausas.
+
+El compañero permanece junto al mensaje, fuera de su scroll. La altura se calcula al asentar contenido y los deltas de streaming conservan DOM y tamaño de ventana. Animaciones por transform/opacity, sin GIF ni solicitudes nuevas. Movimiento reducido, preferencias y ocultación detienen gestos y mirada. Se preservan el agente remoto y los JSON de configuración, byte a byte.
+
+Validación de esta ampliación: build, 294 pruebas, navegador Edge (gestos, saludo sin API, dos manos, bordes, chat estrecho, movimiento reducido y stream estable) y Electron nativo (320×72 y 72×320, controles, captura, barra de tareas y contratos existentes). Evidencia: `evidence/robot-interaction-ui.json`, `evidence/robot-interaction-electron.json`. No se hacen llamadas API nuevas ni se acreditan pendientes físicos de voz/Power Platform.
+
+![Robot ampliado junto al chat](evidence/robot-interaction-chat.png)
+
+## Primera iteración y referencia
+
 Actualizada la referencia `.reference/coucou` desde `3cc3333` hasta `5332f9ee4de9caaf4110c0fc4937e838c8c71ac4`, mediante fetch y avance rápido. Se revisaron las imágenes de `docs/media/` y fotogramas de `demo.gif`: cápsula negra, superficies interiores suaves, personaje reconocible y controles discretos. El robot de ZEN, los iconos y los sonidos son propios; no se incorporan el personaje Mochi ni archivos multimedia de Coucou.
 
 ## Presentación
