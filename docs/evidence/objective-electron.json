@@ -7,12 +7,15 @@
     "value": {
       "settings": {
         "reasoningModel": "gpt-6.1-sol",
-        "voiceModel": "gpt-realtime-2.1-mini",
+        "voiceModel": "gpt-live-1",
         "shortcut": "Control+Alt+Z",
         "maxToolCalls": 4,
         "maxConcurrentTasks": 1,
         "maxQueuedTasks": 8,
         "taskTimeoutMs": 90000,
+        "computerMaxRounds": 40,
+        "computerMaxActions": 160,
+        "computerTimeoutMs": 600000,
         "allowNotepad": true,
         "voiceConsent": false,
         "listenOnInvoke": false,
@@ -37,13 +40,58 @@
         "outputTokens": 0,
         "cachedTokens": 0,
         "uncertainCalls": 0,
-        "pricingDate": "2026-09-30"
+        "pricingDate": "2026-10-01"
       },
       "hasKey": false,
       "shortcutRegistered": true,
       "protectedStorage": true
     }
   },
+  "documentReaderVerified": true,
+  "focusProbe": {
+    "source": "fixture",
+    "stable": true
+  },
+  "activityTimelineVerified": true,
+  "computerIpcVerified": true,
+  "edgeDockingVerified": true,
+  "edgeChecks": [
+    {
+      "edge": "left",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    },
+    {
+      "edge": "right",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    },
+    {
+      "edge": "top",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    }
+  ],
+  "backgroundTaskbarVerified": true,
+  "taskbarReturnVerified": true,
+  "restoreCaptures": 2,
+  "miniCapsuleVerified": true,
+  "stableStreamingVerified": true,
+  "voiceNoticePreserved": true,
+  "pasteImageCspVerified": true,
+  "singleAttachmentClipVerified": true,
+  "folderIpcVerified": true,
+  "folderDelegationVerified": true,
+  "humanConfirmationVerified": true,
+  "imageIpcVerified": true,
+  "projectIpcVerified": true,
+  "unknownProjectBlocked": true,
   "objective": {
     "pageVerified": true,
     "fileVerified": true,
@@ -58,7 +106,8 @@
     "repeatedApprovalBlocked": true,
     "meetingDefaultStaysHidden": true,
     "meetingBackgroundEstablished": true,
-    "meetingOptInWithoutFocus": true
+    "meetingOptInWithoutFocus": true,
+    "voiceInvocationWithoutFocus": true
   },
   "protectedRoundTrip": true,
   "preferencesIsolated": true,
@@ -70,17 +119,56 @@
   "hiddenNotOnTop": true,
   "topAnchorStable": true,
   "collapsedHeightVerified": true,
+  "latestOnlyExpanded": true,
+  "latestTranscriptVerified": true,
+  "latestInterruptionVerified": true,
+  "unknownArtifactBlocked": true,
+  "invalidLiveSessionBlocked": true,
+  "mcpSecretProtectionVerified": true,
+  "libraryRootsLocal": true,
+  "localFileWithoutApiVerified": true,
+  "invalidDragBlocked": true,
+  "horizontalDragVerified": true,
+  "dragPositionPersisted": true,
+  "dragChecks": [
+    {
+      "displayId": 2093210665,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 2093210665,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 1617359709,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    },
+    {
+      "displayId": 1617359709,
+      "withinDisplay": true,
+      "topPreserved": true,
+      "capsuleRestored": true
+    }
+  ],
+  "dragInput": "synthetic cursor on real displays",
+  "widthsVerified": true,
   "positionLocked": true,
   "capsuleBounds": {
-    "x": 800,
+    "x": 840,
     "y": 0,
-    "width": 320,
-    "height": 48
+    "width": 240,
+    "height": 40
   },
   "cardBounds": {
-    "x": 680,
+    "x": 640,
     "y": 0,
-    "width": 560,
-    "height": 260
+    "width": 640,
+    "height": 210
   }
 }

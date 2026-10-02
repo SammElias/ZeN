@@ -1,6 +1,6 @@
 # GPT-Live en ZEN · 01/10/2026
 
-La petición nueva adelanta esta integración respecto al orden anterior. **GPT-Live es ahora la ruta de voz activa del proyecto**, con **gpt-live-1 / echo** para conversación y **gpt-6.1-sol** para tareas delegadas por Responses. No se declara completado el objetivo general. No se ha generado ningún nuevo ejecutable; los portables anteriores conservan su versión anterior de voz.
+La petición nueva adelanta esta integración respecto al orden anterior. **GPT-Live es ahora la ruta de voz activa del proyecto**, con **gpt-live-1 / echo** para conversación y **gpt-6.1-sol** para tareas delegadas por Responses. No se declara completado el objetivo general. El portable vigente incluye esta ruta de voz. El 02/10 se añadieron medidor e interrupción local sin cancelar tareas; [mejoras y pruebas](capsule-improvements.md). Los apartados históricos siguientes conservan sus límites originales.
 
 ## Implementado
 

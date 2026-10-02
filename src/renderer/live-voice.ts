@@ -18,15 +18,19 @@ export class LiveVoiceClient {
   private ready=false;
   private cancelStart?:()=>void;
   private activity:SpeechActivity;
-  constructor(private bridge:ZenBridge,private state:(status:VoiceStatus,microphone:boolean)=>void,private message:(text:string)=>void,private speaking:(value:boolean)=>void=()=>{},private transcript:(event:Utterance)=>void=()=>{}){this.audio.autoplay=true;this.activity=new SpeechActivity(speaking);}
+  private outputSpeaking=false;
+  private interruptedInput?:string;
+  private inputBoundary=-1;
+  private manualInterrupt=false;
+  constructor(private bridge:ZenBridge,private state:(status:VoiceStatus,microphone:boolean)=>void,private message:(text:string)=>void,private speaking:(value:boolean)=>void=()=>{},private transcript:(event:Utterance)=>void=()=>{}){this.audio.autoplay=true;this.activity=new SpeechActivity(value=>{this.outputSpeaking=value;speaking(value);});}
   get active(){return this.starting||!!this.pc||!!this.closing;}
-  level(){if(!this.analyser||this.muted)return 0;const data=new Uint8Array(this.analyser.fftSize);this.analyser.getByteTimeDomainData(data);return Math.min(1,Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length)*5);}
-  setMicrophoneEnabled(enabled:boolean){this.muted=!enabled;if(enabled&&this.ready&&!this.closing)this.audio.muted=!this.allowed;this.stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&this.ready&&!this.closing;});if(this.ready)this.state('connected',enabled);}
+  level(){if(!this.analyser||this.muted||!this.ready||this.closing)return 0;const data=new Uint8Array(this.analyser.fftSize);this.analyser.getByteTimeDomainData(data);return Math.min(1,Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length)*5);}
+  setMicrophoneEnabled(enabled:boolean){this.muted=!enabled;if(enabled&&this.ready&&!this.closing){this.manualInterrupt=false;this.audio.muted=!this.allowed||this.inputBoundary>=0;}this.stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&this.ready&&!this.closing;});if(this.ready)this.state('connected',enabled);}
   mute(){this.setMicrophoneEnabled(this.muted);}
-  setAudible(allowed:boolean){this.allowed=allowed;this.audio.muted=!allowed;if(!allowed)this.activity.reset();}
-  async interrupt(){this.audio.muted=true;this.activity.reset();await this.bridge.voiceInterrupt();}
+  setAudible(allowed:boolean){this.allowed=allowed;this.audio.muted=!allowed||this.manualInterrupt||this.inputBoundary>=0;if(!allowed)this.activity.reset();}
+  async interrupt(){this.manualInterrupt=true;this.audio.muted=true;this.activity.reset();await this.bridge.voiceInterrupt();}
   async start(startMuted=false){
-    if(this.active)return;this.starting=true;const generation=++this.generation;this.state('connecting',false);
+    if(this.active)return;this.starting=true;this.interruptedInput=undefined;this.inputBoundary=-1;this.manualInterrupt=false;const generation=++this.generation;this.state('connecting',false);
     let started=false;let signalStarted!:()=>void;let rejectStarted!:(error:Error)=>void;
     const startup=new Promise<void>((resolve,reject)=>{signalStarted=resolve;rejectStarted=reject;});void startup.catch(()=>{});
     this.cancelStart=()=>rejectStarted(new Error('Conexión cancelada.'));
@@ -39,7 +43,7 @@ export class LiveVoiceClient {
       this.context=new AudioContext();this.analyser=this.context.createAnalyser();this.analyser.fftSize=256;this.context.createMediaStreamSource(stream).connect(this.analyser);
       const pc=new RTCPeerConnection();this.pc=pc;const dc=pc.createDataChannel('oai-events');
       pc.ontrack=event=>{
-        this.audio.srcObject=event.streams[0];this.audio.muted=!this.allowed;
+        this.audio.srcObject=event.streams[0];this.audio.muted=!this.allowed||this.manualInterrupt||this.inputBoundary>=0;
         void this.audio.play().catch(()=>this.message('No se pudo reproducir audio. Revisa el dispositivo de salida.'));
         const analyser=this.context!.createAnalyser();analyser.fftSize=256;this.context!.createMediaStreamSource(event.streams[0]).connect(analyser);
         clearInterval(this.meter);this.activity.reset();this.meter=setInterval(()=>{const data=new Uint8Array(analyser.fftSize);analyser.getByteTimeDomainData(data);this.activity.sample(Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length),this.allowed&&!this.audio.muted);},100);
@@ -52,7 +56,17 @@ export class LiveVoiceClient {
           const e=JSON.parse(event.data);
           if(e.type==='session.started'){started=true;signalStarted();}
           if(e.type==='session.closed'){if(!this.closing)void this.stop(e.reason==='connection_lost');return;}
-          const fragment=timeline.consume(e);if(fragment?.utterance)this.transcript(fragment.utterance);
+          const fragment=timeline.consume(e);
+          if(fragment?.utterance){
+            // Server intervals control playback only: no effects, inferred turns,
+            // captures or cancellation of background work from these fragments.
+            if(this.ready&&!this.closing&&!this.muted&&!this.manualInterrupt&&this.allowed&&fragment.segment.speaker==='user'&&e.delta.trim()&&(this.outputSpeaking||this.inputBoundary>=0)){
+              this.inputBoundary=Math.max(this.inputBoundary,e.end_ms);this.audio.muted=true;this.activity.reset();
+              if(this.interruptedInput!==fragment.segment.id){this.interruptedInput=fragment.segment.id;void this.bridge.voiceInterrupt().then(result=>{if(generation===this.generation&&!result.ok)this.message('Audio silenciado; la interrupción remota no pudo confirmarse.');}).catch(()=>{if(generation===this.generation)this.message('Audio silenciado; la interrupción remota no pudo confirmarse.');});}
+            }
+            if(this.inputBoundary>=0&&fragment.segment.speaker==='zen'&&e.start_ms>=this.inputBoundary){this.inputBoundary=-1;this.audio.muted=!this.allowed||this.manualInterrupt;}
+            this.transcript(fragment.utterance);
+          }
           if(e.type==='error')this.message('GPT-Live rechazó un evento. No se ha cambiado la configuración.');
         }catch{this.message('Evento Live ilegible.');void this.stop(true);}
       };

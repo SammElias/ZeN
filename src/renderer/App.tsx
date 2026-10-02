@@ -47,6 +47,7 @@ export function App() {
   const [confirmations,setConfirmations]=useState<HumanConfirmation[]>([]);const confirmationsRef=useRef(confirmations);confirmationsRef.current=confirmations;
   const [records, setRecords] = useState<TaskEvent[]>([]);
   const activities=useMemo(()=>{const store=new ActivityStore();if(window.demoState)store.accept(window.demoState);return store;},[]);
+  const [preparations,setPreparations]=useState<string[]>([]);
   const messages = useMemo(() => new MessageStore(window.demoState ? latestTask({}, window.demoState) : {}), []);
   const projectMessages = useMemo(() => new MessageStore(), []);
   const messageMeta = useSyncExternalStore(messages.subscribeMetadata, messages.metadata);
@@ -111,6 +112,7 @@ export function App() {
     void window.zen.settings().then(result => { if (result.ok) { setConfig(result.value); if (!result.value.shortcutRegistered) setNotice('Atajo ocupado. Puedes abrir ZEN desde la bandeja.'); } else fail(result.error); });
     const offConfirmations=window.zen.onConfirmations(setConfirmations);void window.zen.confirmations().then(result=>{if(result.ok)setConfirmations(result.value);});
     const offTask = window.zen.onTask(event => {
+      if(event.preparation){const preparation=event.preparation;setPreparations(previous=>preparation.active?[...new Set([...previous,preparation.requestId])]:previous.filter(id=>id!==preparation.requestId));return;}
       activities.accept(event);
       if(event.workContext){projectMessages.task(event);setProjectTask(previous=>event.streamText&&previous?.id===event.id&&previous.state===event.state&&previous.workContext?.phase===event.workContext?.phase?previous:event);if(['review','external'].includes(event.workContext.phase)&&!microphoneRef.current){setProjectFocus(true);setCollapsed(false);}}
       if(event.screenContext){setScreenContext(event.screenContext);setScreenPreview(previous=>previous?.id===event.screenContext?.snapshotId?previous:undefined);return;}
@@ -118,7 +120,7 @@ export function App() {
       if (event.contextConsumed) { setObservationId(undefined); return; }
       if (event.utterance) { caption(event.utterance);if(manualMode.current)return; if (event.utterance.phase === 'start'&&event.utterance.speaker==='user')setProjectFocus(false); return; }
       if(event.id==='voice'){if(['failed','cancelled'].includes(event.state)){setVoiceNotice(event.message);void voice.current?.stop();}return;}
-      if (!['storage', 'control'].includes(event.id)) setRecords(previous => {const old=previous.find(row=>row.id===event.id);if(event.streamText&&old?.state===event.state&&old.workContext?.phase===event.workContext?.phase)return previous;return old?previous.map(row=>row.id===event.id?event:row):[...previous,event].slice(-100);});
+      if (!['storage', 'control'].includes(event.id)) setRecords(previous => {const old=previous.find(row=>row.id===event.id);if(event.streamText&&old?.state===event.state&&old.workContext?.phase===event.workContext?.phase&&old.activity===event.activity)return previous;return old?previous.map(row=>row.id===event.id?event:row):[...previous,event].slice(-100);});
       messages.task(event);
       setTask(previous => event.streamText&&previous.id===event.id&&previous.state===event.state&&taskActivity(previous)===taskActivity(event)?previous:event);
       if (event.state === 'awaiting_approval') { setCollapsed(false); }
@@ -134,7 +136,7 @@ export function App() {
     return () => { offConfirmations(); offDock(); offMode(); offTask(); offInvoke(); offVisibility(); document.removeEventListener('keydown', keyboard); document.removeEventListener('keyup', releaseKey); window.removeEventListener('blur', cancelTalk); window.removeEventListener('focus', refreshSettings); timer.current?.dispose(); messages.dispose(); projectMessages.dispose(); void voice.current?.stop(); };
   }, []);
   const pendingApprovals = records.filter(row => row.state === 'awaiting_approval');
-  const busy = records.some(row => ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state)) || ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(task.state);
+  const busy = preparations.length>0 || records.some(row => ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(row.state)) || ['queued', 'thinking', 'executing', 'awaiting_approval'].includes(task.state);
   const activityTask=projectFocus&&projectTask?projectTask:['queued','thinking','executing','awaiting_approval'].includes(task.state)?task:[...records].reverse().find(row=>['queued','thinking','executing','awaiting_approval'].includes(row.state))??task;
   const trail=useSyncExternalStore(activities.subscribe,()=>activities.get(activityTask.id));
   const currentActivity=trail?.steps.at(-1)?.activity??taskActivity(activityTask);
@@ -150,7 +152,7 @@ export function App() {
   const changeMode = async (next: ResponseMode) => { voice.current?.setAudible(audible(next)); setResponseMode(next); const result = await window.zen.setMode(next); if (!result.ok) fail(result.error); };
   const attention = pendingApprovals.length > 0 || ['awaiting_approval', 'awaiting_input', 'failed'].includes(task.state);
   const activityStatus=currentActivity?activityLabels[currentActivity]:undefined;
-  const rawStatus = voiceState === 'connecting' ? 'Conectando…' : voiceState==='closing'?'Finalizando voz…': confirmations.length?'Tu confirmación': attention ? activityStatus?.short??'Te necesito' : speaking ? 'Respondiendo' : busy ? activityStatus?.short??'Procesando' : microphone ? 'Escuchando' : responseMode.meeting ? 'Reunión' : activityStatus?.short??'Listo';
+  const rawStatus = voiceState === 'connecting' ? 'Conectando…' : voiceState==='closing'?'Finalizando voz…': confirmations.length?'Tu confirmación': attention ? activityStatus?.short??'Te necesito' : speaking ? 'Respondiendo' : busy ? preparations.length?'Leyendo':activityStatus?.short??'Procesando' : microphone ? 'Escuchando' : responseMode.meeting ? 'Reunión' : activityStatus?.short??'Listo';
   const [islandStatus,setIslandStatus]=useState(rawStatus);
   useEffect(()=>{if(attention||voiceState==='closing'||['completed','cancelled'].includes(activityTask.state)&&!speaking&&!microphone){setIslandStatus(rawStatus);return;}const timer=setTimeout(()=>setIslandStatus(rawStatus),300);return()=>clearTimeout(timer);},[rawStatus,attention,voiceState,activityTask.state,speaking,microphone]);
   const navigate = (_next?:null) => { playSound('open');if(collapsed)void refreshScreen(); setCollapsed(false); };
@@ -178,7 +180,7 @@ export function App() {
       <span className={`header-status ${busy || speaking ? 'working' : ''}`} role="status" title={voiceNotice||activityStatus?.label||islandStatus}><i /><span className="status-label">{islandStatus}</span></span>
       {!collapsed&&projectTask?.workContext&&<button className={`codex-pill ${projectTask.workContext.phase}`} onClick={()=>{setProjectFocus(true);setCollapsed(false);}} aria-label="Ver trabajo de Codex"><span aria-hidden="true">✧</span>Codex{projectTask.workContext.phase==='preparing'&&<i/>}</button>}
       {!collapsed&&screenContext&&screenContext.state!=='idle'&&<button className="screen-context-indicator" aria-label="Actualizar contexto visual" disabled={screenContext.state==='capturing'} onClick={()=>void refreshScreen()} title={`Actualizar captura de la ventana detrás de ZEN${screenContext.sourceTitle?` · ${screenContext.sourceTitle}`:''}`}>{['ready','queued'].includes(screenContext.state)?'◉':'◌'}</button>}
-      {<IconButton name={microphone ? 'mic' : 'mute'} label={microphone ? 'Micrófono activo · silenciar' : voiceState==='closing'?'Finalizando voz': voiceState === 'connected' ? 'Micrófono silenciado · activar' : 'Micrófono apagado · comenzar voz'} className={`icon-button island-microphone ${microphone ? 'active' : ''}`} aria-pressed={microphone} disabled={voiceState === 'connecting'||voiceState==='closing'} onClick={toggleVoice} />}
+      <IconButton name={microphone ? 'mic' : 'mute'} label={microphone ? 'Micrófono activo · silenciar' : voiceState==='closing'?'Finalizando voz': voiceState === 'connected' ? 'Micrófono silenciado · activar' : 'Micrófono apagado · comenzar voz'} className={`icon-button island-microphone ${microphone ? 'active' : ''}`} aria-pressed={microphone} disabled={voiceState === 'connecting'||voiceState==='closing'} onClick={toggleVoice} />{collapsed&&microphone&&<VoiceIndicator active compact visible={visible} client={voice}/>}
       <div className="header-actions"><button className="fold-button" onClick={fold} aria-expanded={!collapsed} aria-label={collapsed ? 'Desplegar panel' : 'Recoger panel'}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ transform: collapsed ? undefined : 'rotate(180deg)' }}><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg></button>{collapsed && busy ? <IconButton name="stop" label="Detener todas las tareas" className="icon-button danger" onClick={() => void stop()} /> : <IconButton name="close" label="Ocultar ZEN (Esc)" onClick={() => void hide()} />}</div>
     </header>
     {!collapsed && <>

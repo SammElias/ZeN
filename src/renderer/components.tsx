@@ -7,10 +7,16 @@ type IconName = 'mic' | 'mute' | 'send' | 'settings' | 'history' | 'close' | 'st
 const paths: Record<IconName, string> = { attach: 'm8 13 7-7a3 3 0 0 1 4 4L9 20a5 5 0 0 1-7-7L13 2M6 15l9-9', mic: 'M12 15a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v7a3 3 0 0 0 3 3ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8', mute: 'M3 3l18 18M9 9v3a3 3 0 0 0 5 2M15 9V5a3 3 0 0 0-6 0M5 10v2a7 7 0 0 0 12 5M19 10v2M12 19v3', send: 'M12 19V5M5 12l7-7 7 7', settings: 'M4 7h16M4 17h16M8 4v6M16 14v6', history: 'M3 11a9 9 0 1 1 3 8M3 4v7h7M12 7v5l3 2', close: 'M6 6l12 12M18 6 6 18', stop: 'M6 6h12v12H6Z', check: 'm5 12 4 4 10-10', error: 'M12 8v5M12 17h.01M12 3l10 18H2Z', copy: 'M9 9h12v12H9ZM15 9V3H3v12h6', details: 'M5 6h14M5 12h14M5 18h10', sound: 'M4 9h4l5-4v14l-5-4H4ZM17 8a6 6 0 0 1 0 8M20 5a10 10 0 0 1 0 14' };
 export function Icon({ name }: { name: IconName }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>; }
 export function IconButton({ name, label, ...props }: { name: IconName; label: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) { return <button type="button" className="icon-button" aria-label={label} title={label} {...props}><Icon name={name} /></button>; }
-export function VoiceIndicator({ active, visible, client }: { active: boolean; visible: boolean; client: React.RefObject<{level():number} | null> }) {
+export function VoiceIndicator({ active, visible, client, compact=false }: { active: boolean; visible: boolean; client: React.RefObject<{level():number} | null>; compact?:boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => { const query = matchMedia('(prefers-reduced-motion: reduce)'); let frame = 0; const update = () => { ref.current?.style.setProperty('--level', String(client.current?.level() ?? 0)); frame = requestAnimationFrame(update); }; const synchronize = () => { cancelAnimationFrame(frame); if (active && visible && !query.matches) update(); else ref.current?.style.setProperty('--level', '0'); }; synchronize(); query.addEventListener('change', synchronize); return () => { cancelAnimationFrame(frame); query.removeEventListener('change', synchronize); }; }, [active, visible]);
-  return <span className={`voice-indicator ${active ? 'active' : ''}`} ref={ref} aria-label={active ? 'Nivel real del micrófono' : 'Micrófono apagado'}>{[0, 1, 2, 3, 4].map(i => <i key={i} />)}</span>;
+  useEffect(() => {
+    const query=matchMedia('(prefers-reduced-motion: reduce)');let timer:ReturnType<typeof setInterval>|undefined;
+    const update=()=>ref.current?.style.setProperty('--level',String(client.current?.level()??0));
+    const synchronize=()=>{clearInterval(timer);if(active&&visible&&!query.matches){update();timer=setInterval(update,100);}else ref.current?.style.setProperty('--level','0');};
+    synchronize();query.addEventListener('change',synchronize);
+    return()=>{clearInterval(timer);query.removeEventListener('change',synchronize);};
+  },[active,visible]);
+  return <span className={`voice-indicator ${active ? 'active' : ''} ${compact?'compact-meter':''}`} ref={ref} aria-label={active ? 'Nivel real del micrófono' : 'Micrófono apagado'}>{(compact?[0,1,2]:[0,1,2,3,4]).map(i => <i key={i} />)}</span>;
 }
 export function ApprovalCard({ simulated, approval, notify = () => {} }: { simulated: boolean; approval?: Approval; notify?: (message: string) => void }) {
   const [decision, setDecision] = useState('');
@@ -29,7 +35,7 @@ export function SettingsPanel({ config, update, notify, locked }: { config: Publ
 
 function LibraryPanel({notify,locked}:{notify:(text:string)=>void;locked:boolean}){
  const[roots,setRoots]=useState('');useEffect(()=>{void window.zen.libraryRoots().then(result=>{if(result.ok)setRoots(result.value.join('\n'));else notify(result.error);});},[]);
- return <details className="advanced"><summary>Carpetas de consulta local</summary><fieldset disabled={locked}><p className="support">Búsqueda y lectura local cuando lo pidas. No se suben archivos completos. El modelo recibe solo resultados y fragmentos relevantes. Sin edición de tus archivos. PDF, Word y otros binarios se buscan por nombre en esta entrega.</p><label>Carpetas autorizadas (una ruta por línea)<textarea value={roots} onChange={event=>setRoots(event.target.value)}/></label><button onClick={()=>void window.zen.saveLibraryRoots(roots.split('\n').map(path=>path.trim()).filter(Boolean)).then(result=>{if(result.ok){setRoots(result.value.join('\n'));notify('Carpetas de consulta guardadas.');}else notify(result.error);})}>Guardar carpetas</button></fieldset></details>;
+ return <details className="advanced"><summary>Carpetas de consulta local</summary><fieldset disabled={locked}><p className="support">Búsqueda y lectura local cuando lo pidas. No se suben archivos completos. El modelo recibe solo resultados y fragmentos relevantes. Sin edición de tus archivos. PDF con texto, Word (.docx) y Excel (.xlsx) se leen localmente, sin ejecutar macros ni fórmulas. PDF escaneado y formatos .doc/.xls necesitan conversión.</p><label>Carpetas autorizadas (una ruta por línea)<textarea value={roots} onChange={event=>setRoots(event.target.value)}/></label><button onClick={()=>void window.zen.saveLibraryRoots(roots.split('\n').map(path=>path.trim()).filter(Boolean)).then(result=>{if(result.ok){setRoots(result.value.join('\n'));notify('Carpetas de consulta guardadas.');}else notify(result.error);})}>Guardar carpetas</button></fieldset></details>;
 }
 
 function McpPanel({notify,locked}:{notify:(text:string)=>void;locked:boolean}){

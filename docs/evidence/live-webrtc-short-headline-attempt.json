@@ -1,0 +1,506 @@
+{
+  "at": "2026-10-02T09:51:11.615Z",
+  "realApi": true,
+  "realWebRTC": true,
+  "syntheticAudio": true,
+  "physicalMicrophone": false,
+  "exactSession": {
+    "model": "gpt-live-1",
+    "instructions": "Te llamas ZeN. Eres un compañero amigable y directo que ayuda al usuario con sus tareas y su vida cotidiana.",
+    "audio": {
+      "output": {
+        "voice": "echo"
+      }
+    },
+    "delegation": {
+      "type": "responses",
+      "responses": {
+        "parallel_tool_calls": false,
+        "model": "gpt-6.1-sol",
+        "reasoning": {
+          "effort": "low"
+        },
+        "tools": [
+          {
+            "type": "web_search"
+          }
+        ]
+      }
+    }
+  },
+  "passed": false,
+  "visualFixture": false,
+  "ownedFixtureOnly": false,
+  "error": "page.waitForFunction: Timeout 40000ms exceeded.",
+  "states": [
+    {
+      "status": "connecting",
+      "microphone": false
+    },
+    {
+      "status": "connected",
+      "microphone": true
+    },
+    {
+      "status": "closing",
+      "microphone": false
+    }
+  ],
+  "captions": [
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca",
+      "phase": "start",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 5600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 5800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 6000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 6400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 7000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 7600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 8200
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 8800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 9400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 10000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia, y",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 10600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia, y dime el",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 11000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia, y dime el titular",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 11600
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia, y dime el titular con su",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 12000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-5400",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia, y dime el titular con su fuente",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 5400,
+        "endMs": 12600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-12800",
+      "text": " Dale,",
+      "phase": "start",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 12800,
+        "endMs": 13000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-12800",
+      "text": " Dale, lo bus",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 12800,
+        "endMs": 13200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-12800",
+      "text": " Dale, lo busco",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 12800,
+        "endMs": 13400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-12800",
+      "text": " Dale, lo busco ahora.",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 12800,
+        "endMs": 13600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré",
+      "phase": "start",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 27200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 27400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 27600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva:",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 28000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 29000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 29200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “arm",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 29600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 29800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal”",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 30200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 31000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 31600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 31800
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 32000
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 32200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 32600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 33200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de fresas",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 33400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de fresas»,",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 33600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de fresas», de",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 34400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de fresas», de ScienceDaily",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 34600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-27000",
+      "text": " Encontré esta noticia positiva: «Una nueva “armadura vegetal” multiplica por más de tres la producción de fresas», de ScienceDaily.",
+      "phase": "delta",
+      "sourceItemId": "live-user-5400",
+      "timeline": {
+        "startMs": 27000,
+        "endMs": 34800
+      }
+    }
+  ],
+  "messages": [],
+  "delegations": [
+    {
+      "type": "live_delegation",
+      "model": "gpt-6.1-sol",
+      "state": "completed",
+      "usageConfirmed": true
+    }
+  ],
+  "finalization": {
+    "type": "voice_session",
+    "channel": "voice",
+    "model": "gpt-live-1",
+    "state": "closed",
+    "reason": "close_requested"
+  },
+  "spending": {
+    "month": "2026-10",
+    "estimatedMonthEur": 0.10335666666666667,
+    "committedMonthEur": 0.10335666666666667,
+    "estimatedDayEur": 0.10335666666666667,
+    "pendingEur": 0,
+    "inputTokens": 5164,
+    "outputTokens": 378,
+    "cachedTokens": 0,
+    "uncertainCalls": 0,
+    "pricingDate": "2026-10-01"
+  },
+  "imageQueued": false,
+  "solVisionVerified": false
+}

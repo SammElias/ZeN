@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-01T08:47:42.037Z",
+  "at": "2026-10-02T09:53:25.260Z",
   "realApi": true,
   "realWebRTC": true,
   "syntheticAudio": true,
@@ -29,476 +29,280 @@
     }
   },
   "passed": true,
+  "visualFixture": false,
+  "ownedFixtureOnly": false,
   "spokenResultObserved": true,
   "remoteAudioReceived": true,
   "sessionStarted": true,
   "captions": [
     {
       "speaker": "user",
-      "id": "live-user-3000",
+      "id": "live-user-3800",
       "text": " Busca",
       "phase": "start",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 3200
+        "startMs": 3800,
+        "endMs": 4000
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
+      "id": "live-user-3800",
       "text": " Busca en",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 3400
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 3600
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 3800
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
+        "startMs": 3800,
         "endMs": 4200
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia",
+      "id": "live-user-3800",
+      "text": " Busca en la",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
+        "startMs": 3800,
+        "endMs": 4400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 3800,
         "endMs": 4800
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva",
+      "id": "live-user-3800",
+      "text": " Busca en la web una",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
+        "startMs": 3800,
         "endMs": 5400
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 3800,
+        "endMs": 6000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 3800,
+        "endMs": 6800
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-3800",
       "text": " Busca en la web una noticia positiva reciente",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 5800
+        "startMs": 3800,
+        "endMs": 7600
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
+      "id": "live-user-3800",
       "text": " Busca en la web una noticia positiva reciente sobre",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 6200
+        "startMs": 3800,
+        "endMs": 7800
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
+      "id": "live-user-3800",
       "text": " Busca en la web una noticia positiva reciente sobre ciencia",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 6600
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 7000
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 7400
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 8000
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular con",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
-        "endMs": 8200
-      }
-    },
-    {
-      "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular con su",
-      "phase": "delta",
-      "timeline": {
-        "startMs": 3000,
+        "startMs": 3800,
         "endMs": 8400
       }
     },
     {
       "speaker": "user",
-      "id": "live-user-3000",
-      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular con su fuente",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y",
       "phase": "delta",
       "timeline": {
-        "startMs": 3000,
-        "endMs": 8800
+        "startMs": 3800,
+        "endMs": 9000
       }
     },
     {
-      "speaker": "zen",
-      "id": "live-zen-9000",
-      "text": " Vale,",
-      "phase": "start",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 9000,
-        "endMs": 9200
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-9000",
-      "text": " Vale, haré",
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
       "timeline": {
-        "startMs": 9000,
+        "startMs": 3800,
         "endMs": 9400
       }
     },
     {
-      "speaker": "zen",
-      "id": "live-zen-9000",
-      "text": " Vale, haré una",
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
       "timeline": {
-        "startMs": 9000,
+        "startMs": 3800,
         "endMs": 9600
       }
     },
     {
-      "speaker": "zen",
-      "id": "live-zen-9000",
-      "text": " Vale, haré una búsqueda",
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
       "timeline": {
-        "startMs": 9000,
-        "endMs": 9800
+        "startMs": 3800,
+        "endMs": 10000
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular con su",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 3800,
+        "endMs": 10400
+      }
+    },
+    {
+      "speaker": "user",
+      "id": "live-user-3800",
+      "text": " Busca en la web una noticia positiva reciente sobre ciencia y dime el titular con su fuente",
+      "phase": "delta",
+      "timeline": {
+        "startMs": 3800,
+        "endMs": 10800
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-9000",
-      "text": " Vale, haré una búsqueda rápida.",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
+      "id": "live-zen-10800",
+      "text": " Dale,",
+      "phase": "start",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 9000,
-        "endMs": 10200
+        "startMs": 10800,
+        "endMs": 11000
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-17400",
+      "id": "live-zen-10800",
+      "text": " Dale, lo bus",
+      "phase": "delta",
+      "sourceItemId": "live-user-3800",
+      "timeline": {
+        "startMs": 10800,
+        "endMs": 11200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-10800",
+      "text": " Dale, lo busco.",
+      "phase": "delta",
+      "sourceItemId": "live-user-3800",
+      "timeline": {
+        "startMs": 10800,
+        "endMs": 11400
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-18000",
       "text": " Encontré",
       "phase": "start",
-      "sourceItemId": "live-user-3000",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 17400,
-        "endMs": 17600
+        "startMs": 18000,
+        "endMs": 18200
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este",
+      "id": "live-zen-18000",
+      "text": " Encontré esta",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 17400,
-        "endMs": 17800
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 18000
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo,",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
+        "startMs": 18000,
         "endMs": 18400
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido",
+      "id": "live-zen-18000",
+      "text": " Encontré esta noticia",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 17400,
+        "startMs": 18000,
+        "endMs": 18600
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-18000",
+      "text": " Encontré esta noticia positiva:",
+      "phase": "delta",
+      "sourceItemId": "live-user-3800",
+      "timeline": {
+        "startMs": 18000,
         "endMs": 19000
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español",
+      "id": "live-zen-18000",
+      "text": " Encontré esta noticia positiva: «Este",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 17400,
-        "endMs": 19600
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español:",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
+        "startMs": 18000,
         "endMs": 19800
       }
     },
     {
       "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «F",
+      "id": "live-zen-18000",
+      "text": " Encontré esta noticia positiva: «Este nuevo",
       "phase": "delta",
-      "sourceItemId": "live-user-3000",
+      "sourceItemId": "live-user-3800",
       "timeline": {
-        "startMs": 17400,
+        "startMs": 18000,
+        "endMs": 20200
+      }
+    },
+    {
+      "speaker": "zen",
+      "id": "live-zen-18000",
+      "text": " Encontré esta noticia positiva: «Este nuevo hormig",
+      "phase": "delta",
+      "sourceItemId": "live-user-3800",
+      "timeline": {
+        "startMs": 18000,
         "endMs": 20400
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 20600
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 21000
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 21200
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 21800
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 22200
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 22600
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 22800
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 23200
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 23400
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuánt",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 23800
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuántica",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 24000
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuántica predicha",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 24400
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuántica predicha hace",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 25000
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuántica predicha hace ",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 25200
-      }
-    },
-    {
-      "speaker": "zen",
-      "id": "live-zen-17400",
-      "text": " Encontré este titular positivo, traducido al español: «Físicos de Caltech logran medir una escalera de energía cuántica predicha hace 40",
-      "phase": "delta",
-      "sourceItemId": "live-user-3000",
-      "timeline": {
-        "startMs": 17400,
-        "endMs": 25400
       }
     }
   ],
@@ -520,18 +324,20 @@
   },
   "spending": {
     "month": "2026-10",
-    "estimatedMonthEur": 0.056410833333333334,
-    "committedMonthEur": 0.056410833333333334,
-    "estimatedDayEur": 0.056410833333333334,
+    "estimatedMonthEur": 0.04176416666666667,
+    "committedMonthEur": 0.04176416666666667,
+    "estimatedDayEur": 0.04176416666666667,
     "pendingEur": 0,
     "inputTokens": 5163,
-    "outputTokens": 267,
+    "outputTokens": 219,
     "cachedTokens": 0,
     "uncertainCalls": 0,
     "pricingDate": "2026-10-01"
   },
   "webCompleted": true,
   "outputSoundDetected": true,
+  "imageQueued": false,
+  "solVisionVerified": false,
   "states": [
     {
       "status": "connecting",
@@ -540,6 +346,10 @@
     {
       "status": "connected",
       "microphone": true
+    },
+    {
+      "status": "closing",
+      "microphone": false
     },
     {
       "status": "disconnected",
