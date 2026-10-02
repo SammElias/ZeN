@@ -6,4 +6,4 @@ export const ProjectBundleSchema=z.object({
 }).strict();
 export type ProjectBundle=z.infer<typeof ProjectBundleSchema>;
 export type ProjectDraft={id:string;name:string;summary:string;paths:string[];directories:string[];destination?:string;approvalId?:string};
-export type WorkContext={owner:'codex';phase:'preparing'|'review'|'saving'|'complete'|'incomplete';draft?:ProjectDraft};
+export type WorkContext={owner:'codex';phase:'preparing'|'review'|'saving'|'complete'|'incomplete'|'external';draft?:ProjectDraft};

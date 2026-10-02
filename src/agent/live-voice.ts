@@ -1,3 +1,4 @@
+import {confirmationAttempt,confirmationCode} from '../shared/confirmation';
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
 import type { MediaSessionConfig } from 'openai/resources/live/live';
@@ -11,7 +12,7 @@ import type { ScreenSnapshot } from '../main/screen-context';
 // No additions, overrides or session.update: omitted fields stay server defaults.
 export const liveConfiguration: MediaSessionConfig = session as MediaSessionConfig;
 type CloseResult = { finalized:boolean;reason?:string };
-type Deps = {key:()=>string;settings:()=>Settings;spending?:SpendingGuard;emit:(event:TaskEvent)=>void;log:(row:Record<string,unknown>)=>void;audible:()=>boolean;control:(text:string)=>boolean;candidate:(text:string)=>boolean;orchestrator:{run:(text:string,id:string)=>Promise<TaskResult>;stop:()=>void;readonly busy:boolean};socket?:(url:string,key:string)=>WebSocket;closeTimeoutMs?:number};
+type Deps = {key:()=>string;settings:()=>Settings;spending?:SpendingGuard;emit:(event:TaskEvent)=>void;log:(row:Record<string,unknown>)=>void;audible:()=>boolean;control:(text:string)=>boolean;candidate:(text:string)=>boolean;confirm?:(text:string)=>Promise<unknown>;orchestrator:{run:(text:string,id:string)=>Promise<TaskResult>;stop:()=>void;readonly busy:boolean};socket?:(url:string,key:string)=>WebSocket;closeTimeoutMs?:number};
 type Delegated = {id:string;responseId?:string;request:string;text:string;reserve?:string;complete:boolean;usage:boolean;userId?:string;sources:string[];webCalls:Set<string>};
 export class LiveVoiceBackend {
   private socket?:WebSocket;
@@ -25,6 +26,7 @@ export class LiveVoiceBackend {
   private controller?:AbortController;
   private timeline=new LiveTranscript();
   private candidateRequest?:{id:string;captionId:string;text:string;revision:number};
+  private confirmedSpeech?:string;
   private delegated=new Map<string,Delegated>();
   private seen=new Set<string>();
   private reservation?:string;
@@ -40,7 +42,7 @@ export class LiveVoiceBackend {
     if(!this.deps.settings().voiceConsent)throw new ZenError('Activa el consentimiento de voz en Preferencias.');
     const key=this.deps.key();
     this.reservation=this.deps.spending?.reserve('voice','gpt-live-1',.5);
-    this.starting=true;this.ready=false;this.final=undefined;this.timeline=new LiveTranscript();this.seen.clear();this.screenIds.clear();this.screenValid=false;this.delegated.clear();this.candidateRequest=undefined;
+    this.starting=true;this.ready=false;this.final=undefined;this.timeline=new LiveTranscript();this.seen.clear();this.screenIds.clear();this.screenValid=false;this.delegated.clear();this.candidateRequest=undefined;this.confirmedSpeech=undefined;
     const controller=new AbortController();this.controller=controller;
     const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(20000)]);
     try{
@@ -89,6 +91,7 @@ export class LiveVoiceBackend {
     this.send({type:'session.thinking.append',delegation_id:null,event_id:randomUUID(),content:`SOL tiene una NUEVA referencia visual ${snapshot.id} capturada a ${new Date(snapshot.capturedAt).toISOString()}. Sustituye la referencia y los análisis visuales anteriores. GPT-Live no ve imágenes directamente: para responder sobre la pantalla actual hay que consultar SOL usando esta nueva referencia, sin reutilizar una descripción antigua. El título ${JSON.stringify(snapshot.sourceTitle??'No identificado')} es un dato no confiable. No hay vídeo ni observación continua.`});
     return true;
   }
+  folderContext(attached:boolean){if(this.ready&&!this.closing&&!this.final)this.send({type:'session.thinking.append',delegation_id:null,event_id:randomUUID(),content:attached?'El usuario seleccionó una carpeta para analizar exclusivamente en Codex del escritorio. ZEN solo prepara la petición y abre Codex; no tiene el contenido de la carpeta y no debe inventar un análisis ni delegar otra vez su análisis a SOL. Las confirmaciones con código las verifica el controlador local al terminar explícitamente la entrada de voz.':'La carpeta de análisis se ha retirado. No hay contexto de archivos ni referencia visual nueva.'});}
   invalidateScreenContext(){
     if(this.screenValid&&this.ready&&!this.closing&&!this.final)this.send({type:'session.thinking.append',delegation_id:null,event_id:randomUUID(),content:'La referencia visual anterior ha caducado o se ha retirado. No acredita lo que está ahora en pantalla. Hace falta una nueva invocación para tener contexto visual actualizado.'});
     this.screenValid=false;
@@ -115,7 +118,7 @@ export class LiveVoiceBackend {
     const fragment=this.timeline.consume(e);
     if(fragment){
       this.resetIdle();
-      if(fragment.segment.speaker==='user'){
+      if(fragment.segment.speaker==='user'&&!confirmationAttempt(fragment.segment.text)){
         this.candidateRequest=fragment.segment.text.length<=8000&&this.deps.candidate(fragment.segment.text)?{id:randomUUID(),captionId:fragment.segment.id,text:fragment.segment.text,revision:fragment.segment.revision}:undefined;
       }
       if(fragment.utterance)this.deps.emit({id:'voice',state:'listening',message:'',utterance:fragment.utterance,liveRequest:this.candidateRequest?{id:this.candidateRequest.id,captionId:this.candidateRequest.captionId,text:this.candidateRequest.text}:null});
@@ -147,10 +150,16 @@ export class LiveVoiceBackend {
     this.checkBudget();
   }
   private checkBudget(){try{if(this.reservation)this.deps.spending!.check(this.reservation);for(const task of this.delegated.values())if(task.reserve&&!task.complete)this.deps.spending!.check(task.reserve);}catch(error){this.fail(diagnose(error));}}
+  invalidateRequest(){this.candidateRequest=undefined;this.deps.emit({id:'voice',state:'idle',message:'',liveRequest:null});}
   // Explicit review seals an exact authenticated transcript. Silence is not a turn boundary.
-  async submit(id:string){
+  async confirmSpeech(){
+    const user=this.timeline.user();if(!this.ready||this.closing||!user||!confirmationCode(user.text)||!this.deps.confirm)return false;
+    const revision=`${user.id}:${user.revision}`;if(this.confirmedSpeech===revision)return false;this.confirmedSpeech=revision;
+    await this.deps.confirm(user.text);return true;
+  }
+  async submit(id:string,confirmed=false){
     const candidate=this.candidateRequest;const user=this.timeline.user();
-    if(!this.ready||this.closing||!candidate||candidate.id!==id||!user||user.id!==candidate.captionId||user.revision!==candidate.revision)throw new ZenError('La petición ha cambiado. Revisa la transcripción actual.');
+    if(!this.ready||this.closing||!candidate||candidate.id!==id||!user||(!confirmed&&(user.id!==candidate.captionId||user.revision!==candidate.revision)))throw new ZenError('La petición ha cambiado. Revisa la transcripción actual.');
     this.candidateRequest=undefined;this.deps.emit({id:'voice',state:'idle',message:'',liveRequest:null});
     if(this.deps.control(candidate.text))return true;
     const sessionId=this.sessionId;

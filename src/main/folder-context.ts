@@ -10,8 +10,12 @@ export class FolderContext{
   revoke(id:string){this.entries.delete(id);}
   clear(){this.entries.clear();}
   async read(id:string,request:string,signal:AbortSignal,maxChars:number){
+    const path=await this.resolve(id,signal);
+    const result=await new LocalLibrary(()=>[path]).projectContext(request,signal,maxChars);signal.throwIfAborted();await this.resolve(id,signal);return result;
+  }
+  async resolve(id:string,signal:AbortSignal){
     signal.throwIfAborted();const entry=this.entries.get(id);if(!entry||Date.now()-entry.at>=1800000)throw new ZenError('Vuelve a elegir la carpeta del proyecto.');
     const info=await lstat(entry.path);if(info.isSymbolicLink()||!info.isDirectory()||info.ino!==entry.ino||info.dev!==entry.dev||await realpath(entry.path)!==entry.path)throw new ZenError('La carpeta cambió. Vuelve a elegirla.');
-    const result=await new LocalLibrary(()=>[entry.path]).projectContext(request,signal,maxChars);signal.throwIfAborted();if(this.entries.get(id)!==entry)throw new ZenError('Se retiró la carpeta antes de enviar el contexto.');return result;
+    signal.throwIfAborted();if(this.entries.get(id)!==entry)throw new ZenError('Se retiró la carpeta antes de enviar el contexto.');return entry.path;
   }
 }

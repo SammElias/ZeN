@@ -24,7 +24,7 @@ button:hover { background: #232329; border-color: #4f465f; }
   box-shadow: none;
 }
 .island.capsule { border-radius: 0 0 18px 18px; }
-.island.live-only { width: min(1120px, 100vw); }
+.island.live-only { width: min(640px, 100vw); }
 .island.live-only.capsule { width: min(240px, 100vw); max-height: 40px; }
 .island.live-only.capsule .overlay-header { height: 40px; min-height: 40px; padding: 0 9px; gap: 6px; }
 .island.live-only.capsule .brand { display: none; }
@@ -39,7 +39,9 @@ button:hover { background: #232329; border-color: #4f465f; }
 .live-message.user .message-speaker { color: #a1d6bd; }
 .message-speaker small { color: var(--secondary); font-size: 10px; font-weight: normal; }
 .island .live-message .result-text { font-size: 16px; line-height: 1.6; margin: 8px 0 0; }
-.live-empty { color: var(--secondary); font-size: 14px; margin: 12px 0; }
+.live-empty { display: flex; flex-direction: column; gap: 5px; padding: 7px 0 12px; }
+.live-empty strong { font-size: 16px; line-height: 22px; font-weight: 550; color: #e9e5f1; }
+.live-empty span { color: var(--secondary); font-size: 12px; line-height: 18px; }
 .message-link { display: inline; background: transparent; border: 0; border-radius: 0; padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; line-height: inherit; overflow-wrap: anywhere; text-align: left; }
 .island footer { align-items: center; padding-top: 6px; }
 .message-sources { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
@@ -162,7 +164,8 @@ button:hover { background: #232329; border-color: #4f465f; }
 .approval-stack { overflow: auto; min-height: 0; max-height: 55%; flex-shrink: 0; }
 .message-stage { display: flex; flex: 1; min-height: 0; position: relative; }
 .message-stage .workspace-body { width: 100%; scrollbar-gutter: stable; }
-.island .latest-message { padding: 8px 20px 10px; }
+.message-content { display: flow-root; }
+.island .latest-message { padding: 8px 16px 10px; }
 .island .live-message .result-text { font-size: 14px; line-height: 1.65; margin-top: 7px; }
 .copy-response { margin-top: 10px; background: transparent; border: 0; padding: 3px 0; color: var(--secondary); font-size: 11px; }
 .follow-response { position: absolute; right: 24px; bottom: 8px; z-index: 2; font-size: 11px; padding: 5px 10px; background: #25212e; border-radius: 18px; }
@@ -178,7 +181,8 @@ button:hover { background: #232329; border-color: #4f465f; }
 .voice-notice { color: #c5bbd4; font-size: 10px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
 .island .voice-notice button { padding: 0 3px; flex-shrink: 0; font-size: 15px; }
 .island.live-only .text-composer { margin: 6px 16px; }
-@media(max-width:650px) { .island .execution-controls { flex-wrap: wrap; } .island .microphone-group { flex-wrap: wrap; } .voice-notice { max-width: 220px; } .screen-context-chip small { display: none; } }
+@media(max-width:650px) { .island .execution-controls { flex-wrap: wrap; } .island .microphone-group { flex-wrap: wrap; } .voice-notice { max-width: 220px; } }
+@media(max-width:480px) { .screen-context-chip small { display: none; } }
 .mood-completed .companion-float { animation: zen-celebrate 650ms cubic-bezier(.2,.8,.3,1) 1, zen-float 4.8s 650ms ease-in-out infinite; }
 .mood-completed .companion-eyes { opacity: 0; animation: none; }
 .mood-completed .companion-smile { opacity: 1; }
@@ -205,3 +209,44 @@ button:hover { background: #232329; border-color: #4f465f; }
 @keyframes zen-reveal { from { opacity: 0; transform: translateY(-7px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media(prefers-reduced-motion:reduce) { .zen-companion *, .island * { animation: none!important; transition: none!important; } }
 @media(max-width:400px) { .island .suggestion-grid { grid-template-columns: 1fr; } .island .suggestion-grid button { padding: 8px; } .companion-welcome { gap: 8px; padding-inline: 0; } .companion-welcome h1 { font-size: 18px!important; } .zen-companion.large { width: 64px; height: 64px; } }
+
+/* Edge rails keep controls upright; the chat expands toward the work area. */
+.island.dock-left { border-radius: 0 20px 20px 0; border-left: 0; border-top: 1px solid #24242a; }
+.island.dock-right { border-radius: 20px 0 0 20px; border-right: 0; border-top: 1px solid #24242a; }
+.island.live-only.capsule:is(.dock-left,.dock-right) { width: 40px; height: min(240px,100vh); max-height: 240px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .overlay-header { flex-direction: column; width: 40px; height: 100%; min-height: 0; padding: 9px 0; gap: 8px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .brand-home { flex: 0 0 auto; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .header-status { flex: 1; writing-mode: vertical-rl; text-orientation: mixed; width: 20px; min-width: 20px; min-height: 24px; align-items: center; justify-content: center; gap: 5px; font-size: 10px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .header-actions { flex-direction: column; margin: 0; gap: 4px; }
+.island.live-only.capsule.dock-left .fold-button svg { rotate: -90deg; }
+.island.live-only.capsule.dock-right .fold-button svg { rotate: 90deg; }
+.preview .zen-overlay.capsule:is(.dock-left,.dock-right) { max-height: 240px; }
+/* Context, composer and controls share a single alignment grid. */
+.island.live-only .screen-context-note { margin: 6px 16px 0; padding: 0; gap: 8px; min-height: 28px; }
+.island.live-only .screen-context-chip { margin: 0; max-width: calc(100% - 80px); padding: 6px 8px; }
+.screen-context-source { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen-context-chip small { flex-shrink: 0; }
+.island.live-only .screen-context-note > button:last-child { margin-left: 0; padding: 5px 7px; }
+.island.live-only .text-composer { margin: 8px 16px; padding: 8px 10px; border-radius: 16px; }
+.island.live-only .text-composer:focus-within { border-color: #8876b5; box-shadow: 0 0 0 2px #c7b6ff0c; }
+.island.live-only .composer-row { gap: 10px; }
+.island.live-only .text-composer textarea { min-height: 36px; line-height: 22px; padding: 7px 0; outline: 0; }
+.island.live-only .composer-send { flex-shrink: 0; align-self: center; }
+.island.live-only .execution-controls { display: flex; flex-wrap: wrap; padding: 0 16px 12px; min-height: 30px; gap: 8px 12px; }
+.island.live-only .microphone-group { min-width: 0; flex: 1 1 auto; flex-wrap: wrap; gap: 6px; }
+.island.live-only .execution-actions { flex: 0 1 auto; flex-wrap: wrap; gap: 4px 8px; justify-content: flex-end; }
+.island.live-only .execution-actions button { min-height: 28px; white-space: nowrap; }
+.island.live-only .overlay-header { min-width: 0; }
+.island.live-only:not(.capsule) .header-status { margin-left: auto; }
+@media(max-width:420px) {
+  .island.live-only .microphone-group { flex-basis: 100%; }
+  .island.live-only .execution-actions { justify-content: flex-start; }
+  .island.live-only .screen-context-chip { max-width: calc(100% - 72px); }
+}
+
+.human-confirmations { margin: 6px 16px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; max-height: 110px; overflow: auto; font-size: 11px; }
+.human-confirmations p { margin: 0 0 6px; }
+.human-confirmations p:last-child { margin-bottom: 0; }
+.human-confirmations strong,.human-confirmations span { display: block; overflow-wrap: anywhere; }
+.human-confirmations span { color: var(--secondary); margin-top: 4px; }
+.human-confirmations strong { white-space: pre-line; }

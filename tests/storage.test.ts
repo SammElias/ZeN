@@ -9,7 +9,9 @@ it('restores horizontal position after restart and ignores invalid placement fil
   try {
     const first = new Store(dir, protection); expect(first.overlayPosition()).toBeUndefined();
     first.saveOverlayPosition({ displayId: -12, horizontalRatio: .8 });
-    expect(new Store(dir, protection).overlayPosition()).toEqual({ displayId: -12, horizontalRatio: .8 });
+    expect(new Store(dir, protection).overlayPosition()).toEqual({ displayId: -12, horizontalRatio: .8, edge: 'top', verticalRatio: .5 });
+    first.saveOverlayPosition({displayId:-12,horizontalRatio:.8,edge:'right',verticalRatio:.72});
+    expect(new Store(dir,protection).overlayPosition()).toMatchObject({edge:'right',verticalRatio:.72});
     expect(() => first.saveOverlayPosition({ displayId: 1, horizontalRatio: 2 })).toThrow();
     writeFileSync(join(dir, 'overlay-position.json'), JSON.stringify({ displayId: 1, horizontalRatio: .5, y: 200 }));
     expect(first.overlayPosition()).toBeUndefined();

@@ -1,0 +1,17 @@
+{
+  "appId": "com.zen.desktop",
+  "productName": "ZEN",
+  "electronVersion": "44.5.1",
+  "directories": { "output": "release/single-file" },
+  "win": {
+    "target": [{ "target": "portable", "arch": ["x64"] }],
+    "executableName": "ZEN",
+    "icon": "public/icons/zen.ico",
+    "signAndEditExecutable": false
+  },
+  "portable": {
+    "artifactName": "ZEN.exe",
+    "unpackDirName": true,
+    "requestExecutionLevel": "user"
+  }
+}

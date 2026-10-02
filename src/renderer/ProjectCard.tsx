@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { ProjectBundle, ProjectDraft, WorkContext } from '../shared/project';
 export function ContextFlow({context,focused,toggle}:{context:WorkContext;focused:boolean;toggle:()=>void}){
-  const label={preparing:'Dando forma a tu idea',review:'Listo para revisar',saving:'Guardando tu proyecto',complete:'Tu proyecto está listo',incomplete:'Necesita tu atención'}[context.phase];
-  return <div className={`context-flow ${context.phase}`} aria-label="Contexto de trabajo"><span className="flow-orbit">✧</span><div><span className="flow-route">ZEN <span aria-hidden="true">→</span> Codex</span><strong>{label}</strong></div><button onClick={toggle}>{focused?'Volver a ZEN':'Ver proyecto'}<span aria-hidden="true">{focused?'↩':'↗'}</span></button></div>;
+  const label={preparing:'Dando forma a tu idea',review:'Listo para revisar',saving:'Guardando tu proyecto',complete:'Tu proyecto está listo',incomplete:'Necesita tu atención',external:'Continúa en Codex del escritorio'}[context.phase];
+  return <div className={`context-flow ${context.phase}`} aria-label="Contexto de trabajo"><span className="flow-orbit">✧</span><div><span className="flow-route">ZEN <span aria-hidden="true">→</span> Codex</span><strong>{label}</strong></div><button onClick={toggle}>{focused?'Volver a ZEN':context.phase==='external'?'Ver indicaciones':'Ver proyecto'}<span aria-hidden="true">{focused?'↩':'↗'}</span></button></div>;
 }
 export function ProjectCard({draft,notify,changed}:{draft:ProjectDraft;notify:(message:string)=>void;changed:(draft:ProjectDraft)=>void}){
   const [preview,setPreview]=useState<ProjectBundle>(),[working,setWorking]=useState(false),[expanded,setExpanded]=useState(false);

@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-01T20:46:35.0783585Z",
+  "deployedExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
+  "sha256": "0D6B16A9D80CBF0A84AE20874AC4A58AE9F612B940748DCDCBD8AA6122DE3670",
+  "bytes": 104549946,
+  "backup": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\desktop-backups\\ZEN-before-icons-20261001-224634.exe",
+  "onlyZenExeOnDesktop": true,
+  "startupVerified": true,
+  "nativeIconsVerified": true,
+  "activityTimelineVerified": true,
+  "edgeDockingVerified": true,
+  "stableStreamingVerified": true,
+  "packagedRemainingChecks": [
+    "shortcutRegistered",
+    "shownOnTop"
+  ],
+  "apiCalled": false,
+  "userConfigurationMoved": false
+}

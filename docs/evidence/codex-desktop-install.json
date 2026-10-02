@@ -1,0 +1,15 @@
+{
+  "At": "2026-10-01T17:29:18.8293995Z",
+  "Executable": "C:\\Users\\Gamming\\Desktop\\ZEN Codex\\ZEN.exe",
+  "Shortcut": "C:\\Users\\Gamming\\Desktop\\ZEN.lnk",
+  "ExecutableSha256": "49B61A030A520FC36A4B8FA5CCE53FB4E935A7BDBBE4B80E9222F598E49CC7FA",
+  "FilesVerified": 18,
+  "UnitTests": 254,
+  "ValidationScope": "interface",
+  "PreviousPackagesPreserved": true,
+  "CurrentProcessPreserved": true,
+  "ApiCalls": 0,
+  "CodexApplicationOpenInSmoke": "mock",
+  "PhysicalVoiceTested": false,
+  "PhysicalCodexSendTested": false
+}

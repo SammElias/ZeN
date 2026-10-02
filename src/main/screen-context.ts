@@ -1,13 +1,17 @@
+import type { DockEdge } from '../shared/contracts';
 import { randomUUID } from 'node:crypto';
 import type { WindowInfo } from '../tools/windows/native';
 
 export type ScreenSnapshot = { id:string; image:string; capturedAt:number; sourceTitle?:string;scope?:'display'|'window' };
 export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'; capturedAt?:number;sourceTitle?:string;scope?:'display'|'window';snapshotId?:string };
+export function underlyingPoint(bounds:{x:number;y:number;width:number;height:number},edge:DockEdge){ return edge==='left'?{x:bounds.x+bounds.width+1,y:bounds.y+bounds.height/2}:edge==='right'?{x:bounds.x-1,y:bounds.y+bounds.height/2}:{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height+1}; }
+
 type Deps = {
   windows:(signal:AbortSignal)=>Promise<WindowInfo[]>;
   capture:(id:string,signal:AbortSignal)=>Promise<string|{image:string;scope:'display';bounds:{x:number;y:number;width:number;height:number}}>;
   own:(window:WindowInfo)=>boolean;
   anchorId?:()=>string;
+  edge?:()=>DockEdge;
   blocked:(window:WindowInfo)=>boolean;
   status:(status:ScreenContextStatus)=>void;
   now?:()=>number;
@@ -43,8 +47,8 @@ export class ScreenContext {
         const foreground=rows.find(row=>row.foreground);
         // Both rectangles come from native Windows in physical pixels, avoiding
         // DPI conversions. Select the topmost external window beneath ZEN's
-        // horizontal centre, even when foreground focus is on another monitor.
-        const point=anchor?.bounds?{x:anchor.bounds.x+anchor.bounds.width/2,y:anchor.bounds.y+anchor.bounds.height+1}:undefined;
+        // inward edge centre, even when foreground focus is on another monitor.
+        const point=anchor?.bounds?underlyingPoint(anchor.bounds,this.deps.edge?.()??'top'):undefined;
         const below=(row:WindowInfo)=>!!point&&!!row.bounds&&point.x>=row.bounds.x&&point.x<row.bounds.x+row.bounds.width&&point.y>=row.bounds.y&&point.y<row.bounds.y+row.bounds.height;
         const selected=anchorId?rows.find(row=>!this.deps.own(row)&&below(row)):
           foreground&&!this.deps.own(foreground)?foreground:rows.find(row=>!this.deps.own(row));
@@ -53,7 +57,7 @@ export class ScreenContext {
         const afterRows=await this.deps.windows(controller.signal);const after=afterRows.find(row=>row.id===selected.id);
         controller.signal.throwIfAborted();
         if(!after||after.pid!==selected.pid||after.title!==selected.title||this.deps.blocked(after))throw new Error('Window changed');
-        if(anchorId){const latest=afterRows.find(row=>row.id===anchorId);if(!latest?.bounds)throw new Error('Anchor unavailable');const x=latest.bounds.x+latest.bounds.width/2,y=latest.bounds.y+latest.bounds.height+1;const underneath=afterRows.find(row=>!this.deps.own(row)&&row.bounds&&x>=row.bounds.x&&x<row.bounds.x+row.bounds.width&&y>=row.bounds.y&&y<row.bounds.y+row.bounds.height);if(underneath?.id!==selected.id)throw new Error('Underlying window changed');}
+        if(anchorId){const latest=afterRows.find(row=>row.id===anchorId);if(!latest?.bounds)throw new Error('Anchor unavailable');const {x,y}=underlyingPoint(latest.bounds,this.deps.edge?.()??'top');const underneath=afterRows.find(row=>!this.deps.own(row)&&row.bounds&&x>=row.bounds.x&&x<row.bounds.x+row.bounds.width&&y>=row.bounds.y&&y<row.bounds.y+row.bounds.height);if(underneath?.id!==selected.id)throw new Error('Underlying window changed');}
         if(typeof captured!=='string'){const latest=afterRows.find(row=>row.id===anchorId);if(!anchor?.monitorBounds||!latest?.monitorBounds||JSON.stringify(anchor.monitorBounds)!==JSON.stringify(captured.bounds)||JSON.stringify(latest.monitorBounds)!==JSON.stringify(captured.bounds))throw new Error('Captured display changed');const beforeBlocked=rows.filter(row=>!this.deps.own(row)&&this.deps.blocked(row)).map(row=>[row.id,row.title,row.bounds]);const afterBlocked=afterRows.filter(row=>!this.deps.own(row)&&this.deps.blocked(row)).map(row=>[row.id,row.title,row.bounds]);if(JSON.stringify(beforeBlocked)!==JSON.stringify(afterBlocked))throw new Error('Exclusions changed');}
         if(!/^data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+=*$/.test(image)||image.length>3000000)throw new Error('Invalid image');
         if(generation!==this.generation)return;

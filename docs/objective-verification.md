@@ -2,6 +2,20 @@
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
+## Iconos de Windows
+
+Corregida la imagen vacía de la bandeja y añadidos iconos propios al EXE portable, al binario interior y a las ventanas. Personaje ZEN en nueve tamaños, con DIB para los tamaños pequeños y PNG para 256 px. [Detalles y validación nativa](windows-icons.md). La comparación del icono que extrae el shell con el diseño esperado permite detectar el icono genérico, además de comprobar que el archivo exista. El comportamiento de cápsula/barra de tareas y los pendientes generales se conservan.
+
+## Ajuste de presentación: chat
+
+Corregida la altura al aparecer la ficha de contexto y al ensanchar la cápsula: saludo legible, compositor de una línea vacío, controles alineados y medición completa del último mensaje. [Detalles y alcance](chat-layout.md). Build, Edge y Electron pasan; el stream conserva altura estable y cero layouts por delta. Entrega como único `ZEN.exe` del escritorio, con evidencia en `docs/evidence/single-executable-deployment.json`. Sin nuevas llamadas a la API. Este cambio visual no resuelve los pendientes de control físico descritos a continuación.
+
+## Ciclo de control visual
+
+Implementado el ciclo SOL/computer en una tarea con captura nueva por paso, revisión concreta de efectos por voz/chat, validación de ventana/coordenadas/foco, cancelación y registro de consumo. 267 pruebas de lógica. Conservados agente guardado y JSON Live. [Uso, pruebas y límites](computer-control.md).
+
+**Pendiente material:** el intento Windows real capturó la ventana de prueba, pero no completó ratón/teclado: fallos de SetCursorPos y de SendInput en el entorno de ejecución (último: `computer-inject`, Win32 0). [Evidencia](evidence/computer-native.json). No se ha probado una creación real en Dataverse ni un flujo real ni una llamada API de este ciclo. El control completo no se declara operativo. Las secciones siguientes conservan verificación anterior.
+
 ## Revisión vigente: mini cápsula, despliegue conservado
 
 Cápsula recogida de 240×40 DIP con icono, estado, micrófono y controles esenciales. Despliegue completo conservado: último mensaje/stream, escritura, capturas y carpeta de análisis. Arrastre entre pantallas y anclaje superior conservados. Hablar no abre automáticamente la mini barra. [Uso y verificación](mini-capsule.md).
@@ -166,3 +180,16 @@ El usuario autorizó añadir zen_desktop manteniendo intactas las demás opcione
 ## Entorno
 
 Windows; Node 22.17.1; Electron 44.5.1; .NET SDK 10.0.401; OpenAI SDK 7.25.0. [README](../README.md) contiene comandos. Se incorporó `origin/main` hasta `0de7665`; las correcciones y evidencias de esta continuación son locales, todavía sin publicar en GitHub.
+
+## Bordes y alineación del chat — 01/10/2026
+
+Implementados los bordes superior/izquierdo/derecho, cápsula lateral vertical, chat de 640 DIP y alineación de captura/campo/controles. Ocultar deja entrada en barra de tareas; restaurar recoge la cápsula y solicita una referencia visual nueva. Build y 244 pruebas unitarias pasan; Edge verifica distribución y regresiones, Electron verifica ventanas nativas y referencias distintas con capturas sintéticas. [Alcance y evidencia](edge-capsule.md). Clic y arrastre físicos, DPI y monitores físicos pendientes. No se declara el objetivo general completo.
+
+## Carpetas en Codex del escritorio y confirmación — 01/10/2026
+
+Se corrigió el paso del análisis de carpetas por el agente API de ZEN: ahora se prepara un chat Codex con la ubicación y petición, sin contenidos/perfil/capturas. Hay que pulsar Enviar en Codex; no se declara análisis ejecutado. Las aprobaciones locales de archivo/proyecto y petición Live comparten códigos inmutables de un uso para voz/chat; voz se sella por gesto explícito, no por silencio. Build, 254 tests/29 archivos, Edge y Electron con abridor/voz simulados pasan. Archivo confirmado por chat creado/verificado en Windows y repetición bloqueada. [Evidencia, coste y pendientes físicos](codex-desktop-folders.md). El objetivo general sigue pendiente.
+
+
+## Actividad e iconos animados — 01/10/2026
+
+Panel de fases reales al desplegar ZEN y estado breve en cápsula, con GIF propios inspirados en las referencias. Sin llamadas ni tokens adicionales; sin cambiar agente/modelo/JSON remoto. Build y 276 pruebas unitarias pasan; Edge comprueba GIF, movimiento reducido, estados, tamaño y estabilidad del stream. [Diseño, recursos y límites](activity-ui.md). La validación general nativa y el control físico siguen pendientes; no se declara completo el objetivo general.

@@ -1,9 +1,9 @@
 {
   "validationScope": "interface",
   "fullObjectivePassed": false,
-  "at": "2026-10-01T15:55:32.067Z",
-  "destination": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261001155525543",
-  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261001155525543\\ZEN.exe",
+  "at": "2026-10-01T20:15:18.424Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261001201510741",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261001201510741\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -19,6 +19,9 @@
           "maxConcurrentTasks": 1,
           "maxQueuedTasks": 8,
           "taskTimeoutMs": 90000,
+          "computerMaxRounds": 40,
+          "computerMaxActions": 160,
+          "computerTimeoutMs": 600000,
           "allowNotepad": true,
           "voiceConsent": false,
           "listenOnInvoke": false,
@@ -36,13 +39,13 @@
         "spending": {
           "month": "2026-10",
           "estimatedMonthEur": 0,
-          "committedMonthEur": 4,
+          "committedMonthEur": 0,
           "estimatedDayEur": 0,
-          "pendingEur": 4,
+          "pendingEur": 0,
           "inputTokens": 0,
           "outputTokens": 0,
           "cachedTokens": 0,
-          "uncertainCalls": 2,
+          "uncertainCalls": 0,
           "pricingDate": "2026-10-01"
         },
         "hasKey": false,
@@ -50,12 +53,43 @@
         "protectedStorage": true
       }
     },
+    "activityTimelineVerified": true,
+    "computerIpcVerified": true,
+    "edgeDockingVerified": true,
+    "edgeChecks": [
+      {
+        "edge": "left",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      },
+      {
+        "edge": "right",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      },
+      {
+        "edge": "top",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      }
+    ],
+    "backgroundTaskbarVerified": true,
+    "taskbarReturnVerified": true,
+    "restoreCaptures": 2,
     "miniCapsuleVerified": true,
     "stableStreamingVerified": true,
     "voiceNoticePreserved": true,
     "pasteImageCspVerified": true,
     "singleAttachmentClipVerified": true,
     "folderIpcVerified": true,
+    "folderDelegationVerified": true,
+    "humanConfirmationVerified": true,
     "imageIpcVerified": true,
     "projectIpcVerified": true,
     "unknownProjectBlocked": true,
@@ -116,16 +150,16 @@
       "height": 40
     },
     "cardBounds": {
-      "x": 400,
+      "x": 640,
       "y": 0,
-      "width": 1120,
+      "width": 640,
       "height": 210
     }
   },
   "files": [
     {
       "path": "dist\\main.cjs",
-      "sha256": "45439496977f044f0d206840f16ee2b7750a2f5631493830aee26d6e426ec940"
+      "sha256": "4e34afcb92e8219756e9ac0146e01123568b4f350ce732c411351511af19910e"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -141,15 +175,15 @@
     },
     {
       "path": "dist\\native\\Zen.Windows.dll",
-      "sha256": "32bfaf700a956bca56702d7fac6a4591547d7547263364f6435db990346ea48a"
+      "sha256": "476d9fabfb10b9caf974bace54cf37baeffc0e7b63a49c7ca6607f2ca97377de"
     },
     {
       "path": "dist\\native\\Zen.Windows.exe",
-      "sha256": "1789df002393a6ef00c5e6cc78a3c225b86ae944315931b35151679614919002"
+      "sha256": "aea21f9079a83d452bfa4e25deffb8f80d096e74152972e51c18413d3bd3821a"
     },
     {
       "path": "dist\\native\\Zen.Windows.pdb",
-      "sha256": "3e5286dfbb717ecba83f053aa18f036fd09142f4d68e34cc7631509ff7bb8ee3"
+      "sha256": "126c1d3ec97b6e6451a02e8bf0f8e7b0e75f0bbae1e2287b62b6df127fe72582"
     },
     {
       "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
@@ -157,31 +191,111 @@
     },
     {
       "path": "dist\\preload.cjs",
-      "sha256": "35893e237aae8c86c3de88573e2a9a77c137380591e7a32fd3843baabdf062a0"
+      "sha256": "597ae12433fb91508c656a66b8eaa1f8178f2f108bdf5f5113dd28106823a5e4"
     },
     {
-      "path": "dist\\renderer\\assets\\main-IDlQS2lm.js",
-      "sha256": "bb1b8bc1d70f88651b46c02f057bdfd632d85036bd5e2be772525d342ba2c8df"
+      "path": "dist\\renderer\\activity\\app.gif",
+      "sha256": "f69fa051f7868bd5f626f4e20be758cadd1fbdf00bef5fb239adf1dee3197dd7"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-B0FmffVE.css",
-      "sha256": "0e336b28b7dda08959202efe4d91e28810b92251bd7a25e502c3a83af49550fd"
+      "path": "dist\\renderer\\activity\\app.svg",
+      "sha256": "532bd0cb1ad1ac6f07dd9afb1a15e7b6814b87873f9b707e269c846dc209d212"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-B1KP5PaI.js",
-      "sha256": "d850e684ddc21c0547bc1a0681a2869f30194582b99cc91bc4f1390f1ed5f557"
+      "path": "dist\\renderer\\activity\\check.svg",
+      "sha256": "a607b0bc9e08cae9331314cf3d0fb934a863e8c5381c9fd9933dee77a5235f00"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-DcbGKI54.js",
-      "sha256": "9b40fcb9c84fc6af96a80c52de88fdc861ea20925f17ce21f06ce30bac2bbf47"
+      "path": "dist\\renderer\\activity\\codex.gif",
+      "sha256": "e70cb13d9dbcde5c48ee91b29c885aef14611df543a7a4b01c8283b15179b83a"
+    },
+    {
+      "path": "dist\\renderer\\activity\\codex.svg",
+      "sha256": "42589e4ff951c8010096fdfded49e96d7360b43b80a1fef3339020e552c224ec"
+    },
+    {
+      "path": "dist\\renderer\\activity\\dots.gif",
+      "sha256": "55d2a05adc73bdb8c364dbdd6f810d4b07c1b88d3eb4b84a6962560d7ed6b3f5"
+    },
+    {
+      "path": "dist\\renderer\\activity\\dots.svg",
+      "sha256": "7cf656dd4d9fa34504be325aa56fb98d2147ef083fd48ba3459228f515f33b6d"
+    },
+    {
+      "path": "dist\\renderer\\activity\\error.svg",
+      "sha256": "e500b63d4d3a936c3456dd0d3244a199ea156b989f2645ba6b2a0fbb338b6b73"
+    },
+    {
+      "path": "dist\\renderer\\activity\\iconos.gif",
+      "sha256": "b992981ced21625c6455fee6c63f54f95df870c5035534d91259b66ede6fcc4e"
+    },
+    {
+      "path": "dist\\renderer\\activity\\pause.svg",
+      "sha256": "5f9c10256b074278cc84a515d2634276e312f588c61523264b08c4a6a4907af1"
+    },
+    {
+      "path": "dist\\renderer\\activity\\ring.gif",
+      "sha256": "93667e93cca15ddf0d55cfce778e53bb866cba8d7e77461d789f4c484ed11c59"
+    },
+    {
+      "path": "dist\\renderer\\activity\\ring.svg",
+      "sha256": "a6f4e52afa07502873b90c24e4c0f84621b566bf4500fc3876ffe22a70759871"
+    },
+    {
+      "path": "dist\\renderer\\activity\\search.gif",
+      "sha256": "86f0c50bb90e0b9a4875374f0656476a49a613bb96236cc16ef02a5f124cfc0d"
+    },
+    {
+      "path": "dist\\renderer\\activity\\search.svg",
+      "sha256": "a143af977367dd60f160bfc698219117ff90accd45a8fa3c0763b35c3b27c83b"
+    },
+    {
+      "path": "dist\\renderer\\activity\\structure.gif",
+      "sha256": "fc7a24ffa23efd13fc9674d5a221abf524ee031109e0f95146b6b5fea62461c1"
+    },
+    {
+      "path": "dist\\renderer\\activity\\structure.svg",
+      "sha256": "616b1946c9a040ec209341d34570fbe53d6d173d0795cb0ab24633909c250143"
+    },
+    {
+      "path": "dist\\renderer\\activity\\web.gif",
+      "sha256": "309fb2bd882f5a78b204ac3a911604b8031df088056c20f76a1ad3308781e194"
+    },
+    {
+      "path": "dist\\renderer\\activity\\web.svg",
+      "sha256": "e33e22a0051fcd91aa0dda8683545a644638e338b1750dd82f448c6041199ac9"
+    },
+    {
+      "path": "dist\\renderer\\activity\\writing.gif",
+      "sha256": "5949fdf70a6edcddd944aef14c8c31036e46ce68b1f4132cac58db7e4bd5c164"
+    },
+    {
+      "path": "dist\\renderer\\activity\\writing.svg",
+      "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
+    },
+    {
+      "path": "dist\\renderer\\assets\\main-DurwjLpw.js",
+      "sha256": "36b7a1ab55ce95aa43eb97147e123c927251bd3fc51f54bccc3bf90525aef687"
+    },
+    {
+      "path": "dist\\renderer\\assets\\Preferences-Bwqvcrym.css",
+      "sha256": "67b6bca273751fa7166d9ec69c964154ac326158048fbfa43e7ba58584613a69"
+    },
+    {
+      "path": "dist\\renderer\\assets\\Preferences-w_drNp-s.js",
+      "sha256": "f9679780689c951da956a57f9dc25274c0313bf8b12fefcda990313b23c0c46b"
+    },
+    {
+      "path": "dist\\renderer\\assets\\preview-Dt_0PZSA.js",
+      "sha256": "6c3a97b8fece6022b7ff02be608bdf3ea51d13c24fb0ccf2d1fe4503548c9dac"
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "6e811c57f9825fc54343739191d99cc0a2b81a8aaecb36bca69039958824599e"
+      "sha256": "31880643d8804c4b8fc65ffc988c931ba4889518760835d6a78ce04859a706b7"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "aa4d9db9f2a3889542e08aa9035f67757b60aaac1cc9cb80f22d8bb41c12dafd"
+      "sha256": "3e2dc0e009937c47b09e17b5f607bf62389440a07b66393d17de607eb160d115"
     },
     {
       "path": "dist\\tools\\notepad.mjs",
@@ -189,7 +303,7 @@
     },
     {
       "path": "dist\\tools\\notepad.ps1",
-      "sha256": "c2aeef3374ec94d9e5270f1fce073e469c9af325c8b967adb3f57061bae836e2"
+      "sha256": "35cd74ceedf19466aa58c940a680ae9fb5efd15b24ea8a26fb0c3f958eef4fa4"
     },
     {
       "path": "package.json",

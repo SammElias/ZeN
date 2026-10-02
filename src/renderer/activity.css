@@ -1,0 +1,28 @@
+.activity-panel{flex:0 0 calc(48px + var(--activity-rows)*36px);min-height:0;margin:0 16px 8px;padding:10px 12px 8px;border:1px solid #302b3d;border-radius:16px;background:radial-gradient(ellipse at 10% 100%,#8770b111,transparent 65%),linear-gradient(125deg,#19171f,#0e0e12);overflow:hidden}
+.activity-heading{display:flex;align-items:center;justify-content:space-between;height:20px;margin:0 3px 5px;font-size:10px;color:#b8b0c8;letter-spacing:.2px}
+.activity-heading>span:first-child{font-weight:600;color:#d8d1e4}
+.activity-heading>span:last-child{display:flex;align-items:center;gap:6px}
+.activity-heading i{width:4px;height:4px;background:#c7b6ff;border-radius:50%}
+.activity-steps:focus-visible{outline:1px solid #c7b6ff;outline-offset:-1px;border-radius:10px}
+.activity-panel.settled .activity-heading i{background:#9da3b1}
+.activity-panel.waiting .activity-heading i{background:#ebc88f}
+.activity-steps{list-style:none;margin:0;padding:0 2px;height:calc(var(--activity-rows)*36px + 2px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#494153 transparent}
+.activity-step{display:flex;align-items:center;position:relative;gap:10px;min-height:36px;padding:3px 4px}
+.activity-step:not(:last-child):after{content:'';position:absolute;left:18px;top:29px;height:14px;width:1px;background:linear-gradient(#75638970,#c7b6ff50)}
+.activity-node{position:relative;z-index:1;display:grid;place-items:center;width:29px;height:29px;flex-shrink:0;border:1px solid #635275;background:#1b1723;border-radius:50%;color:#c7b6ff}
+.activity-node img{display:block;width:24px;height:24px;object-fit:contain}
+.activity-copy{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:1;min-width:0;border:1px solid transparent;border-radius:10px;padding:6px 10px;font-size:11px;line-height:16px;color:#a9a2b7}
+.activity-copy>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-copy small{color:#91889f;font-size:9px;flex-shrink:0}
+.activity-step.previous .activity-node{opacity:.6}
+.activity-step.current .activity-copy{background:linear-gradient(100deg,#b89bf921,#8c72bb0c);border-color:#ae8ad43b;color:#f1eaff}
+.activity-step.current .activity-copy small{color:#c8b5e8}
+.activity-step.current .activity-node{background:#282033;border-color:#c5a2f1a8;box-shadow:0 0 12px #b395ec24,inset 0 0 8px #b395ec12}
+.activity-step.current.activity-completed .activity-copy{color:#c2e6d7;border-color:#80c8a52e;background:#9cdfbb0a}
+.activity-step.current:is(.activity-approval,.activity-input) .activity-copy{color:#efd4a8;border-color:#d2ac713a;background:#d2ac710d}
+.activity-step.current.activity-failed .activity-copy{color:#ffb3bc;border-color:#de88973a;background:#de88970d}
+.island.live-only .header-status .status-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.island.live-only.capsule .header-status{min-width:0;justify-content:flex-start}
+.island.live-only.capsule:is(.dock-left,.dock-right) .header-status{min-width:20px}
+@media(max-height:560px){.activity-panel{flex-basis:120px}.activity-steps{height:74px}}
+@media(max-width:420px){.activity-panel{margin-inline:12px;padding-inline:8px}.activity-copy{padding-inline:8px;gap:6px}}

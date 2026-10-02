@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-01T19:07:24.0443222Z",
+  "passed": false,
+  "validationScope": "compiled-interface-candidate",
+  "executable": "C:\\Users\\Gamming\\Desktop\\ZEN Interfaz - prueba\\ZEN.exe",
+  "source": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261001190553614",
+  "mainSha256": "4E34AFCB92E8219756E9AC0146E01123568B4F350CE732C411351511AF19910E",
+  "iconsSha256": "B992981CED21625C6455FEE6C63F54F95DF870C5035534D91259B66EDE6FCC4E",
+  "unchangedDefaultShortcut": true,
+  "pending": [
+    "shownOnTop",
+    "physical computer input"
+  ],
+  "apiCalled": false
+}

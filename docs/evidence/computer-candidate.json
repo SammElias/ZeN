@@ -1,0 +1,15 @@
+{
+  "source": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261001183917235",
+  "destination": "C:\\Users\\Gamming\\Desktop\\ZEN Control - prueba",
+  "executable": "C:\\Users\\Gamming\\Desktop\\ZEN Control - prueba\\ZEN.exe",
+  "mainHash": "7F3ADCFB25B0DB8CA2763F7D4C44F4B6AB85F15265007FDAA77600ACC00C7EE5",
+  "nativeHash": "476D9FABFB10B9CAF974BACE54CF37BAEFFC0E7B63A49C7CA6607F2CA97377DE",
+  "at": "2026-10-01T18:42:29.9313996Z",
+  "passed": false,
+  "validationScope": "compiled-candidate; physical-control-pending",
+  "limitations": [
+    "Native SendInput failed in this execution environment",
+    "General Electron shownOnTop check failed",
+    "Real API and Dataverse workflow not tested"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "At": "2026-10-01T16:54:46.2969919Z",
+  "Executable": "C:\\Users\\Gamming\\Desktop\\ZEN bordes\\ZEN.exe",
+  "Shortcut": "C:\\Users\\Gamming\\Desktop\\ZEN.lnk",
+  "ExecutableSha256": "49B61A030A520FC36A4B8FA5CCE53FB4E935A7BDBBE4B80E9222F598E49CC7FA",
+  "FilesVerified": 18,
+  "UnitTests": 244,
+  "ValidationScope": "interface",
+  "ExistingPackagesPreserved": true,
+  "RunningVersionPreserved": true,
+  "ApiCalls": 0
+}

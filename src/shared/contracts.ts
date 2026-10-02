@@ -1,3 +1,5 @@
+import type {HumanConfirmation} from './confirmation';
+import type {Activity} from './activity';
 import { z } from 'zod';
 import type { Profile, ResponseMode } from './personal';
 import type { WindowInfo, MediaInfo } from '../tools/windows/native';
@@ -14,6 +16,9 @@ export const SettingsSchema = z.object({
   maxConcurrentTasks: z.number().int().min(1).max(3).default(1),
   maxQueuedTasks: z.number().int().min(1).max(10).default(8),
   taskTimeoutMs: z.number().int().min(5000).max(90000).default(90000),
+  computerMaxRounds:z.number().int().min(1).max(100).default(40),
+  computerMaxActions:z.number().int().min(1).max(400).default(160),
+  computerTimeoutMs:z.number().int().min(30000).max(1800000).default(600000),
   allowNotepad: z.boolean().default(true),
   voiceConsent: z.boolean().default(false),
   listenOnInvoke: z.boolean().default(false),
@@ -33,7 +38,7 @@ export type TaskState = 'idle' | 'queued' | 'listening' | 'thinking' | 'awaiting
 export type Utterance = { speaker: 'user' | 'zen'; id: string; text: string; phase: 'start' | 'delta' | 'done'; sourceItemId?: string; timeline?: {startMs:number;endMs:number} };
 export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text'])}).strict();
 export type Artifact = z.infer<typeof ArtifactSchema>;
-export type TaskEvent = { id: string; state: TaskState; message: string; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext };
+export type TaskEvent = { id: string; state: TaskState; message: string; activity?:Activity; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext };
 export type Evidence = { application: 'notepad'; pid: number; windowHandle: string; alreadyOpen: boolean; verifiedAt: string };
 export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional() }).strict();
 export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };
@@ -42,7 +47,9 @@ export type SpendingSummary = { month: string; estimatedMonthEur: number; commit
 export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean };
 export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel']), height: z.number().int().min(40).max(1000), reducedMotion: z.boolean().default(false) }).strict();
 export type OverlayLayout = z.infer<typeof OverlayLayoutSchema>;
-export const OverlayPositionSchema = z.object({ displayId: z.number().int(), horizontalRatio: z.number().min(0).max(1) }).strict();
+export const DockEdgeSchema = z.enum(['top', 'left', 'right']);
+export type DockEdge = z.infer<typeof DockEdgeSchema>;
+export const OverlayPositionSchema = z.object({ displayId: z.number().int(), horizontalRatio: z.number().min(0).max(1), edge: DockEdgeSchema.default('top'), verticalRatio: z.number().min(0).max(1).default(.5) }).strict();
 export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
 export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
@@ -85,6 +92,8 @@ export interface ZenBridge {
   hide(): Promise<Result<boolean>>;
   layout(layout: OverlayLayout): Promise<Result<boolean>>;
   drag(phase: z.infer<typeof OverlayDragSchema>): Promise<Result<boolean>>;
+  dock(): Promise<Result<DockEdge>>;
+  onDock(callback: (edge: DockEdge) => void): () => void;
   voiceInterrupt(): Promise<Result<boolean>>;
   voiceContext(observationId: string | null): Promise<Result<boolean>>;
   refreshScreen():Promise<Result<boolean>>;
@@ -95,9 +104,12 @@ export interface ZenBridge {
   liveReady(sessionId:string):Promise<Result<boolean>>;
   liveEnd(sessionId:string):Promise<Result<{finalized:boolean;reason?:string}>>;
   liveSubmit(requestId:string):Promise<Result<boolean>>;
+  liveConfirm():Promise<Result<boolean>>;
+  confirmations():Promise<Result<HumanConfirmation[]>>;
+  onConfirmations(callback:(rows:HumanConfirmation[])=>void):()=>void;
   clearLogs(): Promise<Result<boolean>>;
   onTask(callback: (event: TaskEvent) => void): () => void;
-  onInvoke(callback: (mode: 'configured' | 'voice' | 'focus') => void): () => void;
+  onInvoke(callback: (mode: 'configured' | 'voice' | 'focus' | 'capsule') => void): () => void;
   onVisibility(callback: (visible: boolean) => void): () => void;
   onMode(callback: (mode: ResponseMode) => void): () => void;
 }

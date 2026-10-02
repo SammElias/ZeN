@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-01T19:07:17.951Z",
+  "scope": "packaged-Electron-real-IPC-synthetic-tasks-no-model-API",
+  "passed": false,
+  "activityTimelineVerified": true,
+  "edgeDockingVerified": true,
+  "edgeChecks": [
+    {
+      "edge": "left",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    },
+    {
+      "edge": "right",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    },
+    {
+      "edge": "top",
+      "rail": true,
+      "inward": true,
+      "restored": true,
+      "controlsFit": true
+    }
+  ],
+  "stableStreamingVerified": true,
+  "voiceNoticePreserved": true,
+  "humanConfirmationVerified": true,
+  "shownOnTop": false,
+  "remainingFailures": [
+    "shownOnTop"
+  ],
+  "realComputerInputRetested": false,
+  "apiCalled": false
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-01T18:32:23.529Z",
+  "passed": false,
+  "scope": "real-windows-synthetic-page",
+  "apiCalled": false,
+  "model": "mock",
+  "reason": "Operación Windows no verificada. Revisa permisos, selección y escritorio desbloqueado. (InvalidOperationException, -2146233079, computer-inject, Win32 0)",
+  "physicalWindowsPending": true
+}

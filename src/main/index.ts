@@ -10,8 +10,8 @@ import { compactContext } from '../agent/economy';
 import { Store } from '../storage/store';
 import { PersonalStore } from '../storage/personal';
 import { ProfileSchema, ModeSchema, relevantMemory, controlIntent, audible, type ResponseMode } from '../shared/personal';
-import { SettingsSchema, RequestSchema, OverlayLayoutSchema, OverlayDragSchema, type OverlayLayout, type TaskEvent, type TaskResult, type Settings } from '../shared/contracts';
-import { overlayBounds, draggedRatio } from './overlay';
+import { SettingsSchema, RequestSchema, OverlayLayoutSchema, OverlayDragSchema, type OverlayLayout, type TaskEvent, type TaskResult, type Settings, type DockEdge } from '../shared/contracts';
+import { overlayBounds, draggedRatio, draggedVerticalRatio, nearestEdge } from './overlay';
 import { diagnose, ZenError } from '../shared/errors';
 import { Orchestrator } from '../agent/orchestrator';
 import { SavedAgent } from '../agent/saved';
@@ -44,6 +44,12 @@ import {FolderContext} from './folder-context';
 import { CodexProjects } from '../agent/codex-projects';
 import { ProjectDrafts } from '../tools/project-drafts';
 import { projectCreationRequest } from '../policy/project';
+import {CodexDesktop,folderAnalysisRequest} from './codex-desktop';
+import {HumanConfirmations} from '../policy/human-confirmations';
+import {confirmationAttempt} from '../shared/confirmation';
+import {computerRequest} from '../shared/computer';
+import {ComputerAgent} from '../agent/computer';
+import {WindowsComputerSurface} from './computer-surface';
 let window: BrowserWindow;
 let tray: Tray;
 let preferences: BrowserWindow | undefined;
@@ -51,17 +57,24 @@ let quitting = false;
 let shortcutRegistered = false;
 let invokeFromInstance = () => {};
 app.setName('ZEN');
+if (process.platform === 'win32') app.setAppUserModelId('com.zen.desktop');
 // Smoke processes keep their lock/storage separate from the user's running ZEN.
 if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) {
   const smokePath = join(app.getPath('temp'), 'zen-electron-smoke'); mkdirSync(smokePath, { recursive: true }); app.setPath('userData', smokePath);
+  if (process.platform === 'win32') app.setAppUserModelId('com.zen.desktop.smoke');
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
 app.on('second-instance', () => invokeFromInstance());
 void app.whenReady().then(async () => {
+  const appIconPath = join(__dirname, 'renderer', 'icons', 'zen.ico');
+  const trayIconPath = join(__dirname, 'renderer', 'icons', 'tray.ico');
+  const appIcon = nativeImage.createFromPath(appIconPath);
+  const trayIcon = nativeImage.createFromPath(trayIconPath);
+  if (appIcon.isEmpty() || trayIcon.isEmpty()) throw new ZenError('No se pudieron cargar los iconos de ZEN. Vuelve a compilar el paquete completo.');
   const smoke = process.argv.some(value=>['--zen-smoke','--zen-objective-smoke','--zen-desktop-live-smoke','--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value));
   const desktopLive = process.argv.includes('--zen-desktop-live-smoke');
-  const imageChatLive=process.argv.includes('--zen-image-chat-smoke')||process.argv.includes('--zen-folder-context-smoke');
+  const imageChatLive=process.argv.includes('--zen-image-chat-smoke');
   if ((desktopLive || imageChatLive) && (!process.env.OPENAI_API_KEY || process.env.ZEN_LIVE_API !== '1')) throw new ZenError('La prueba real requiere clave de entorno y ZEN_LIVE_API=1.');
   const store = new Store(smoke ? join(app.getPath('temp'), 'zen-electron-smoke') : app.getPath('userData'), safeStorage);
   const personal = new PersonalStore(smoke ? join(app.getPath('temp'), 'zen-electron-smoke') : app.getPath('userData'));
@@ -70,7 +83,17 @@ void app.whenReady().then(async () => {
   let settings = store.settings();
   const projectDrafts=new ProjectDrafts();
   const projectTasks=new Map<string,{id:string;request:string}>();
-  const emit = (event: TaskEvent) => { try { personal.task(event); } catch {} if (preferences && !preferences.isDestroyed() && !event.streamText) preferences.webContents.send('zen:task', event); if (tray && !tray.isDestroyed()) tray.setToolTip(`ZEN · ${event.state === 'executing' || event.state === 'thinking' ? 'Tarea activa' : event.state === 'failed' ? 'Requiere atención' : 'Disponible'}`); if (window && !window.isDestroyed()) { window.webContents.send('zen:task', event); if (mode.meeting && settings.showResultsInMeeting && ['completed', 'awaiting_input', 'failed'].includes(event.state) && !window.isVisible()) window.showInactive(); } };
+  let passiveResult = () => {};
+  const confirmations=new HumanConfirmations(rows=>{if(window&&!window.isDestroyed())window.webContents.send('zen:confirmations',rows);});
+  const codexOpenedUrls:string[]=[];
+  const codexDesktop=new CodexDesktop({open:smoke?(async url=>{codexOpenedUrls.push(url);}):(url=>shell.openExternal(url))});
+  const emit = (event: TaskEvent) => {
+    if(event.approval&&event.state==='awaiting_approval')confirmations.offer(`file:${event.approval.id}`,`${event.approval.title}: ${event.approval.destination}`,JSON.stringify(event.approval),()=>approveFile(event.approval!.id));
+    const draft=event.workContext?.draft;
+    if(event.state==='awaiting_input'&&draft?.approvalId&&draft.destination)confirmations.offer(`project:${draft.id}`,`Crear ${draft.name} en ${draft.destination}`,JSON.stringify(draft),()=>approveProject({id:draft.id,approvalId:draft.approvalId!}));
+    if(event.liveRequest!==undefined){if(!event.liveRequest||!confirmations.list().some(row=>row.key===`live:${event.liveRequest!.id}`))confirmations.revokePrefix('live:');if(event.liveRequest){const request=event.liveRequest;confirmations.offer(`live:${request.id}`,request.text,request.text,()=>voice.submit(request.id,true));}}
+    if(['completed','failed','cancelled','executing'].includes(event.state)){confirmations.revoke(`file:${event.id}`);if(draft)confirmations.revoke(`project:${draft.id}`);}
+    try { personal.task(event); } catch {} if (preferences && !preferences.isDestroyed() && !event.streamText) preferences.webContents.send('zen:task', event); if (tray && !tray.isDestroyed()) tray.setToolTip(`ZEN · ${event.state === 'executing' || event.state === 'thinking' ? 'Tarea activa' : event.state === 'failed' ? 'Requiere atención' : 'Disponible'}`); if (window && !window.isDestroyed()) { window.webContents.send('zen:task', event); if (mode.meeting && settings.showResultsInMeeting && ['completed', 'awaiting_input', 'failed'].includes(event.state) && (!window.isVisible() || window.isMinimized())) passiveResult(); } };
   const log = (row: Record<string, unknown>) => { try { store.log(row); } catch { emit({ id: 'storage', state: 'failed', message: 'No se pudo escribir el registro local.' }); } };
   const client = () => new OpenAI({ apiKey: desktopLive || imageChatLive ? process.env.OPENAI_API_KEY : store.key(), maxRetries: 0, timeout: settings.taskTimeoutMs });
   const spending = new Spending(smoke ? join(app.getPath('temp'), 'zen-electron-smoke') : app.getPath('userData'), () => settings);
@@ -81,7 +104,12 @@ void app.whenReady().then(async () => {
   const codexProjects=new CodexProjects({client,spending,log});
   let direct: ConstructorParameters<typeof Orchestrator>[0]['direct'];
   let desktop: (text: string) => DesktopHandler;
-  const orchestrator = new TaskManager({ client, saved, project:text=>projectCreationRequest(text)?async(signal,progress,image)=>projectDrafts.add(await codexProjects.prepare(text,signal,progress,image)):undefined,toolkit: text => toolkit.handler(text), desktop: text => desktop(text), direct: text => direct?.(text), settings: () => settings, execute: signal => openNotepad(join(__dirname, 'tools/notepad.ps1'), signal), emit:event=>{if(event.workContext?.draft&&event.request)projectTasks.set(event.workContext.draft.id,{id:event.id,request:event.request});emit(event);}, log }, () => settings.maxConcurrentTasks);
+  const computer=new ComputerAgent({client,settings:()=>settings,spending,log,
+    surface:()=>new WindowsComputerSurface({windows:signal=>native(nativeDirectory,'windows',z.array(WindowSchema),window.getNativeWindowHandle().readBigUInt64LE().toString(),signal),anchor:()=>window.getNativeWindowHandle().readBigUInt64LE().toString(),edge:()=>dockEdge,ownerPid:process.pid,blocked:row=>sensitive(row.title)||/^(?:cmd|powershell|pwsh|windowsterminal|conhost|wsl|bash|mintty|regedit|taskmgr|mmc|credentialuibroker|consent|chatgpt|zen|electron)$/i.test(row.processName??''),serial:(signal,operation)=>orchestrator.desktopRun(signal,operation),
+      capture:(target,signal,initial)=>captureExclusion.during(signal,async()=>{const captured=await native(nativeDirectory,'computer-frame',z.object({image:z.string().max(12000000),width:z.number().int().positive(),height:z.number().int().positive(),bounds:BoundsSchema}),target.id,signal,{pid:target.pid,ownerPid:process.pid,initial});const image=nativeImage.createFromDataURL(captured.image).resize({width:Math.min(1920,captured.width)});const size=image.getSize();return{...captured,image:image.toDataURL(),width:size.width,height:size.height};}),
+      action:async(target,action,bounds,signal)=>{await native(nativeDirectory,'computer-action',z.object({verified:z.literal(true)}),target.id,signal,{pid:target.pid,ownerPid:process.pid,bounds,action});}}),
+    review:(id,label,signature,signal,preview)=>new Promise<void>((resolve,reject)=>{const key=`computer:${id}`;let timer:ReturnType<typeof setTimeout>;const clean=()=>{clearTimeout(timer);signal.removeEventListener('abort',cancel);confirmations.revoke(key);};const cancel=()=>{clean();reject(signal.reason??new ZenError('Control detenido.'));};signal.throwIfAborted();signal.addEventListener('abort',cancel,{once:true});timer=setTimeout(()=>{clean();reject(new ZenError('La revisión del bloque visual caducó. No se ejecutó.'));},300000);confirmations.offer(key,label,signature,async()=>{clean();signal.throwIfAborted();resolve();return true;},preview);})});
+  const orchestrator = new TaskManager({ client, saved, computer:(text,id,signal,progress)=>computer.run(text,id,signal,progress), project:text=>projectCreationRequest(text)?async(signal,progress,image)=>projectDrafts.add(await codexProjects.prepare(text,signal,progress,image)):undefined,toolkit: text => toolkit.handler(text), desktop: text => desktop(text), direct: text => direct?.(text), settings: () => settings, execute: signal => openNotepad(join(__dirname, 'tools/notepad.ps1'), signal), emit:event=>{if(event.workContext?.draft&&event.request)projectTasks.set(event.workContext.draft.id,{id:event.id,request:event.request});emit(event);}, log }, () => settings.maxConcurrentTasks);
   const changeMode = (next: ResponseMode) => { personal.saveMode(next); mode = next; if (!audible(mode)) voice.interrupt(); window?.webContents.send('zen:mode', mode); return mode; };
   const control = (text: string) => {
     const intent = controlIntent(text); if (!intent) return false;
@@ -94,7 +122,7 @@ void app.whenReady().then(async () => {
     return true;
   };
   let runVoice = (text: string, requestId: string) => orchestrator.run(text, requestId);
-  const voice = new LiveVoiceBackend({ key: () => store.key(), settings: () => settings, orchestrator: { run: (text, id) => runVoice(text, id), stop: () => orchestrator.stop(), get busy() { return orchestrator.busy; } }, log, emit, spending, audible: () => audible(mode), control, candidate:text=>projectCreationRequest(text)||!!controlIntent(text)||!!voiceObservationId||/\b(?:abre|abrir|abreme|ábreme|pausa|pausar|crea|crear|genera|generar|ejecuta|ejecutar|calcula|localmente|lee|leer|leeme|léeme|archivos|carpetas|imagen|parche|MCP|c[oó]digo)\b/i.test(text) });
+  const voice = new LiveVoiceBackend({ key: () => store.key(), settings: () => settings, orchestrator: { run: (text, id) => runVoice(text, id), stop: () => orchestrator.stop(), get busy() { return orchestrator.busy; } }, log, emit, spending, audible: () => audible(mode), control, confirm:text=>runHuman({text,requestId:randomUUID(),priority:2}), candidate:text=>computerRequest(text)||projectCreationRequest(text)||!!controlIntent(text)||!!voiceObservationId||!!voiceFolderId||folderAnalysisRequest(text)||confirmationAttempt(text)||/\b(?:abre|abrir|abreme|ábreme|pausa|pausar|crea|crear|genera|generar|ejecuta|ejecutar|calcula|localmente|lee|leer|leeme|léeme|archivos|carpetas|imagen|parche|MCP|c[oó]digo)\b/i.test(text) });
   const rendererPath = join(__dirname, 'renderer/index.html');
   const rendererUrl = pathToFileURL(rendererPath).href;
   const preferencesUrl = rendererUrl + '?view=preferences';
@@ -102,22 +130,28 @@ void app.whenReady().then(async () => {
   const savedPosition = smoke ? undefined : store.overlayPosition();
   let display = screen.getAllDisplays().find(row => row.id === savedPosition?.displayId) ?? screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   let horizontalRatio = savedPosition && display.id === savedPosition.displayId ? savedPosition.horizontalRatio : .5;
+  let dockEdge: DockEdge = savedPosition?.edge ?? 'top';
+  let verticalRatio = savedPosition && display.id === savedPosition.displayId ? savedPosition.verticalRatio : .5;
+  let presentation: 'overlay' | 'background' = 'overlay';
+  let skipTaskbar = true;
+  const taskbar = (skip: boolean) => { skipTaskbar = skip; window.setSkipTaskbar(skip); };
   let cancelResize: (() => void) | undefined;
   let hideGeneration = 0;
   let screenContext: ScreenContext | undefined;
   const queueScreen = async () => {
+    if(voiceFolderId)return;
     const snapshot = screenContext?.current();
     if (snapshot) { try { if (await voice.screenContext(snapshot)) screenContext?.queued(snapshot.id); } catch { window.webContents.send('zen:task', { id:'voice', state:'idle', message:'', screenContext:{state:'unavailable'} }); } }
   };
   const position = (animate = false): Promise<void> => {
-    cancelResize?.(); const target = overlayBounds(display.workArea, layout, horizontalRatio);
+    cancelResize?.(); const target = overlayBounds(display.workArea, layout, horizontalRatio, dockEdge, verticalRatio);
     if (!animate || !window.isVisible() || layout.reducedMotion) { window.setBounds(target); return Promise.resolve(); }
     const start = window.getBounds(); const started = Date.now();
     return new Promise(resolve => {
       const timer = setInterval(() => {
         const progress = Math.min(1, (Date.now() - started) / 240); const eased = 1 - (1 - progress) ** 3;
         const width = Math.round(start.width + (target.width - start.width) * eased); const height = Math.round(start.height + (target.height - start.height) * eased);
-        window.setBounds({ x: Math.round(start.x + (target.x - start.x) * eased), y: target.y, width, height });
+        window.setBounds({ x: Math.round(start.x + (target.x - start.x) * eased), y: Math.round(start.y + (target.y - start.y) * eased), width, height });
         if (progress === 1) { clearInterval(timer); cancelResize = undefined; resolve(); }
       }, 16);
       cancelResize = () => { clearInterval(timer); resolve(); cancelResize = undefined; };
@@ -131,28 +165,35 @@ void app.whenReady().then(async () => {
     if (!drag.moved && Math.hypot(point.x - drag.origin.x, point.y - drag.origin.y) < 4) return;
     drag.moved = true;
     display = screen.getDisplayNearestPoint(point);
-    horizontalRatio = draggedRatio(display.workArea, layout, point.x, drag.grabRatio);
+    const nextEdge = nearestEdge(display.workArea, point, dockEdge);
+    if (nextEdge !== dockEdge) { dockEdge = nextEdge; window.webContents.send('zen:dock', dockEdge); }
+    if (dockEdge === 'top') horizontalRatio = draggedRatio(display.workArea, layout, point.x, drag.grabRatio);
+    else verticalRatio = draggedVerticalRatio(display.workArea, point.y, drag.grabRatio);
     void position();
   };
   const endDrag = () => {
     if (dragTimer) clearInterval(dragTimer); if (dragDeadline) clearTimeout(dragDeadline);
     dragTimer = undefined; dragDeadline = undefined;
     const moved = drag?.moved; drag = undefined;
-    if (moved) { try { store.saveOverlayPosition({ displayId: display.id, horizontalRatio }); } catch { emit({ id: 'storage', state: 'failed', message: 'La posición funciona, pero no se pudo guardar para el próximo inicio.' }); } }
+    if (moved) { try { store.saveOverlayPosition({ displayId: display.id, horizontalRatio, edge: dockEdge, verticalRatio }); } catch { emit({ id: 'storage', state: 'failed', message: 'La posición funciona, pero no se pudo guardar para el próximo inicio.' }); } }
   };
   const startDrag = () => {
-    if (!window.isVisible()) throw new ZenError('ZEN debe estar visible para moverlo.');
+    if (!window.isVisible() || window.isMinimized() || presentation === 'background') throw new ZenError('ZEN debe estar visible para moverlo.');
     if (drag) endDrag();
     cancelResize?.();
     const origin = screen.getCursorScreenPoint(); const bounds = window.getBounds();
-    drag = { origin, grabRatio: Math.max(0, Math.min(1, (origin.x - bounds.x) / bounds.width)), moved: false };
-    // Only Windows supplies coordinates; IPC cannot place or free the window vertically.
+    drag = { origin, grabRatio: Math.max(0, Math.min(1, dockEdge === 'top' ? (origin.x - bounds.x) / bounds.width : (origin.y - bounds.y) / bounds.height)), moved: false };
+    // Windows supplies cursor coordinates; the renderer only starts/ends edge docking.
     dragTimer = setInterval(() => moveDrag(screen.getCursorScreenPoint()), 16);
     dragDeadline = setTimeout(endDrag, 30000);
   };
-  const invoke = async (mode: 'configured' | 'voice' | 'focus' = 'configured') => {
+  const invoke = async (mode: 'configured' | 'voice' | 'focus' | 'capsule' = 'configured') => {
     const generation = ++hideGeneration;
-    // Select and capture while the user's app still owns foreground focus.
+    presentation = 'overlay'; taskbar(true);
+    if (mode === 'capsule') { layout = { ...layout, mode: 'capsule', height: CAPSULE_HEIGHT }; window.webContents.send('zen:invoke', 'capsule'); }
+    if (window.isMinimized()) window.restore();
+    await position();
+    // Restore native monitor bounds first; exclude ZEN from the fresh capture.
     await screenContext?.refresh();
     if (generation !== hideGeneration || window.isDestroyed()) return;
     await queueScreen();
@@ -160,7 +201,8 @@ void app.whenReady().then(async () => {
     const visible = window.isVisible();
     if (!visible) { position(); }
     window.setAlwaysOnTop(true); window.show(); window.focus();
-    window.webContents.send('zen:invoke', mode);
+    window.webContents.send('zen:visibility', true);
+    if (mode !== 'capsule') window.webContents.send('zen:invoke', mode);
   };
   invokeFromInstance = () => { void invoke('focus'); };
   const register = (next: string) => {
@@ -171,9 +213,12 @@ void app.whenReady().then(async () => {
     return true;
   };
   shortcutRegistered = register(settings.shortcut);
-  window = new BrowserWindow({ ...overlayBounds(display.workArea, layout, horizontalRatio), frame: false, movable: false, resizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false, transparent: true, backgroundColor: '#00000000', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
+  window = new BrowserWindow({ ...overlayBounds(display.workArea, layout, horizontalRatio, dockEdge, verticalRatio), icon: appIconPath, frame: false, movable: false, resizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false, transparent: true, backgroundColor: '#00000000', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
   window.setMenu(null);
-  window.on('show', () => { window.setAlwaysOnTop(true); window.webContents.send('zen:visibility', true); });
+  passiveResult = () => { presentation = 'overlay'; taskbar(true); window.showInactive(); window.webContents.send('zen:visibility', true); };
+  window.on('show', () => { if (presentation === 'overlay') { window.setAlwaysOnTop(true); window.webContents.send('zen:visibility', true); } });
+  window.on('restore', () => { if (presentation === 'background') void invoke('capsule'); });
+  window.on('minimize', () => { if (presentation === 'overlay') void hide(); });
   window.on('hide', () => { window.setAlwaysOnTop(false); window.webContents.send('zen:visibility', false); });
   window.on('blur', endDrag);
   const reposition = () => { endDrag(); display = screen.getAllDisplays().find(row => row.id === display.id) ?? screen.getDisplayMatching(window.getBounds()); void position(); };
@@ -185,7 +230,7 @@ void app.whenReady().then(async () => {
     window.webContents.send('zen:visibility', false);
     const disconnecting = voice.stop(false);
     if (!layout.reducedMotion && window.isVisible()) await new Promise(resolve => setTimeout(resolve, 140));
-    if (generation === hideGeneration) { cancelResize?.(); window.hide(); }
+    if (generation === hideGeneration) { cancelResize?.(); presentation = 'background'; window.setAlwaysOnTop(false); taskbar(false); window.minimize(); }
     await disconnecting; return true;
   };
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -219,7 +264,7 @@ void app.whenReady().then(async () => {
   });
   handle('open-artifact',z.string().uuid(),async id=>{
     const item=artifacts.get(id),escape=(text:string)=>text.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
-    const viewer=new BrowserWindow({width:960,height:720,show:false,title:item.meta.title,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,partition:'zen-artifact-'+randomUUID()}});
+    const viewer=new BrowserWindow({width:960,height:720,show:false,icon:appIconPath,title:item.meta.title,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,partition:'zen-artifact-'+randomUUID()}});
     viewer.setMenu(null);viewer.webContents.setWindowOpenHandler(()=>({action:'deny'}));viewer.webContents.on('will-navigate',event=>event.preventDefault());viewer.webContents.session.setPermissionRequestHandler((_c,_p,reply)=>reply(false));
     const body=item.meta.kind==='image'?`<img alt="${escape(item.meta.title)}" src="data:${item.mime};base64,${item.data.toString('base64')}" style="max-width:100%;max-height:90vh">`:`<pre style="white-space:pre-wrap">${escape(item.data.toString('utf8'))}</pre>`;
     try{await viewer.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(`<html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><title>${escape(item.meta.title)}</title></head><body style="background:#13141a;color:#eee;font:15px system-ui;padding:16px">${body}</body></html>`));viewer.show();return true;}catch(error){viewer.destroy();throw error;}
@@ -234,11 +279,11 @@ void app.whenReady().then(async () => {
   let voiceObservationId: string | undefined;
   const windowCapabilities = new Map<string, { window: WindowInfo; at: number }>();
   let directoryCapability: { grantId: string; label: string; at: number } | undefined;
-  const emergencyStop = async () => { ++hideGeneration; screenContext?.cancel(); nativeAbort.abort(); nativeAbort = new AbortController(); observations.clear(); folderContext.clear();voiceFolderId=undefined; voiceObservationId = undefined; windowCapabilities.clear(); directoryCapability = undefined; approvals.clear();projectDrafts.clear();for(const task of projectTasks.values())emit({...task,state:'cancelled',message:'Proyecto detenido. No se guardarán nuevos elementos.',workContext:{owner:'codex',phase:'incomplete'}});projectTasks.clear(); orchestrator.stop(); await voice.stop(); };
+  const emergencyStop = async () => { ++hideGeneration; screenContext?.cancel(); nativeAbort.abort(); nativeAbort = new AbortController(); observations.clear(); folderContext.clear();voiceFolderId=undefined; voiceObservationId = undefined; windowCapabilities.clear(); directoryCapability = undefined; approvals.clear();confirmations.clear();projectDrafts.clear();for(const task of projectTasks.values())emit({...task,state:'cancelled',message:'Proyecto detenido. No se guardarán nuevos elementos.',workContext:{owner:'codex',phase:'incomplete'}});projectTasks.clear(); orchestrator.stop(); await voice.stop(); };
   const observedRequests = new Map<string, Promise<TaskResult>>();
   handle('choose-directory', noArg, async () => { const result = await dialog.showOpenDialog(window, { title: 'Elige dónde crear', properties: ['openDirectory'] }); if (result.canceled || !result.filePaths[0]) return null; const grant = await approvals.grant(result.filePaths[0]); directoryCapability = { ...grant, at: Date.now() }; return grant; });
-  handle('choose-context-folder',noArg,async()=>{const signal=nativeAbort.signal;const result=await dialog.showOpenDialog(window,{title:'Añadir carpeta del proyecto',properties:['openDirectory']});signal.throwIfAborted();if(result.canceled||!result.filePaths[0])return null;const attachment=await folderContext.grant(result.filePaths[0],signal);if(voiceFolderId)folderContext.revoke(voiceFolderId);voiceFolderId=attachment.id;return attachment;});
-  handle('remove-context-folder',z.string().uuid(),id=>{folderContext.revoke(id);if(voiceFolderId===id)voiceFolderId=undefined;return true;});
+  handle('choose-context-folder',noArg,async()=>{const signal=nativeAbort.signal;const result=await dialog.showOpenDialog(window,{title:'Añadir carpeta del proyecto',properties:['openDirectory']});signal.throwIfAborted();if(result.canceled||!result.filePaths[0])return null;const attachment=await folderContext.grant(result.filePaths[0],signal);if(voiceFolderId)folderContext.revoke(voiceFolderId);voiceFolderId=attachment.id;voice.invalidateRequest();screenContext?.cancel();voice.folderContext(true);return attachment;});
+  handle('remove-context-folder',z.string().uuid(),id=>{folderContext.revoke(id);if(voiceFolderId===id){voiceFolderId=undefined;voice.invalidateRequest();voice.folderContext(false);}return true;});
   handle('prepare', PrepareSchema, value => { if(value.kind==='create-folder')throw new ZenError('Pide a ZEN crear la carpeta: se preparará con Codex y podrás revisar dónde guardarla.');const approval = approvals.prepare(value); emit({ id: approval.id, state: 'awaiting_approval', message: approval.title, approval }); return approval; });
   handle('project-preview',z.string().uuid(),id=>projectDrafts.preview(id));
   handle('project-destination',z.object({id:z.string().uuid(),grantId:z.string().uuid()}).strict(),async({id,grantId})=>{
@@ -246,19 +291,25 @@ void app.whenReady().then(async () => {
     const task=projectTasks.get(id);if(!task)throw new ZenError('La propuesta no pertenece a una tarea activa de ZEN.');
     const draft=await projectDrafts.destination(id,directoryCapability.label);emit({...task,state:'awaiting_input',message:'Revisa el destino y los archivos. Cuando quieras, crea el proyecto aquí.',workContext:{owner:'codex',phase:'review',draft}});return draft;
   });
-  handle('project-discard',z.string().uuid(),id=>{const task=projectTasks.get(id);projectDrafts.discard(id);projectTasks.delete(id);if(task)emit({...task,state:'cancelled',message:'Propuesta descartada. No se guardó nada.',workContext:{owner:'codex',phase:'incomplete'}});return true;});
-  handle('project-approve',z.object({id:z.string().uuid(),approvalId:z.string().uuid()}).strict(),async({id,approvalId})=>{
+  handle('project-discard',z.string().uuid(),id=>{confirmations.revoke(`project:${id}`);const task=projectTasks.get(id);projectDrafts.discard(id);projectTasks.delete(id);if(task)emit({...task,state:'cancelled',message:'Propuesta descartada. No se guardó nada.',workContext:{owner:'codex',phase:'incomplete'}});return true;});
+  const approveProject=async({id,approvalId}:{id:string;approvalId:string})=>{
+    confirmations.revoke(`project:${id}`);
     const task=projectTasks.get(id);if(!task)throw new ZenError('La propuesta ya no está disponible.');
     const draft=projectDrafts.view(id);const signal=nativeAbort.signal;
     if(draft.approvalId!==approvalId)throw new ZenError('El destino cambió. Revisa la propuesta actual.');
     try{emit({...task,state:'executing',message:'Guardando tu proyecto…',workContext:{owner:'codex',phase:'saving',draft}});const result=await orchestrator.desktopRun(signal,()=>projectDrafts.approve(id,approvalId,signal));projectTasks.delete(id);emit({...task,state:'completed',message:result.message,workContext:{owner:'codex',phase:'complete'}});return result;}
     catch(error){projectTasks.delete(id);emit({...task,state:signal.aborted?'cancelled':'failed',message:diagnose(error),workContext:{owner:'codex',phase:'incomplete'}});throw error;}
-  });
-  handle('approve', z.string().uuid(), async id => {
+  };
+  handle('project-approve',z.object({id:z.string().uuid(),approvalId:z.string().uuid()}).strict(),approveProject);
+  const approveFile=async(id:string)=>{
+    confirmations.revoke(`file:${id}`);
     try { const result = await orchestrator.desktopRun(nativeAbort.signal, () => approvals.approve(id, nativeAbort.signal)); emit({ id, state: 'completed', message: result.message }); return result; }
     catch (error) { emit({ id, state: 'failed', message: diagnose(error) }); throw error; }
-  });
-  handle('reject', z.string().uuid(), id => { approvals.cancel(id); emit({ id, state: 'cancelled', message: 'Aprobación cancelada. No se creó nada.' }); return true; });
+  };
+  handle('approve',z.string().uuid(),approveFile);
+  handle('confirmations',noArg,()=>confirmations.list());
+  handle('live-confirm',noArg,()=>voice.confirmSpeech());
+  handle('reject', z.string().uuid(), id => {confirmations.revoke(`file:${id}`); approvals.cancel(id); emit({ id, state: 'cancelled', message: 'Aprobación cancelada. No se creó nada.' }); return true; });
   const sensitive = (title: string) => /ZEN|password|contrase[nñ]a|credential|credencial|autenticaci[oó]n|sign.in/i.test(title) || settings.excludedWindows.some(value => title.toLowerCase().includes(value.toLowerCase()));
   const captureExclusion=new CaptureExclusion(window);
   let captureRows:WindowInfo[]=[];
@@ -268,6 +319,7 @@ void app.whenReady().then(async () => {
     capture:async(_id,signal)=>captureExclusion.during(signal,async()=>{const anchorId=window.getNativeWindowHandle().readBigUInt64LE().toString();const excludedIds=captureRows.filter(row=>row.id!==anchorId&&(row.pid===process.pid||sensitive(row.title))).map(row=>row.id);const captured=await native(nativeDirectory,'capture-screen',z.object({image:z.string().startsWith('data:image/png;base64,').max(10000000),bounds:BoundsSchema,scope:z.literal('display')}),anchorId,signal,{excludedIds});return {...captured,image:compactImage(captured.image,1920)};}),
     own:row=>row.pid===process.pid,
     blocked:row=>sensitive(row.title),
+    edge: () => dockEdge,
     status:status=>{if(['idle','expired','unavailable'].includes(status.state))voice.invalidateScreenContext();window.webContents.send('zen:task',{id:'voice',state:'idle',message:'',screenContext:status});}
   });
   const windows = async () => { const result = (await native(nativeDirectory, 'windows', z.array(WindowSchema))).filter(row => !sensitive(row.title)); selectedWindows = new Map(result.map(row => [row.id, row])); return result; };
@@ -275,7 +327,7 @@ void app.whenReady().then(async () => {
   handle('attach-image',z.object({image:z.string().max(4000000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/)}).strict(),({image})=>{const value=compactImage(image,1920);if(value.length>3000000)throw new ZenError('La imagen es demasiado grande.');const observationId=randomUUID();observations.set(observationId,{image:value,at:Date.now()});setTimeout(()=>observations.delete(observationId),120000).unref();if(observations.size>5)observations.delete(observations.keys().next().value!);return{observationId};});
   handle('apps', noArg, () => native(nativeDirectory, 'apps', z.array(z.object({ id: z.string() }))));
   handle('open-app', z.string().min(1).max(200), id => { if (/^notepad\.exe$/i.test(id) && !settings.allowNotepad) throw new ZenError('Bloc de notas está deshabilitado.'); return orchestrator.desktopRun(nativeAbort.signal, () => native(nativeDirectory, 'open-app', z.object({ id: z.string(), pid: z.number(), windowHandle: z.string(), verified: z.literal(true) }), id, nativeAbort.signal)); });
-  const newViewer = () => new BrowserWindow({ width: 960, height: 720, show: false, webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, partition: 'persist:zen-browser' } });
+  const newViewer = () => new BrowserWindow({ width: 960, height: 720, show: false, icon: appIconPath, webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, partition: 'persist:zen-browser' } });
   const openPage = async (value: string, signal: AbortSignal) => {
     const url = new URL(value);
     if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new ZenError('Solo se abren páginas HTTP/HTTPS sin credenciales en la URL.');
@@ -338,8 +390,9 @@ void app.whenReady().then(async () => {
   direct = text => {
     const local=localFileOperation(text,library,settings.maxContextChars);if(local)return local;
     const operation = directOperation(text); if (!operation) return;
-    return async signal => {
+    return async (signal,progress) => {
       signal.throwIfAborted();
+      progress?.(operation.kind==='page'?'opening_web':operation.kind==='file'?'processing':operation.kind==='pause-media'?'executing':'opening_app');
       if (operation.kind === 'page') { const page = await openPage(operation.target, signal); return { message: `Página cargada y verificada: ${page.url}` }; }
       if (operation.kind === 'file') { const file = await openFile(operation.target, signal); if (!file.verified) throw new ZenError('Selección de archivo cancelada. No se abrió ningún archivo.'); return { message: `Archivo abierto en el visor y verificado: ${file.name}` }; }
       if (operation.kind === 'pause-media') {
@@ -428,6 +481,17 @@ void app.whenReady().then(async () => {
   const runHumanOnce = async({ text, requestId, observationId, folderId, replyTaskId, priority }: z.infer<typeof RequestSchema>):Promise<TaskResult> => {
     const signal=nativeAbort.signal;
     if (control(text)) return Promise.resolve({ id: requestId, state: 'completed' as const, message: 'Control local aplicado. Las tareas solo se cancelan si lo pides explícitamente.' });
+    if(confirmationAttempt(text)){await confirmations.confirm(text);return{id:requestId,state:'completed',message:'Confirmación aplicada a la propuesta indicada.',localOnly:true};}
+    if(computerRequest(text)||folderId||observationId||projectCreationRequest(text)||directOperation(text)){orchestrator.stopComputer();confirmations.revokePrefix('computer:');}
+    voice.invalidateRequest();
+    if(folderId&&!/solo\s+local(?:mente)?/i.test(text)){
+      if(observationId)throw new ZenError('Envía la carpeta sin captura: se abrirá en Codex del escritorio.');
+      await folderContext.resolve(folderId,signal);const workContext={owner:'codex' as const,phase:'external' as const};
+      emit({id:requestId,request:text,state:'executing',activity:'opening_codex',message:'Abriendo tu carpeta en Codex del escritorio…',workContext});
+      const message=await orchestrator.desktopRun(signal,async()=>codexDesktop.openFolder(await folderContext.resolve(folderId,signal),text,signal));
+      const result:TaskResult={id:requestId,state:'awaiting_input',message,workContext,localOnly:true};emit({...result,request:text});return result;
+    }
+    if(!folderId&&folderAnalysisRequest(text)){const result:TaskResult={id:requestId,state:'awaiting_input',message:'Añade la carpeta desde el clip y envía tu petición. Se abrirá en Codex del escritorio, sin análisis por la API de ZEN.',localOnly:true};emit({...result,request:text});return result;}
     const memory = relevantMemory(personal.profile(), text);
     const previous = replyTaskId ? personal.tasks().find(row => row.id === replyTaskId) : undefined;
     if (replyTaskId && !previous?.sessionId) throw new ZenError('Esa tarea no tiene una sesión del agente para continuar.');
@@ -451,7 +515,7 @@ void app.whenReady().then(async () => {
   handle('run', RequestSchema, request => runHuman(request));
   handle('voice-context', z.string().uuid().nullable(), id => {
     if (id && (!observations.has(id) || Date.now() - observations.get(id)!.at >= 120000)) throw new ZenError('La observación caducó. Vuelve a capturar.');
-    voiceObservationId = id ?? undefined; return true;
+    if(voiceObservationId!==(id??undefined))voice.invalidateRequest();voiceObservationId = id ?? undefined; return true;
   });
   runVoice = (text, requestId) => {
     const observationId = voiceObservationId; voiceObservationId = undefined;
@@ -462,26 +526,26 @@ void app.whenReady().then(async () => {
   handle('stop', noArg, async () => { await emergencyStop(); return true; });
   handle('hide', noArg, hide);
   handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; await position(opening); return true; });
+  handle('dock', noArg, () => dockEdge);
   handle('drag', OverlayDragSchema, phase => { if (phase === 'start') startDrag(); else endDrag(); return true; });
   handle('voice-interrupt', noArg, () => { voice.interrupt(); return true; });
   handle('voice-start', z.string().min(20).max(65536).refine(value => value.startsWith('v=0')), async (sdp: string) => {
     if(voice.active)throw new ZenError('Ya hay una sesión Live activa.');
-    const generation=hideGeneration;await screenContext?.refresh();
+    const generation=hideGeneration;if(voiceFolderId||confirmations.list().length)screenContext?.cancel();else await screenContext?.refresh();
     if(generation!==hideGeneration)throw new ZenError('Invocación cancelada.');
     return voice.start(sdp);
   });
   const liveId = z.string().min(1).max(256).refine(value=>!/[\x00-\x1f\x7f]/.test(value));
-  handle('screen-refresh',noArg,async()=>{const generation=hideGeneration;await screenContext?.refresh();if(generation!==hideGeneration)throw new ZenError('Captura cancelada.');await queueScreen();return !!screenContext?.current();});
+  handle('screen-refresh',noArg,async()=>{voice.invalidateRequest();const generation=hideGeneration;await screenContext?.refresh();if(generation!==hideGeneration)throw new ZenError('Captura cancelada.');await queueScreen();return !!screenContext?.current();});
   handle('voice-end', liveId, async id => { await voice.end(id); return true; });
-  handle('live-ready', liveId, async id => { voice.started(id); await queueScreen(); return true; });
+  handle('live-ready', liveId, async id => { voice.started(id); if(voiceFolderId)voice.folderContext(true);await queueScreen(); return true; });
   handle('live-end', liveId, id => voice.end(id));
   handle('live-submit', z.string().uuid(), id => voice.submit(id));
   handle('clear-logs', noArg, () => { ensureIdle(); store.clearLogs(); return true; });
-  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAFUlEQVQ4T2Nk+P//PwMlgImBQjDwHAAA2n4DHd9rF1gAAAAASUVORK5CYII=');
-  tray = new Tray(icon); tray.setToolTip('ZEN · Disponible');
+  tray = new Tray(trayIconPath); tray.setToolTip('ZEN · Disponible');
   const openPreferences = async (show = true) => {
     if (preferences && !preferences.isDestroyed()) { preferences.show(); preferences.focus(); return; }
-    preferences = new BrowserWindow({ width: 580, height: 680, title: 'ZEN · Preferencias', show: false, backgroundColor: '#10111A', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
+    preferences = new BrowserWindow({ width: 580, height: 680, title: 'ZEN · Preferencias', icon: appIconPath, show: false, backgroundColor: '#10111A', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
     const current = preferences; current.setMenu(null); current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     current.webContents.on('will-navigate', (event, url) => { if (url !== preferencesUrl) event.preventDefault(); });
     current.on('closed', () => { if (preferences === current) preferences = undefined; });
@@ -496,7 +560,7 @@ void app.whenReady().then(async () => {
   window.showInactive();
   if(process.argv.includes('--zen-folder-context-smoke')){
     const fixture=await mkdtemp(join(app.getPath('temp'),'zen-folder-api-'));await writeFile(join(fixture,'README.md'),'Proyecto sintético: el código de referencia es 582941.');
-    let passed=false;try{const attachment=await folderContext.grant(fixture,new AbortController().signal);const request={text:'Lee la documentación adjunta de este proyecto y dime únicamente su código de referencia de seis cifras.',requestId:randomUUID(),folderId:attachment.id};const result=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);passed=result.ok&&/582\s*941/.test(result.value.message);console.log(JSON.stringify({at:new Date().toISOString(),realApi:true,realElectronIpc:true,syntheticFolder:true,dialogSelectionInjected:true,personalFilesUploaded:false,folderContextVerified:passed,passed}));folderContext.clear();await voice.stop(false);tray.destroy();}finally{await unlink(join(fixture,'README.md'));await rmdir(fixture);}app.exit(passed?0:1);return;
+    let passed=false;try{const attachment=await folderContext.grant(fixture,new AbortController().signal);const request={text:'Lee la documentación adjunta de este proyecto y dime únicamente su código de referencia de seis cifras.',requestId:randomUUID(),folderId:attachment.id};const result=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);passed=result.ok&&result.value.localOnly===true&&result.value.workContext?.phase==='external'&&codexOpenedUrls.length===1;console.log(JSON.stringify({at:new Date().toISOString(),realApi:false,applicationOpen:'mock',realElectronIpc:true,syntheticFolder:true,dialogSelectionInjected:true,personalFilesUploaded:false,folderApiBypassVerified:passed,passed}));folderContext.clear();await voice.stop(false);tray.destroy();}finally{await unlink(join(fixture,'README.md'));await rmdir(fixture);}app.exit(passed?0:1);return;
   }
   if(imageChatLive){
     const snapshot=JSON.parse(await readFile(join(process.cwd(),'test-results/chat-image-fixture.json'),'utf8')) as ScreenSnapshot;
@@ -540,16 +604,22 @@ void app.whenReady().then(async () => {
     const latestInterruptionVerified=await window.webContents.executeJavaScript(`document.querySelector('.live-message.user .result-text')?.textContent==='Otro turno' && !document.querySelector('.latest-message')?.textContent.includes('Respuesta antigua')`);
     const latestTranscriptVerified=!!userCaption&&!!zenCaption;
     const fluidRequest='Prueba visual sintética';
+    const fluidTaskId='fluid-ui-'+randomUUID();
     emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'fluid-user',text:fluidRequest,phase:'start'}});
     emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'fluid-user',text:fluidRequest,phase:'done'}});
-    emit({id:'fluid-ui',request:fluidRequest,state:'thinking',message:'Trabajando',streamText:'Texto'});
+    emit({id:fluidTaskId,request:fluidRequest,state:'thinking',message:'Trabajando',streamText:'Texto'});
     await new Promise(resolve=>setTimeout(resolve,450));
     const fluidBounds=window.getBounds();let fluidResizes=0;const resized=()=>{fluidResizes++;};window.on('resize',resized);
     await window.webContents.executeJavaScript(`window.zenFluidArticle=document.querySelector('.live-message');window.zenFluidHeader=document.querySelector('.brand-home');`);
-    for(let n=1;n<=40;n++){emit({id:'fluid-ui',request:fluidRequest,state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)});await new Promise(resolve=>setTimeout(resolve,5));}
+    for(let n=1;n<=40;n++){emit({id:fluidTaskId,request:fluidRequest,state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)});await new Promise(resolve=>setTimeout(resolve,5));}
     await new Promise(resolve=>setTimeout(resolve,80));window.removeListener('resize',resized);
     const stableStreamingVerified=fluidResizes===0&&JSON.stringify(fluidBounds)===JSON.stringify(window.getBounds())&&await window.webContents.executeJavaScript(`window.zenFluidArticle===document.querySelector('.live-message')&&window.zenFluidHeader===document.querySelector('.brand-home')&&document.querySelector('.result-text').textContent===${JSON.stringify('Texto literal ñ '.repeat(40))}&&getComputedStyle(document.querySelector('.companion-float')).animationName==='none'`);
-    emit({id:'fluid-ui',request:fluidRequest,state:'completed',message:'Respuesta útil conservada.'});emit({id:'voice',state:'failed',message:'Voz desconectada por inactividad.'});
+    let activityTimelineVerified=false;
+    for(let attempt=0;attempt<30&&!activityTimelineVerified;attempt++){
+      activityTimelineVerified=await window.webContents.executeJavaScript(`document.querySelector('.activity-step.current')?.textContent.includes('Escribiendo')&&document.querySelector('.activity-step.current img')?.naturalWidth===48`);
+      if(!activityTimelineVerified)await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    emit({id:fluidTaskId,request:fluidRequest,state:'completed',message:'Respuesta útil conservada.'});emit({id:'voice',state:'failed',message:'Voz desconectada por inactividad.'});
     await new Promise(resolve=>setTimeout(resolve,80));
     const voiceNoticePreserved=await window.webContents.executeJavaScript(`document.querySelector('.result-text').textContent==='Respuesta útil conservada.'&&document.querySelector('.voice-notice')?.textContent.includes('Voz desconectada por inactividad.')`);
     await window.webContents.executeJavaScript(`(async()=>{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#185bd1';ctx.fillRect(0,0,128,64);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));const clipboard=new DataTransfer();clipboard.items.add(new File([blob],'captura.png',{type:'image/png'}));document.querySelector('#chat-input').dispatchEvent(new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true}));})()`);
@@ -561,8 +631,16 @@ void app.whenReady().then(async () => {
     const singleAttachmentClipVerified=await window.webContents.executeJavaScript(`document.querySelectorAll('button[aria-label="Añadir contexto"]').length===1&&!document.querySelector('footer button[aria-label="Adjuntar contexto"]')`);
     await window.webContents.executeJavaScript(`document.querySelector('button[aria-label="Quitar captura pegada"]')?.click();`);
     const folderFixture=await mkdtemp(join(app.getPath('temp'),'zen-folder-ipc-'));await writeFile(join(folderFixture,'README.md'),'Documento sintético del proyecto. Código: 739162.');
-    let folderIpcVerified=false;
-    try{const grant=await folderContext.grant(folderFixture,new AbortController().signal);const request={text:'Analiza esta carpeta solo localmente sin API',requestId:randomUUID(),folderId:grant.id};const read=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);await window.webContents.executeJavaScript(`window.zen.removeContextFolder('${grant.id}')`);const removed=await window.webContents.executeJavaScript(`window.zen.run({text:'Analiza localmente sin API',requestId:'${randomUUID()}',folderId:'${grant.id}'})`);folderIpcVerified=read.ok&&read.value.localOnly===true&&read.value.message.includes('739162')&&!removed.ok;}finally{await unlink(join(folderFixture,'README.md'));await rmdir(folderFixture);}
+    let folderIpcVerified=false,folderDelegationVerified=false;
+    try{const grant=await folderContext.grant(folderFixture,new AbortController().signal);const request={text:'Analiza esta carpeta solo localmente sin API',requestId:randomUUID(),folderId:grant.id};const read=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);const delegated=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({...request,text:'Analiza esta carpeta sin API',requestId:randomUUID()})})`);const link=new URL(codexOpenedUrls.at(-1)!);folderDelegationVerified=delegated.ok&&delegated.value.localOnly===true&&delegated.value.state==='awaiting_input'&&delegated.value.workContext?.phase==='external'&&link.searchParams.get('path')===folderFixture&&!link.searchParams.get('prompt')!.includes('739162');await window.webContents.executeJavaScript(`window.zen.removeContextFolder('${grant.id}')`);const removed=await window.webContents.executeJavaScript(`window.zen.run({text:'Analiza localmente sin API',requestId:'${randomUUID()}',folderId:'${grant.id}'})`);folderIpcVerified=read.ok&&read.value.localOnly===true&&read.value.message.includes('739162')&&!removed.ok;}finally{await unlink(join(folderFixture,'README.md'));await rmdir(folderFixture);}
+    const confirmationFixture=await mkdtemp(join(app.getPath('temp'),'zen-confirm-ipc-'));let humanConfirmationVerified=false;
+    try{
+      const grant=await approvals.grant(confirmationFixture);const approval=approvals.prepare({grantId:grant.grantId,kind:'create-file',name:'confirmado.txt',content:'Confirmación exacta por chat.'});emit({id:approval.id,state:'awaiting_approval',message:approval.title,approval});
+      const rows=await window.webContents.executeJavaScript(`window.zen.confirmations()`);const code=rows.value.find((row:{key:string;code:string})=>row.key===`file:${approval.id}`)?.code;
+      const request={text:`confirmo ${code}`,requestId:randomUUID(),folderId:randomUUID(),priority:2};const confirmed=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify(request)})`);
+      const repeated=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({...request,requestId:randomUUID()})})`);
+      humanConfirmationVerified=confirmed.ok&&confirmed.value.localOnly===true&&!repeated.ok&&await readFile(join(confirmationFixture,'confirmado.txt'),'utf8')==='Confirmación exacta por chat.';
+    }finally{await unlink(join(confirmationFixture,'confirmado.txt')).catch(error=>{if(error.code!=='ENOENT')throw error;});await rmdir(confirmationFixture);}
     const unknownArtifactBlocked=!(await window.webContents.executeJavaScript(`window.zen.openArtifact('${randomUUID()}')`)).ok;
     const invalidLiveSessionBlocked=await window.webContents.executeJavaScript(`Promise.all([window.zen.liveReady('stale-session'),window.zen.liveEnd('stale-session'),window.zen.liveSubmit('${randomUUID()}')]).then(values=>values.every(value=>!value.ok))`);
     const mcpFixture={label:'fixture',url:'https://example.com/mcp',tools:['get_info']};store.saveMcp(mcpFixture,'mcp-smoke-dummy-not-real');
@@ -579,12 +657,12 @@ void app.whenReady().then(async () => {
     await window.webContents.executeJavaScript(`window.zen.layout({mode:'card',height:210})`);
     const cardBounds = window.getBounds();
     const invalidDragBlocked = !(await window.webContents.executeJavaScript(`window.zen.drag({phase:'start',x:123,y:456})`)).ok;
-    const dragStartDisplay = display; const dragStartRatio = horizontalRatio; const dragStartLayout = layout;
+    const dragStartDisplay = display; const dragStartRatio = horizontalRatio; const dragStartLayout = layout; const dragStartEdge = dockEdge; const dragStartVertical = verticalRatio;
     // Same controller and real native bounds, synthetic cursor points; no physical input is sent.
     startDrag(); if (dragTimer) clearInterval(dragTimer); drag!.grabRatio = .5; drag!.moved = true;
     const dragChecks = screen.getAllDisplays().flatMap(destination => [destination.workArea.x + 10, destination.workArea.x + destination.workArea.width - 10].map(x => {
       layout = { mode: 'capsule', height: CAPSULE_HEIGHT, reducedMotion: true };
-      moveDrag({ x, y: destination.workArea.y + Math.min(120, destination.workArea.height - 1) });
+      moveDrag({ x, y: destination.workArea.y + Math.min(5, destination.workArea.height - 1) });
       const bounds = window.getBounds();
       const withinDisplay = bounds.y === display.workArea.y && bounds.x >= display.workArea.x && bounds.x + bounds.width <= display.workArea.x + display.workArea.width;
       const collapsed = bounds;
@@ -593,13 +671,52 @@ void app.whenReady().then(async () => {
       layout = { mode: 'capsule', height: CAPSULE_HEIGHT, reducedMotion: true }; void position();
       return { displayId: display.id, withinDisplay, topPreserved: expanded.y === collapsed.y, capsuleRestored: window.getBounds().x === collapsed.x };
     }));
+    const edgeChecks: {edge:DockEdge;rail:boolean;inward:boolean;restored:boolean;controlsFit:boolean}[] = [];
+    for (const edge of ['left','right','top'] as const) {
+      layout = { mode:'capsule', height:CAPSULE_HEIGHT, reducedMotion:true };
+      const area = display.workArea;
+      moveDrag({x:edge==='left'?area.x+2:edge==='right'?area.x+area.width-2:area.x+area.width/2,y:edge==='top'?area.y+2:area.y+area.height/2});
+      const rail=window.getBounds();
+      // Native resizing and zen:dock cross different queues. Wait for the
+      // renderer to receive this edge and viewport before measuring controls.
+      for(let attempt=0;attempt<30;attempt++){
+        const ready=await window.webContents.executeJavaScript(`document.querySelector('main')?.classList.contains('dock-${edge}')&&Math.abs(innerWidth-${rail.width})<=1&&Math.abs(innerHeight-${rail.height})<=1`);
+        if(ready)break;await new Promise(resolve=>setTimeout(resolve,25));
+      }
+      const controlsFit = await window.webContents.executeJavaScript(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const h=document.querySelector('header').getBoundingClientRect();resolve(Array.from(document.querySelectorAll('header button')).every(button=>{const b=button.getBoundingClientRect();return b.left>=h.left-.5&&b.right<=h.right+.5&&b.top>=h.top-.5&&b.bottom<=h.bottom+.5;}));})))`);
+      const railValid = dockEdge===edge && (edge==='top'?rail.height===40:rail.width===40&&rail.height===240);
+      layout = { mode:'card',height:260,reducedMotion:true }; await position(); const card=window.getBounds();
+      const inward = card.x>=area.x&&card.y>=area.y&&card.x+card.width<=area.x+area.width&&card.y+card.height<=area.y+area.height;
+      layout = { mode:'capsule',height:CAPSULE_HEIGHT,reducedMotion:true }; await position();
+      edgeChecks.push({edge,rail:railValid,inward,restored:JSON.stringify(rail)===JSON.stringify(window.getBounds()),controlsFit:!!controlsFit});
+    }
+    const edgeDockingVerified = edgeChecks.every(row=>row.rail&&row.inward&&row.restored&&row.controlsFit);
     endDrag();
     const positionSaved = store.overlayPosition();
-    const dragPositionPersisted = positionSaved?.displayId === display.id && positionSaved?.horizontalRatio === horizontalRatio;
+    const dragPositionPersisted = positionSaved?.displayId === display.id && positionSaved?.horizontalRatio === horizontalRatio && positionSaved?.edge === dockEdge && positionSaved?.verticalRatio === verticalRatio;
     const horizontalDragVerified = dragChecks.every(row => row.withinDisplay && row.topPreserved && row.capsuleRestored);
-    display = dragStartDisplay; horizontalRatio = dragStartRatio; layout = dragStartLayout; await position();
+    display = dragStartDisplay; horizontalRatio = dragStartRatio; dockEdge = dragStartEdge; verticalRatio = dragStartVertical; layout = dragStartLayout; window.webContents.send('zen:dock',dockEdge); await position();
     await hide();
     const hiddenNotOnTop = !window.isAlwaysOnTop();
+    const backgroundTaskbarVerified = window.isMinimized() && !skipTaskbar && String(presentation)==='background';
+    const previousScreenContext = screenContext;
+    let restoreCaptures=0;
+    const contextFixture = new ScreenContext({
+      windows:async()=>[{id:'fixture-anchor',pid:process.pid,title:'ZEN',foreground:true,bounds:window.getBounds(),monitorBounds:display.workArea},{id:'fixture-external',pid:1,title:'Synthetic taskbar context',foreground:false,bounds:display.workArea}],
+      anchorId:()=> 'fixture-anchor',edge:()=>dockEdge,own:row=>row.pid===process.pid,blocked:()=>false,
+      capture:async()=>{++restoreCaptures;return {image:'data:image/png;base64,aW1hZ2U=',scope:'display',bounds:display.workArea};},status:()=>{}
+    });
+    screenContext=contextFixture;
+    // Real native restoration, synthetic context pixels, no API or physical click.
+    await invoke('capsule'); const previousReference=contextFixture.current(); await hide();
+    const restoredEvent = new Promise<void>(resolve=>window.once('restore',()=>resolve()));
+    window.restore(); await restoredEvent;
+    for(let attempt=0;attempt<80&&(!contextFixture.current()||window.isMinimized());attempt++)await new Promise(resolve=>setTimeout(resolve,25));
+    await new Promise(resolve=>setTimeout(resolve,80));
+    const refreshedReference=contextFixture.current();
+    const taskbarReturnVerified=backgroundTaskbarVerified && !window.isMinimized() && skipTaskbar && presentation==='overlay' && layout.mode==='capsule' && !!refreshedReference && refreshedReference.id!==previousReference?.id && restoreCaptures===2 && await window.webContents.executeJavaScript(`document.querySelector('main').classList.contains('capsule')`);
+    contextFixture.cancel();screenContext=previousScreenContext;
+    await hide();
     let objective: Record<string, unknown> | undefined;
       if (process.argv.includes('--zen-objective-smoke') || desktopLive) {
       const testDirectory = join(app.getPath('temp'), 'zen-objective-fixture'); await mkdir(testDirectory, { recursive: true });
@@ -695,7 +812,20 @@ void app.whenReady().then(async () => {
     const projectRepeated=await window.webContents.executeJavaScript(`window.zen.projectApprove(${JSON.stringify(projectApproval)})`);
     const projectIpcVerified=projectSaved.ok&&projectSaved.value.verified&&!projectRepeated.ok&&(await readFile(join(projectParent,'Proyecto prueba','src/index.js'),'utf8'))==='export const fixture = 719;';
     const unknownProjectBlocked=!(await window.webContents.executeJavaScript(`window.zen.projectPreview('${randomUUID()}')`)).ok;
-    console.log(JSON.stringify({ ...result, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    const computerRun=computer.run.bind(computer);let computerIpcVerified=false;
+    try{
+      let effects=0,rounds=0;const frame={image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',width:100,height:100,target:{id:'123',pid:456,title:'Aplicación sintética'},capturedAt:Date.now()};
+      const fixture=new ComputerAgent({client:()=>({responses:{create:async()=>({id:`computer-smoke-${++rounds}`,status:'completed',usage:{input_tokens:1,output_tokens:1},output_text:'',output:rounds===1?[{type:'computer_call',id:'click',call_id:'click',status:'completed',actions:[{type:'click',button:'left',x:10,y:20}],pending_safety_checks:[]}]:[{type:'function_call',call_id:'finish',name:'zen_computer_finish',arguments:JSON.stringify({status:'completed',summary:'Prueba terminada',visibleEvidence:'Resultado sintético visible',capture:2})}]})}} as any),settings:()=>settings,log:()=>{},surface:()=>({start:async()=>frame,act:async(_actions,_frame,signal,review)=>{await review('Clic de prueba en la aplicación sintética','computer-immutable');signal.throwIfAborted();effects++;return{frame,executed:true};},close:()=>{}}),review:(id,label,signature,signal,preview)=>new Promise<void>((resolve,reject)=>{const key=`computer:${id}`;signal.addEventListener('abort',()=>{confirmations.revoke(key);reject(signal.reason);},{once:true});confirmations.offer(key,label,signature,async()=>{signal.throwIfAborted();resolve();return true;},preview);})});
+      computer.run=fixture.run.bind(fixture);
+      await window.webContents.executeJavaScript(`document.querySelector('[aria-label="Mensaje para ZEN"]').value='Controla la pantalla y rellena el formulario de prueba';document.querySelector('[aria-label="Mensaje para ZEN"]').dispatchEvent(new Event('input',{bubbles:true}));`);
+      const task=runHuman({text:'Controla la pantalla y rellena el formulario de prueba',requestId:randomUUID(),priority:2});
+      for(let retry=0;retry<40&&!confirmations.list().some(row=>row.key.startsWith('computer:'));retry++)await new Promise(resolve=>setTimeout(resolve,20));
+      const proposal=confirmations.list().find(row=>row.key.startsWith('computer:'));if(!proposal||effects!==0)throw new Error('Computer proposal missing');
+      const approved=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({text:`confirmo ${proposal.code}`,requestId:randomUUID(),priority:2})})`);
+      const outcome=await task;const replay=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({text:`confirmo ${proposal.code}`,requestId:randomUUID(),priority:2})})`);
+      computerIpcVerified=approved.ok&&outcome.state==='completed'&&Number(effects)===1&&rounds===2&&!replay.ok&&!!proposal.preview;
+    }finally{computer.run=computerRun;confirmations.revokePrefix('computer:');}
+    console.log(JSON.stringify({ ...result, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

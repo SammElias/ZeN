@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Windows.Automation;
 using Windows.Media.Control;
 
-internal static class Program {
+internal static partial class Program {
   private static string stage = "input";
   private delegate bool WindowCallback(IntPtr hwnd, IntPtr data);
   [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, IntPtr data);
@@ -58,7 +58,8 @@ internal static class Program {
       var text = new System.Text.StringBuilder(1024); GetWindowText(handle, text, text.Capacity);
       if (text.Length == 0) return true;
       GetWindowThreadProcessId(handle, out var pid);
-      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, foreground = handle == foreground, bounds = Bounds(rect), monitorBounds = Bounds(MonitorRect(handle)) }); return true;
+      string processName = ""; try { processName = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; } catch {}
+      result.Add(new { id = handle.ToInt64().ToString(), title = text.ToString(), pid, processName, foreground = handle == foreground, bounds = Bounds(rect), monitorBounds = Bounds(MonitorRect(handle)) }); return true;
     }, IntPtr.Zero); return result;
   }
   private static Dictionary<string, string> Applications() {
@@ -205,11 +206,13 @@ internal static class Program {
         "read" => new { text = ReadWindow(id ?? throw new InvalidOperationException("Falta ventana.")) },
         "capture" => CaptureWindow(id ?? throw new InvalidOperationException("Falta ventana.")),
         "capture-screen" => CaptureScreen(id ?? throw new InvalidOperationException("Falta cápsula."), json.RootElement.TryGetProperty("excludedIds", out var excluded) ? excluded : default),
+        "computer-frame" => ComputerFrame(json.RootElement),
+        "computer-action" => ComputerAct(json.RootElement),
         "media" => await Media(null, false),
         "pause" => await Media(id, true),
         _ => throw new InvalidOperationException("Operación desconocida; no hay shell ni teclado arbitrario.")
       };
       Console.WriteLine(JsonSerializer.Serialize(new { ok = true, value = result })); return 0;
-    } catch (Exception error) { Console.WriteLine(JsonSerializer.Serialize(new { ok = false, code = error.GetType().Name, stage, hresult = error.HResult, error = "Operación Windows no verificada. Revisa sesión, selección, permisos y escritorio desbloqueado." })); return 1; }
+    } catch (Exception error) { Console.WriteLine(JsonSerializer.Serialize(new { ok = false, code = error.GetType().Name, stage, hresult = error.HResult, nativeCode=error is System.ComponentModel.Win32Exception win32?win32.NativeErrorCode:0, error = "Operación Windows no verificada. Revisa sesión, selección, permisos y escritorio desbloqueado." })); return 1; }
   }
 }

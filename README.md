@@ -47,7 +47,7 @@ Capturas de ventanas seleccionadas expiran en dos minutos y no se guardan en dis
 
 ## Pruebas reproducibles
 
-Estado actual: 238 pruebas en 27 archivos, build, interfaz Edge y Electron/Windows pasados. Pruebas reales de web, biblioteca sintética, código, shell alojado, skill propio, parche en memoria, imagen, navegador visual y MCP público: [evidencias y alcance](docs/toolkit-status.md). El recorrido completo y las pruebas físicas siguen pendientes. Ejecutar las pruebas de Windows por separado.
+Estado actual: 254 pruebas en 29 archivos, build, interfaz Edge y Electron/Windows pasados. Pruebas reales de web, biblioteca sintética, código, shell alojado, skill propio, parche en memoria, imagen, navegador visual y MCP público: [evidencias y alcance](docs/toolkit-status.md). El recorrido completo y las pruebas físicas siguen pendientes. Ejecutar las pruebas de Windows por separado.
 
 ```powershell
 npm test
@@ -72,3 +72,14 @@ GPT-Live está integrado ahora por petición explícita del usuario. La configur
 ## Pago por uso
 
 Modo ahorro y contador mensual local: [costes de API](docs/api-costs.md). Por defecto, máximo mensual estimado de 100 EUR y objetivo diario orientativo de 1 EUR, editables en Preferencias. No son cuotas ni garantizan un máximo de factura.
+
+Cápsula en los tres bordes, retorno desde la barra de tareas y chat alineado: [comportamiento y pruebas](docs/edge-capsule.md).
+
+Análisis con Codex del escritorio y confirmaciones por voz/chat: [flujo, ahorro y límites](docs/codex-desktop-folders.md).
+# Control visual (compilación de prueba)
+
+El ciclo SOL/computer con revisión por voz/chat está implementado. La validación real de entrada Windows permanece pendiente por fallo de SendInput; no se declara control completo. [Uso, ejecutable de prueba y evidencias](docs/computer-control.md).
+
+Panel de actividad con estados reales e iconos animados; cápsula con el estado actual: [diseño, recursos y verificación](docs/activity-ui.md).
+
+Entrega actual: un único `ZEN.exe` en el escritorio, sin carpetas de versiones ni accesos adicionales. [Empaquetado, prueba y respaldo](docs/single-executable.md).

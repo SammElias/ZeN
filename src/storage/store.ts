@@ -31,7 +31,7 @@ export class Store {
   overlayPosition(): OverlayPosition | undefined {
     try { const result = OverlayPositionSchema.safeParse(JSON.parse(readFileSync(this.path('overlay-position.json'), 'utf8'))); return result.success ? result.data : undefined; } catch { return undefined; }
   }
-  saveOverlayPosition(value: OverlayPosition) { this.write('overlay-position.json', JSON.stringify(OverlayPositionSchema.parse(value))); }
+  saveOverlayPosition(value: Pick<OverlayPosition, 'displayId' | 'horizontalRatio'> & Partial<OverlayPosition>) { this.write('overlay-position.json', JSON.stringify(OverlayPositionSchema.parse(value))); }
   protectedStorage() { return process.platform === 'win32' && this.protection.isEncryptionAvailable(); }
   hasKey() { return existsSync(this.path('key.bin')); }
   saveKey(value: string) {

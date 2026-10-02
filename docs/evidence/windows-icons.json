@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-01T20:46:38.509Z",
+  "legacyTrayImageEmpty": true,
+  "icoLoads": true,
+  "checks": [
+    {
+      "name": "zen",
+      "size": 16,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 20,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 24,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 32,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 40,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 48,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 64,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 128,
+      "passed": true
+    },
+    {
+      "name": "zen",
+      "size": 256,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 16,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 20,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 24,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 32,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 40,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 48,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 64,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 128,
+      "passed": true
+    },
+    {
+      "name": "tray",
+      "size": 256,
+      "passed": true
+    }
+  ],
+  "shellIconNonEmpty": true,
+  "shellIconSize": {
+    "width": 48,
+    "height": 48
+  },
+  "shellIconMatchesZen": true,
+  "pixelDifference": 0.033203125,
+  "apiCalled": false
+}

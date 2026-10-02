@@ -5,7 +5,7 @@ import { resolve, extname } from 'node:path';
 import assert from 'node:assert/strict';
 const directory = resolve('dist/renderer');
 const server = createServer(async (request, response) => {
-  try { const path = resolve(directory, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname)); if (!path.startsWith(directory + '\\') && !path.startsWith(directory + '/')) throw new Error('Invalid path'); const content = await readFile(path); response.setHeader('Content-Type', { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css' }[extname(path)] ?? 'application/octet-stream'); response.end(content); } catch { response.writeHead(404); response.end(); }
+  try { const path = resolve(directory, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname)); if (!path.startsWith(directory + '\\') && !path.startsWith(directory + '/')) throw new Error('Invalid path'); const content = await readFile(path); response.setHeader('Content-Type', { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.svg':'image/svg+xml', '.gif':'image/gif' }[extname(path)] ?? 'application/octet-stream'); response.end(content); } catch { response.writeHead(404); response.end(); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}/preview.html`;
@@ -16,6 +16,36 @@ const errors = []; page.on('pageerror', error => errors.push(error.message));
 const screenshots='docs/ui-preview/latest-'+Date.now();
 await mkdir(screenshots,{recursive:true});
 try {
+  // Match Electron: mount the composer in a narrow capsule, then widen the window.
+  const chatPage=await browser.newPage({viewport:{width:240,height:40}});
+  await chatPage.addInitScript(()=>Object.defineProperty(window.screen,'availHeight',{get:()=>1040}));
+  await chatPage.goto(`${base}?state=idle`);
+  await chatPage.evaluate(()=>{document.body.classList.remove('preview');window.zen.layout=async value=>{window.lastChatLayout=value;return{ok:true,value:true};};window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'voice',state:'idle',message:'',screenContext:{state:'idle'}}}));});
+  await chatPage.getByRole('button',{name:'Desplegar panel'}).click();
+  await chatPage.setViewportSize({width:640,height:600});
+  await chatPage.waitForFunction(()=>document.querySelector('textarea').getBoundingClientRect().height===36&&document.querySelector('.latest-message').scrollHeight<=document.querySelector('.latest-message').clientHeight);
+  const withoutContext=(await chatPage.locator('main').boundingBox()).height;
+  await chatPage.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'voice',state:'idle',message:'',screenContext:{state:'ready',sourceTitle:'Pantalla de prueba - ChatGPT',capturedAt:Date.now()}}})));
+  await chatPage.waitForFunction(()=>document.querySelector('.screen-context-note')&&document.querySelector('.latest-message').scrollHeight<=document.querySelector('.latest-message').clientHeight);
+  const withContext=(await chatPage.locator('main').boundingBox()).height;
+  assert.equal(withContext-withoutContext,34,'Context appearing after idle must reserve its full row');
+  await chatPage.setViewportSize({width:640,height:withContext});
+  assert.equal(await chatPage.evaluate(()=>window.lastChatLayout.height),withContext);
+  assert(await chatPage.locator('.screen-context-chip small').isVisible());
+  assert(await chatPage.locator('textarea').evaluate(el=>el.scrollHeight===el.clientHeight));
+  await chatPage.locator('main').screenshot({path:`${screenshots}/chat-desktop.png`});
+  await chatPage.setViewportSize({width:320,height:600});
+  await chatPage.getByRole('textbox',{name:'Mensaje para ZEN'}).fill('Esta frase ocupa varias líneas cuando el panel es estrecho.');
+  const narrowInput=(await chatPage.locator('textarea').boundingBox()).height;
+  await chatPage.setViewportSize({width:640,height:600});
+  await chatPage.waitForFunction(()=>document.querySelector('textarea').getBoundingClientRect().height===36);
+  assert(narrowInput>36,'Typed text must reflow when the window widens');
+  await chatPage.getByRole('textbox',{name:'Mensaje para ZEN'}).fill('');
+  await chatPage.setViewportSize({width:390,height:600});
+  await chatPage.waitForFunction(()=>document.querySelector('.latest-message').scrollHeight<=document.querySelector('.latest-message').clientHeight);
+  assert(await chatPage.locator('main').evaluate(el=>el.scrollWidth<=el.clientWidth&&el.scrollHeight<=el.clientHeight));
+  await chatPage.locator('main').screenshot({path:`${screenshots}/chat-small.png`});
+  await chatPage.close();
   for (const state of ['idle', 'executing', 'completed', 'failed', 'awaiting_approval', 'streaming']) {
     await page.goto(`${base}?state=${state}`); await page.locator('.zen-overlay').waitFor();
     assert.equal(Math.round((await page.locator('main').boundingBox()).height),40);
@@ -27,9 +57,21 @@ try {
     await page.getByRole('region', {name:'Último mensaje'}).waitFor();
     assert.equal(await page.locator('.prompt, #request, .chat-turn, .chat-messages').count(),0);
     assert(await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).isVisible());
-    assert.equal((await page.locator('main').boundingBox()).width,1120);
+    assert.equal((await page.locator('main').boundingBox()).width,640);
     await page.screenshot({path: `${screenshots}/${state}.png`, animations:'disabled'});
     if(state==='awaiting_approval') { await page.getByRole('button',{name:'Permitir simulación'}).click(); assert.match(await page.locator('.approval-card').innerText(),/Ninguna acción ejecutada/); }
+  }
+  for (const edge of ['left','right']) {
+    await page.goto(`${base}?state=idle`);
+    await page.evaluate(edge=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:edge})),edge);
+    await page.waitForFunction(edge=>document.querySelector('main').classList.contains('dock-'+edge),edge);
+    const rail=await page.locator('main').boundingBox(); assert.equal(Math.round(rail.width),40); assert.equal(Math.round(rail.height),240);
+    assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),h=el.getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})));
+    assert.equal(await page.locator('.header-status').evaluate(el=>getComputedStyle(el).writingMode),'vertical-rl');
+    await page.locator('main').screenshot({path:`${screenshots}/dock-${edge}.png`,animations:'disabled'});
+    await page.getByRole('button',{name:'Desplegar panel'}).click();
+    await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).waitFor(); assert.equal((await page.locator('main').boundingBox()).width,640);
+    await page.getByRole('button',{name:'Recoger panel'}).click(); assert.equal(Math.round((await page.locator('main').boundingBox()).width),40);
   }
   await page.goto(`${base}?state=idle`);
   await page.evaluate(()=>{window.demoDragPhases=[];const old=window.zen.drag;window.zen.drag=async phase=>{window.demoDragPhases.push(phase);return old(phase);};});
@@ -39,6 +81,14 @@ try {
   assert.equal(await page.getByRole('region',{name:'Último mensaje'}).count(),0);
   await page.getByRole('button',{name:'Desplegar panel'}).click();
   const emit=detail=>page.evaluate(detail=>window.dispatchEvent(new CustomEvent('zen-demo-task',{detail})),detail);
+  await emit({id:'voice',state:'idle',message:'',screenContext:{state:'ready',sourceTitle:'Pantalla de prueba - ChatGPT',capturedAt:Date.now()}});
+  const contextBox=await page.locator('.screen-context-note').boundingBox(),composerBox=await page.locator('.text-composer').boundingBox(),footerBox=await page.locator('.microphone-group').boundingBox();
+  assert(Math.abs(contextBox.x-composerBox.x)<=1);assert(Math.abs(footerBox.x-composerBox.x)<=1);
+  const contextChip=await page.getByRole('button',{name:'Ver captura de referencia',exact:true}).boundingBox(),refreshButton=await page.getByRole('button',{name:'Actualizar captura',exact:true}).boundingBox();
+  assert(refreshButton.x-contextChip.x-contextChip.width<20);
+  assert(await page.locator('footer').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),f=el.getBoundingClientRect();return b.left>=f.left&&b.right<=f.right&&b.top>=f.top&&b.bottom<=f.bottom;})));
+  await page.locator('main').screenshot({path:`${screenshots}/chat-aligned.png`,animations:'disabled'});
+
   await emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'u1',text:'',phase:'start'}});
   await emit({id:'voice',state:'listening',message:'',utterance:{speaker:'user',id:'u1',text:'Busca en la web',phase:'delta'}});
   await page.getByText('Busca en la web',{exact:true}).waitFor();
@@ -98,9 +148,9 @@ try {
   await page.screenshot({path:screenshots+'/attachment-menu.png',animations:'disabled'});
   await page.getByRole('menu',{name:'Añadir contexto'}).screenshot({path:screenshots+'/attachment-menu-detail.png',animations:'disabled'});
   await page.keyboard.press('ArrowDown');assert.match(await page.evaluate(()=>document.activeElement.textContent),/Captura automática/);await page.keyboard.press('Escape');assert.equal(await page.getByRole('menu').count(),0);assert.equal(await page.locator('main.hidden').count(),0);
-  await page.getByRole('button',{name:'Añadir contexto',exact:true}).click();await page.getByRole('menuitem',{name:/Carpeta del proyecto/}).click();await page.getByText('Carpeta adjunta para analizar',{exact:true}).waitFor();await page.screenshot({path:screenshots+'/folder-attached.png',animations:'disabled'});
+  await page.getByRole('button',{name:'Añadir contexto',exact:true}).click();await page.getByRole('menuitem',{name:/Carpeta del proyecto/}).click();await page.getByText('Analizar en Codex del escritorio',{exact:true}).waitFor();await page.screenshot({path:screenshots+'/folder-attached.png',animations:'disabled'});
   await page.evaluate(()=>{window.folderRuns=[];window.zen.run=async request=>{window.folderRuns.push(request);const value={id:'88888888-8888-4888-8888-888888888888',request:request.text,state:'completed',message:'Arquitectura revisada.'};window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{...value,state:'thinking',message:'Procesando'}}));window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:value}));return{ok:true,value};};});await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).fill('Analiza la arquitectura de esta carpeta');await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).press('Enter');await page.getByText('Arquitectura revisada.',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.folderRuns[0].folderId),'77777777-7777-4777-8777-777777777777');
-  await page.getByRole('button',{name:'Quitar carpeta del proyecto'}).click();assert.equal(await page.getByText('Carpeta adjunta para analizar',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'Quitar carpeta del proyecto'}).click();assert.equal(await page.getByText('Analizar en Codex del escritorio',{exact:true}).count(),0);
   await page.evaluate(()=>{window.demoStopCalls=0;const old=window.zen.stop;window.zen.stop=async()=>{window.demoStopCalls++;return old();};});
   await page.keyboard.press('Escape');await page.locator('[data-demo-hidden="true"]').waitFor();assert.equal(await page.evaluate(()=>window.demoStopCalls),0);
   await page.goto(`${base}?state=idle`);await page.getByRole('button',{name:'Desplegar panel'}).click();
@@ -229,7 +279,7 @@ try {
   assert.equal(savedAppearance.interfaceSounds, false); assert.equal(savedAppearance.interfaceAnimations, false);
   await page.goto(`${base}?state=completed`);await page.getByRole('button',{name:'Desplegar panel'}).click();
   await page.waitForTimeout(850);
-  const compactHeight=(await page.locator('main').boundingBox()).height;assert(compactHeight<300);
+  const compactHeight=(await page.locator('main').boundingBox()).height;assert(compactHeight>=304&&compactHeight<420);
   await page.evaluate(()=>{
     window.fixtureLayoutCalls=[];const old=window.zen.layout;window.zen.layout=async value=>{window.fixtureLayoutCalls.push(value);return old(value);};
     window.fixtureHeaderChanges=0;window.fixtureTextChanges=0;window.fixtureArticle=document.querySelector('.live-message');window.fixtureBrand=document.querySelector('.brand-home');
@@ -241,7 +291,7 @@ try {
   await page.evaluate(async()=>{for(let n=1;n<=80;n++){window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'fluid',state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)}}));await new Promise(resolve=>setTimeout(resolve,4));}});
   await page.waitForTimeout(70);
   const streamMetrics=await page.evaluate(()=>({height:document.querySelector('main').getBoundingClientRect().height,layouts:window.fixtureLayoutCalls.length,header:window.fixtureHeaderChanges,textPaints:window.fixtureTextChanges,sameArticle:window.fixtureArticle===document.querySelector('.live-message'),sameBrand:window.fixtureBrand===document.querySelector('.brand-home'),animation:getComputedStyle(document.querySelector('.companion-float')).animationName,text:document.querySelector('.result-text').textContent}));
-  assert.equal(streamMetrics.height,340);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
+  assert.equal(streamMetrics.height,424);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
   await emit({id:'fluid',state:'completed',message:'Resultado final exacto.'});await page.getByRole('button',{name:'Copiar respuesta'}).waitFor();
   await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.fixtureCopied=text;}}});});
   await page.getByRole('button',{name:'Copiar respuesta'}).click();assert.equal(await page.evaluate(()=>window.fixtureCopied),'Resultado final exacto.');
@@ -252,7 +302,62 @@ try {
   await page.locator('.latest-message').evaluate(el=>{el.scrollTop=el.scrollHeight;});await page.locator('.latest-message').evaluate(el=>{el.scrollTop=0;});await page.getByRole('button',{name:'Ir al final ↓',exact:true}).click();
   assert(await page.locator('.latest-message').evaluate(el=>el.scrollHeight-el.scrollTop-el.clientHeight<28));
   await page.screenshot({path:screenshots+'/stable-long.png',animations:'disabled'});
+  await page.goto(base);await page.getByRole('button',{name:'Desplegar panel'}).click();
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-confirmations',{detail:[{key:'file:fixture',label:'Crear archivo en C:\\Demo\\nota.txt',code:'1234',expiresAt:Date.now()+300000}]})));
+  await page.getByRole('complementary',{name:'Confirmaciones por voz o chat'}).waitFor();assert.match(await page.locator('.human-confirmations').innerText(),/confirmo 1 2 3 4/);
+  await page.evaluate(()=>{window.fixtureConfirmations=[];window.zen.run=async request=>{window.fixtureConfirmations.push(request);return{ok:true,value:{id:request.requestId,state:'completed',message:'Confirmación de prueba',localOnly:true}};};window.zen.refreshScreen=async()=>{throw Error('Una confirmación no debe renovar la captura');};});
+  await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).fill('confirmo 1234');await page.getByRole('button',{name:'Enviar mensaje',exact:true}).click();
+  assert.equal((await page.evaluate(()=>window.fixtureConfirmations))[0].text,'confirmo 1234');await page.screenshot({path:screenshots+'/confirmations-chat.png',animations:'disabled'});
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-confirmations',{detail:[]})));assert.equal(await page.locator('.human-confirmations').count(),0);
+  await emit({id:'desktop-folder',state:'awaiting_input',request:'Analiza esta carpeta',message:'Petición preparada en Codex del escritorio. Pulsa Enviar allí.',workContext:{owner:'codex',phase:'external'}});await page.getByText('Continúa en Codex del escritorio',{exact:true}).waitFor();assert.match(await page.getByRole('region',{name:'Proyecto de Codex'}).innerText(),/Pulsa Enviar allí/);
+  await page.screenshot({path:screenshots+'/codex-desktop.png',animations:'disabled'});
+  await page.evaluate(()=>{
+    window.zen.refreshScreen=async()=>({ok:true,value:true});
+    window.zen.run=request=>{if(request.text.startsWith('confirmo')){window.dispatchEvent(new CustomEvent('zen-demo-confirmations',{detail:[]}));window.fixtureComputerResolve({ok:true,value:{id:window.fixtureComputerRequest.requestId,state:'completed',message:'Resultado visual comprobado'}});return Promise.resolve({ok:true,value:{id:request.requestId,state:'completed',message:'Bloque confirmado',localOnly:true}});}window.fixtureComputerRequest=request;return new Promise(resolve=>{window.fixtureComputerResolve=resolve;});};
+  });
+  await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).fill('Controla la pantalla y rellena el formulario');await page.getByRole('button',{name:'Enviar mensaje',exact:true}).click();
+  await page.waitForFunction(()=>window.fixtureComputerRequest&&document.querySelector('#chat-input').disabled===false&&document.querySelector('#chat-input').value==='');
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-confirmations',{detail:[{key:'computer:fixture',label:'Formulario: clic (10, 20)\nEscribir: "Prueba"',code:'5678',expiresAt:Date.now()+300000,preview:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='}]})));
+  await page.getByRole('button',{name:'Ver pantalla revisada',exact:true}).click();await page.getByRole('dialog',{name:'Captura usada como contexto'}).waitFor();await page.getByRole('button',{name:'Cerrar captura de referencia',exact:true}).click();
+  await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).fill('confirmo 5678');await page.getByRole('button',{name:'Enviar mensaje',exact:true}).click();await page.getByText('Resultado visual comprobado',{exact:true}).waitFor();
+  await page.screenshot({path:screenshots+'/computer-confirmation.png',animations:'disabled'});
   assert.deepEqual(errors, []);
-  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, streamMetrics, compactHeight, checks: ['streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with three context options; no window or media picker', 'original companion follows pointer',   'header drag captures pointer and suppresses click', '240×40 capsule and 1120px latest message', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view',   'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution',  'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
+  await page.setViewportSize({width:1000,height:800});await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.goto(base);await page.getByRole('button',{name:'Desplegar panel'}).click();
+  for(const activity of ['processing','thinking','searching','structuring'])await emit({id:'activity-test',state:'thinking',activity,request:'Resume los puntos clave de esta página',message:'Avance de prueba'});
+  await page.getByRole('region',{name:'Actividad de la tarea'}).waitFor();
+  assert.equal(await page.locator('.activity-step').count(),4);
+  assert.equal(await page.locator('.activity-step.current').innerText(),'Estructurando respuesta\nAhora');
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('.activity-node img')).every(image=>image.complete&&image.naturalWidth===48));
+  assert.match(await page.locator('.activity-step.current img').getAttribute('src'),/structure.gif$/);
+  const gifFrames=await page.evaluate(async()=>{const data=await(await fetch('./activity/structure.gif')).arrayBuffer();const decoder=new ImageDecoder({data,type:'image/gif'});await decoder.tracks.ready;const count=decoder.tracks.selectedTrack.frameCount;const frames=[];for(const frameIndex of [0,6]){const {image}=await decoder.decode({frameIndex});const canvas=document.createElement('canvas');canvas.width=canvas.height=48;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);frames.push(Array.from(ctx.getImageData(0,0,48,48).data).join(','));image.close();}decoder.close();return{count,different:frames[0]!==frames[1]};});
+  assert.equal(gifFrames.count,24);assert(gifFrames.different);
+  await page.waitForFunction(()=>document.querySelector('.status-label').textContent==='Estructurando');
+  await page.locator('main').screenshot({path:screenshots+'/activity-expanded.png'});
+  const activityHeight=(await page.locator('main').boundingBox()).height;
+  for(let i=0;i<30;i++)await emit({id:'activity-test',state:'thinking',activity:'structuring',message:'Avance de prueba',streamText:'Respuesta '.repeat(i+1)});
+  assert.equal(await page.locator('.activity-step').count(),4);assert.equal((await page.locator('main').boundingBox()).height,activityHeight);
+  for(const activity of ['opening_web','opening_codex','writing']){
+    await emit({id:'activity-test',state:'executing',activity,message:'Operación de prueba'});
+    await page.getByRole('button',{name:'Recoger panel'}).click();assert.equal(await page.locator('.activity-panel').count(),0);
+    await page.waitForTimeout(350);assert.equal(await page.locator('.status-label').innerText(),activity==='opening_web'?'Abriendo web':activity==='opening_codex'?'Abriendo Codex':'Escribiendo');
+    assert(await page.locator('.status-label').evaluate(el=>el.scrollWidth<=el.clientWidth));
+    for(const edge of ['left','right','top']){
+      await page.evaluate(edge=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:edge})),edge);
+      await page.waitForFunction(edge=>document.querySelector('main').classList.contains('dock-'+edge),edge);
+      assert(await page.locator('header').evaluate(el=>Array.from(el.querySelectorAll('button')).every(button=>{const b=button.getBoundingClientRect(),h=el.getBoundingClientRect();return b.left>=h.left&&b.right<=h.right&&b.top>=h.top&&b.bottom<=h.bottom;})));
+      assert(await page.locator('.status-label').evaluate(el=>el.scrollWidth<=el.clientWidth&&el.scrollHeight<=el.clientHeight));
+    }
+    await page.locator('main').screenshot({path:`${screenshots}/activity-capsule-${activity}.png`});
+    await page.getByRole('button',{name:'Desplegar panel'}).click();
+  }
+  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelector('.activity-step.current img').src.endsWith('.svg'));
+  await page.locator('main').screenshot({path:screenshots+'/activity-static.png',animations:'disabled'});
+  await emit({id:'activity-test',state:'cancelled',message:'Tarea de prueba detenida'});assert.match(await page.locator('.activity-step.current').innerText(),/Tarea detenida/);
+  assert.equal(await page.locator('.activity-step.current.activity-completed').count(),0);
+  await page.setViewportSize({width:390,height:600});await page.locator('main').screenshot({path:screenshots+'/activity-small.png',animations:'disabled'});
+  assert(await page.getByRole('textbox',{name:'Mensaje para ZEN',exact:true}).isVisible());
+  assert(await page.locator('main').evaluate(el=>el.scrollWidth<=el.clientWidth&&el.scrollHeight<=el.clientHeight+1));
+  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, streamMetrics, compactHeight, checks: ['actual activity stages, bounded timeline, no duplicate steps or resizing per delta', 'capsule shows only current status without text clipping', 'GIF assets decode, reduced motion uses static SVG', 'cancelled task never becomes completed; small viewport controls remain usable', 'computer task leaves chat available; exact preview and chat confirmation continue the same task', 'confirmation code visible; chat confirmation avoids screen capture', 'desktop Codex handoff stays awaiting input', 'streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with three context options; no window or media picker', 'original companion follows pointer', 'header drag captures pointer and suppresses click', '240×40 top capsule, 40×240 side rail and 640px chat', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view', 'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution', 'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
   await mkdir('test-results', { recursive: true }); await writeFile('test-results/ui.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

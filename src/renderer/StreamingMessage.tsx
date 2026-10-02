@@ -17,21 +17,32 @@ export const StreamingMessage = memo(function StreamingMessage({ store, notify, 
     const key = `${message?.key}/${message?.speaker}`;
     if (previous.current !== key) { previous.current = key; following.current = true; setAway(false); setCopied(false); region.current.scrollTop = 0; }
     else if (following.current) region.current.scrollTop = region.current.scrollHeight;
-    if (visible && !active && content.current) measured(content.current.scrollHeight);
   }, [latest, active, visible, measured]);
+  useLayoutEffect(() => {
+    if (!visible || active || !content.current || !region.current) return;
+    const measure = () => {
+      const padding = getComputedStyle(region.current!);
+      measured(Math.ceil(content.current!.getBoundingClientRect().height + parseFloat(padding.paddingTop) + parseFloat(padding.paddingBottom)));
+    };
+    // Measure settled content, including spacing, after the native window widens.
+    // Never resize the window for streaming deltas.
+    const observer = new ResizeObserver(measure);
+    observer.observe(content.current); measure();
+    return () => observer.disconnect();
+  }, [active, visible, measured]);
   const tail = () => { following.current = true; setAway(false); if (region.current) region.current.scrollTop = region.current.scrollHeight; };
   return <div className="message-stage">
     <div className="workspace-body latest-message" ref={region} role="region" aria-label={regionLabel} onScroll={() => {
       const el = region.current!; following.current = el.scrollHeight - el.clientHeight - el.scrollTop < 28; setAway(!following.current);
     }}>
-      <div ref={content}>
+      <div ref={content} className="message-content">
         {message ? <article className={`live-message ${message.speaker}`} aria-live={active ? 'off' : 'polite'} aria-atomic="true">
           <span className="message-speaker">{message.speaker === 'user' ? 'Tú' : author}{message.provisional && active && <small>En directo</small>}</span>
           {message.endMs !== undefined || active ? <p className="result-text">{message.text || 'Preparando…'}</p> : <MessageText text={message.text || 'Preparando…'} notify={notify} />}
           {message.speaker === 'zen' && latest.sourceText && latest.sourceText !== message.text && <MessageSources text={latest.sourceText} notify={notify} />}
           {message.speaker === 'zen' && latest.artifacts?.map(item => <button className="source-chip" key={item.id} onClick={() => void window.zen.openArtifact(item.id).then(result => { if (!result.ok) notify(result.error); })}>Ver {item.kind === 'image' ? 'imagen' : 'resultado'} · {item.title}</button>)}
           {message.speaker === 'zen' && !active && copyReady && !!message.text && <button className="copy-response" aria-label="Copiar respuesta" onClick={() => void navigator.clipboard.writeText(message.text).then(() => setCopied(true), () => notify('No se pudo copiar. Selecciona el texto y usa Ctrl+C.'))}>{copied ? 'Copiado' : 'Copiar'}</button>}
-        </article> : <p className="live-empty">Escribe o habla con ZEN.</p>}
+        </article> : <div className="live-empty"><strong>¿En qué te ayudo?</strong><span>Escribe, habla o añade una captura.</span></div>}
       </div>
     </div>
     {away && <button className="follow-response" onClick={tail}>Ir al final ↓</button>}

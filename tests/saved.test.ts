@@ -53,20 +53,21 @@ describe('Flujo de sesiones', () => {
   it('streams only the public result string from the final-answer JSON', async () => {
     const progress = vi.fn(); const f = setup([final[0], { type: 'agent.session.turn.item.added', event_id: 'answer-start', item: { type: 'message', role: 'assistant', phase: 'final_answer', id: 'answer' } }, { type: 'agent.session.turn.output_text.delta', event_id: 'answer-private', item_id: 'answer', content_index: 0, delta: '{"reasoning_steps":["privado"],"actions":[],"clarifications_requested":[],"result":"Respuesta' }, ...final.slice(1)]);
     const result = await f.runner.run('Hola', new AbortController().signal, progress);
-    expect(progress).toHaveBeenCalledWith('Actividad en directo', 'Respuesta'); expect(JSON.stringify(progress.mock.calls)).not.toContain('privado'); expect(result.message).toBe('Respuesta final');
+    expect(progress).toHaveBeenCalledWith('Actividad en directo', 'Respuesta','writing'); expect(progress).toHaveBeenCalledWith('Estructurando respuesta…',undefined,'structuring'); expect(JSON.stringify(progress.mock.calls)).not.toContain('privado'); expect(result.message).toBe('Respuesta final');
   });
   it('transmite solo comentarios públicos, sin JSON final ni razonamientos', async () => {
     const delta = (event_id: string, item_id: string, text: string) => ({ type: 'agent.session.turn.output_text.delta', event_id, session_id: 'session-test', turn_id: 'turn-test', item_id, content_index: 0, delta: text });
     const events = [final[0], { type: 'agent.session.turn.item.added', event_id: 'public', item: { type: 'message', role: 'assistant', phase: 'commentary', id: 'activity' } }, delta('progress', 'activity', 'Estoy consultando las fuentes.'), delta('duplicate', 'answer', '{"reasoning_steps":["privado"]}'), { type: 'agent.session.turn.reasoning_summary_text.delta', event_id: 'hidden', delta: 'privado' }, ...final.slice(1)];
     const progress = vi.fn(); const f = setup(events);
     await f.runner.run('Investiga', new AbortController().signal, progress);
-    expect(progress).toHaveBeenCalledWith('Actividad en directo', 'Estoy consultando las fuentes.');
+    expect(progress).toHaveBeenCalledWith('Actividad en directo', 'Estoy consultando las fuentes.','writing');
     expect(JSON.stringify(progress.mock.calls)).not.toContain('privado');
   });
   it('no transmite comentario estructurado con reasoning_steps', async () => {
     const progress = vi.fn(); const f = setup([final[0], { type: 'agent.session.turn.item.added', event_id: 'public', item: { type: 'message', role: 'assistant', phase: 'commentary', id: 'activity' } }, { type: 'agent.session.turn.output_text.delta', event_id: 'json', item_id: 'activity', content_index: 0, delta: '{"reasoning_steps":["privado"]}' }, ...final.slice(1)]);
     await f.runner.run('Investiga', new AbortController().signal, progress);
-    expect(progress).not.toHaveBeenCalled();
+    expect(progress.mock.calls.filter(call=>call[1]!==undefined)).toEqual([]);
+    expect(JSON.stringify(progress.mock.calls)).not.toContain('privado');
   });
   it('marca aprobación preparada como pendiente incluso si el texto del modelo dice creada', async () => {
     const pending = { type: 'agent.session.requires_action', event_id: 'pending', session: { id: 'session-test', required_actions: [{ type: 'function_call', turn_id: 'turn-test', call_id: 'call-test', name: 'zen_desktop', arguments: {} }] } };

@@ -20,6 +20,7 @@
     "test:native": "node scripts/native-smoke.mjs",
     "test:objective": "node scripts/electron-smoke.mjs --objective",
     "package:win": "npm run build:native && npm run build && node scripts/package-win.mjs",
+    "package:single": "node scripts/package-single.mjs",
     "test:desktop-agent": "node scripts/desktop-bridge-smoke.mjs"
   },
   "dependencies": {
@@ -35,8 +36,10 @@
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.2",
     "electron": "44.5.1",
+    "electron-builder": "26.15.3",
     "esbuild": "^0.28.2",
     "playwright": "^1.63.0",
+    "resedit": "1.7.2",
     "typescript": "7.0.2",
     "vite": "8.3.1",
     "vitest": "5.0.3"

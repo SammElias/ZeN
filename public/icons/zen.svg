@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="tile" x2=".8" y2="1"><stop stop-color="#33294d"/><stop offset="1" stop-color="#15131f"/></linearGradient>
+    <radialGradient id="pearl" cx="32%" cy="22%" r="85%"><stop stop-color="#f5eeff"/><stop offset=".48" stop-color="#c6b3fb"/><stop offset="1" stop-color="#8473cc"/></radialGradient>
+  </defs>
+  <rect x="2" y="2" width="92" height="92" rx="23" fill="url(#tile)" stroke="#77638f" stroke-width="1.5"/>
+  <ellipse cx="48" cy="82" rx="22" ry="4" fill="#c9b6ff" opacity=".14"/>
+  <ellipse cx="48" cy="58" rx="39" ry="15" transform="rotate(-22 48 58)" fill="none" stroke="#b8a0f3" stroke-width="2" opacity=".5"/>
+  <path d="M48 12C58 12 80 35 80 49C80 68 64 77 48 77C32 77 16 68 16 49C16 35 38 12 48 12Z" fill="url(#pearl)"/>
+  <path d="M30 30Q40 20 49 20" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>
+  <rect x="27" y="38" width="42" height="24" rx="12" fill="#29233e"/>
+  <g fill="#effff8"><rect x="36" y="44" width="6" height="11" rx="3"/><rect x="54" y="44" width="6" height="11" rx="3"/></g>
+  <path d="M11 68C20 83 65 73 84 49" stroke="#decfff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <circle cx="81" cy="54" r="3.5" fill="#e4fff3"/>
+</svg>

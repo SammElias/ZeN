@@ -7,6 +7,14 @@ const deferred=<T>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T>
 function fixture(){const status=vi.fn(),capture=vi.fn().mockResolvedValue(image),windows=vi.fn().mockResolvedValue([external]);const context=new ScreenContext({windows,capture,own:row=>row.pid===200,blocked:row=>/password/i.test(row.title),status,ttlMs:50});return{context,status,capture,windows};}
 afterEach(()=>vi.useRealTimers());
 describe('automatic invocation context',()=>{
+  it.each(['left','right'] as const)('captures inward from the %s rail and refreshes after background restore',async edge=>{
+    const f=fixture(),monitor={x:-1920,y:-200,width:1920,height:1040};
+    const anchor={...zen,bounds:{x:edge==='left'?-1920:-40,y:100,width:40,height:240},monitorBounds:monitor};
+    const behind={...external,bounds:monitor,foreground:false};
+    f.windows.mockResolvedValue([anchor,behind]);f.capture.mockResolvedValue({image,scope:'display',bounds:monitor} as any);
+    const context=new ScreenContext({windows:f.windows,capture:f.capture,own:row=>row.pid===200,anchorId:()=>zen.id,edge:()=>edge,blocked:()=>false,status:f.status});
+    const before=await context.refresh();expect(before?.sourceTitle).toBe('Fixture');context.cancel();const restored=await context.refresh();expect(restored?.id).not.toBe(before?.id);expect(f.capture).toHaveBeenCalledTimes(2);context.cancel();
+  });
   it('retains actual display pixels only when their monitor matches the capsule before and after capture',async()=>{
     const f=fixture(),monitor={x:1920,y:0,width:1920,height:1080},anchor={...zen,bounds:{x:2000,y:0,width:640,height:48},monitorBounds:monitor},behind={...external,bounds:monitor};
     f.windows.mockResolvedValue([anchor,behind]);f.capture.mockResolvedValue({image,scope:'display',bounds:monitor} as any);

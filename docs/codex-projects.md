@@ -35,3 +35,7 @@ Probar manualmente el recorrido con tu voz y tus proyectos. La API real cubre un
 El usuario autorizó después compilar: el portable `release/ZEN-20261001092421154/ZEN.exe` ya incorpora este cambio y pasó la comprobación real de arranque/interfaz, incluidos IPC de proyectos y aprobación de un uso. [Evidencia](evidence/portable-interface.json). Los portables anteriores no incorporan este cambio. El objetivo general permanece incompleto por los pendientes y fallos de foco registrados anteriormente.
 
 Contrato comprobado con el SDK instalado y OpenAI Docs: [arquitectura del harness Codex](https://developers.openai.com/api/docs/guides/agents-api/architecture), [entornos alojados](https://developers.openai.com/api/docs/guides/agents-api/environments/openai-hosted), [artefactos por turno](https://developers.openai.com/api/docs/guides/agents-api/environments/files).
+
+## Análisis de carpetas existentes
+
+Por petición posterior del 01/10/2026, seleccionar una carpeta para analizar abre Codex del escritorio y prepara su compositor; no usa este harness ni el agente ZEN para leer/analizar los archivos. El envío sigue dentro de Codex. Aprobaciones de ZEN disponibles también por código de voz/chat. [Flujo actual y verificación](codex-desktop-folders.md).
