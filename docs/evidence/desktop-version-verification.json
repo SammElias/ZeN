@@ -1,19 +1,18 @@
 {
-  "at": "2026-10-01T20:47:22.2822665Z",
+  "at": "2026-10-02T14:20:57.957Z",
   "remote": "https://github.com/SammElias/ZeN.git",
-  "branch": "main",
-  "head": "27eccdd4d45832d93761de08709ceae60b7033d6",
+  "branch": "codex/merge-capsule-documents",
+  "sourceCommit": "17f53ccda134a685aa70c8c7679eac75ad85a082",
   "remoteHead": "27eccdd4d45832d93761de08709ceae60b7033d6",
-  "commitsBehind": 0,
+  "sourceOtherCommit": "c5fc734e76dc198442197b6b86d26177813dfbc2",
   "localAdditionsIncluded": true,
+  "otherFolderAdditionsIncluded": true,
   "localAdditionsPushed": false,
-  "rebuildComparedFiles": 59,
+  "rebuildComparedFiles": 79,
   "changedRuntimeFiles": [],
-  "extraPackagedFiles": [],
-  "executable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
-  "sha256": "0D6B16A9D80CBF0A84AE20874AC4A58AE9F612B940748DCDCBD8AA6122DE3670",
+  "executable": "C:/Users/Gamming/Desktop/ZEN.exe",
+  "sha256": "2EBB9F4EF7DF084F5AB7F6B1361EAD69A8D1184B7789DE8527008BD027B61F1A",
   "desktopMatchesPortable": true,
   "allCurrentRuntimeFilesMatch": true,
-  "remoteLastVerifiedAt": "2026-10-01T20:05:09.444Z",
-  "change": "Iconos de bandeja, ventanas y EXE; conserva chat y cambios anteriores"
+  "change": "Merge de ambas carpetas: voz, lectores, foco y contexto; conserva cápsula lateral, chat, Codex, GIF, iconos y EXE único"
 }
