@@ -6,5 +6,6 @@ release/
 .env*
 !.env.example
 test-results/
+docs/ui-preview/latest-*/
 .reference/
 *.log
