@@ -24,5 +24,6 @@
 .island.live-only .header-status .status-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .island.live-only.capsule .header-status{min-width:0;justify-content:flex-start}
 .island.live-only.capsule:is(.dock-left,.dock-right) .header-status{min-width:20px}
-@media(max-height:560px){.activity-panel{flex-basis:120px}.activity-steps{height:74px}}
+/* Height must depend on content, not the native window we resize to fit it.
+   A viewport-height breakpoint here causes an endless 84/120px resize cycle. */
 @media(max-width:420px){.activity-panel{margin-inline:12px;padding-inline:8px}.activity-copy{padding-inline:8px;gap:6px}}

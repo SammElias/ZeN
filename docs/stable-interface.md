@@ -25,3 +25,9 @@ No se hizo ninguna nueva llamada a la API ni se subieron capturas personales. Un
 ## Pendiente
 
 No se ha medido el parpadeo físico de la instalación del usuario con su sesión Live, GPU/DPI y pantallas reales. Las pruebas acreditan estabilidad de DOM, layouts y bounds bajo eventos sintéticos, no una grabación física de todos los fotogramas. Voz/Teams/DPI y los fallos generales de foco anteriores siguen pendientes. El [objetivo completo](objective-verification.md) continúa incompleto.
+
+## Corrección del parpadeo · 02/10/2026
+
+El panel de actividad tenía un breakpoint `max-height:560px` que cambiaba una fila de 84 a 120 px. Al adaptar la ventana nativa a su contenido se alternaban 538 y 574 px continuamente. Se elimina la dependencia de la altura del viewport: el panel depende únicamente de sus filas.
+
+La prueba de regresión simula que cada petición de altura cambia el viewport de Electron: reproduce 14 alternancias 538/574 con la regla anterior y mantiene 538 px en las 14 iteraciones con la corrección. Se conserva movimiento del robot, adaptación a anchura y ausencia de redimensionados por delta. Evidencia en `evidence/resize-stability-ui.json`.
