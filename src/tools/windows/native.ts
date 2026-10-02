@@ -7,7 +7,7 @@ export const WindowSchema = z.object({ id: z.string().regex(/^\d+$/), title: z.s
 export const MediaSchema = z.object({ id: z.string(), title: z.string().default(''), state: z.string(), canPause: z.boolean() });
 export type WindowInfo = z.infer<typeof WindowSchema>;
 export type MediaInfo = z.infer<typeof MediaSchema>;
-export async function native<T>(directory: string, command: 'windows' | 'read' | 'capture' | 'capture-screen' | 'media' | 'pause' | 'apps' | 'open-app' | 'computer-frame' | 'computer-action', schema: z.ZodType<T>, id?: string, signal?: AbortSignal, options?:Record<string,unknown>): Promise<T> {
+export async function native<T>(directory: string, command: 'selection' | 'windows' | 'read' | 'capture' | 'capture-screen' | 'media' | 'pause' | 'apps' | 'open-app' | 'computer-frame' | 'computer-action', schema: z.ZodType<T>, id?: string, signal?: AbortSignal, options?:Record<string,unknown>): Promise<T> {
   signal?.throwIfAborted();
   // Finish an already dispatched, bounded input transaction so key-up events
   // cannot be lost to process termination. No subsequent action survives Stop.

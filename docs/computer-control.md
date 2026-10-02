@@ -20,7 +20,11 @@ Esta ruta usa API, con contabilización existente, no la suscripción de Codex. 
 
 Preferencias avanzadas: 40 respuestas, 160 acciones y 10 minutos por tarea por defecto; editables. Un límite alcanzado produce tarea incompleta, no éxito. La finalización requiere estado y evidencia visual atribuida a la última captura; sigue siendo evaluación del modelo, no comprobación independiente de Dataverse. Presupuesto mensual estimado: no garantía de facturación.
 
-## Verificación
+## Verificación actualizada — 02/10/2026
+
+El bloqueo de entrada se ha corregido conservando el escritorio interactivo heredado. Ratón/teclado Unicode y selección UIA pasan en Windows real. El ciclo con SOL real también pasa: tres respuestas, formulario guardado y resultado visible verificado. Véanse `docs/evidence/computer-native.json`, `computer-live.json` y [uso diario](workspace-improvements.md). Electron actual acredita `shownOnTop=true`. Power Platform y voz humana siguen pendientes.
+
+## Verificación histórica — 01/10/2026
 
 - 267 pruebas de lógica: admisión de órdenes, coordenadas, bloqueos, revisión, cancelación, foco, identidad, imagen/posición cambiada, deduplicación, continuidad, evidencia vigente y códigos de un uso.
 - Compilación TypeScript y auxiliar Windows.

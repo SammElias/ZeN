@@ -10,9 +10,12 @@ export type Profile = z.infer<typeof ProfileSchema>;
 export const ModeSchema = z.object({ response: z.enum(['voice', 'text', 'auto']), meeting: z.boolean() }).strict();
 export type ResponseMode = z.infer<typeof ModeSchema>;
 export function audible(mode: ResponseMode) { return !mode.meeting && mode.response !== 'text'; }
-export type ControlIntent = 'silence' | 'cancel' | 'pause' | 'resume' | 'hide' | 'speak' | 'ambiguous-stop' | null;
+export type ControlIntent = 'silence' | 'cancel' | 'pause' | 'resume' | 'hide' | 'speak' | 'copy' | 'read-result' | 'ambiguous-stop' | null;
 export function controlIntent(text: string): ControlIntent {
   const value = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^[\s,]*(?:oye[, ]+)?(?:zen[, ]+)?/, '').trim();
+  if(/^(?:copia(?:me)? (?:la respuesta|el resultado|el texto))[.! ]*$/.test(value))return 'copy';
+  if(/^(?:lee(?:me)? (?:la respuesta|el resultado)|leeme el resultado)[.! ]*$/.test(value))return 'read-result';
+  if(/^(?:deja de hablar(?:[, ]+sigue trabajando)?|para la voz|silencia la respuesta)[.! ]*$/.test(value))return 'silence';
   if (/^(?:callate|silencio|no hables|silencia(?:te)?|dejame?lo (?:por )?escrito|modo reunion|estoy en (?:una |la )?reunion)\b/.test(value) || /^para\b.*\b(?:reunion|escrito)\b/.test(value)) return 'silence';
   if (/^(?:para (?:la tarea|la busqueda)|cancela(?:r)? (?:la tarea|la busqueda)|deten (?:la tarea|la busqueda))[.! ]*$/.test(value)) return 'cancel';
   if (/^(?:espera|pausa la tarea)[.! ]*$/.test(value)) return 'pause';

@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-02T15:22:49.274Z",
+  "passed": true,
+  "scope": "real-responses-code-interpreter-download-and-local-export",
+  "model": "gpt-6.1-sol",
+  "apiCalled": true,
+  "usage": {
+    "input_tokens": 1320,
+    "input_tokens_details": {
+      "cache_write_tokens": 1128,
+      "cached_tokens": 0
+    },
+    "output_tokens": 68,
+    "output_tokens_details": {
+      "reasoning_tokens": 48
+    },
+    "total_tokens": 1388
+  },
+  "estimatedTokenUsd": 0.00398,
+  "containerFees": "not included in token estimate",
+  "bytes": 19,
+  "title": "zen-prueba.csv"
+}

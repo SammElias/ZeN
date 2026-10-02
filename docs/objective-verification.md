@@ -2,6 +2,10 @@
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
+## Uso diario y control Windows — actualización vigente
+
+294 pruebas en 34 archivos, build, Edge y Electron pasan. Selección de texto y zona, pausa/continuación, tareas recuperables, exportación de archivos, presupuesto por tarea, favoritos y comandos locales de voz. Control de ratón/teclado corregido y ciclo SOL real verificado en formulario de Edge; CSV real generado, descargado y guardado. Esta evidencia sustituye el bloqueo histórico de SendInput descrito abajo. Siguen pendientes voz física, reunión externa y Power Platform autenticado. [Funciones, pruebas y límites](workspace-improvements.md).
+
 ## Robot e interfaz amigable
 
 Referencia Coucou actualizada a `5332f9e` y revisada su carpeta `docs/media`. Robot original ampliado a 36 px en cápsula y 88 px en el saludo; ojos que siguen el cursor del escritorio mediante lectura local acotada, pausada al ocultar o desactivar animaciones. Tarjetas y compositor suaves; nuevos iconos Windows del robot. Build, 287 pruebas en 33 archivos, Edge y Windows/Electron empaquetado pasan. Sin consumo adicional de API ni cambios en agente/JSON Live. [Diseño, evidencia y límites](robot-interface.md).

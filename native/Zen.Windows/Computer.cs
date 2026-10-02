@@ -6,10 +6,9 @@ internal static partial class Program {
   [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr hwnd, out Rect rect);
   [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
   [DllImport("user32.dll")] private static extern bool GetCursorPos(out Point point);
-  [DllImport("user32.dll",SetLastError=true)] private static extern bool SetThreadDesktop(IntPtr desktop);
   [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
   [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
-  [DllImport("user32.dll")] private static extern uint SendInput(uint count, Input[] input, int size);
+  [DllImport("user32.dll",SetLastError=true)] private static extern uint SendInput(uint count, Input[] input, int size);
   [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
   [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
   [StructLayout(LayoutKind.Sequential)] private struct Input { public uint Type; public InputUnion Data; }
@@ -51,7 +50,7 @@ internal static partial class Program {
   }
   private static void Mouse(uint flags,uint data=0){var input=new Input{Type=0,Data=new InputUnion{Mouse=new MouseInput{Flags=flags,Data=data}}};Inject(input);}
   private static void Key(ushort vk,bool up=false){Inject(new Input{Type=1,Data=new InputUnion{Key=new KeyInput{Vk=vk,Flags=up?2u:0u}}});}
-  private static void Inject(params Input[] input){stage="computer-inject";if(SendInput((uint)input.Length,input,Marshal.SizeOf<Input>())!=input.Length)throw new InvalidOperationException("Entrada no confirmada; no repetir.");}
+  private static void Inject(params Input[] input){stage="computer-inject";var sent=SendInput((uint)input.Length,input,Marshal.SizeOf<Input>());var error=Marshal.GetLastWin32Error();if(sent!=input.Length)throw new System.ComponentModel.Win32Exception(error,"Entrada no confirmada; no repetir.");}
   private static Input KeyEvent(ushort vk,bool up=false)=>new Input{Type=1,Data=new InputUnion{Key=new KeyInput{Vk=vk,Flags=up?2u:0u}}};
   private static Input MouseEvent(uint flags,uint data=0)=>new Input{Type=0,Data=new InputUnion{Mouse=new MouseInput{Flags=flags,Data=data}}};
   private static Input PointerEvent(int x,int y)=>new Input{Type=0,Data=new InputUnion{Mouse=new MouseInput{X=(int)((long)(x-GetSystemMetrics(76))*65535/(GetSystemMetrics(78)-1)),Y=(int)((long)(y-GetSystemMetrics(77))*65535/(GetSystemMetrics(79)-1)),Flags=0xC001}}};
@@ -61,11 +60,9 @@ internal static partial class Program {
   }
   private static void SafeFocus(IntPtr target){stage="computer-keyboard-focus";if(GetForegroundWindow()!=target)throw new InvalidOperationException("Cambio de foco; entrada detenida.");stage="computer-protected-field";var focused=AutomationElement.FocusedElement;if(focused!=null&&(focused.Current.IsPassword||focused.Current.ClassName.Contains("Terminal",StringComparison.OrdinalIgnoreCase)))throw new InvalidOperationException("Campo protegido o terminal.");}
   private static object ComputerAct(JsonElement root) {
-    // A worker thread must be attached to the current writable input desktop.
-    // Names alone are insufficient evidence; never switch a secure desktop.
-    stage="computer-input-desktop";var inputDesktop=OpenInputDesktop(0,false,0x0081);
-    if(inputDesktop==IntPtr.Zero)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-    try{if(!string.Equals(DesktopName(inputDesktop),"Default",StringComparison.OrdinalIgnoreCase)||!SetThreadDesktop(inputDesktop))throw new InvalidOperationException("Escritorio de entrada no autorizado.");}finally{CloseDesktop(inputDesktop);}
+    // Keep the desktop inherited from the interactive application. Rebinding a
+    // thread to a newly opened observation handle can remove input access.
+    // ComputerTarget validates the current input desktop and refuses secure ones.
     var target=ComputerTarget(root);stage="computer-action";var rect=ComputerRect(target);var expected=root.GetProperty("bounds");
     if(rect.Left!=expected.GetProperty("x").GetInt32()||rect.Top!=expected.GetProperty("y").GetInt32()||rect.Right-rect.Left!=expected.GetProperty("width").GetInt32()||rect.Bottom-rect.Top!=expected.GetProperty("height").GetInt32())throw new InvalidOperationException("La ventana se movió.");
     var action=root.GetProperty("action");var type=action.GetProperty("type").GetString();

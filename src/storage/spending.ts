@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Settings, SpendingSummary } from '../shared/contracts';
 import { ZenError } from '../shared/errors';
+import {AsyncLocalStorage} from 'node:async_hooks';
+import type {TaskUsage} from '../shared/workspace';
 
 // Official standard USD rates checked 2026-09-30. Estimates exclude taxes/fees.
 // Unknown models or incomplete usage never become a fabricated zero-cost receipt.
@@ -34,7 +36,7 @@ export function estimateUsd(model: string, usage: any): number | undefined {
   return ((input - cached) * rate.input + cached * rate.cached + output * rate.output) / 1e6;
 }
 
-const Entry = z.object({ id: z.string(), at: z.string().datetime(), channel: z.enum(['agent', 'voice']), model: z.string(), reserveUsd: z.number().nonnegative(), costUsd: z.number().nonnegative(), state: z.enum(['active', 'settled', 'uncertain']), inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), cachedTokens: z.number().nonnegative(), receipts: z.array(z.string()),liveSeconds:z.number().nonnegative().default(0) });
+const Entry = z.object({ id: z.string(),taskId:z.string().optional(),taskBudgetEur:z.number().optional(), at: z.string().datetime(), channel: z.enum(['agent', 'voice']), model: z.string(), reserveUsd: z.number().nonnegative(), costUsd: z.number().nonnegative(), state: z.enum(['active', 'settled', 'uncertain']), inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), cachedTokens: z.number().nonnegative(), receipts: z.array(z.string()),liveSeconds:z.number().nonnegative().default(0) });
 type Entry = z.infer<typeof Entry>;
 export interface SpendingGuard {
   reserve(channel: 'agent' | 'voice', model: string, amountUsd: number): string;
@@ -44,6 +46,11 @@ export interface SpendingGuard {
   check(id: string): void;
 }
 export class Spending implements SpendingGuard {
+  private context=new AsyncLocalStorage<{id:string;budgetEur:number}>();
+  scope<T>(id:string,budgetEur:number,operation:()=>T):T{return this.context.run({id,budgetEur},operation);}
+  task(id:string):TaskUsage|undefined{const rows=this.entries.filter(row=>row.taskId===id);if(!rows.length)return;return{estimatedEur:rows.reduce((n,row)=>n+row.costUsd,0)*this.settings().eurPerUsd,inputTokens:rows.reduce((n,row)=>n+row.inputTokens,0),outputTokens:rows.reduce((n,row)=>n+row.outputTokens,0),uncertain:rows.some(row=>row.state!=='settled'),budgetEur:rows[0].taskBudgetEur??this.settings().taskBudgetEur};}
+  private taskCommitted(id:string){return this.entries.filter(row=>row.taskId===id).reduce((sum,row)=>sum+(row.state==='uncertain'?this.amount(row):row.costUsd),0)*this.settings().eurPerUsd;}
+  private taskCheck(id:string,limit:number){if(this.taskCommitted(id)>=limit)throw new ZenError('Se alcanzó el presupuesto orientativo de esta tarea. No se iniciarán más llamadas. Puedes revisarla y retomarla con otro presupuesto.');}
   private entries: Entry[];
   private path: string;
   constructor(directory: string, private settings: () => Settings, private now: () => Date = () => new Date()) {
@@ -66,9 +73,10 @@ export class Spending implements SpendingGuard {
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new ZenError('Reserva de gasto no válida.');
     if (!rates[model] && model!=='gpt-live-1') throw new ZenError('No hay tarifa verificada para ese modelo. Revisa el modelo de voz antes de gastar.');
     const settings = this.settings();
+    const task=this.context.getStore();if(task){this.taskCheck(task.id,task.budgetEur);amountUsd=Math.min(amountUsd,(task.budgetEur-this.taskCommitted(task.id))/settings.eurPerUsd);}
     if (this.summary().committedMonthEur + amountUsd * settings.eurPerUsd > settings.monthlyBudgetEur) throw new ZenError('Límite mensual de ZeN alcanzado o reservado. Las operaciones locales siguen disponibles.');
     const row: Entry = { id: randomUUID(), at: this.now().toISOString(), channel, model, reserveUsd: amountUsd, costUsd: 0, state: 'active', inputTokens: 0, outputTokens: 0, cachedTokens: 0, receipts: [],liveSeconds:0 };
-    this.entries.push(row); this.save(); return row.id;
+    if(task){row.taskId=task.id;row.taskBudgetEur=task.budgetEur;}this.entries.push(row); this.save(); return row.id;
   }
   private entry(id: string) { const row = this.entries.find(row => row.id === id); if (!row) throw new ZenError('Reserva de gasto no válida.'); return row; }
   record(id: string, receipt: string, model: string, usage: any) {
@@ -84,6 +92,7 @@ export class Spending implements SpendingGuard {
   finish(id: string, confirmed: boolean) { const row = this.entry(id); row.state = confirmed ? 'settled' : 'uncertain'; this.save(); }
   check(id: string) {
     const row = this.entry(id);
+    if(row.taskId&&row.taskBudgetEur)this.taskCheck(row.taskId,row.taskBudgetEur);
     if (row.costUsd > row.reserveUsd || this.summary().committedMonthEur > this.settings().monthlyBudgetEur) throw new ZenError('Presupuesto local alcanzado. Se detienen nuevas llamadas; puede quedar consumo pendiente de confirmar.');
   }
 }

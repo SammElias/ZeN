@@ -3,9 +3,9 @@ import type { Artifact } from '../shared/contracts';
 import { ZenError } from '../shared/errors';
 export class Artifacts {
   private items = new Map<string, {meta:Artifact;data:Buffer;mime:string;at:number}>();
-  add(title: string, data: Buffer, mime: 'image/png'|'image/jpeg'|'image/webp'|'text/plain'): Artifact {
+  add(title: string, data: Buffer, mime: string): Artifact {
     if(data.length>10000000) throw new ZenError('El resultado generado supera 10 MB.');
-    const meta:Artifact={id:randomUUID(),title:title.slice(0,160),kind:mime.startsWith('image/')?'image':'text'};
+    const meta:Artifact={id:randomUUID(),title:title.slice(0,160),kind:mime.startsWith('image/')?'image':mime.startsWith('text/')||mime==='application/json'?'text':'file'};
     this.items.set(meta.id,{meta,data,mime,at:Date.now()});
     while(this.items.size>8 || [...this.items.values()].reduce((size,row)=>size+row.data.length,0)>32000000) this.items.delete(this.items.keys().next().value!);
     return meta;

@@ -1,9 +1,22 @@
 {
-  "at": "2026-10-01T18:32:23.529Z",
-  "passed": false,
+  "at": "2026-10-02T15:19:14.872Z",
+  "passed": true,
   "scope": "real-windows-synthetic-page",
-  "apiCalled": false,
   "model": "mock",
-  "reason": "Operación Windows no verificada. Revisa permisos, selección y escritorio desbloqueado. (InvalidOperationException, -2146233079, computer-inject, Win32 0)",
-  "physicalWindowsPending": true
+  "apiCalled": false,
+  "voiceInput": "synthetic chat code; physical voice pending",
+  "rounds": 3,
+  "approvals": 2,
+  "effects": 4,
+  "captures": 5,
+  "unicodeVerified": true,
+  "selectionVerified": true,
+  "staleHandleBlocked": true,
+  "result": {
+    "message": "Formulario guardado\nComprobación visual: Prueba ñ de ZEN aparece en el resultado.",
+    "needsInput": false,
+    "captures": 3,
+    "actions": 4,
+    "verifiedExecution": true
+  }
 }

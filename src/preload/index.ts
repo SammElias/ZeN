@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { ZenBridge, TaskEvent, DockEdge } from '../shared/contracts';
 const bridge: ZenBridge = {
+  favorites:()=>ipcRenderer.invoke('zen:favorites'),saveFavorites:rows=>ipcRenderer.invoke('zen:save-favorites',rows),
+  selection:()=>ipcRenderer.invoke('zen:selection'),clipboardContext:()=>ipcRenderer.invoke('zen:clipboard-context'),
+  taskControl:action=>ipcRenderer.invoke('zen:task-control',action),saveResult:value=>ipcRenderer.invoke('zen:save-result',value),revealResult:id=>ipcRenderer.invoke('zen:reveal-result',id),
+  onSelection:callback=>{const handler=(_e:unknown,data:Parameters<typeof callback>[0])=>callback(data);ipcRenderer.on('zen:selection',handler);return()=>ipcRenderer.removeListener('zen:selection',handler);},
+  onWorkspace:callback=>{const handler=()=>callback();ipcRenderer.on('zen:workspace',handler);return()=>ipcRenderer.removeListener('zen:workspace',handler);},
+  onReadResult:callback=>{const handler=(_e:unknown,data:string|null)=>callback(data);ipcRenderer.on('zen:read-result',handler);return()=>ipcRenderer.removeListener('zen:read-result',handler);},
   projectPreview:id=>ipcRenderer.invoke('zen:project-preview',id),
   projectDestination:value=>ipcRenderer.invoke('zen:project-destination',value),
   projectApprove:value=>ipcRenderer.invoke('zen:project-approve',value),

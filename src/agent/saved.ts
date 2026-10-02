@@ -39,7 +39,7 @@ export function presentAgentOutput(raw: string): { message: string; structured: 
   if (!raw.trim()) throw new ZenError('El agente terminó sin respuesta de texto.');
   return { message: raw, structured: false };
 }
-type Deps = { settings?: () => Settings; spending?: SpendingGuard; client: () => OpenAI; log: (row: Record<string, unknown>) => void; maxToolCalls?: () => number };
+type Deps = { checkpoint?:(signal:AbortSignal)=>Promise<void>; settings?: () => Settings; spending?: SpendingGuard; client: () => OpenAI; log: (row: Record<string, unknown>) => void; maxToolCalls?: () => number };
 export class SavedAgent {
   private runningSessions = new Set<string>();
   constructor(private deps: Deps) {}
@@ -101,7 +101,7 @@ export class SavedAgent {
       if (followup) await client.beta.agents.sessions.events.create(followup.sessionId, { events: [{ type: 'agent.session.input.message', input: [{ role: 'user', content }] }], 'Idempotency-Key': followup.requestId }, { signal });
       for await (const event of stream) {
         signal.throwIfAborted();
-        if (reservation) this.deps.spending!.check(reservation);
+        await this.deps.checkpoint?.(signal);if (reservation) this.deps.spending!.check(reservation);
         if (economical && event.type === 'agent.session.turn.output_text.delta') { generatedChars += event.delta.length; if (generatedChars > outputLimit) throw new ZenError('Salida demasiado extensa: se detuvo la generación para ahorrar. Resultado incompleto.'); }
         if (seen.has(event.event_id)) continue; seen.add(event.event_id);
         if ('session_id' in event) sessionId = event.session_id;

@@ -1,5 +1,6 @@
 import type {HumanConfirmation} from './confirmation';
 import type {CursorPoint} from './gaze';
+import type {Favorite,TaskUsage,SelectionContext} from './workspace';
 import type {Activity} from './activity';
 import { z } from 'zod';
 import type { Profile, ResponseMode } from './personal';
@@ -27,6 +28,7 @@ export const SettingsSchema = z.object({
   showResultsInMeeting: z.boolean().default(false),
   costControlsVersion: z.literal(1).default(1),
   monthlyBudgetEur: z.number().min(.1).max(1000).default(100),
+  taskBudgetEur: z.number().min(.05).max(20).default(.5),
   dailyTargetEur: z.number().min(.1).max(100).default(1),
   eurPerUsd: z.number().min(.1).max(3).default(1),
   maxContextChars: z.number().int().min(1000).max(12000).default(4000),
@@ -37,11 +39,11 @@ export const SettingsSchema = z.object({
 export type Settings = z.infer<typeof SettingsSchema>;
 export type TaskState = 'idle' | 'queued' | 'listening' | 'thinking' | 'awaiting_approval' | 'awaiting_input' | 'executing' | 'completed' | 'failed' | 'cancelled';
 export type Utterance = { speaker: 'user' | 'zen'; id: string; text: string; phase: 'start' | 'delta' | 'done'; sourceItemId?: string; timeline?: {startMs:number;endMs:number} };
-export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text'])}).strict();
+export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text','file'])}).strict();
 export type Artifact = z.infer<typeof ArtifactSchema>;
-export type TaskEvent = { id: string; state: TaskState; message: string; activity?:Activity; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext;preparation?:{requestId:string;active:boolean} };
+export type TaskEvent = { id: string; state: TaskState; message: string; paused?:boolean;checkpoint?:string;route?:'local'|'codex'|'api';usage?:TaskUsage;activity?:Activity; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext;preparation?:{requestId:string;active:boolean} };
 export type Evidence = { application: 'notepad'; pid: number; windowHandle: string; alreadyOpen: boolean; verifiedAt: string };
-export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional() }).strict();
+export const RequestSchema = z.object({ text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), replyTaskId: z.string().uuid().optional(),budgetEur:z.number().min(.05).max(20).optional(),contextMode:z.enum(['auto','none']).optional() }).strict();
 export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type SpendingSummary = { month: string; estimatedMonthEur: number; committedMonthEur: number; estimatedDayEur: number; pendingEur: number; inputTokens: number; outputTokens: number; cachedTokens: number; uncertainCalls: number; pricingDate: string };
@@ -54,6 +56,16 @@ export const OverlayPositionSchema = z.object({ displayId: z.number().int(), hor
 export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
 export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
+  favorites():Promise<Result<Favorite[]>>;
+  saveFavorites(rows:Favorite[]):Promise<Result<Favorite[]>>;
+  selection():Promise<Result<SelectionContext|null>>;
+  clipboardContext():Promise<Result<SelectionContext>>;
+  onSelection(callback:(value:SelectionContext)=>void):()=>void;
+  onWorkspace(callback:()=>void):()=>void;
+  onReadResult(callback:(text:string|null)=>void):()=>void;
+  taskControl(action:'pause'|'resume'):Promise<Result<boolean>>;
+  saveResult(value:{taskId:string}|{artifactId:string}):Promise<Result<{saved:boolean;name?:string}>>;
+  revealResult(id:string):Promise<Result<boolean>>;
   chooseContextFolder():Promise<Result<FolderAttachment|null>>;
   removeContextFolder(id:string):Promise<Result<boolean>>;
   projectPreview(id:string):Promise<Result<ProjectBundle>>;

@@ -7,10 +7,10 @@ import { SettingsSchema } from '../src/shared/contracts';
 import WebSocket from 'ws';
 class Socket extends EventEmitter {readyState=WebSocket.OPEN;send=vi.fn((_value:string,callback?:(error?:Error)=>void)=>callback?.());close=vi.fn();}
 const delta=(speaker:'input'|'output',id:string,text:string,start:number,end:number)=>({type:`session.${speaker}_transcript.delta`,event_id:id,delta:text,start_ms:start,end_ms:end});
-function fixture(confirm?:(text:string)=>Promise<unknown>){
+function fixture(confirm?:(text:string)=>Promise<unknown>,control:(text:string)=>boolean|Promise<boolean>=()=>false){
   const socket=new Socket();const emit=vi.fn(),log=vi.fn(),run=vi.fn().mockResolvedValue({state:'completed',message:'Verificado'}),stop=vi.fn();
   const spending={reserve:vi.fn().mockImplementation((_c,_m)=>_m),record:vi.fn().mockReturnValue(true),finish:vi.fn(),check:vi.fn(),tool:vi.fn()};
-  const backend=new LiveVoiceBackend({key:()=> 'fixture-not-real-key',settings:()=>SettingsSchema.parse({voiceConsent:true}),emit,log,spending,orchestrator:{run,stop,busy:false},audible:()=>true,control:()=>false,confirm,candidate:text=>text.includes('Abre'),socket:()=>socket as unknown as WebSocket,closeTimeoutMs:20});
+  const backend=new LiveVoiceBackend({key:()=> 'fixture-not-real-key',settings:()=>SettingsSchema.parse({voiceConsent:true}),emit,log,spending,orchestrator:{run,stop,busy:false},audible:()=>true,control,confirm,candidate:text=>text.includes('Abre'),socket:()=>socket as unknown as WebSocket,closeTimeoutMs:20});
   const fetch=vi.fn().mockResolvedValue({ok:true,json:async()=>({session:{id:'opaque/id:1'},transport:{type:'webrtc',sdp:'v=0\r\nanswer'}})});vi.stubGlobal('fetch',fetch);
   const event=(e:unknown)=>socket.emit('message',Buffer.from(JSON.stringify(e)));
   const close=(reason='close_requested')=>event({type:'session.closed',event_id:'closed',session:{id:'opaque/id:1'},reason,usage:{seconds:30}});
@@ -18,6 +18,11 @@ function fixture(confirm?:(text:string)=>Promise<unknown>){
 }
 afterEach(()=>vi.unstubAllGlobals());
 describe('GPT-Live',()=>{
+  it('seals local voice commands once and awaits local completion without paid delegation',async()=>{
+    const control=vi.fn(async()=>true),confirm=vi.fn(),f=fixture(confirm,control);await f.backend.start('v=0\r\n');f.backend.started('opaque/id:1');
+    f.event(delta('input','copy','Copia la respuesta',0,500));expect(control).not.toHaveBeenCalled();expect(await f.backend.confirmSpeech()).toBe(true);expect(control).toHaveBeenCalledWith('Copia la respuesta');expect(await f.backend.confirmSpeech()).toBe(false);expect(f.run).not.toHaveBeenCalled();expect(confirm).not.toHaveBeenCalled();
+    f.event(delta('input','quoted','El documento dice copia la respuesta',3000,3500));expect(await f.backend.confirmSpeech()).toBe(false);expect(control).toHaveBeenCalledOnce();const closing=f.backend.end('opaque/id:1');f.close();await closing;
+  });
   it('executes confirmation only after explicit speech sealing, never on a delta or silence, once per revision',async()=>{
     const confirm=vi.fn(async()=>true),f=fixture(confirm);await f.backend.start('v=0\r\n');f.backend.started('opaque/id:1');
     f.event(delta('input','command','Confirmo uno dos tres cuatro',0,500));expect(confirm).not.toHaveBeenCalled();expect(await f.backend.confirmSpeech()).toBe(true);expect(confirm).toHaveBeenCalledWith('Confirmo uno dos tres cuatro');expect(await f.backend.confirmSpeech()).toBe(false);

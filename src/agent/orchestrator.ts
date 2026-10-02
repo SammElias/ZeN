@@ -14,7 +14,7 @@ import {localFileRequest} from '../tools/local-files';
 import {progressActivity} from '../shared/activity';
 export const tool = { type: 'function' as const, name: 'open_application', description: 'Abre exclusivamente Bloc de notas cuando el usuario lo solicita directamente y verifica su ventana.', strict: true, parameters: { type: 'object', properties: { application: { type: 'string', enum: ['notepad'] } }, required: ['application'], additionalProperties: false } };
 type Client = Pick<OpenAI, 'responses'>;
-type Dependencies = { computer?:(text:string,id:string,signal:AbortSignal,progress:(state:TaskEvent["state"],message:string,activity?:Activity)=>void)=>Promise<{message:string;needsInput:boolean}>; project?:(text:string)=>((signal:AbortSignal,progress:(message:string,stream?:string)=>void,image?:string)=>Promise<ProjectDraft>)|undefined;client: () => Client; saved?: SavedAgent; desktop?: (text: string) => DesktopHandler; toolkit?: (text:string)=>(name:string,raw:unknown,signal:AbortSignal)=>Promise<unknown>; direct?: (text: string) => ((signal: AbortSignal, progress?:(activity:Activity)=>void) => Promise<{ message: string;localOnly?:boolean }>) | undefined; settings: () => Settings; execute: (signal: AbortSignal) => Promise<Evidence>; emit: (event: TaskEvent) => void; log: (metadata: Record<string, unknown>) => void };
+type Dependencies = { scope?:<T>(id:string,budget:number,operation:()=>T)=>T; checkpoint?:(signal:AbortSignal)=>Promise<void>; computer?:(text:string,id:string,signal:AbortSignal,progress:(state:TaskEvent["state"],message:string,activity?:Activity)=>void,context?:string)=>Promise<{message:string;needsInput:boolean}>; project?:(text:string)=>((signal:AbortSignal,progress:(message:string,stream?:string)=>void,image?:string)=>Promise<ProjectDraft>)|undefined;client: () => Client; saved?: SavedAgent; desktop?: (text: string) => DesktopHandler; toolkit?: (text:string)=>(name:string,raw:unknown,signal:AbortSignal)=>Promise<unknown>; direct?: (text: string) => ((signal: AbortSignal, progress?:(activity:Activity)=>void) => Promise<{ message: string;localOnly?:boolean }>) | undefined; settings: () => Settings; execute: (signal: AbortSignal) => Promise<Evidence>; emit: (event: TaskEvent) => void; log: (metadata: Record<string, unknown>) => void };
 export class Orchestrator {
   private active?: { controller: AbortController; id: string; done: Promise<TaskResult> };
   private requests = new Map<string, Promise<TaskResult>>();
@@ -27,7 +27,7 @@ export class Orchestrator {
   pause() { this.paused = true; }
   resume() { this.paused = false; }
   stop() { this.active?.controller.abort(new DOMException('Stopped', 'AbortError')); }
-  run(text: string, requestId: string, memory?: string, image?: string, sessionId?: string, taskId?: string, summary?: string): Promise<TaskResult> {
+  run(text: string, requestId: string, memory?: string, image?: string, sessionId?: string, taskId?: string, summary?: string,budgetEur?:number): Promise<TaskResult> {
     const existing = this.requests.get(requestId);
     if (existing) return existing;
     if (this.paused) return Promise.reject(new ZenError('ZEN está en pausa. Usa «Continúa» antes de iniciar otra tarea.'));
@@ -36,7 +36,8 @@ export class Orchestrator {
     this.computerTask=!!this.deps.computer&&computerRequest(text);
     const id = taskId ?? randomUUID();
     // Schedule after ownership is installed, including synchronous failures.
-    const done = Promise.resolve().then(() => this.perform(text, id, controller, memory, image, sessionId ? { sessionId, requestId, summary } : undefined));
+    const perform=()=>this.perform(text,id,controller,memory,image,sessionId?{sessionId,requestId,summary}:undefined);
+    const done=Promise.resolve().then(()=>this.deps.scope?this.deps.scope(id,budgetEur??this.deps.settings().taskBudgetEur,perform):perform());
     this.active = { controller, id, done };
     this.requests.set(requestId, done);
     if (this.requests.size > 200) this.requests.delete(this.requests.keys().next().value!);
@@ -57,8 +58,9 @@ export class Orchestrator {
       this.deps.emit({id,state,message,request:text,evidence,...(['thinking','executing'].includes(state)&&activity?{activity}:{}),...(streamText?{streamText}:{}),...(workContext?{workContext}:{})});
     };
     try {
+      if(this.deps.checkpoint)await this.deps.checkpoint(controller.signal);
       if(this.deps.computer&&computerRequest(text)){
-        const result=await this.deps.computer(text,id,controller.signal,(state,message,activity)=>emit(state,message,undefined,activity));controller.signal.throwIfAborted();
+        const result=await this.deps.computer(text,id,controller.signal,(state,message,activity)=>emit(state,message,undefined,activity),memory);controller.signal.throwIfAborted();
         const state=result.needsInput?'awaiting_input' as const:'completed' as const;emit(state,result.message);
         this.deps.log({type:'computer_task',taskId:id,state,durationMs:Date.now()-started});return{id,state,message:result.message};
       }

@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-02T15:23:37.678Z",
+  "passed": true,
+  "scope": "real-windows-synthetic-page",
+  "model": "gpt-6.1-sol",
+  "apiCalled": true,
+  "usage": {
+    "estimatedEur": 0.0099315,
+    "inputTokens": 6339,
+    "outputTokens": 204,
+    "uncertain": false,
+    "budgetEur": 0.15
+  },
+  "voiceInput": "synthetic chat code; physical voice pending",
+  "rounds": 3,
+  "approvals": 1,
+  "effects": 4,
+  "captures": 5,
+  "unicodeVerified": true,
+  "selectionVerified": true,
+  "staleHandleBlocked": true,
+  "result": {
+    "message": "Verificado: «Prueba ñ de ZEN» aparece debajo de Guardar, sin salir de la página.\nComprobación visual: La captura 3 muestra el campo con «Prueba ñ de ZEN» y el mismo texto como resultado debajo del botón Guardar.",
+    "needsInput": false,
+    "captures": 3,
+    "actions": 5,
+    "verifiedExecution": true
+  }
+}

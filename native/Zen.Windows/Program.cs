@@ -193,6 +193,7 @@ internal static partial class Program {
   }
   public static async Task<int> Main(string[] args) {
     try {
+      Console.InputEncoding=new System.Text.UTF8Encoding(false);Console.OutputEncoding=new System.Text.UTF8Encoding(false);
       SetProcessDpiAwarenessContext(new IntPtr(-4));
       using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(12));
       var input = await Console.In.ReadLineAsync(deadline.Token);
@@ -204,6 +205,7 @@ internal static partial class Program {
         "apps" => Applications().Keys.Order().Select(id => new { id }).ToArray(),
         "open-app" => await OpenApplication(id ?? throw new InvalidOperationException("Falta aplicación.")),
         "read" => new { text = ReadWindow(id ?? throw new InvalidOperationException("Falta ventana.")) },
+        "selection" => SelectedText(),
         "capture" => CaptureWindow(id ?? throw new InvalidOperationException("Falta ventana.")),
         "capture-screen" => CaptureScreen(id ?? throw new InvalidOperationException("Falta cápsula."), json.RootElement.TryGetProperty("excludedIds", out var excluded) ? excluded : default),
         "computer-frame" => ComputerFrame(json.RootElement),

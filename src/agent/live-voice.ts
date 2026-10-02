@@ -1,3 +1,4 @@
+import {controlIntent} from '../shared/personal';
 import {confirmationAttempt,confirmationCode} from '../shared/confirmation';
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
@@ -12,7 +13,7 @@ import type { ScreenSnapshot } from '../main/screen-context';
 // No additions, overrides or session.update: omitted fields stay server defaults.
 export const liveConfiguration: MediaSessionConfig = session as MediaSessionConfig;
 type CloseResult = { finalized:boolean;reason?:string };
-type Deps = {key:()=>string;settings:()=>Settings;spending?:SpendingGuard;emit:(event:TaskEvent)=>void;log:(row:Record<string,unknown>)=>void;audible:()=>boolean;control:(text:string)=>boolean;candidate:(text:string)=>boolean;confirm?:(text:string)=>Promise<unknown>;orchestrator:{run:(text:string,id:string)=>Promise<TaskResult>;stop:()=>void;readonly busy:boolean};socket?:(url:string,key:string)=>WebSocket;closeTimeoutMs?:number};
+type Deps = {key:()=>string;settings:()=>Settings;spending?:SpendingGuard;emit:(event:TaskEvent)=>void;log:(row:Record<string,unknown>)=>void;audible:()=>boolean;control:(text:string)=>boolean|Promise<boolean>;candidate:(text:string)=>boolean;confirm?:(text:string)=>Promise<unknown>;orchestrator:{run:(text:string,id:string)=>Promise<TaskResult>;stop:()=>void;readonly busy:boolean};socket?:(url:string,key:string)=>WebSocket;closeTimeoutMs?:number};
 type Delegated = {id:string;responseId?:string;request:string;text:string;reserve?:string;complete:boolean;usage:boolean;userId?:string;sources:string[];webCalls:Set<string>};
 export class LiveVoiceBackend {
   private socket?:WebSocket;
@@ -154,15 +155,16 @@ export class LiveVoiceBackend {
   invalidateRequest(){this.candidateRequest=undefined;this.deps.emit({id:'voice',state:'idle',message:'',liveRequest:null});}
   // Explicit review seals an exact authenticated transcript. Silence is not a turn boundary.
   async confirmSpeech(){
-    const user=this.timeline.user();if(!this.ready||this.closing||!user||!confirmationCode(user.text)||!this.deps.confirm)return false;
+    const user=this.timeline.user();if(!this.ready||this.closing||!user||!this.deps.confirm)return false;
+    const local=controlIntent(user.text);if(!confirmationCode(user.text)&&!local)return false;
     const revision=`${user.id}:${user.revision}`;if(this.confirmedSpeech===revision)return false;this.confirmedSpeech=revision;
-    await this.deps.confirm(user.text);return true;
+    if(local){this.invalidateRequest();await this.deps.control(user.text);return true;}await this.deps.confirm(user.text);return true;
   }
   async submit(id:string,confirmed=false){
     const candidate=this.candidateRequest;const user=this.timeline.user();
     if(!this.ready||this.closing||!candidate||candidate.id!==id||!user||(!confirmed&&(user.id!==candidate.captionId||user.revision!==candidate.revision)))throw new ZenError('La petición ha cambiado. Revisa la transcripción actual.');
     this.candidateRequest=undefined;this.deps.emit({id:'voice',state:'idle',message:'',liveRequest:null});
-    if(this.deps.control(candidate.text))return true;
+    if(await this.deps.control(candidate.text))return true;
     const sessionId=this.sessionId;
     const result=await this.deps.orchestrator.run(candidate.text,randomUUID());
     if(result.localOnly||sessionId!==this.sessionId||this.closing||this.final||this.timeline.user()?.revision!==candidate.revision||this.timeline.user()?.id!==candidate.captionId)return true;
