@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-02T17:12:59.158Z",
+  "passed": true,
+  "scope": "Edge headless with simulated desktop bridge and real Web Audio scheduling",
+  "screenshot": "docs/ui-preview/codex-handoff-neutral.png",
+  "neutralExternalStatus": true,
+  "noInputOrApprovalAlert": true,
+  "staticExternalIcon": true,
+  "notificationScheduled": true,
+  "duplicateNotificationSuppressed": true,
+  "meetingSilenceVerified": true,
+  "noReplayOnUnmute": true,
+  "genuineInputPromptPreserved": true,
+  "physicalAudioListeningVerified": false,
+  "apiCalled": false,
+  "electronPackage": {
+    "at": "2026-10-02T17:10:59.787Z",
+    "folderDelegationVerified": true,
+    "stableStreamingVerified": true,
+    "shownOnTop": true
+  }
+}

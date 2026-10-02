@@ -12,6 +12,6 @@ export class CodexDesktop {
     const url=codexFolderLink(path,request);signal.throwIfAborted();
     try{await this.deps.open(url);}catch{throw new ZenError('No se pudo abrir Codex del escritorio. Comprueba su instalación y el protocolo codex de Windows. No se usará la API como alternativa.');}
     signal.throwIfAborted();
-    return 'Petición preparada en Codex del escritorio. Pulsa Enviar allí para iniciar el análisis con tu cuenta. ZEN no ha enviado los archivos a su API ni ha ejecutado el análisis.';
+    return 'Petición preparada en Codex del escritorio. Pulsa Enviar allí si todavía no lo has hecho. El progreso y la respuesta se muestran en Codex; aquí no tienes que confirmar nada. ZEN no ha enviado los archivos a su API.';
   }
 }

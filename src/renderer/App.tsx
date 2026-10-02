@@ -25,6 +25,7 @@ import './robot.css';
 import { Companion } from './Companion';
 import { useInterfaceSounds } from './interface-sounds';
 import { ContextFlow, ProjectCard } from './ProjectCard';
+import {isExternalCodexTask} from '../shared/project';
 import { projectCreationRequest } from '../policy/project';
 import { Composer } from './Composer';
 import {ActivityStore,taskActivity} from './activity-store';
@@ -71,13 +72,14 @@ export function App() {
   const [chromeHeight, setChromeHeight] = useState(150);
   const [voiceNotice,setVoiceNotice] = useState('');
   const [task, setTask] = useState<TaskEvent>(window.demoState ?? { id: 'idle', state: 'idle', message: '' });
+  const [soundTask,setSoundTask]=useState<TaskEvent>({id:'idle',state:'idle',message:''});
   const [voiceState, setVoiceState] = useState<VoiceStatus>('disconnected'); const [microphone, setMicrophone] = useState(false); const [speaking, setSpeaking] = useState(false);
   const microphoneRef=useRef(microphone);microphoneRef.current=microphone;
   const talkRefresh=useRef(false);
   const [pushToTalk, setPushToTalk] = useState(false); const pushToTalkRef = useRef(false); const held = useRef(false);
   const reducedMotion = systemReducedMotion || config?.settings.interfaceAnimations === false;
   const [visible, setVisible] = useState(true); const [collapsed, setCollapsed] = useState(true); const [interacting, setInteracting] = useState(false); const [notice, setNotice] = useState('');
-  const playSound = useInterfaceSounds(!!config?.settings.interfaceSounds && audible(responseMode) && visible && voiceState === 'disconnected' && !microphone && !speaking, task);
+  const playSound = useInterfaceSounds(!!config?.settings.interfaceSounds && audible(responseMode) && visible && voiceState === 'disconnected' && !microphone && !speaking, soundTask);
   const root = useRef<HTMLElement>(null); const voice = useRef<VoiceClient | null>(null);
   const workspace = useRef<HTMLDivElement>(null);
   const liveDialog=useRef<HTMLDialogElement>(null);
@@ -137,6 +139,7 @@ export function App() {
       if(event.id==='voice'){if(['failed','cancelled'].includes(event.state)){setVoiceNotice(event.message);void voice.current?.stop();}return;}
       if (!['storage', 'control'].includes(event.id)) setRecords(previous => {const old=previous.find(row=>row.id===event.id);if(event.streamText&&old?.state===event.state&&old.workContext?.phase===event.workContext?.phase&&old.activity===event.activity)return previous;return old?previous.map(row=>row.id===event.id?event:row):[...previous,event].slice(-100);});
       messages.task(event);
+      if(!['storage','control'].includes(event.id))setSoundTask(previous=>previous.id===event.id&&previous.state===event.state&&isExternalCodexTask(previous)===isExternalCodexTask(event)?previous:event);
       setTask(previous => event.streamText&&previous.id===event.id&&previous.state===event.state&&taskActivity(previous)===taskActivity(event)?previous:event);
       if (event.state === 'awaiting_approval') { setCollapsed(false); }
       if (event.id === 'voice' && ['failed', 'cancelled'].includes(event.state)) void voice.current?.stop();
@@ -165,7 +168,7 @@ export function App() {
   const toggleVoice = async () => { pushToTalkRef.current = false; setPushToTalk(false); held.current = false; if (voiceState === 'connected') {if(microphoneRef.current){voice.current?.setMicrophoneEnabled(false);confirmVoice();}else if(confirmationsRef.current.length||folderRef.current){resumeLiveInput();}else if(!talkRefresh.current){talkRefresh.current=true;try{await refreshScreen();if(voice.current?.active)resumeLiveInput();}finally{talkRefresh.current=false;}}} else if (!config?.hasKey || !config.settings.voiceConsent) { notify('Voz no disponible. Revisa la conexión y el permiso en Preferencias desde la bandeja.'); } else if (!window.zenDemo) void voice.current?.start(); };
   const connectPushToTalk = async () => { if (!config?.hasKey || !config.settings.voiceConsent) { notify('Voz no disponible. Revisa Preferencias desde la bandeja.'); return; } pushToTalkRef.current = true; setPushToTalk(true); held.current = false; voice.current?.setMicrophoneEnabled(false); if (!window.zenDemo) await voice.current?.start(true); };
   const changeMode = async (next: ResponseMode) => { voice.current?.setAudible(audible(next)); setResponseMode(next); const result = await window.zen.setMode(next); if (!result.ok) fail(result.error); };
-  const attention = pendingApprovals.length > 0 || ['awaiting_approval', 'awaiting_input', 'failed'].includes(task.state);
+  const attention = pendingApprovals.length > 0 || (!isExternalCodexTask(task)&&['awaiting_approval', 'awaiting_input', 'failed'].includes(task.state));
   const activityStatus=currentActivity?activityLabels[currentActivity]:undefined;
   const rawStatus = task.paused?'En pausa':voiceState === 'connecting' ? 'Conectando…' : voiceState==='closing'?'Finalizando voz…': confirmations.length?'Tu confirmación': attention ? activityStatus?.short??'Te necesito' : speaking ? 'Respondiendo' : busy ? preparations.length?'Leyendo':activityStatus?.short??'Procesando' : microphone ? 'Escuchando' : responseMode.meeting ? 'Reunión' : activityStatus?.short??'Listo';
   const [islandStatus,setIslandStatus]=useState(rawStatus);

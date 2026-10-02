@@ -8,7 +8,7 @@ export function robotPresentation(c:Context):RobotPresentation{
   if(c.confirmation||c.state==='awaiting_approval')return{pose:'approval',label:'Tu turno',hint:'Revisa la propuesta y su código.'};
   if(c.paused)return{pose:'paused',label:'En pausa',hint:'Continúa cuando quieras.'};
   if(c.state==='failed')return{pose:'concerned',label:'Lo revisamos',hint:'La tarea necesita atención.'};
-  if(c.state==='awaiting_input')return{pose:'curious',label:'Te necesito',hint:'Falta tu respuesta para seguir.'};
+  if(c.state==='awaiting_input'&&c.activity!=='codex_external')return{pose:'curious',label:'Te necesito',hint:'Falta tu respuesta para seguir.'};
   if(c.speaking)return{pose:'speaking',label:'Te cuento',hint:'Puedes interrumpirme.'};
   if(c.microphone)return{pose:'listening',label:'Te escucho',hint:'Micrófono activo.'};
   if(c.busy){
@@ -18,6 +18,7 @@ export function robotPresentation(c:Context):RobotPresentation{
     return{pose:'thinking',label:c.state==='queued'?'Esperando':'Pensando',hint:c.state==='queued'?'Tu tarea está en cola.':'Estoy preparando la respuesta.'};
   }
   if(c.composing)return{pose:'listening',label:'Te leo',hint:'Envía tu mensaje cuando esté listo.'};
+  if(c.activity==='codex_external')return{pose:'idle',label:'En Codex',hint:'Puedes seguir allí o pedirme otra cosa.'};
   if(c.state==='completed')return{pose:'success',label:'Listo',hint:'Puedes revisar el resultado.'};
   if(c.state==='cancelled')return{pose:'paused',label:'Detenido',hint:'No iniciaré nuevas acciones.'};
   if(c.contextReady)return{pose:'curious',label:'Todo preparado',hint:'Dime qué hacemos con esta referencia.'};

@@ -1,5 +1,5 @@
 /** Local presentation metadata. Never model narration, permissions or tool input. */
-export type Activity = 'reading' | 'searching_files' | 'project' | 'queued' | 'processing' | 'thinking' | 'searching' | 'opening_web' | 'opening_codex' | 'opening_app' | 'observing' | 'executing' | 'writing' | 'structuring' | 'verifying' | 'approval' | 'input' | 'completed' | 'failed' | 'cancelled';
+export type Activity = 'reading' | 'searching_files' | 'project' | 'queued' | 'processing' | 'thinking' | 'searching' | 'opening_web' | 'opening_codex' | 'codex_external' | 'opening_app' | 'observing' | 'executing' | 'writing' | 'structuring' | 'verifying' | 'approval' | 'input' | 'completed' | 'failed' | 'cancelled';
 export const activityLabels: Record<Activity, {label:string; short:string; icon:string}> = {
   reading: {label:'Leyendo documentos',short:'Leyendo',icon:'search'},
   searching_files: {label:'Buscando archivos locales',short:'Buscando archivos',icon:'search'},
@@ -10,6 +10,7 @@ export const activityLabels: Record<Activity, {label:string; short:string; icon:
   searching: {label:'Consultando la web',short:'Consultando web',icon:'search'},
   opening_web: {label:'Abriendo web',short:'Abriendo web',icon:'web'},
   opening_codex: {label:'Abriendo Codex',short:'Abriendo Codex',icon:'codex'},
+  codex_external: {label:'Continúa en Codex',short:'En Codex',icon:'codex'},
   opening_app: {label:'Abriendo aplicación',short:'Abriendo app',icon:'app'},
   observing: {label:'Observando la pantalla',short:'Observando',icon:'search'},
   executing: {label:'Ejecutando',short:'Ejecutando',icon:'ring'},

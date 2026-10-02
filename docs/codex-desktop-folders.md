@@ -34,3 +34,11 @@ La última petición revisada se conserva durante la frase separada de confirmac
 - [Portable](evidence/portable-interface.json) y [copia al escritorio](evidence/codex-desktop-install.json): arranque e IPC del ejecutable real, hashes verificados; sin claves incluidas.
 
 Pendiente: apertura física con carpeta/petición en la aplicación Codex y envío con la sesión de suscripción, reconocimiento/acústica reales y recorrido de voz completo. Las pruebas de transporte y abridor simulado no sustituyen esos recorridos. No se ejecutó un análisis remoto para esta verificación ni se acreditó el objetivo general.
+
+## Aviso al continuar en Codex · 02/10/2026
+
+La fase estructurada `external` con estado `awaiting_input` se presenta como «En Codex» en la cápsula y «Continúa en Codex / Fuera de ZEN» en Actividad. No muestra «Necesito tu respuesta», «Tu turno», «Voz o chat», alerta amarilla ni gesto de aprobación. El robot y Tareas recientes distinguen también este traspaso de una petición pendiente en ZEN. Una solicitud real de datos o aprobación mantiene sus avisos.
+
+El usuario autorizó un sonido breve: dos tonos locales al recibir un traspaso nuevo. Se deja un intervalo tras el tono de envío, se evitan duplicados y no suena al recuperar tareas guardadas, repintar o reactivar sonidos. Respeta las preferencias de sonido, visibilidad, voz activa y modo reunión. No usa TTS ni API.
+
+ZEN no recibe el estado del envío ni el resultado de Codex del escritorio; el aviso no afirma que el análisis haya empezado o terminado. Las indicaciones aclaran que solo hace falta pulsar Enviar allí si aún no se ha hecho y que aquí no hay que confirmar nada. Agente guardado, JSON Live, delegación, herramientas y permisos conservados.

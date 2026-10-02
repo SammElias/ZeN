@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
+import {isExternalCodexTask} from '../shared/project';
 import type { TaskEvent } from '../shared/contracts';
 
-export type InterfaceSound = 'hello' | 'open' | 'close' | 'send' | 'attach' | 'complete' | 'attention' | 'error';
+export type InterfaceSound = 'hello' | 'open' | 'close' | 'send' | 'attach' | 'handoff' | 'complete' | 'attention' | 'error';
 // Short original sine tones; no WAVs, downloads, microphone or external service.
 const melodies: Record<InterfaceSound, number[]> = {
   hello: [523.25, 659.25, 783.99], open: [392, 523.25], close: [440, 329.63],
   send: [587.33, 880], attach: [659.25, 783.99], complete: [659.25, 783.99, 1046.5],
-  attention: [523.25, 523.25], error: [392, 293.66],
+  handoff: [523.25, 783.99], attention: [523.25, 523.25], error: [392, 293.66],
 };
 export class InterfaceSounds {
   private context?: AudioContext;
@@ -59,7 +60,8 @@ export class InterfaceSounds {
 export function useInterfaceSounds(enabled: boolean, task: TaskEvent) {
   const engine = useRef<InterfaceSounds | null>(null);
   const allowed = useRef(enabled); allowed.current = enabled;
-  const lastTask = useRef(`${task.id}:${task.state}`);
+  const taskKey=`${task.id}:${task.state}:${isExternalCodexTask(task)}`;
+  const lastTask = useRef(taskKey);
   useEffect(() => {
     engine.current = new InterfaceSounds();
     const greet = () => { if (allowed.current) void engine.current?.play('hello', true); };
@@ -68,11 +70,16 @@ export function useInterfaceSounds(enabled: boolean, task: TaskEvent) {
   }, []);
   useEffect(() => { if (!enabled) engine.current?.silence(); }, [enabled]);
   useEffect(() => {
-    const key = `${task.id}:${task.state}`;
+    const key = taskKey;
     if (key === lastTask.current) return;
     lastTask.current = key;
-    const sound = task.state === 'completed' ? 'complete' : task.state === 'failed' ? 'error' : ['awaiting_approval', 'awaiting_input'].includes(task.state) ? 'attention' : undefined;
+    if(isExternalCodexTask(task)){
+      // Leave space after the send tone; never replay on repaint or unmute.
+      if(enabled){const timer=setTimeout(()=>void engine.current?.play('handoff',true),120);return()=>clearTimeout(timer);}
+      return;
+    }
+    const sound = task.state === 'completed' ? 'complete' : task.state === 'failed' ? 'error' : !isExternalCodexTask(task)&&['awaiting_approval', 'awaiting_input'].includes(task.state) ? 'attention' : undefined;
     if (enabled && sound) void engine.current?.play(sound);
-  }, [enabled, task.id, task.state]);
+  }, [enabled, taskKey]);
   return (sound: InterfaceSound) => { if (allowed.current) void engine.current?.play(sound, true); };
 }

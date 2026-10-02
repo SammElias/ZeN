@@ -1,5 +1,6 @@
 import type { TaskEvent } from '../shared/contracts';
 import type { Activity } from '../shared/activity';
+import {isExternalCodexTask} from '../shared/project';
 
 export type ActivityStep = {activity:Activity; sequence:number};
 export type ActivityTrail = {id:string; state:TaskEvent['state']; steps:ActivityStep[]};
@@ -10,7 +11,7 @@ export function taskActivity(event:TaskEvent):Activity|null {
     case 'failed': return 'failed';
     case 'cancelled': return 'cancelled';
     case 'awaiting_approval': return 'approval';
-    case 'awaiting_input': return 'input';
+    case 'awaiting_input': return isExternalCodexTask(event)?'codex_external':'input';
     case 'idle': case 'listening': return null;
     default: return event.activity ?? (event.streamText ? 'writing' : event.state==='queued' ? 'queued' : event.state==='executing' ? 'executing' : 'thinking');
   }
