@@ -39,7 +39,10 @@
       538
     ]
   },
-  "screenshots": "docs/ui-preview/latest-1790960123457",
+  "screenshots": [
+    "docs/ui-preview/drop-context.png",
+    "docs/ui-preview/resize-stable.png"
+  ],
   "apiCalled": false,
   "physicalWindowDragVerified": false
 }

@@ -1,9 +1,9 @@
 {
   "validationScope": "interface",
   "fullObjectivePassed": false,
-  "at": "2026-10-02T16:04:51.663Z",
-  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002160436878",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002160436878\\ZEN.exe",
+  "at": "2026-10-02T16:45:54.529Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002164539503",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002164539503\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -54,6 +54,7 @@
         "protectedStorage": true
       }
     },
+    "dropContextIpcVerified": true,
     "workspaceIpcVerified": true,
     "cursorGazeVerified": true,
     "documentReaderVerified": true,
@@ -247,7 +248,7 @@
     },
     {
       "path": "dist\\main.cjs",
-      "sha256": "6a4a6605b00c031ce0e3a7b2193f9f0c6e6d4c1304aa409c8d00199d48bb0931"
+      "sha256": "9c402b3b16f82725380daca9a521807d0c6159367120a7d2d3bd8901ae50a54c"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -263,15 +264,15 @@
     },
     {
       "path": "dist\\native\\Zen.Windows.dll",
-      "sha256": "50c49776d9307554d107f2d26a1d810bae9a5f683c938f1cce36b618b11fcd57"
+      "sha256": "e4df9144a47c28bbfa29b6d5924ab7322b41c174148dc3df5d45629d97778546"
     },
     {
       "path": "dist\\native\\Zen.Windows.exe",
-      "sha256": "e26a4855928b3103713c326737ea95543050c49265baf2f50199d61c43c2022d"
+      "sha256": "4f20d7307920d5527bc8d832f5ecd8a2b58ff9b8a00911cfe15ed52e95fee9c1"
     },
     {
       "path": "dist\\native\\Zen.Windows.pdb",
-      "sha256": "9541ebf8c79b7cd9a0f096a3970eded0c5f1f29cc543fa5274becb3b5864c22b"
+      "sha256": "270054fc2c9467f1878ecb0f43c7c02f8b6bf2c2317b156a1599b29ab24f3c33"
     },
     {
       "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
@@ -279,7 +280,7 @@
     },
     {
       "path": "dist\\preload.cjs",
-      "sha256": "182fb5bc62c56469e896a521b28902ab70cf3951d7587dedbe95c599bc9ff59a"
+      "sha256": "89bf6a95dc90023ac26e3cd124c88ab1292593a8ebbe864d6b817ec4e82a9a52"
     },
     {
       "path": "dist\\renderer\\activity\\app.gif",
@@ -362,20 +363,20 @@
       "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
     },
     {
-      "path": "dist\\renderer\\assets\\main-DbidMsLm.js",
-      "sha256": "1188b106d50ef0f51b49d484272e8398772e85989d3c0021c3a10615019f478b"
+      "path": "dist\\renderer\\assets\\main-OyJRdKL9.js",
+      "sha256": "8b8666aded8d850d4dd3bdb6fd3b931b7a550a9474087d4de61d417b046472a7"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-CpkfQdrj.js",
-      "sha256": "553413d1c136e8370e769db09e299ff5b04c95eb5e8c94f37c851a85edfd3ad4"
+      "path": "dist\\renderer\\assets\\Preferences-Dv8AgzlN.js",
+      "sha256": "731e33e420300ffa7a28614b8e9d4511fd0720490689adbe83e1897942ab3154"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-DaiCz9Fj.css",
-      "sha256": "8487cb1ab996a2604ac436c9eb60117f21a82ab5d5cbaf47c72d646c4b18791b"
+      "path": "dist\\renderer\\assets\\Preferences-DYuWx4PT.css",
+      "sha256": "ef1d7df2cf82ead6c090911ec9efd7fca8c60fa6fa153dbc17880af68afaa4e3"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-DskEkdxn.js",
-      "sha256": "05d31523479bd9640c585da60426532b5df5bf532037437becb99602efa2ca4d"
+      "path": "dist\\renderer\\assets\\preview-BulGHQZE.js",
+      "sha256": "6fe78336611fd31b1fca1f77a8ed34c707ca82c78c6f81a8761e14101f40b148"
     },
     {
       "path": "dist\\renderer\\icons\\robot.svg",
@@ -471,11 +472,11 @@
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "f631bf41b99c81992284fc123abf16125345faca80b6d15403caf1f7641e3017"
+      "sha256": "7b211bb9987d74470a990d743e2bdd85cab2e175535116ced98cd31a40f77ec3"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "0a7ab2a21139ebf9a1beed33c71e9dea1339bb6b267426705f9a556b6331133e"
+      "sha256": "37445d165fa85dc490ecc548028357a8143a205fe6b2f24e70e91859ddffbada"
     },
     {
       "path": "dist\\tools\\document-fixtures.mjs",
