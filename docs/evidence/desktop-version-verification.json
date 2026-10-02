@@ -1,18 +1,22 @@
 {
-  "at": "2026-10-02T14:20:57.957Z",
+  "at": "2026-10-02T14:51:14.389Z",
   "remote": "https://github.com/SammElias/ZeN.git",
   "branch": "codex/merge-capsule-documents",
-  "sourceCommit": "17f53ccda134a685aa70c8c7679eac75ad85a082",
+  "sourceCommit": "290621c70d2c69b32d7aa62a3e35ddebd27450b2",
   "remoteHead": "27eccdd4d45832d93761de08709ceae60b7033d6",
   "sourceOtherCommit": "c5fc734e76dc198442197b6b86d26177813dfbc2",
+  "referenceHead": "5332f9ee4de9caaf4110c0fc4937e838c8c71ac4",
   "localAdditionsIncluded": true,
   "otherFolderAdditionsIncluded": true,
   "localAdditionsPushed": false,
-  "rebuildComparedFiles": 79,
+  "rebuildComparedFiles": 80,
   "changedRuntimeFiles": [],
   "executable": "C:/Users/Gamming/Desktop/ZEN.exe",
-  "sha256": "2EBB9F4EF7DF084F5AB7F6B1361EAD69A8D1184B7789DE8527008BD027B61F1A",
+  "sha256": "54C8CF571F26F4F1E096285F56CE1ACC24E61EEE909383A48380F9F5B4BFCE98",
   "desktopMatchesPortable": true,
+  "desktopMatchesVerifiedExecutable": true,
   "allCurrentRuntimeFilesMatch": true,
-  "change": "Merge de ambas carpetas: voz, lectores, foco y contexto; conserva cápsula lateral, chat, Codex, GIF, iconos y EXE único"
+  "savedAgentHash": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
+  "liveSessionHash": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
+  "change": "Robot original ampliado, mirada local del cursor, superficies suaves e iconos del robot; conserva el merge y las funciones existentes"
 }

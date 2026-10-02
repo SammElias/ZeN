@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-02T14:19:55.133Z",
+  "at": "2026-10-02T14:50:27.352Z",
   "legacyTrayImageEmpty": true,
   "icoLoads": true,
   "checks": [
@@ -100,6 +100,6 @@
     "height": 48
   },
   "shellIconMatchesZen": true,
-  "pixelDifference": 0.033203125,
+  "pixelDifference": 0.03342013888888889,
   "apiCalled": false
 }

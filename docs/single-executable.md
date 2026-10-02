@@ -9,13 +9,15 @@ El EXE portable incluye Electron, ZEN y sus recursos. Al arrancar extrae los arc
 Con un paquete de aplicación ya compilado, por ejemplo:
 
 ```powershell
-npm.cmd run package:single -- release/ZEN-20261002141357051
+npm.cmd run package:single -- release/ZEN-20261002144605595
 node scripts/single-file-smoke.mjs release/single-file/ZEN.exe
 ```
 
 El resultado es `release/single-file/ZEN.exe`. `electron-builder` está fijado en 26.15.3 y la configuración en `config/portable-win.json`. No hay publicación remota ni credenciales dentro del paquete. En esta versión del constructor, `unpackDirName: true` omite `UNPACK_DIR_NAME` y deja que NSIS use `$PLUGINSDIR`, único para cada arranque. Así un segundo lanzamiento no borra los recursos del primero.
 
-Entrega vigente tras el [merge de ambas carpetas](merge-20261002.md): **114.788.753 bytes**, único `ZEN.exe` del escritorio, código del commit `17f53cc`. Incluye lectores PDF/DOCX/XLSX, mejoras de voz/foco/contexto y las funciones anteriores. Se verificó la extracción y el arranque del EXE completo: lectores, Codex del escritorio simulado, confirmaciones, actividad, bordes y streaming; sin indicadores pendientes en este ensayo. Los 79 archivos de runtime del build coinciden con los del paquete y el hash del escritorio coincide con el EXE verificado. Backup dentro de `release/desktop-backups`, sin mover configuración ni crear carpetas en la raíz del escritorio. Hash y despliegue en `docs/evidence/single-executable-deployment.json`.
+Entrega vigente con el [robot ampliado y mirada local](robot-interface.md): **114.655.489 bytes**, único `ZEN.exe` del escritorio, código del commit `290621c`. Referencia Coucou `5332f9e`; conserva el merge y todas las funciones previas. Pasan extracción/arranque del EXE, mirada, lectores, Codex del escritorio simulado, confirmaciones, actividad, bordes y streaming, sin indicadores pendientes en este ensayo. Los 80 archivos de runtime coinciden con el build. El hash del escritorio coincide con el portable verificado: `54C8CF571F26F4F1E096285F56CE1ACC24E61EEE909383A48380F9F5B4BFCE98`. El icono extraído por Windows coincide con el robot. Backup `release/desktop-backups/ZEN-before-robot-20261002-165111.exe`, sin cambiar configuración ni crear carpetas en la raíz del escritorio. [Despliegue](evidence/single-executable-deployment.json) y [comparación del build](evidence/desktop-version-verification.json).
+
+Entrega anterior tras el [merge de ambas carpetas](merge-20261002.md): 114.788.753 bytes, código del commit `17f53cc`. Incluye lectores PDF/DOCX/XLSX, mejoras de voz/foco/contexto y las funciones anteriores. Se verificaron arranque, extracción y los 79 archivos de runtime de esa entrega.
 
 Entrega anterior con los [iconos de Windows](windows-icons.md): 104.549.946 bytes. La bandeja carga un ICO válido y el binario interior y el portable llevan el personaje ZEN. Se conserva la verificación del icono que devuelve el shell, con comparación de píxeles, también para la nueva entrega.
 
