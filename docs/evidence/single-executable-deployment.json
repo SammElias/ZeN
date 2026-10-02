@@ -1,30 +1,40 @@
 {
-  "at": "2026-10-02T15:37:28.611643+00:00",
+  "at": "2026-10-02T18:10:58.2428601+02:00",
   "deployedExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
-  "sha256": "17329f86b69e9f1c071c9b2c8c060e5afe6a3a2579e3c0d7677d463efc595306",
-  "bytes": 114670516,
-  "backup": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\desktop-backups\\ZEN-before-workspace-20261002-173613.exe",
-  "sourceCommit": "400de60",
-  "otherSourceCommit": "c5fc734",
-  "referenceCommit": "5332f9e",
-  "packageDirectory": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002153032203",
+  "sha256": "74957caf77db2b38de30e1aaa307c5d848b045642a7f05f7233ef3cb7348feae",
+  "bytes": 114672365,
+  "backup": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\desktop-backups\\ZEN-before-robot-hands-20261002-180849.exe",
+  "sourceCommit": "bc7554f",
+  "packageDirectory": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002160436878",
   "onlyZenExeOnDesktop": true,
   "newDesktopDirectories": 0,
   "startupVerified": true,
-  "workspaceIpcVerified": true,
   "nativeIconsVerified": true,
   "cursorGazeVerified": true,
   "folderDelegationVerified": true,
   "humanConfirmationVerified": true,
   "edgeDockingVerified": true,
   "stableStreamingVerified": true,
+  "workspaceIpcVerified": true,
   "packagedRemainingChecks": [],
-  "computerLivePassed": true,
-  "generatedFileLivePassed": true,
+  "apiCalledForThisChange": false,
   "userConfigurationMoved": false,
   "fullObjectiveVerified": false,
+  "capsuleTop": {
+    "height": 72,
+    "width": 320
+  },
+  "capsuleSides": {
+    "height": 320,
+    "width": 72
+  },
+  "robotExpanded": {
+    "height": 144,
+    "width": 128
+  },
   "desktopProcessVerified": true,
-  "desktopProcessPath": "C:/Users/Gamming/AppData/Local/Temp/nsmF421.tmp/app/ZEN.exe",
-  "realShortcutOpenedPanel": true,
-  "workspacePanelClickedOnDesktop": true
+  "desktopProcessPath": "C:/Users/Gamming/AppData/Local/Temp/nscD9AD.tmp/app/ZEN.exe",
+  "desktopExpandedByClick": true,
+  "desktopGreetingByClick": true,
+  "pendingCodexRequestPreserved": true
 }
