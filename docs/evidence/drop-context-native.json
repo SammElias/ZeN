@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-02T16:57:08.325Z",
+  "helperCompiled": true,
+  "physicalWindowDragVerified": false,
+  "manualAttempt": {
+    "controller": "Computer Use sky",
+    "fixture": "scripts/drop-window-fixture.cjs",
+    "moved": false,
+    "attached": false,
+    "reason": "The input controller did not move the fixture window. Cross-window endpoint rejected; a within-bounds endpoint also left native bounds unchanged."
+  },
+  "nativeCapsuleVisualVerification": false,
+  "apiCalled": false,
+  "remaining": [
+    "Physical title-bar drop on capsule",
+    "Real model/voice interpretation",
+    "Multiple DPI and elevated windows"
+  ]
+}

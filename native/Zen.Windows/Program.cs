@@ -201,6 +201,7 @@ internal static partial class Program {
       using var json = JsonDocument.Parse(input); var command = json.RootElement.GetProperty("command").GetString();
       var id = json.RootElement.TryGetProperty("id", out var value) ? value.GetString() : null;
       object result = command switch {
+        "watch-window-drops" => WatchWindowDrops(json.RootElement),
         "windows" => Windows(id),
         "apps" => Applications().Keys.Order().Select(id => new { id }).ToArray(),
         "open-app" => await OpenApplication(id ?? throw new InvalidOperationException("Falta aplicación.")),

@@ -1,6 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { ZenBridge, TaskEvent, DockEdge } from '../shared/contracts';
 const bridge: ZenBridge = {
+  dropFiles:async files=>{try{if(files.length>8)throw Error('Máximo 8 archivos.');const paths=files.map(file=>webUtils.getPathForFile(file));if(paths.some(path=>!path))throw Error('Ese elemento no es un archivo local. Arrastra el archivo desde el Explorador.');return await ipcRenderer.invoke('zen:drop-files',paths);}catch(error){return{ok:false,error:(error as Error).message};}},
+  dropText:value=>ipcRenderer.invoke('zen:drop-text',value),dropImage:image=>ipcRenderer.invoke('zen:drop-image',image),removeContextAttachment:id=>ipcRenderer.invoke('zen:remove-context-attachment',id),activeContextAttachments:ids=>ipcRenderer.invoke('zen:active-context-attachments',ids),
+  onWindowDrop:callback=>{const listener=(_e:unknown,event:Parameters<typeof callback>[0])=>callback(event);ipcRenderer.on('zen:window-drop',listener);return()=>ipcRenderer.removeListener('zen:window-drop',listener);},
   favorites:()=>ipcRenderer.invoke('zen:favorites'),saveFavorites:rows=>ipcRenderer.invoke('zen:save-favorites',rows),
   selection:()=>ipcRenderer.invoke('zen:selection'),clipboardContext:()=>ipcRenderer.invoke('zen:clipboard-context'),
   taskControl:action=>ipcRenderer.invoke('zen:task-control',action),saveResult:value=>ipcRenderer.invoke('zen:save-result',value),revealResult:id=>ipcRenderer.invoke('zen:reveal-result',id),

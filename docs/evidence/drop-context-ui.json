@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-02T16:55:51.842Z",
+  "passed": true,
+  "scope": "Edge headless, simulated desktop bridge",
+  "checks": [
+    "text, file and native-window drop UI: no automatic request, removable local references, preview, explicit send IDs and Codex folder route"
+  ],
+  "nativeResizeCycle": {
+    "before": [
+      538,
+      574,
+      538,
+      574,
+      538,
+      574,
+      538,
+      574,
+      538,
+      574,
+      538,
+      574,
+      538,
+      574
+    ],
+    "after": [
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538,
+      538
+    ]
+  },
+  "screenshots": "docs/ui-preview/latest-1790960123457",
+  "apiCalled": false,
+  "physicalWindowDragVerified": false
+}

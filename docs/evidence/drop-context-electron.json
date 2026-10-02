@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-02T16:45:54.529Z",
+  "scope": "real Electron IPC with an OS File; local-only synthetic fixture",
+  "dropContextIpcVerified": true,
+  "folderDelegationVerified": true,
+  "nodeAbsent": true,
+  "pasteImageCspVerified": true,
+  "apiCalled": false,
+  "physicalWindowDragVerified": false
+}
