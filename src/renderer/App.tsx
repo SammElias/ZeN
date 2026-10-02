@@ -187,7 +187,7 @@ export function App() {
       {projectTask?.workContext&&<ContextFlow context={projectTask.workContext} focused={projectFocus} toggle={()=>setProjectFocus(value=>!value)}/>}
       {trail&&<ActivityTimeline trail={trail} animated={visible&&!reducedMotion}/>}
       <div className={projectFocus?'conversation-pane hidden-pane':'conversation-pane'}>
-        <StreamingMessage store={messages} notify={notify} copyReady={!busy&&!speaking} visible={!collapsed&&!projectFocus} measured={measuredMessage}/>
+        <StreamingMessage store={messages} notify={notify} copyReady={!busy&&!speaking} visible={!collapsed&&!projectFocus} animated={visible&&!reducedMotion} measured={measuredMessage}/>
       </div>
       {projectFocus&&<div className="workspace-body latest-message" role="region" aria-label="Proyecto de Codex" ref={workspace}>{projectTask?.workContext?.phase==='review'&&projectTask.workContext.draft?<ProjectCard key={projectTask.workContext.draft.id} draft={projectTask.workContext.draft} notify={notify} changed={draft=>setProjectTask(previous=>previous?{...previous,workContext:{owner:'codex',phase:'review',draft}}:previous)}/>:<StreamingMessage store={projectMessages} author="Codex" regionLabel="Avance de Codex" notify={notify} copyReady={!busy} visible={!collapsed&&projectFocus} measured={measuredMessage}/>}</div>}
       {!!pendingApprovals.length&&<div className="approval-stack">{pendingApprovals.map(row=><ApprovalCard key={row.id} simulated={!!window.zenDemo} approval={row.approval} notify={notify}/>)}</div>}

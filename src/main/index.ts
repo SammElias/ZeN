@@ -51,6 +51,8 @@ import {confirmationAttempt} from '../shared/confirmation';
 import {computerRequest} from '../shared/computer';
 import {ComputerAgent} from '../agent/computer';
 import {WindowsComputerSurface} from './computer-surface';
+import {CursorGaze} from './cursor-gaze';
+import {windowCursor} from '../shared/gaze';
 let window: BrowserWindow;
 let tray: Tray;
 let preferences: BrowserWindow | undefined;
@@ -211,6 +213,7 @@ void app.whenReady().then(async () => {
     if(invocation==='focus'||invocation==='capsule'||invocation==='configured'&&!settings.listenOnInvoke&&!mode.meeting){window.show();window.focus();}else window.showInactive();
     window.webContents.send('zen:visibility', true);
     if (invocation !== 'capsule') window.webContents.send('zen:invoke', invocation);
+    syncGaze();
   };
   invokeFromInstance = () => { void invoke('focus'); };
   const register = (next: string) => {
@@ -223,7 +226,15 @@ void app.whenReady().then(async () => {
   shortcutRegistered = register(settings.shortcut);
   window = new BrowserWindow({ ...overlayBounds(display.workArea, layout, horizontalRatio, dockEdge, verticalRatio), icon: appIconPath, frame: false, movable: false, resizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, show: false, transparent: true, backgroundColor: '#00000000', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
   window.setMenu(null);
-  passiveResult = () => { presentation = 'overlay'; taskbar(true); window.showInactive(); window.webContents.send('zen:visibility', true); };
+  const gaze=new CursorGaze(
+    ()=>windowCursor(screen.getCursorScreenPoint(),window.getContentBounds(),window.webContents.getZoomFactor()),
+    point=>{if(!window.isDestroyed())window.webContents.send('zen:cursor',point);}
+  );
+  const syncGaze=()=>gaze.enable(!quitting&&!window.isDestroyed()&&window.isVisible()&&!window.isMinimized()&&presentation==='overlay'&&settings.interfaceAnimations&&!layout.reducedMotion);
+  window.on('show',syncGaze);window.on('hide',syncGaze);window.on('minimize',syncGaze);window.on('restore',syncGaze);
+  window.webContents.on('did-finish-load',syncGaze);
+  window.on('closed',()=>gaze.dispose());
+  passiveResult = () => { presentation = 'overlay'; taskbar(true); window.showInactive(); window.webContents.send('zen:visibility', true); syncGaze(); };
   window.on('show', () => { if (presentation === 'overlay') { window.setAlwaysOnTop(true); window.webContents.send('zen:visibility', true); } });
   window.on('restore', () => { if (presentation === 'background') void invoke('capsule'); });
   window.on('minimize', () => { if (presentation === 'overlay') void hide(); });
@@ -236,6 +247,7 @@ void app.whenReady().then(async () => {
     const generation = ++hideGeneration;
     screenContext?.cancel();
     window.webContents.send('zen:visibility', false);
+    gaze.enable(false);
     const disconnecting = voice.stop(false);
     if (!layout.reducedMotion && window.isVisible()) await new Promise(resolve => setTimeout(resolve, 140));
     if (generation === hideGeneration) { cancelResize?.(); presentation = 'background'; window.setAlwaysOnTop(false); taskbar(false); window.minimize(); }
@@ -482,7 +494,7 @@ void app.whenReady().then(async () => {
     next={...next,voiceModel:'gpt-live-1'};
     if (!register(next.shortcut)) throw new ZenError('Ese atajo no está disponible. Se conserva el anterior.');
     try { store.saveSettings(next); } catch { if (next.shortcut !== settings.shortcut) { globalShortcut.unregister(next.shortcut); shortcutRegistered = globalShortcut.register(settings.shortcut, () => invoke()); } throw new ZenError('No se pudo guardar la configuración.'); }
-    settings = next; return publicSettings();
+    settings = next; syncGaze(); return publicSettings();
   });
   handle('save-key', z.string().trim().min(20).max(512), (key: string) => { ensureIdle(); store.saveKey(key); return true; });
   handle('delete-key', noArg, () => { ensureIdle(); store.deleteKey(); return true; });
@@ -533,7 +545,8 @@ void app.whenReady().then(async () => {
   handle('cancel-task', z.string().uuid(), id => { orchestrator.cancelTask(id); return true; });
   handle('stop', noArg, async () => { await emergencyStop(); return true; });
   handle('hide', noArg, hide);
-  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; await position(opening); return true; });
+  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; syncGaze(); await position(opening); return true; });
+  handle('cursor',noArg,()=>gaze.current());
   handle('dock', noArg, () => dockEdge);
   handle('drag', OverlayDragSchema, phase => { if (phase === 'start') startDrag(); else endDrag(); return true; });
   handle('voice-interrupt', noArg, () => { voice.interrupt(); return true; });
@@ -563,7 +576,7 @@ void app.whenReady().then(async () => {
   tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir ZEN', click: () => invoke('focus') }, { label: 'Conversar por voz', click: () => invoke('voice') }, { label: 'Preferencias…', click: () => { void openPreferences(); } }, { label: 'Detener', click: () => { void emergencyStop(); window.webContents.send('zen:task', { id: 'voice', state: 'cancelled', message: 'Sesión detenida desde la bandeja.' }); } }, { type: 'separator' }, { label: 'Salir', click: () => app.quit() }]));
   tray.on('double-click', () => invoke('focus'));
   window.on('close', event => { if (!quitting) { event.preventDefault(); void hide(); } });
-  app.on('before-quit', event => { if(quitting)return;quitting = true;endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
+  app.on('before-quit', event => { if(quitting)return;quitting = true;gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
   await window.loadFile(rendererPath);
   window.showInactive();
   let documentReaderVerified=false;
@@ -579,6 +592,19 @@ void app.whenReady().then(async () => {
   }
   if (smoke) {
     const result = await window.webContents.executeJavaScript(`(async () => ({ bridge: typeof window.zen?.run === 'function', nodeAbsent: typeof require === 'undefined', rendered: !!document.querySelector('main .brand-home .zen-companion svg'), settings: await window.zen.settings() }))()`);
+    const cursorLayout=layout;layout={...layout,reducedMotion:false};syncGaze();
+    const nativeCursor=await window.webContents.executeJavaScript('window.zen.cursor()');
+    const cursorReadVerified=nativeCursor.ok&&Number.isFinite(nativeCursor.value?.x)&&Number.isFinite(nativeCursor.value?.y);
+    gaze.enable(false);
+    const gazeCheck=async(x:number,y:number)=>{
+      window.webContents.send('zen:cursor',{x,y});
+      return window.webContents.executeJavaScript(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const eyes=document.querySelector('.brand-home .companion-gaze');resolve({transform:eyes?.getAttribute('transform'),face:document.querySelector('.brand-home .companion-face')?.getAttribute('transform')});})))`);
+    };
+    const gazeLeft=await gazeCheck(-2000,2000),gazeRight=await gazeCheck(2000,-2000);
+    const cursorEyesVerified=/translate\(-[\d.]+ [\d.]+\)/.test(gazeLeft.transform??'')&&/translate\([\d.]+ -[\d.]+\)/.test(gazeRight.transform??'')&&!gazeLeft.face&&!gazeRight.face;
+    layout={...layout,reducedMotion:true};syncGaze();window.webContents.send('zen:cursor',null);
+    const cursorReducedVerified=!gaze.active&&(await window.webContents.executeJavaScript('window.zen.cursor()')).value===null;
+    layout=cursorLayout;syncGaze();
     const protectedRoundTrip = store.protectedStorage() && (() => { store.saveKey('smoke-dummy-not-a-real-api-key'); const match = store.key() === 'smoke-dummy-not-a-real-api-key'; store.deleteKey(); return match; })();
     const invalidIpc = await window.webContents.executeJavaScript(`window.zen.run({text:'Abre el Bloc de notas',requestId:'invalid',command:'cmd'})`);
     const imageIpcVerified=await window.webContents.executeJavaScript(`(async()=>{const canvas=document.createElement('canvas');canvas.width=24;canvas.height=24;const attached=await window.zen.attachImage(canvas.toDataURL('image/png'));const invalid=await window.zen.attachImage('data:image/svg+xml;base64,PHN2Zz4=');const preview=await window.zen.previewScreen();return attached.ok&&typeof attached.value.observationId==='string'&&!invalid.ok&&preview.ok&&preview.value===null;})()`);
@@ -708,6 +734,7 @@ void app.whenReady().then(async () => {
     display = dragStartDisplay; horizontalRatio = dragStartRatio; dockEdge = dragStartEdge; verticalRatio = dragStartVertical; layout = dragStartLayout; window.webContents.send('zen:dock',dockEdge); await position();
     await hide();
     const hiddenNotOnTop = !window.isAlwaysOnTop();
+    const cursorGazeVerified=cursorReadVerified&&cursorEyesVerified&&cursorReducedVerified&&!gaze.active;
     const backgroundTaskbarVerified = window.isMinimized() && !skipTaskbar && String(presentation)==='background';
     const previousScreenContext = screenContext;
     let restoreCaptures=0;
@@ -841,7 +868,7 @@ void app.whenReady().then(async () => {
       const outcome=await task;const replay=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({text:`confirmo ${proposal.code}`,requestId:randomUUID(),priority:2})})`);
       computerIpcVerified=approved.ok&&outcome.state==='completed'&&Number(effects)===1&&rounds===2&&!replay.ok&&!!proposal.preview;
     }finally{computer.run=computerRun;confirmations.revokePrefix('computer:');}
-    console.log(JSON.stringify({ ...result, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    console.log(JSON.stringify({ ...result, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

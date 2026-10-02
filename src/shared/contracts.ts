@@ -1,4 +1,5 @@
 import type {HumanConfirmation} from './confirmation';
+import type {CursorPoint} from './gaze';
 import type {Activity} from './activity';
 import { z } from 'zod';
 import type { Profile, ResponseMode } from './personal';
@@ -94,6 +95,8 @@ export interface ZenBridge {
   drag(phase: z.infer<typeof OverlayDragSchema>): Promise<Result<boolean>>;
   dock(): Promise<Result<DockEdge>>;
   onDock(callback: (edge: DockEdge) => void): () => void;
+  cursor():Promise<Result<CursorPoint|null>>;
+  onCursor(callback:(point:CursorPoint|null)=>void):()=>void;
   voiceInterrupt(): Promise<Result<boolean>>;
   voiceContext(observationId: string | null): Promise<Result<boolean>>;
   refreshScreen():Promise<Result<boolean>>;

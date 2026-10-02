@@ -1,9 +1,10 @@
 import React, { memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { MessageSources, MessageText } from './message-text';
 import type { MessageStore } from './message-store';
+import {Companion} from './Companion';
 
-export const StreamingMessage = memo(function StreamingMessage({ store, notify, copyReady, visible, measured, author = 'ZEN', regionLabel = 'Último mensaje' }: {
-  store: MessageStore; notify: (text: string) => void; copyReady: boolean; visible: boolean; measured: (height: number) => void; author?: string; regionLabel?: string;
+export const StreamingMessage = memo(function StreamingMessage({ store, notify, copyReady, visible, measured, animated=true, author = 'ZEN', regionLabel = 'Último mensaje' }: {
+  store: MessageStore; notify: (text: string) => void; copyReady: boolean; visible: boolean; measured: (height: number) => void; animated?:boolean; author?: string; regionLabel?: string;
 }) {
   const latest = useSyncExternalStore(store.subscribe, store.snapshot);
   const metadata = useSyncExternalStore(store.subscribeMetadata, store.metadata);
@@ -42,7 +43,7 @@ export const StreamingMessage = memo(function StreamingMessage({ store, notify, 
           {message.speaker === 'zen' && latest.sourceText && latest.sourceText !== message.text && <MessageSources text={latest.sourceText} notify={notify} />}
           {message.speaker === 'zen' && latest.artifacts?.map(item => <button className="source-chip" key={item.id} onClick={() => void window.zen.openArtifact(item.id).then(result => { if (!result.ok) notify(result.error); })}>Ver {item.kind === 'image' ? 'imagen' : 'resultado'} · {item.title}</button>)}
           {message.speaker === 'zen' && !active && copyReady && !!message.text && <button className="copy-response" aria-label="Copiar respuesta" onClick={() => void navigator.clipboard.writeText(message.text).then(() => setCopied(true), () => notify('No se pudo copiar. Selecciona el texto y usa Ctrl+C.'))}>{copied ? 'Copiado' : 'Copiar'}</button>}
-        </article> : <div className="live-empty"><strong>¿En qué te ayudo?</strong><span>Escribe, habla o añade una captura.</span></div>}
+        </article> : <div className="live-empty"><Companion size="large" animated={visible&&animated}/><div className="welcome-copy"><strong>¿En qué te ayudo?</strong><span>Escribe, habla o añade una captura.</span></div></div>}
       </div>
     </div>
     {away && <button className="follow-response" onClick={tail}>Ir al final ↓</button>}

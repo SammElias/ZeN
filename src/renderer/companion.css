@@ -26,11 +26,11 @@ button:hover { background: #232329; border-color: #4f465f; }
 .island.capsule { border-radius: 0 0 18px 18px; }
 .island.live-only { width: min(640px, 100vw); }
 .island.live-only.capsule { width: min(240px, 100vw); max-height: 40px; }
-.island.live-only.capsule .overlay-header { height: 40px; min-height: 40px; padding: 0 9px; gap: 6px; }
+.island.live-only.capsule .overlay-header { height: 40px; min-height: 40px; padding: 0 6px; gap: 4px; }
 .island.live-only.capsule .brand { display: none; }
-.island.live-only.capsule .zen-companion { width: 26px; height: 26px; }
+.island.live-only.capsule .zen-companion { width: 36px; height: 36px; }
 .island.live-only.capsule .header-status { min-width: 0; width: 76px; flex: 1; font-size: 10px; gap: 5px; justify-content: flex-end; }
-.island.live-only.capsule .header-actions { gap: 1px; }
+.island.live-only.capsule .header-actions { gap: 1px; margin-left: 0; }
 .island.live-only.capsule .icon-button, .island.live-only.capsule .fold-button { width: 24px; height: 26px; padding: 5px; }
 .island.live-only.capsule .icon-button svg, .island.live-only.capsule .fold-button svg { width: 14px; height: 14px; }
 .latest-message { padding: 10px 24px 14px; }
@@ -145,7 +145,7 @@ button:hover { background: #232329; border-color: #4f465f; }
 .zen-companion svg { width: 100%; height: 100%; overflow: visible; }
 .companion-float { transform-origin: 48px 48px; animation: zen-float 4.8s ease-in-out infinite; }
 .companion-eyes { transform-origin: 48px 49px; animation: zen-blink 6.3s infinite; }
-.companion-face { transition: transform 120ms ease-out; }
+.companion-gaze { transition: transform 85ms ease-out; }
 .companion-smile { opacity: 0; }
 .companion-satellite { animation: zen-satellite 3.8s ease-in-out infinite; }
 .zen-companion.large .companion-pearl { filter: drop-shadow(0 0 10px #bda3ff22); }
@@ -195,7 +195,7 @@ button:hover { background: #232329; border-color: #4f465f; }
 .mood-cancelled .companion-float { animation: none; transform: translateY(3px); }
 .mood-cancelled { opacity: .65; }
 .still *, .motion-off *, .zen-overlay.hidden * { animation: none!important; transition: none!important; }
-.motion-off .companion-face { transform: none!important; }
+.motion-off .companion-gaze,.still .companion-gaze { transform: none!important; }
 @keyframes zen-float { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
 @keyframes zen-blink { 0%,41%,45%,84%,88%,100% { transform: scaleY(1); } 43%,86% { transform: scaleY(.12); } }
 @keyframes zen-satellite { 0%,100% { opacity: .65; } 50% { opacity: 1; } }
@@ -214,10 +214,11 @@ button:hover { background: #232329; border-color: #4f465f; }
 .island.dock-left { border-radius: 0 20px 20px 0; border-left: 0; border-top: 1px solid #24242a; }
 .island.dock-right { border-radius: 20px 0 0 20px; border-right: 0; border-top: 1px solid #24242a; }
 .island.live-only.capsule:is(.dock-left,.dock-right) { width: 40px; height: min(240px,100vh); max-height: 240px; }
-.island.live-only.capsule:is(.dock-left,.dock-right) .overlay-header { flex-direction: column; width: 40px; height: 100%; min-height: 0; padding: 9px 0; gap: 8px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .overlay-header { flex-direction: column; width: 40px; height: 100%; min-height: 0; padding: 6px 0; gap: 4px; }
 .island.live-only.capsule:is(.dock-left,.dock-right) .brand-home { flex: 0 0 auto; }
 .island.live-only.capsule:is(.dock-left,.dock-right) .header-status { flex: 1; writing-mode: vertical-rl; text-orientation: mixed; width: 20px; min-width: 20px; min-height: 24px; align-items: center; justify-content: center; gap: 5px; font-size: 10px; }
-.island.live-only.capsule:is(.dock-left,.dock-right) .header-actions { flex-direction: column; margin: 0; gap: 4px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) .header-actions { flex-direction: column; margin: 0; gap: 2px; }
+.island.live-only.capsule:is(.dock-left,.dock-right) :is(.icon-button,.fold-button) { height: 24px; }
 .island.live-only.capsule.dock-left .fold-button svg { rotate: -90deg; }
 .island.live-only.capsule.dock-right .fold-button svg { rotate: 90deg; }
 .preview .zen-overlay.capsule:is(.dock-left,.dock-right) { max-height: 240px; }
@@ -250,3 +251,24 @@ button:hover { background: #232329; border-color: #4f465f; }
 .human-confirmations strong,.human-confirmations span { display: block; overflow-wrap: anywhere; }
 .human-confirmations span { color: var(--secondary); margin-top: 4px; }
 .human-confirmations strong { white-space: pre-line; }
+
+/* Soft surfaces and an original robot, guided by the Coucou media references. */
+.island.live-only .live-empty { flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid #272632; border-radius: 20px; background: radial-gradient(ellipse at 0% 40%,#b89be719,transparent 68%),#111216; }
+.island.live-only .live-empty .zen-companion.large { width: 88px; height: 88px; }
+.welcome-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.live-empty .welcome-copy>span { color: #a7a3b3; }
+.island.live-only .live-message { padding: 12px 14px; border: 1px solid #252630; border-radius: 18px; background: #111216; }
+.island.live-only .live-message.user { width: fit-content; min-width: 100px; max-width: 94%; margin-left: auto; background: #211e2b; border-color: #373044; border-bottom-right-radius: 6px; }
+.island.live-only .text-composer { background: #17171d; border-color: #33303e; border-radius: 19px; }
+.island.live-only .text-composer:focus-within { border-color: #8f7baa; box-shadow: 0 0 0 2px #c7b6ff0c; }
+.island.live-only .composer-send:not(:disabled) { background: #dfd4f8; }
+.island.live-only .composer-send:disabled { opacity: .65; }
+.island.live-only .header-status:not(.working) i { background: #92d9bd; }
+.robot-beacon { transition: fill 180ms; }
+.mood-thinking .robot-beacon,.mood-queued .robot-beacon { fill: #ccb5ff; }
+.mood-executing .robot-beacon { fill: #a7cffb; }
+.mood-awaiting_input .robot-beacon,.mood-awaiting_approval .robot-beacon { fill: #ffd89c; }
+.mood-failed .robot-beacon { fill: #ff99a9; }
+.mood-failed .robot-mouth { transform: rotate(180deg); transform-origin: 48px 57px; }
+@media(prefers-reduced-motion:reduce) { .companion-gaze { transform: none!important; } }
+@media(max-width:420px) { .island.live-only .live-empty { padding: 12px; gap: 10px; } .island.live-only .live-empty .zen-companion.large { width: 72px; height: 72px; } }

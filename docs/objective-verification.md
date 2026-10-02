@@ -2,6 +2,10 @@
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
+## Robot e interfaz amigable
+
+Referencia Coucou actualizada a `5332f9e` y revisada su carpeta `docs/media`. Robot original ampliado a 36 px en cápsula y 88 px en el saludo; ojos que siguen el cursor del escritorio mediante lectura local acotada, pausada al ocultar o desactivar animaciones. Tarjetas y compositor suaves; nuevos iconos Windows del robot. Build, 287 pruebas en 33 archivos, Edge y Windows/Electron empaquetado pasan. Sin consumo adicional de API ni cambios en agente/JSON Live. [Diseño, evidencia y límites](robot-interface.md).
+
 ## Integración vigente: las dos carpetas de ZEN
 
 Combinados nuestro trabajo local y `c5fc734` de `C:\Users\samme\Desktop\ZeN`. Se conservan bordes laterales, chat de 640 DIP, GIF, iconos, Codex del escritorio, confirmaciones y EXE único; se incorporan lectores PDF/DOCX/XLSX, medidor e interrupción de voz, contexto entre monitores y foco de voz/reunión. Build, 284 pruebas en 32 archivos, Edge y Windows/Electron pasan. Agente y JSON Live intactos. [Decisiones, pruebas y límites](merge-20261002.md).

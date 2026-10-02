@@ -42,6 +42,8 @@ const bridge: ZenBridge = {
   layout: value => ipcRenderer.invoke('zen:layout', value),
   drag: phase => ipcRenderer.invoke('zen:drag', phase),
   dock: () => ipcRenderer.invoke('zen:dock'),
+  cursor:()=>ipcRenderer.invoke('zen:cursor'),
+  onCursor:callback=>{const handler=(_event:unknown,point:Parameters<typeof callback>[0])=>callback(point);ipcRenderer.on('zen:cursor',handler);return()=>ipcRenderer.removeListener('zen:cursor',handler);},
   onDock: callback => { const handler = (_event: unknown, edge: DockEdge) => callback(edge); ipcRenderer.on('zen:dock', handler); return () => ipcRenderer.removeListener('zen:dock', handler); },
   voiceInterrupt: () => ipcRenderer.invoke('zen:voice-interrupt'),
   voiceContext: id => ipcRenderer.invoke('zen:voice-context', id),

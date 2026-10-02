@@ -1,5 +1,7 @@
 # Identidad de ZEN en Windows · 01/10/2026
 
+Actualización del 02/10/2026: las dos variantes utilizan ahora el robot original de visor oscuro y ojos verdes, coherente con la cápsula y el saludo. Fuente en `public/icons/robot.svg`; tamaños y validación nativa conservados. [Robot e interfaz](robot-interface.md).
+
 La imagen base64 usada anteriormente por la bandeja era inválida: `nativeImage.createFromDataURL(...).isEmpty()` devuelve `true`. Por eso existía el espacio de la aplicación, pero su imagen era invisible. El ejecutable también carecía de un icono propio configurado.
 
 Se utilizan dos variantes del personaje original de ZEN: el icono completo sobre un fondo oscuro para archivos y ventanas, y un rostro de mayor contraste sin fondo para la bandeja. Fuentes SVG en `public/icons/`; exportación local mediante `node scripts/app-icons.mjs`, sin llamadas a modelos. Los ICO contienen 16, 20, 24, 32, 40, 48, 64, 128 y 256 píxeles. Los tamaños pequeños utilizan DIB de 32 bits con transparencia y máscara; 256 utiliza PNG. Los fotogramas pequeños exclusivamente PNG se cargaban en Electron, pero no ofrecían el icono correcto al shell en la comprobación inicial; se sustituyeron por DIB y se comprobó el resultado real.

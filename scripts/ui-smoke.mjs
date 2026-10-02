@@ -237,10 +237,32 @@ try {
   await page.goto(`${base}?state=idle`);
   await page.getByRole('button', { name: 'Desplegar panel' }).click();
   await page.waitForFunction(() => window.zenToneCount > 0);
-  const faceBefore = await page.locator('.brand-home .companion-face').getAttribute('transform');
+  const faceBefore = await page.locator('.brand-home .companion-gaze').getAttribute('transform');
   const companionBox=await page.locator('.brand-home .zen-companion').boundingBox();await page.mouse.move(companionBox.x-100,companionBox.y+100);
-  await page.waitForFunction(before => {const value=document.querySelector('.brand-home .companion-face')?.getAttribute('transform');return !!value&&value!==before;},faceBefore);
-  assert.notEqual(await page.locator('.brand-home .companion-face').getAttribute('transform'), faceBefore);
+  await page.waitForFunction(before => {const value=document.querySelector('.brand-home .companion-gaze')?.getAttribute('transform');return !!value&&value!==before;},faceBefore);
+  assert.notEqual(await page.locator('.brand-home .companion-gaze').getAttribute('transform'), faceBefore);
+  assert.equal(await page.locator('.brand-home .companion-face').getAttribute('transform'),null,'Only eyes follow the cursor; the visor stays still');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.waitForFunction(()=>!document.querySelector('.brand-home .companion-gaze').hasAttribute('transform'));
+  await page.mouse.move(companionBox.x+400,companionBox.y+200);
+  assert.equal(await page.locator('.brand-home .companion-gaze').getAttribute('transform'),null);
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.waitForFunction(()=>!document.querySelector('main').classList.contains('motion-off')&&!document.querySelector('.brand-home .zen-companion').classList.contains('still'));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.mouse.move(companionBox.x+200,companionBox.y+100);
+  await page.waitForFunction(()=>document.querySelector('.brand-home .companion-gaze').hasAttribute('transform'));
+  await page.locator('main').screenshot({path:screenshots+'/robot-welcome.png',animations:'disabled'});
+  await page.getByRole('button',{name:'Recoger panel',exact:true}).click();
+  for(const edge of ['top','left','right']){
+    await page.evaluate(edge=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:edge})),edge);
+    await page.waitForFunction(edge=>document.querySelector('main').classList.contains('dock-'+edge),edge);
+    const box=await page.locator('.brand-home .zen-companion').boundingBox();
+    await page.mouse.move(box.x+300,box.y+100);
+    await page.waitForFunction(()=>document.querySelector('.brand-home .companion-gaze').getAttribute('transform')?.startsWith('translate('));
+    await page.locator('main').screenshot({path:screenshots+`/robot-${edge}.png`,animations:'disabled'});
+  }
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-dock',{detail:'top'})));
+  await page.getByRole('button',{name:'Desplegar panel',exact:true}).click();
   await page.getByRole('button', { name: 'Modo reunión', exact: true }).click();
   await page.waitForFunction(() => window.zenAudioGains[0]?.gain.value === 0);
   const quietCount = await page.evaluate(() => window.zenToneCount);

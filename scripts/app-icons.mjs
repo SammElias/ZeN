@@ -1,7 +1,10 @@
-// Export the existing ZEN companion as native Windows icons, without an API.
+// Export ZEN's original vector robot as native Windows icons, without an API.
 import {chromium} from 'playwright';
 import {readFile,writeFile} from 'node:fs/promises';
 const sizes=[16,20,24,32,40,48,64,128,256];
+const robot=(await readFile('public/icons/robot.svg','utf8')).replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'');
+const tile='<rect x="2" y="2" width="92" height="92" rx="23" fill="#211c30" stroke="#736183" stroke-width="1.5"/>';
+for(const name of ['zen','tray'])await writeFile(`public/icons/${name}.svg`,`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96">${name==='zen'?tile:''}${robot}</svg>\n`);
 function bitmapIcon(rgba,size){
   const stride=Math.ceil(size/32)*4,pixels=size*size*4;
   const bitmap=Buffer.alloc(40+pixels+stride*size);
