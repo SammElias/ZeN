@@ -1,16 +1,14 @@
 {
-  "at": "2026-10-02T17:02:37.539Z",
+  "at": "2026-10-02T17:15:58.527Z",
   "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\single-file\\ZEN.exe",
-  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nswB651.tmp\\app\\ZEN.exe",
-  "sha256": "0752c0145388bd9737d7261f39273ae883f2f90252c74dc797e1cf50ac1ab8b6",
+  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nslC28.tmp\\app\\ZEN.exe",
+  "sha256": "39228eba8361028c19bccbe2708921844fa4c5d588880eeac0b47e99dec5aa37",
   "exitCode": 0,
   "packagedStartupVerified": true,
   "validationScope": "single-executable-extraction-and-real-Electron-smoke-synthetic-tasks",
   "apiCalled": false,
   "fullObjectiveVerified": false,
-  "remainingChecks": [
-    "shownOnTop"
-  ],
+  "remainingChecks": [],
   "dropContextIpcVerified": true,
   "workspaceIpcVerified": true,
   "cursorGazeVerified": true,
@@ -20,5 +18,5 @@
   "activityTimelineVerified": true,
   "edgeDockingVerified": true,
   "stableStreamingVerified": true,
-  "shownOnTop": false
+  "shownOnTop": true
 }

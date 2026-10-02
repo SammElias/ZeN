@@ -1,9 +1,9 @@
 {
   "validationScope": "interface",
   "fullObjectivePassed": false,
-  "at": "2026-10-02T16:45:54.529Z",
-  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002164539503",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002164539503\\ZEN.exe",
+  "at": "2026-10-02T17:10:59.787Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002171048547",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002171048547\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -149,13 +149,13 @@
     "widthsVerified": true,
     "positionLocked": true,
     "capsuleBounds": {
-      "x": 800,
+      "x": 2720,
       "y": 0,
       "width": 320,
       "height": 72
     },
     "cardBounds": {
-      "x": 640,
+      "x": 2560,
       "y": 0,
       "width": 640,
       "height": 210
@@ -248,7 +248,7 @@
     },
     {
       "path": "dist\\main.cjs",
-      "sha256": "9c402b3b16f82725380daca9a521807d0c6159367120a7d2d3bd8901ae50a54c"
+      "sha256": "4cbd373f5c890f8453961c91dc68b9c2248b0433832c0a29b7a034e7d7668b08"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -363,20 +363,20 @@
       "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
     },
     {
-      "path": "dist\\renderer\\assets\\main-OyJRdKL9.js",
-      "sha256": "8b8666aded8d850d4dd3bdb6fd3b931b7a550a9474087d4de61d417b046472a7"
-    },
-    {
-      "path": "dist\\renderer\\assets\\Preferences-Dv8AgzlN.js",
-      "sha256": "731e33e420300ffa7a28614b8e9d4511fd0720490689adbe83e1897942ab3154"
+      "path": "dist\\renderer\\assets\\main-VervECNB.js",
+      "sha256": "1d4e17ee22e2776648aa48d3cab7d688a7edf4725c66597ab099d6328cb01c67"
     },
     {
       "path": "dist\\renderer\\assets\\Preferences-DYuWx4PT.css",
       "sha256": "ef1d7df2cf82ead6c090911ec9efd7fca8c60fa6fa153dbc17880af68afaa4e3"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-BulGHQZE.js",
-      "sha256": "6fe78336611fd31b1fca1f77a8ed34c707ca82c78c6f81a8761e14101f40b148"
+      "path": "dist\\renderer\\assets\\Preferences-ZQInUp8l.js",
+      "sha256": "7a1c22c2f8ed08b01bd1628ef92a1d991ca31877ecf6e42e8ebf7cd8978fab13"
+    },
+    {
+      "path": "dist\\renderer\\assets\\preview-D2_Gxpes.js",
+      "sha256": "60125dad92e47199516b2420f7825b4ca09a3766d1c3b1cbaa285fea7191ed65"
     },
     {
       "path": "dist\\renderer\\icons\\robot.svg",
@@ -472,11 +472,11 @@
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "7b211bb9987d74470a990d743e2bdd85cab2e175535116ced98cd31a40f77ec3"
+      "sha256": "1689c4c6affcb2fe7d898b790c2176fb4d24ea6f4c8a983d73711ecb5e6ada03"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "37445d165fa85dc490ecc548028357a8143a205fe6b2f24e70e91859ddffbada"
+      "sha256": "faa874b93437d45545304d785f2bed39e72414ea6874d4993d909276578bb0ec"
     },
     {
       "path": "dist\\tools\\document-fixtures.mjs",
