@@ -1,8 +1,8 @@
 {
-  "at": "2026-10-02T17:15:58.527Z",
+  "at": "2026-10-07T06:56:52.304Z",
   "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\single-file\\ZEN.exe",
-  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nslC28.tmp\\app\\ZEN.exe",
-  "sha256": "39228eba8361028c19bccbe2708921844fa4c5d588880eeac0b47e99dec5aa37",
+  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nseF2AB.tmp\\app\\ZEN.exe",
+  "sha256": "6db86aa24214dc9fbc7d2185b504beb2d246eff516d7231c9d7c6ee97bea0bc9",
   "exitCode": 0,
   "packagedStartupVerified": true,
   "validationScope": "single-executable-extraction-and-real-Electron-smoke-synthetic-tasks",
