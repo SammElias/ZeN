@@ -1,9 +1,9 @@
 {
   "validationScope": "interface",
   "fullObjectivePassed": false,
-  "at": "2026-10-02T17:10:59.787Z",
-  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002171048547",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261002171048547\\ZEN.exe",
+  "at": "2026-10-07T06:49:16.107Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007064859301",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007064859301\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -149,13 +149,13 @@
     "widthsVerified": true,
     "positionLocked": true,
     "capsuleBounds": {
-      "x": 2720,
+      "x": 800,
       "y": 0,
       "width": 320,
       "height": 72
     },
     "cardBounds": {
-      "x": 2560,
+      "x": 640,
       "y": 0,
       "width": 640,
       "height": 210
@@ -363,20 +363,20 @@
       "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
     },
     {
-      "path": "dist\\renderer\\assets\\main-VervECNB.js",
-      "sha256": "1d4e17ee22e2776648aa48d3cab7d688a7edf4725c66597ab099d6328cb01c67"
+      "path": "dist\\renderer\\assets\\main-zrEcb8bo.js",
+      "sha256": "a219b7173830453549014a3c472a83da802915f2816f95e14a860624def5160a"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-DYuWx4PT.css",
-      "sha256": "ef1d7df2cf82ead6c090911ec9efd7fca8c60fa6fa153dbc17880af68afaa4e3"
+      "path": "dist\\renderer\\assets\\Preferences-99cETONV.css",
+      "sha256": "04691b8987a79da5dd29215bd865f4d9652a6b1e19ac42d4a789efacc2467227"
     },
     {
-      "path": "dist\\renderer\\assets\\Preferences-ZQInUp8l.js",
-      "sha256": "7a1c22c2f8ed08b01bd1628ef92a1d991ca31877ecf6e42e8ebf7cd8978fab13"
+      "path": "dist\\renderer\\assets\\Preferences-Bj1DjM-s.js",
+      "sha256": "449a9b3fa6a05196a8e1a03d6db87f0db29e68f0c66ea37c2874879085dcba07"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-D2_Gxpes.js",
-      "sha256": "60125dad92e47199516b2420f7825b4ca09a3766d1c3b1cbaa285fea7191ed65"
+      "path": "dist\\renderer\\assets\\preview-CHu89W3h.js",
+      "sha256": "e737e8b5f48ba24fb810352dd2c4fbcf87362e1d13b0dd3762debc1c00fc6b6e"
     },
     {
       "path": "dist\\renderer\\icons\\robot.svg",
@@ -472,11 +472,11 @@
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "1689c4c6affcb2fe7d898b790c2176fb4d24ea6f4c8a983d73711ecb5e6ada03"
+      "sha256": "16904b0a8e2cfc06ff3d0bdcad92d58ade55c404c292df48d0cb26131d5f59e4"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "faa874b93437d45545304d785f2bed39e72414ea6874d4993d909276578bb0ec"
+      "sha256": "74552286190c612dfe85154f6635981b1b108e68eec410b1293c004791d79bf1"
     },
     {
       "path": "dist\\tools\\document-fixtures.mjs",

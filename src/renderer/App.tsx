@@ -1,7 +1,7 @@
 import {useDropContext} from './useDropContext';
 import {WorkspacePanel} from './WorkspacePanel';
 import {RegionPicker} from './RegionPicker';
-import {requestRoute,type SelectionContext} from '../shared/workspace';
+import type {SelectionContext} from '../shared/workspace';
 import {controlIntent} from '../shared/personal';
 import './workspace.css';
 import {computerRequest} from '../shared/computer';
@@ -36,7 +36,7 @@ import type {FolderAttachment} from '../main/folder-context';
 declare global { interface Window { zen: ZenBridge; zenDemo?: boolean; demoState?: TaskEvent } }
 const labels: Record<TaskState, string> = { idle: '¿Qué hacemos?', queued: 'En cola', listening: 'Te escucho', thinking: 'Preparando…', awaiting_approval: 'Necesito tu permiso', awaiting_input: 'Necesito contexto', executing: 'En marcha', completed: 'Listo', failed: 'Algo no ha salido bien', cancelled: 'Tarea detenida' };
 export function App() {
-  const [workspaceOpen,setWorkspaceOpen]=useState(false),[regionImage,setRegionImage]=useState<string>(),[selection,setSelection]=useState<SelectionContext>(),[selectedImage,setSelectedImage]=useState<string>(),[draft,setDraft]=useState<{text:string;stamp:number}>(),[replyTaskId,setReplyTaskId]=useState<string>(),[budget,setBudget]=useState(.5),[typed,setTyped]=useState('');
+  const [workspaceOpen,setWorkspaceOpen]=useState(false),[regionImage,setRegionImage]=useState<string>(),[selection,setSelection]=useState<SelectionContext>(),[selectedImage,setSelectedImage]=useState<string>(),[draft,setDraft]=useState<{text:string;stamp:number}>(),[replyTaskId,setReplyTaskId]=useState<string>(),[typed,setTyped]=useState('');
   const prepareDraft=(text:string,id?:string)=>{setWorkspaceOpen(false);setCollapsed(false);setReplyTaskId(id);setDraft({text,stamp:Date.now()});};
   const acceptSelection=(value:SelectionContext)=>{setSelection(value);setSelectedImage(undefined);setObservationId(value.observationId);setCollapsed(false);};
   const chooseSelection=async(copied=false)=>{const r=await(copied?window.zen.clipboardContext():window.zen.selection());if(!r.ok)return notify(r.error);if(!r.value)return notify('Selecciona texto en la otra aplicación y pulsa Ctrl+Alt+S, o usa Texto copiado.');acceptSelection(r.value);};
@@ -126,7 +126,7 @@ export function App() {
     const offDock = window.zen.onDock(setDockEdge);
     void window.zen.dock().then(result => { if (result.ok) setDockEdge(result.value); });
     void window.zen.tasks().then(result => { if (result.ok && result.value.length) { result.value.forEach(event=>activities.accept(event));setRecords(result.value); const last = result.value.filter(row => !['voice', 'storage', 'control'].includes(row.id)).at(-1); if (last) { setTask(last); if(!messages.snapshot().message)messages.task(last); } } });
-    void window.zen.settings().then(result => { if (result.ok) { setConfig(result.value);setBudget(result.value.settings.taskBudgetEur); if (!result.value.shortcutRegistered) setNotice('Atajo ocupado. Puedes abrir ZEN desde la bandeja.'); } else fail(result.error); });
+    void window.zen.settings().then(result => { if (result.ok) { setConfig(result.value); if (!result.value.shortcutRegistered) setNotice('Atajo ocupado. Puedes abrir ZEN desde la bandeja.'); } else fail(result.error); });
     const offConfirmations=window.zen.onConfirmations(setConfirmations);void window.zen.confirmations().then(result=>{if(result.ok)setConfirmations(result.value);});
     const offTask = window.zen.onTask(event => {
       if(event.preparation){const preparation=event.preparation;setPreparations(previous=>preparation.active?[...new Set([...previous,preparation.requestId])]:previous.filter(id=>id!==preparation.requestId));return;}
@@ -192,7 +192,7 @@ export function App() {
     if(!confirming&&!localControl&&!image&&!contextId&&!folder&&!drops.items.length)await refreshScreen();
     if(generation!==sendGeneration.current)throw new Error('Envío detenido antes de iniciar la tarea.');
     if(!confirming&&!localControl){setSelection(undefined);setSelectedImage(undefined);setTyped('');setProjectFocus(false);messages.newRequest({speaker:'user',id:requestId,text,phase:'done'});setTask({id:requestId,state:'thinking',message:'Preparando…',request:text});setObservationId(undefined);void window.zen.voiceContext(null);}
-    const pending=window.zen.run({text,requestId,priority:2,observationId:confirming||localControl?undefined:contextId,folderId:confirming||localControl?undefined:folder?.id,replyTaskId:confirming||localControl?undefined:replyTaskId,budgetEur:budget,attachmentIds:confirming||localControl?undefined:drops.items.map(item=>item.id),contextMode:confirming||localControl?'none':'auto'});setReplyTaskId(undefined);
+    const pending=window.zen.run({text,requestId,priority:2,observationId:confirming||localControl?undefined:contextId,folderId:confirming||localControl?undefined:folder?.id,replyTaskId:confirming||localControl?undefined:replyTaskId,attachmentIds:confirming||localControl?undefined:drops.items.map(item=>item.id),contextMode:confirming||localControl?'none':'auto'});setReplyTaskId(undefined);
     if(confirming||localControl){const result=await pending;if(!result.ok)throw new Error(result.error);notify(result.value.message);return;}
     void pending.then(result=>{if(generation!==sendGeneration.current)return;if(!result.ok){fail(result.error);setTask(previous=>previous.id===requestId?{...previous,state:'failed',message:result.error}:previous);}else{messages.task({...result.value,request:text});setTask(previous=>previous.id===requestId?{...result.value,request:text}:previous);}}).catch(error=>fail(error.message));
   };
@@ -208,7 +208,7 @@ export function App() {
       <div className="header-actions"><button className="fold-button" onClick={fold} aria-expanded={!collapsed} aria-label={collapsed ? 'Desplegar panel' : 'Recoger panel'}><svg viewBox="0 0 24 24" aria-hidden="true" style={{ transform: collapsed ? undefined : 'rotate(180deg)' }}><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg></button>{collapsed && busy ? <IconButton name="stop" label="Detener todas las tareas" className="icon-button danger" onClick={() => void stop()} /> : <IconButton name="close" label="Ocultar ZEN (Esc)" onClick={() => void hide()} />}</div>
     </header>
     {!collapsed && <>
-      <div className="task-tools"><span className="route-label">{typed?({local:'Local · sin API',codex:'Codex · tu cuenta',api:'API · pago por uso'}[requestRoute(typed,!!folder)]):task.usage?`API · ≈ ${task.usage.estimatedEur.toFixed(3)} €${task.usage.uncertain?' + pendiente':''}`:task.route==='codex'?'Codex · tu cuenta':task.route==='local'?'Local · sin API':'Preparado para tu petición'}</span><label title="Presupuesto orientativo de la próxima tarea; puede quedar consumo pendiente. La voz se contabiliza aparte.">Por tarea €<input aria-label="Presupuesto por tarea" type="number" min="0.05" max="20" step="0.05" value={budget} onChange={e=>{const value=Number(e.target.value);if(value>=.05&&value<=20)setBudget(value);}}/></label><button onClick={()=>{setRegionImage(undefined);setWorkspaceOpen(v=>!v);}}>Tareas y favoritos</button>{busy&&<button onClick={()=>void window.zen.taskControl(task.paused?'resume':'pause').then(r=>{if(!r.ok)notify(r.error);})}>{task.paused?'Continuar':'Pausar'}</button>}</div>
+      <div className="task-tools"><button onClick={()=>{setRegionImage(undefined);setWorkspaceOpen(v=>!v);}}>Tareas y favoritos</button>{busy&&<button onClick={()=>void window.zen.taskControl(task.paused?'resume':'pause').then(r=>{if(!r.ok)notify(r.error);})}>{task.paused?'Continuar':'Pausar'}</button>}</div>
       {workspaceOpen?<WorkspacePanel close={()=>setWorkspaceOpen(false)} use={prepareDraft} notify={notify}/>:regionImage?<RegionPicker image={regionImage} cancel={()=>setRegionImage(undefined)} done={value=>{setSelectedImage(value);setSelection(undefined);setObservationId(undefined);setRegionImage(undefined);}}/>:<>
       {projectTask?.workContext&&<ContextFlow context={projectTask.workContext} focused={projectFocus} toggle={()=>setProjectFocus(value=>!value)}/>}
       {trail&&<ActivityTimeline trail={trail} animated={visible&&!reducedMotion}/>}

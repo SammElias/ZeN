@@ -31,3 +31,9 @@ El auxiliar conservaba mal el escritorio de entrada al llamar SetThreadDesktop y
 - Pruebas de interfaz en `test-results/ui.json`; paquete y entrega en `docs/evidence/portable-interface.json`, `single-executable.json` y `single-executable-deployment.json`.
 
 Pendientes que requieren contexto real del usuario: dictado físico de estos comandos, audición de la voz local, pruebas de reunión con una aplicación externa y creación/análisis de tablas o flujos en su entorno autenticado de Power Platform. El formulario local no acredita Dataverse. Cambiar de aplicación detiene el control; páginas animadas pueden invalidar la comparación exacta de capturas. El objetivo general no se declara completo.
+
+## Simplificación solicitada — 07/10/2026
+
+Se eliminan «Por tarea €», la etiqueta de ruta/pago por uso y los importes de tareas recientes. Tareas y favoritos y Pausar/Continuar permanecen disponibles. El chat ya no envía un presupuesto particular: el backend usa el valor guardado en Preferencias. No cambia la facturación ni se desactivan las medidas de ahorro.
+
+Build y pruebas UI aprobadas; se comprueba que no aparecen los controles de coste y que el envío conserva el contexto sin sobrescribir el presupuesto configurado. Captura revisada en `docs/ui-preview/latest-1791355740709/codex-desktop.png` (generada localmente e ignorada por Git). Paquete Electron comprobado en `docs/evidence/portable-interface.json`. Sin llamadas API para este cambio; agente guardado y JSON Live intactos.
