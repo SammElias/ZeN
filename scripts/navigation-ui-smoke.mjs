@@ -12,16 +12,16 @@ try{
   await page.addInitScript(()=>Object.defineProperty(window.screen,'availHeight',{get:()=>1100}));
   await page.goto(`http://127.0.0.1:${server.address().port}/preview.html`);
   await page.getByRole('button',{name:'Desplegar panel',exact:true}).click();
-  await page.evaluate(()=>{document.body.classList.remove('preview');window.apiCalls=0;window.zen.run=async()=>{window.apiCalls++;throw Error('API should not run');};window.browserViews=[];window.zen.browserViewport=async v=>{window.browserViews.push(v);return{ok:true,value:true};};});
+  await page.evaluate(()=>{document.body.classList.remove('preview');window.apiCalls=0;window.zen.run=async()=>{window.apiCalls++;throw Error('API should not run');};window.browserViews=[];const viewport=window.zen.browserViewport;window.zen.browserViewport=async v=>{window.browserViews.push(v);return viewport(v);};});
   await page.getByRole('textbox',{name:'Mensaje para ZEN'}).fill('Mi borrador local sin enviar');
   const nav=page.getByRole('navigation',{name:'Navegación principal'});
   await nav.getByRole('button',{name:'Home',exact:true}).click();await page.getByRole('heading',{name:'¿Qué hacemos hoy?'}).waitFor();await page.locator('main').screenshot({path:screenshots+'/home.png'});
-  await nav.getByRole('button',{name:'Navegador',exact:true}).click();await page.getByRole('heading',{name:'Una ventana a lo que necesitas'}).waitFor();assert.equal(Math.round((await page.locator('main').boundingBox()).width),1040);await page.locator('main').screenshot({path:screenshots+'/browser-start.png'});
+  await nav.getByRole('button',{name:'Navegador',exact:true}).click();await page.waitForFunction(()=>document.querySelector('input[aria-label="Dirección web"]').value==='https://chatgpt.com/');assert.equal(Math.round((await page.locator('main').boundingBox()).width),1040);await page.locator('main').screenshot({path:screenshots+'/browser-start.png'});
   assert.equal(await page.getByRole('textbox',{name:'Mensaje para ZEN'}).isVisible(),false);assert.equal(await page.getByRole('button',{name:/Micrófono apagado · comenzar voz/}).count(),0);
-  await page.getByRole('button',{name:'Abrir ChatGPT',exact:true}).click();await page.waitForFunction(()=>document.querySelector('input[aria-label="Dirección web"]').value==='https://chatgpt.com/');
+  await page.getByRole('button',{name:'Google',exact:true}).click();await page.waitForFunction(()=>document.querySelector('input[aria-label="Dirección web"]').value==='https://www.google.com/');
   await page.waitForFunction(()=>window.browserViews.at(-1)?.visible===true&&window.browserViews.at(-1)?.bounds?.height>200);
   await nav.getByRole('button',{name:'Chat',exact:true}).click();await page.waitForFunction(()=>window.browserViews.at(-1)?.visible===false);assert.equal(await page.getByRole('textbox',{name:'Mensaje para ZEN'}).inputValue(),'Mi borrador local sin enviar');
-  await nav.getByRole('button',{name:'Navegador',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Dirección web'}).inputValue(),'https://chatgpt.com/');
+  await nav.getByRole('button',{name:'Navegador',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Dirección web'}).inputValue(),'https://www.google.com/');
   await page.getByRole('button',{name:'Recoger panel',exact:true}).click();assert.equal(await nav.count(),0);await page.waitForFunction(()=>window.browserViews.at(-1)?.visible===false);
   await page.getByRole('button',{name:'Desplegar panel',exact:true}).click();await page.waitForFunction(()=>window.browserViews.at(-1)?.visible===true);
   await page.locator('main').screenshot({path:screenshots+'/browser-page.png'});
@@ -29,5 +29,5 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   const navBox=await nav.boundingBox();assert(navBox.x>=0&&navBox.x+navBox.width<=380);
   assert.equal(await page.evaluate(()=>window.apiCalls),0);assert.deepEqual(errors,[]);
-  const report={at:new Date().toISOString(),passed:true,chatDraftPreserved:true,browserStatePreserved:true,capsuleHidesBrowser:true,smallScreenNavigation:true,apiCalls:0,screenshots};await writeFile('docs/evidence/navigation-ui.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+  const report={at:new Date().toISOString(),passed:true,defaultChatGptVerified:true,chatDraftPreserved:true,browserStatePreserved:true,capsuleHidesBrowser:true,smallScreenNavigation:true,apiCalls:0,screenshots};await writeFile('docs/evidence/navigation-ui.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();await new Promise(r=>server.close(r));}

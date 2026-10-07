@@ -9,7 +9,7 @@ const host=new BrowserWindow({show:true,width:1040,height:800,webPreferences:{sa
 let externalRequests=0;
 const profileSession=session.fromPartition('persist:zen-user-browser-v1');
 profileSession.protocol.handle('https',request=>{
-  const url=new URL(request.url);if(url.hostname!=='zen-browser.test'){externalRequests++;return new Response('Blocked fixture',{status:403});}
+  const url=new URL(request.url);if(!['zen-browser.test','chatgpt.com'].includes(url.hostname)){externalRequests++;return new Response('Blocked fixture',{status:403});}
   return new Response('<!doctype html><title>ZEN browser fixture</title><h1>Browser fixture</h1><a id="next" href="/next">Next</a>',{headers:{'Content-Type':'text/html'}});
 });
 const browser=new IntegratedBrowser(host,()=>{},()=>true);
@@ -17,6 +17,7 @@ const until=async(test:()=>boolean|Promise<boolean>)=>{for(let i=0;i<100;i++){if
 try{
   await host.loadURL('data:text/html,<title>ZEN test host</title>');host.show();
   browser.setViewport({visible:true,bounds:{x:10,y:110,width:1020,height:670}});
+  assert.equal(browser.snapshot().url,'https://chatgpt.com/');
   await browser.command({action:'navigate',url:'https://zen-browser.test/'});
   const view=host.contentView.children.find(v=>'webContents' in v&&(v as WebContentsView).webContents!==host.webContents) as WebContentsView;
   assert(view);await until(()=>!browser.snapshot().loading&&browser.snapshot().title==='ZEN browser fixture');

@@ -33,7 +33,7 @@ export class IntegratedBrowser {
   private isVisible(){return !this.disposed&&this.viewport.visible&&this.enabled()&&!this.host.isDestroyed()&&this.host.isVisible()&&!this.host.isMinimized();}
   snapshot(){return {...this.state};}
   private update(value:Partial<BrowserState>={}){if(this.disposed)return;this.state={...this.state,...value};this.emit(this.snapshot());}
-  private refresh=()=>{const web=this.view?.webContents;if(!web||web.isDestroyed())return;this.update({url:web.getURL()==='about:blank'?'':web.getURL(),title:web.getTitle().slice(0,160)||'Navegador',loading:web.isLoading(),canBack:web.navigationHistory.canGoBack(),canForward:web.navigationHistory.canGoForward()});};
+  private refresh=()=>{const web=this.view?.webContents;if(!web||web.isDestroyed())return;this.update({url:!web.getURL()||web.getURL()==='about:blank'?this.state.url:web.getURL(),title:web.getTitle().slice(0,160)||'Navegador',loading:web.isLoading(),canBack:web.navigationHistory.canGoBack(),canForward:web.navigationHistory.canGoForward()});};
   private permitted(destination:string):boolean {
     try {browserUrl(destination);}catch{this.update({error:'Este enlace no se puede abrir en ZEN. Usa una dirección HTTPS.'});return false;}
     if(googleSignIn(destination)){
@@ -66,7 +66,7 @@ export class IntegratedBrowser {
     view.webContents.on('render-process-gone',()=>{this.update({loading:false,error:'La página se ha cerrado inesperadamente. Pulsa Recargar para recuperarla.'});});
     this.sync();return view;
   }
-  setViewport(value:BrowserViewport){this.viewport=value;this.sync();return true;}
+  setViewport(value:BrowserViewport){this.viewport=value;if(value.visible&&!this.view)void this.command({action:'navigate',url:'https://chatgpt.com/'});this.sync();return true;}
   sync=()=>{
     const view=this.view;if(!view||this.host.isDestroyed())return;
     const bounds=this.viewport.bounds,content=this.host.getContentBounds();

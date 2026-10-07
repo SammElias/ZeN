@@ -1,9 +1,9 @@
 {
   "validationScope": "interface",
   "fullObjectivePassed": false,
-  "at": "2026-10-07T07:23:31.170Z",
-  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007072320171",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007072320171\\ZEN.exe",
+  "at": "2026-10-07T07:32:07.450Z",
+  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007073156355",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007073156355\\ZEN.exe",
   "smoke": {
     "bridge": true,
     "nodeAbsent": true,
@@ -249,7 +249,7 @@
     },
     {
       "path": "dist\\main.cjs",
-      "sha256": "923466b5a7e136240937140d0753fa9c27872b96665ff575db46df98a53fe739"
+      "sha256": "f7f9c52eb0875dc70c3e71a5bb24d942d158fa311577965c0493f2167a0808f2"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -376,8 +376,8 @@
       "sha256": "771a9090b980faa495871e5836f52a18baca40d9406183616c03a994139f2714"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-S4dqQnIc.js",
-      "sha256": "6831237fbc757efb859f8be800a014574d65d5ac75b32d3a0b7242997132e19f"
+      "path": "dist\\renderer\\assets\\preview-Bfcj3aMC.js",
+      "sha256": "46d8c071d86b470a11422cf7d07cd43a20c6f28013003dd9840266d59f4e1a1a"
     },
     {
       "path": "dist\\renderer\\icons\\robot.svg",
@@ -477,7 +477,7 @@
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "9dc4f06fa77479f7a58e235230be8be953d7f97933252d3afb3758bed60687de"
+      "sha256": "5dc77a0fb34335b0ed8da0780d01109c9a4a9eaf349ec5817bc6aa4e4e175ef5"
     },
     {
       "path": "dist\\tools\\document-fixtures.mjs",

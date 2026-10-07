@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-07T07:11:43.396Z",
+  "at": "2026-10-07T07:31:13.795Z",
   "passed": true,
   "scope": "real Electron, synthetic HTTPS fixture, persistent cookies and storage across two processes",
   "results": [
