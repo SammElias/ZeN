@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-07T09:32:01.192Z",
+  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "extractedExecutable": "C:\\Users\\samme\\AppData\\Local\\Temp\\nsn10A0.tmp\\app\\ZEN.exe",
+  "sha256": "5395240533892052614c56402d3cec1d8ec782496512b1b2d734999679d521aa",
+  "exitCode": 0,
+  "packagedStartupVerified": true,
+  "validationScope": "single-executable-extraction-and-real-Electron-smoke-synthetic-tasks",
+  "apiCalled": false,
+  "fullObjectiveVerified": false,
+  "remainingChecks": [],
+  "integratedBrowserVerified": true,
+  "dropContextIpcVerified": true,
+  "workspaceIpcVerified": true,
+  "cursorGazeVerified": true,
+  "documentReaderVerified": true,
+  "folderDelegationVerified": true,
+  "humanConfirmationVerified": true,
+  "activityTimelineVerified": true,
+  "edgeDockingVerified": true,
+  "stableStreamingVerified": true,
+  "shownOnTop": true
+}

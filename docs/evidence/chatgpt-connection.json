@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-07T10:23:21.9460719Z",
+  "passed": true,
+  "scope": "simulated-provider-real-loopback-signature-verification",
+  "unitTests": 322,
+  "unitFiles": 37,
+  "authTests": 8,
+  "officialDiscoveryRead": true,
+  "accountAuthorizationVerified": false,
+  "realPlanInferenceVerified": false,
+  "apiKeyUsed": false,
+  "savedAgentConfigSha256": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6",
+  "liveConfigSha256": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+  "upstreamRevision": "f723814abdccec135b519c451fb6e1992ee5e933",
+  "uiEvidence": "chatgpt-ui.json",
+  "nativeEvidence": "chatgpt-portable.json"
+}

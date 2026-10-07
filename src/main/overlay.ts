@@ -1,12 +1,12 @@
 import type { OverlayLayout, DockEdge } from '../shared/contracts';
-import { CAPSULE_WIDTH, CAPSULE_HEIGHT, CHAT_WIDTH, BROWSER_WIDTH } from '../shared/island';
+import { CAPSULE_WIDTH, CAPSULE_HEIGHT, CHAT_WIDTH } from '../shared/island';
 export type Area = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 // All geometry is in Electron DIP, including monitors at negative coordinates.
 export function overlayBounds(area: Area, layout: Pick<OverlayLayout, 'mode' | 'height'>, horizontalRatio = .5, edge: DockEdge = 'top', verticalRatio = .5): Area {
   const side = edge !== 'top'; const compact = layout.mode === 'capsule';
-  const width = Math.max(1, Math.min(compact ? side ? CAPSULE_HEIGHT : CAPSULE_WIDTH : layout.mode==='browser'?BROWSER_WIDTH:CHAT_WIDTH, Math.max(1, area.width - (compact && side ? 0 : 24))));
-  const limit = compact ? side ? CAPSULE_WIDTH : CAPSULE_HEIGHT : Math.min(layout.mode==='browser'?900:600, Math.max(48, Math.floor(area.height * .8)));
+  const width = Math.max(1, Math.min(compact ? side ? CAPSULE_HEIGHT : CAPSULE_WIDTH : CHAT_WIDTH, Math.max(1, area.width - (compact && side ? 0 : 24))));
+  const limit = compact ? side ? CAPSULE_WIDTH : CAPSULE_HEIGHT : Math.min(600, Math.max(48, Math.floor(area.height * .8)));
   const height = Math.max(1, Math.min(compact && side ? CAPSULE_WIDTH : layout.height, limit, Math.max(1, area.height - 24)));
   const center = area.x + area.width * clamp(horizontalRatio, 0, 1);
   const x = edge === 'left' ? area.x : edge === 'right' ? area.x + area.width - width : clamp(center - width / 2, area.x, area.x + area.width - width);

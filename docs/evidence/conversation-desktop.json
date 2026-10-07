@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-07T09:32:27.8336460Z",
+  "passed": true,
+  "executable": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "sha256": "5395240533892052614c56402d3cec1d8ec782496512b1b2d734999679d521aa",
+  "bytes": 114705619,
+  "backup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\ZEN-before-conversation-20261007-112846.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "packagedStartupVerified": true,
+  "remainingChecks": [],
+  "apiCalled": false,
+  "fullObjectiveVerified": false,
+  "unitTests": 314,
+  "unitTestFiles": 36,
+  "liveSha256": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+  "savedAgentSha256": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6",
+  "screenshots": [
+    "docs/evidence/conversation-chat.png",
+    "docs/evidence/conversation-home.png"
+  ],
+  "scope": "conversation UI, screen removal IPC, synthetic Edge/Electron and single executable extraction"
+}

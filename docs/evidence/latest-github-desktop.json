@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-07T08:18:34.2953019Z",
+  "sourceCommit": "17f5d3adae7d518d0c8aa1c97c2f0a5c6dc0bc0f",
+  "sourceBranch": "origin/codex/merge-capsule-documents",
+  "executable": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "sha256": "11602850eb77366b8ff6c2da5ecd00b2e5b8e18268c1235f4bbaead5209368bd",
+  "bytes": 114700807,
+  "singleExecutable": true,
+  "desktopHashMatchesTestedExecutable": true,
+  "startupVerified": true,
+  "navigationVerified": true,
+  "testsPassed": 310,
+  "shortcutUpdated": true,
+  "previousExecutableBackup": null,
+  "backupDirectory": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\latest-github-20261007081833644",
+  "apiCalled": false,
+  "remainingSmokeChecks": [
+    "shortcutRegistered"
+  ],
+  "fullObjectiveVerified": false
+}

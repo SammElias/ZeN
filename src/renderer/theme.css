@@ -1,0 +1,214 @@
+@import './conversation.css';
+/* White / ink / vivid violet. Shared by the island and tray preferences.
+   The reference informs surfaces and relief; layout and execution stay intact. */
+:root {
+  --background: #f5f5f7;
+  --surface: #ffffff;
+  --surface-soft: #ececf0;
+  --text: #18151e;
+  --secondary: #625c6d;
+  --accent: #6d28d9;
+  --intense: #7c3aed;
+  --border: #d7d4df;
+  --error: #a82042;
+  --ink: #19161f;
+  --on-ink: #f8f6fc;
+  --on-ink-secondary: #c7bfd4;
+  --violet-soft: #eee5fc;
+  --relief: 6px 6px 16px #d4d5dc, -6px -6px 16px #ffffff;
+  --inset: inset 3px 3px 7px #dadde5, inset -3px -3px 7px #ffffff;
+  color: var(--text);
+  color-scheme: light;
+  background: transparent;
+}
+body { background: transparent; }
+::selection { background: #d8c0fa; color: #241335; }
+button { background: var(--surface); border-color: var(--border); color: var(--text); }
+button:hover { background: var(--violet-soft); border-color: #b8a1d5; }
+input, textarea, select { background: var(--surface); color: var(--text); border-color: var(--border); }
+input::placeholder, textarea::placeholder { color: #706a7a; }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+:is(.workspace-body,.workspace-list,.activity-steps,.preferences-window) { scrollbar-color: #bbb4c8 transparent; }
+
+.zen-overlay, .island {
+  background: linear-gradient(140deg,#ffffff,#f2f2f5 78%);
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+.island:is(.dock-left,.dock-right) { border-top-color: var(--border); }
+.island.glow { border-color: #ad85e9; }
+.island .overlay-header { color: var(--text); }
+.island .header-status { color: var(--secondary); }
+.island .header-status i, .header-status i { background: var(--accent); }
+.island.live-only .header-status:not(.working) i { background: var(--accent); }
+.island.attention .header-status { color: #795119; }
+.island.attention .header-status i { background: #966521; }
+.island :is(.icon-button,.fold-button) { background: transparent; color: var(--secondary); }
+.island :is(.icon-button,.fold-button):hover { background: #e8e3f0; color: var(--text); }
+.island .island-microphone.active { background: var(--accent); color: #ffffff; }
+.island .icon-button.danger, .island footer .danger { color: var(--error); }
+.mic-dot { background: #807a8b; }
+.mic-dot.active, .island.capsule .compact-meter { color: var(--accent); background-color: transparent; }
+.mic-dot.active { background: var(--accent); }
+
+/* Small icons sit in a black pill; the moving selection carries the violet. */
+.island.live-only .navigation-dock:not(.compact) {
+  background: linear-gradient(145deg,#25212c,#15121b);
+  border-color: #37313f;
+  box-shadow: 3px 4px 9px #19161f22, inset 0 1px 0 #ffffff12;
+}
+.island.live-only .navigation-dock:not(.compact) .brand-home {
+  background: linear-gradient(140deg,#ffffff,#e5e2ec);
+  border-color: #f8f6fc;
+  box-shadow: 1px 2px 4px #0004, inset 0 1px 1px #ffffff;
+}
+.island.live-only .navigation-dock:not(.compact) .brand-home:hover { background: #f2eafb; }
+.island.live-only .top-navigation .navigation-tab { color: #bfb6cc; }
+.island.live-only .navigation-tab[aria-current=page], .island.live-only .navigation-tab:hover { color: #ffffff; }
+.island.live-only .navigation-tab[aria-current=page] svg { filter: none; }
+.navigation-contour stop:first-child { stop-color: #7c3aed; }
+.navigation-contour stop:last-child { stop-color: #5920b5; }
+.navigation-wave-line { stroke: #c29afa; }
+.navigation-rail { stroke: #9972c7; }
+.navigation-selected-dot { background: #ffffff; }
+
+/* Raised modules and one dark welcome card echo the supplied reference. */
+.home-greeting h1, .home-greeting p, .home-footnote { color: var(--text); }
+.home-greeting p, .home-footnote { color: var(--secondary); }
+.home-eyebrow { color: var(--accent); }
+.home-cards button {
+  background: linear-gradient(140deg,#ffffff,#ececf1);
+  border-color: #f9f9fb;
+  color: var(--text);
+  box-shadow: var(--relief);
+}
+.home-cards button:hover { border-color: #bda1e3; background: linear-gradient(140deg,#ffffff,#efe6fb); }
+.home-cards button>span, .home-cards b { color: var(--accent); }
+.home-cards small { color: var(--secondary); }
+.home-cards button:first-child { background: linear-gradient(145deg,#30283d,#17131f); border-color: #33283f; color: var(--on-ink); }
+.home-cards button:first-child:hover { background: linear-gradient(145deg,#402653,#201728); }
+.home-cards button:first-child>span, .home-cards button:first-child b { color: #c5a0ff; }
+.home-cards button:first-child small { color: var(--on-ink-secondary); }
+
+.island .live-message .result-text, .island .result-text, .live-empty strong { color: var(--text); }
+.island.live-only :is(.live-empty,.live-message) { background: linear-gradient(140deg,#ffffff,#f2f1f6); border-color: #e2dce9; box-shadow: 3px 4px 10px #d8d5e166; }
+.live-empty .welcome-copy>span { color: var(--secondary); }
+.island.live-only .live-message.user { background: linear-gradient(145deg,#30263d,#1b1524); border-color: #43304f; }
+.island.live-only .live-message.user .result-text { color: var(--on-ink); }
+.island.live-only .live-message.user .message-speaker { color: #ccadfa; }
+.island.live-only .live-message.user .message-speaker small { color: var(--on-ink-secondary); }
+.live-message.user .message-speaker { color: var(--accent); }
+.robot-dock strong { color: var(--text); }
+.robot-dock>span { color: var(--secondary); }
+.robot-dock .robot-greet { background: radial-gradient(ellipse at 50% 65%,#7c3aed10,transparent 68%); }
+.robot-dock .robot-greet:hover { background-color: #7c3aed08; }
+.island.live-only :is(.prompt,.text-composer) {
+  background: linear-gradient(145deg,#f0f0f4,#fafafd);
+  border-color: #e0dce8;
+  box-shadow: var(--inset);
+}
+.island.live-only :is(.prompt,.text-composer):focus-within { border-color: var(--accent); box-shadow: var(--inset),0 0 0 2px #7c3aed12; }
+.island .prompt textarea::placeholder, .text-composer textarea::placeholder { color: #706a7a; }
+.composer-attach { color: var(--secondary); }
+.composer-attach:hover, .composer-attach[aria-expanded=true] { background: #e4d8f5; color: var(--accent); }
+.composer-send, .primary, .island .primary, .preferences-window .primary {
+  background: var(--accent); color: #ffffff; border-color: var(--accent);
+  box-shadow: 0 3px 7px #6d28d930;
+}
+.composer-send:hover, .primary:hover, .island .primary:hover, .preferences-window .primary:hover { background: #5820b6; color: #ffffff; }
+.island.live-only .composer-send:not(:disabled) { background: var(--accent); }
+.island.live-only .composer-send:not(:disabled):hover { background: #5820b6; }
+.island footer, .island footer button, .voice-notice { color: var(--secondary); }
+.island footer button:hover { color: var(--accent); background: var(--violet-soft); }
+.island footer .meeting-active { color: #ffffff; background: var(--ink); }
+.island .execution-context { border-bottom-color: var(--border); color: var(--secondary); }
+.island .notice { background: var(--violet-soft); color: #492378; }
+.island .screen-context-chip { background: #ece8f2; border-color: #ddd4e9; color: #5a506b; }
+.island .screen-context-chip.ready { color: #562c8e; }
+.screen-context-chip small { color: var(--secondary); }
+.task-tools { color: var(--secondary); }
+.task-tools button, .follow-response { background: #eae6ef; color: #56496b; border-color: #dcd5e6; }
+.copy-response, .resume-note { color: var(--secondary); }
+.message-sources button { background: #ede5f8; color: #562294; border-color: #d9c6f1; }
+
+.attach-menu { background: #fdfdfe; border-color: #ded8e8; box-shadow: 0 10px 28px #22153024,inset 0 1px #ffffff; }
+.attach-menu-heading, .attach-menu small, .composer-folder small, .composer-attachment { color: var(--secondary); }
+.attach-menu button { color: var(--text); }
+.attach-menu button:hover, .attach-menu button:focus-visible { color: #49216f; background: var(--violet-soft); }
+.attach-menu svg, .composer-folder>svg { color: var(--accent); }
+.composer-folder { background: #ece6f6; border-color: #d8c8ea; color: var(--text); }
+.composer-folder button { color: var(--secondary); }
+.composer-attachment img { background: #e7e4ed; }
+.island.drop-ready { outline-color: var(--accent); background: #f0e9fb; }
+.drop-target-hint { background: #f4edfffa; color: #33174e; border-color: #7c3aed99; }
+.drop-target-hint span { color: #635176; }
+.drop-attachments { background: var(--surface); border-color: var(--border); }
+.drop-local-note, .drop-attachment small { color: var(--secondary); }
+.drop-attachment details { color: var(--accent); }
+.drop-attachment pre { color: var(--text); }
+
+.activity-panel { background: linear-gradient(125deg,#27222f,#17141f); border-color: #3f324d; box-shadow: 2px 4px 10px #17141f18; }
+.activity-heading { color: var(--on-ink-secondary); }
+.activity-heading>span:first-child { color: var(--on-ink); }
+.activity-heading i { background: #ba8aff; }
+.activity-node { background: #31243e; border-color: #785b99; color: #d3b2ff; }
+.activity-copy { color: #cbc3d6; }
+.activity-copy small { color: #b8adc8; }
+.activity-step.current .activity-copy { background: #7c3aed3b; border-color: #a575e66b; color: #ffffff; }
+.activity-step.current .activity-copy small { color: #e1cef9; }
+.activity-step.current .activity-node { background: #552492; border-color: #b482f4; box-shadow: inset 0 1px #ffffff16; }
+.activity-step.current.activity-completed .activity-copy { color: #f5efff; background: #7c3aed20; border-color: #c196f54d; }
+.activity-step.current:is(.activity-approval,.activity-input) .activity-copy { color: #f5dcb0; background: #bd914b1a; border-color: #d2ac716b; }
+.activity-step.current.activity-failed .activity-copy { color: #ffbcc7; background: #a8204229; border-color: #de88976b; }
+
+.codex-pill { background: var(--ink); color: #dec9fc; border-color: #463255; }
+.context-flow, .project-card { background: linear-gradient(140deg,#ffffff,#eeedf3); border-color: var(--border); }
+.context-flow { box-shadow: 2px 3px 8px #d4d5dc; }
+.flow-orbit { background: var(--accent); color: #ffffff; }
+.flow-route, .context-flow button, .project-folder, .project-eyebrow, .project-inspect { color: var(--accent); }
+.context-flow strong, .project-card h2 { color: var(--text); }
+.project-count, .project-card p, .project-destination, .project-actions>button:first-child { color: var(--secondary); }
+.project-tree, .project-preview pre { background: #e7e5ed; color: var(--text); }
+.project-tree li>span { color: var(--accent); }
+.project-destination { border-color: var(--border); }
+.project-destination strong { color: var(--text); }
+.project-destination button { background: var(--surface); border-color: var(--border); }
+.project-actions { background: transparent; }
+.island :is(.task-card,.approval-card,.task-record,.tools-panel>details), .workspace-list article {
+  background: var(--surface); border-color: var(--border); color: var(--text);
+}
+.island .card-actions button { background: #eeebf4; border-color: var(--border); }
+.island .approval-card .card-actions button:first-child { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.island .approval-card .eyebrow { color: #795119; }
+.island .verification, .verification, .state-badge.completed { color: #5c299a; }
+.technical { background: var(--surface-soft); }
+.human-confirmations { color: #6c4915; background: #faf2e6; border-color: #ddcaab; }
+.human-confirmations span { color: #785c33; }
+.workspace-panel nav button[aria-pressed=true] { background: var(--ink); color: #ffffff; }
+.workspace-list small, .selection-context blockquote { color: var(--secondary); }
+.workspace-list input, .workspace-list textarea { background: #f7f6fa; color: var(--text); border-color: #c7bbd8; }
+.selection-context { background: #eee8f7; color: var(--text); }
+.region-box { border-color: var(--accent); background: #7c3aed20; }
+
+.chat-context, .screen-preview { background: #f8f8fa; color: var(--text); border-color: var(--border); box-shadow: 0 12px 40px #18151e33; }
+.chat-context::backdrop, .screen-preview::backdrop { background: #18151e99; }
+.preferences-window { background: var(--background); }
+.preferences-window>header { background: var(--ink); color: var(--on-ink); }
+.preferences-window>header span { color: var(--on-ink-secondary); }
+.preferences-window fieldset { background: linear-gradient(140deg,#ffffff,#efeff3); border-color: #e3e0e9; box-shadow: var(--relief); }
+.preferences-window legend { color: var(--text); }
+.preferences-window :is(input,textarea,select) { background: #f9f8fc; color: var(--text); border-color: #cfc8db; box-shadow: inset 1px 2px 4px #e1dce8; }
+.preferences-window input[type=checkbox] { accent-color: var(--accent); box-shadow: none; }
+
+
+/* Violet lighting for the original ZEN robot; geometry and gestures unchanged. */
+.zen-robot :is(.robot-beacon,.robot-heart) { fill: #8b42ed; }
+.zen-robot:is(.pose-thinking,.pose-working) .robot-beacon { fill: #8b42ed; }
+.zen-robot .companion-eyes { fill: #d3acff; }
+.zen-robot :is(.companion-smile,.robot-mouth) { stroke: #d3acff; }
+.zen-robot.pose-approval :is(.robot-beacon,.robot-heart) { fill: #a66d13; }
+.zen-robot.pose-concerned :is(.robot-beacon,.robot-heart), .mood-failed .robot-beacon { fill: #b32c52; }
+.zen-robot.pose-paused .robot-beacon { fill: #8a8195; }
+body.preview { background: radial-gradient(ellipse at 50% 0%,#ffffff,#e4e2eb 72%); }
+.preview:before { color: var(--secondary); }
+@media(max-width:600px) { .project-actions { background: #eeedf3; } }

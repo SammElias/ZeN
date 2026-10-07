@@ -1,0 +1,81 @@
+/* Content-first layout. All heights depend on content, never viewport breakpoints. */
+.island :is(button,input,textarea):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.island.live-only .navigation-tab:focus-visible { outline:2px solid #e1caff; outline-offset:-4px; }
+.island.live-only .navigation-tab svg { width:17px; height:17px; }
+.island.live-only:not(.capsule) .header-status { font-size:12px; }
+.island.live-only .task-tools button { font-size:12px; padding:5px 9px; }
+
+.island .activity-panel { flex:0 0 auto; height:44px; padding:0; border-radius:12px; margin:0 16px 4px; }
+.island .activity-panel.expanded { height:calc(52px + var(--activity-rows)*36px); }
+.island .activity-summary { display:flex; align-items:center; gap:8px; width:100%; height:42px; padding:0 12px; border:0; border-radius:11px; background:transparent; color:var(--on-ink); font-size:13px; text-align:left; }
+.island .activity-summary:hover { background:#ffffff0c; }
+.island .activity-summary:focus-visible { outline-color:#d9baff; outline-offset:-3px; }
+.activity-summary>img { flex-shrink:0; }
+.activity-summary>[role=status] { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.activity-summary .activity-toggle { display:flex; align-items:center; gap:8px; margin-left:auto; white-space:nowrap; font-size:12px; color:#decaef; }
+.activity-steps { margin:0 8px 8px; }
+.activity-copy { font-size:12px; }
+.activity-copy small { font-size:11px; }
+
+.island .with-robot .latest-message { padding:8px 16px 10px; }
+.island.live-only .with-robot .live-message { border-radius:15px; padding:14px 16px; }
+.island .live-message .result-text { font-size:14px; line-height:1.7; margin:10px 0; }
+.island .message-speaker { gap:8px; font-size:12px; }
+.island .robot-dock { display:flex; flex:0 0 32px; width:32px; height:36px; gap:0; }
+.island .robot-dock .robot-greet { flex:0 0 36px; width:32px; height:36px; border-radius:9px; }
+.island .robot-dock .zen-companion.large { width:32px; height:36px; }
+.island.live-only .with-robot .live-empty { min-height:100px; border-radius:15px; gap:14px; }
+.island .copy-response,.island .result-actions button { font-size:12px; }
+
+.island.live-only .screen-context-note { display:flex; flex-wrap:wrap; gap:2px 8px; min-height:36px; padding:4px 8px; margin:6px 16px 0; border:1px solid var(--border); border-radius:10px; background:#eeebf4; white-space:normal; overflow:visible; }
+.screen-context-description { display:flex; align-items:center; gap:6px; flex:1 1 170px; min-width:0; font-size:12px; color:#4e425f; }
+.screen-context-source small { display:block; font-size:11px; color:var(--secondary); margin-top:2px; }
+.screen-context-actions { display:flex; align-items:center; gap:2px; margin-left:auto; }
+.island .screen-context-note .screen-context-actions button { min-height:28px; padding:4px 6px; margin:0; font-size:12px; color:#572491; border-radius:6px; }
+.island .screen-context-note .screen-context-actions button:hover { background:#dfd3ee; }
+.island .screen-context-note .screen-context-actions button:disabled { color:var(--secondary); }
+.island .screen-preview p { font-size:12px; line-height:1.5; }
+
+.island.live-only .execution-controls { margin:0 16px 10px; padding:6px; border:1px solid var(--border); border-radius:12px; gap:4px 6px; background:#eceaf0; }
+.island.live-only .execution-controls.listening { border-color:#a875e5; background:#eee2fc; }
+.island.live-only .execution-controls.speaking { border-color:#b296d0; }
+.island.live-only .microphone-group { flex:1 1 auto; gap:4px; }
+.island.live-only .execution-controls button { font-size:12px; min-height:32px; padding:5px 8px; border-radius:8px; }
+.island .voice-toggle { display:flex; align-items:center; gap:7px; border:0; background:transparent; color:var(--secondary); }
+.island .voice-toggle>svg { width:17px; height:17px; flex-shrink:0; }
+.island .voice-toggle>span { display:flex; gap:5px; align-items:center; }
+.island.live-only .voice-toggle.active { background:var(--accent); color:white; }
+.island .voice-toggle.active .mic-dot { background:white; }
+.island.live-only .execution-actions { gap:4px; }
+.island.live-only .execution-actions button { border:1px solid #d2cbdc; background:#faf9fc; }
+.island.live-only .execution-actions .meeting-active { background:var(--ink); color:white; border-color:var(--ink); }
+.island .voice-notice { flex-basis:100%; max-width:none; font-size:12px; white-space:normal; }
+
+.home-greeting { gap:24px; margin-bottom:20px; }
+.home-greeting h1 { font-size:25px; }
+.home-greeting p { font-size:14px; }
+.home-eyebrow { font-size:10px; }
+.home-prompt { padding:15px 16px 10px; border:1px solid #d6cbe2; border-radius:16px; background:var(--surface); box-shadow:0 4px 14px #2c16340a; }
+.home-prompt:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px #7c3aed12; }
+.home-prompt label { display:block; font-size:16px; font-weight:600; color:var(--text); }
+.home-prompt>div { display:flex; align-items:flex-end; gap:12px; }
+.home-prompt textarea { flex:1; min-width:0; min-height:64px; max-height:100px; resize:none; padding:12px 0 4px; border:0; background:transparent; color:var(--text); font-size:14px; line-height:1.5; }
+.home-prompt textarea:focus-visible { outline:0; }
+.home-prompt .composer-send { width:36px; height:36px; margin-bottom:5px; display:grid; place-items:center; flex-shrink:0; }
+.home-prompt .composer-send svg { width:18px; height:18px; }
+.island.live-only .home-page .screen-context-note { margin:10px 0 0; }
+.home-shortcuts { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
+.home-shortcuts button { display:flex; align-items:center; gap:6px; font-size:12px; padding:8px 10px; background:transparent; border:1px solid var(--border); border-radius:9px; }
+.home-shortcuts svg { width:15px; height:15px; color:var(--accent); }
+.home-shortcuts button:hover { background:var(--violet-soft); }
+.home-footnote { font-size:12px; line-height:1.5; margin-top:16px; }
+.home-context-pending { font-size:12px; line-height:1.5; color:var(--secondary); margin:10px 0; }
+@media(max-width:420px) {
+  .island .with-robot .latest-message { padding-inline:12px; }
+  .island .activity-panel { margin-inline:12px; }
+  .island .activity-summary { font-size:12px; padding-inline:8px; }
+  .island.live-only .microphone-group { flex-basis:100%; }
+  .island.live-only .execution-actions { justify-content:flex-start; }
+  .home-greeting { gap:12px; }
+  .home-greeting h1 { font-size:21px; }
+}

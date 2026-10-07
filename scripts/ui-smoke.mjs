@@ -32,10 +32,10 @@ try {
   await chatPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await chatPage.locator('main').screenshot({path:screenshots+'/robot-layout.png'});
   const withContext=(await chatPage.locator('main').boundingBox()).height;
-  assert.equal(withContext-withoutContext,34,'Context appearing after idle must reserve its full row');
+  assert.equal(withContext-withoutContext,Math.ceil((await chatPage.locator('.screen-context-note').boundingBox()).height+6),'Context appearing after idle must reserve its full row');
   await chatPage.setViewportSize({width:640,height:withContext});
   assert.equal(await chatPage.evaluate(()=>window.lastChatLayout.height),withContext);
-  assert(await chatPage.locator('.screen-context-chip small').isVisible());
+  assert(await chatPage.locator('.screen-context-source').isVisible());
   assert(await chatPage.locator('textarea').evaluate(el=>el.scrollHeight===el.clientHeight));
   await chatPage.locator('main').screenshot({path:`${screenshots}/chat-desktop.png`});
   await chatPage.setViewportSize({width:320,height:600});
@@ -53,7 +53,11 @@ try {
   await chatPage.setViewportSize({width:640,height:600});
   await chatPage.evaluate(()=>window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'layout-loop',state:'awaiting_input',message:'Petición preparada en Codex del escritorio. Pulsa Enviar allí para iniciar el análisis con tu cuenta. ZEN no ha enviado los archivos a su API ni ha ejecutado el análisis.'}})));
   const resizeCycle=async()=>{const heights=[];for(let n=0;n<14;n++){await chatPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const height=await chatPage.evaluate(()=>window.lastChatLayout.height);heights.push(height);await chatPage.setViewportSize({width:640,height:Math.min(600,height)});}return heights;};
-  const oldBreakpoint=await chatPage.addStyleTag({content:'@media(max-height:560px){.activity-panel{flex-basis:120px}.activity-steps{height:74px}}'});
+  await chatPage.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  // Place the historical breakpoint between the two activity row heights.
+  // The expanded navigation changes header height, so 560px is no longer the trigger.
+  const legacyBreakpoint=await chatPage.evaluate(()=>window.lastChatLayout.height+6);
+  const oldBreakpoint=await chatPage.addStyleTag({content:`@media(max-height:${legacyBreakpoint}px){.island .activity-panel{flex-basis:120px}.activity-steps{height:74px}}`});
   const before=await resizeCycle();assert(new Set(before.slice(-6)).size>1,'Regression fixture must reproduce the old resize loop');
   await oldBreakpoint.evaluate(el=>el.remove());const after=await resizeCycle();
   assert.equal(new Set(after.slice(-6)).size,1,'Native viewport feedback must settle instead of flashing');
@@ -96,7 +100,7 @@ try {
   await page.getByRole('button',{name:'Desplegar panel'}).click();
   const emit=detail=>page.evaluate(detail=>window.dispatchEvent(new CustomEvent('zen-demo-task',{detail})),detail);
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'ready',sourceTitle:'Pantalla de prueba - ChatGPT',capturedAt:Date.now()}});
-  const contextBox=await page.locator('.screen-context-note').boundingBox(),composerBox=await page.locator('.text-composer').boundingBox(),footerBox=await page.locator('.microphone-group').boundingBox();
+  const contextBox=await page.locator('.screen-context-note').boundingBox(),composerBox=await page.locator('.text-composer').boundingBox(),footerBox=await page.locator('footer').boundingBox();
   assert(Math.abs(contextBox.x-composerBox.x)<=1);assert(Math.abs(footerBox.x-composerBox.x)<=1);
   const contextChip=await page.getByRole('button',{name:'Ver captura de referencia',exact:true}).boundingBox(),refreshButton=await page.getByRole('button',{name:'Actualizar captura',exact:true}).boundingBox();
   assert(refreshButton.x-contextChip.x-contextChip.width<20);
@@ -108,17 +112,17 @@ try {
   await page.getByText('Busca en la web',{exact:true}).waitFor();
   const beforeContext=await page.locator('.result-text').innerText();
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'queued',capturedAt:Date.now()}});
-  await page.getByText('Preparada',{exact:false}).waitFor();
+  await page.getByText('Captura de pantalla',{exact:false}).waitFor();
   await page.screenshot({path:screenshots+'/screen-context.png',animations:'disabled'});
   assert.equal(await page.locator('.result-text').innerText(),beforeContext);
   await page.getByRole('button',{name:'Recoger panel'}).click();
   assert.equal(await page.getByRole('button',{name:'Actualizar contexto visual',exact:true}).count(),0);
   await page.getByRole('button',{name:'Desplegar panel'}).click();
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'expired'}});
-  await page.getByText('Actualiza la referencia',{exact:false}).waitFor();
+  await page.getByText('Captura caducada',{exact:false}).waitFor();
   await page.evaluate(()=>{window.fixtureRefreshes=0;window.zen.refreshScreen=async()=>{window.fixtureRefreshes++;return{ok:true,value:true};};});
   await emit({id:'voice',state:'idle',message:'',screenContext:{state:'queued',capturedAt:Date.now(),sourceTitle:'Gráfico de prueba · Navegador'}});
-  assert.match(await page.locator('.screen-context-note').innerText(),/Pantalla[\s\S]*Preparada/);
+  assert.match(await page.locator('.screen-context-note').innerText(),/Captura de Gráfico de prueba/);
   await page.getByRole('button',{name:'Actualizar contexto visual',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.fixtureRefreshes),1);
   assert.equal(await page.locator('.companion-eyes').first().evaluate(el=>getComputedStyle(el).animationName),'none');
@@ -327,12 +331,12 @@ try {
   await page.evaluate(async()=>{for(let n=1;n<=80;n++){window.dispatchEvent(new CustomEvent('zen-demo-task',{detail:{id:'fluid',state:'thinking',message:'Trabajando',streamText:'Texto literal ñ '.repeat(n)}}));await new Promise(resolve=>setTimeout(resolve,4));}});
   await page.waitForTimeout(70);
   const streamMetrics=await page.evaluate(()=>({height:document.querySelector('main').getBoundingClientRect().height,layouts:window.fixtureLayoutCalls.length,header:window.fixtureHeaderChanges,textPaints:window.fixtureTextChanges,sameArticle:window.fixtureArticle===document.querySelector('.live-message'),sameBrand:window.fixtureBrand===document.querySelector('.brand-home'),animation:getComputedStyle(document.querySelector('.companion-float')).animationName,text:document.querySelector('.result-text').textContent}));
-  assert.equal(streamMetrics.height,544);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
+  assert.equal(streamMetrics.height,504);assert.equal(streamMetrics.layouts,0);assert.equal(streamMetrics.header,0);assert(streamMetrics.textPaints<25);assert(streamMetrics.sameArticle&&streamMetrics.sameBrand);assert.equal(streamMetrics.animation,'none');assert.equal(streamMetrics.text,'Texto literal ñ '.repeat(80));
   await emit({id:'fluid',state:'completed',message:'Resultado final exacto.'});await page.getByRole('button',{name:'Copiar respuesta'}).waitFor();
   await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.fixtureCopied=text;}}});});
   await page.getByRole('button',{name:'Copiar respuesta'}).click();assert.equal(await page.evaluate(()=>window.fixtureCopied),'Resultado final exacto.');
   await emit({id:'voice',state:'failed',message:'Voz desconectada por inactividad.'});await page.getByText('Voz desconectada por inactividad.',{exact:false}).waitFor();assert.equal(await page.locator('.result-text').innerText(),'Resultado final exacto.');
-  await page.waitForTimeout(350);assert.equal(await page.locator('.header-status').innerText(),'Listo');
+  await page.waitForTimeout(350);assert.equal(await page.locator('.header-status').innerText(),'Tarea completada');
   await page.screenshot({path:screenshots+'/stable-compact.png',animations:'disabled'});
   await emit({id:'fluid',state:'completed',message:'Respuesta extensa. '.repeat(180)+'FINAL'});await page.waitForTimeout(100);assert((await page.locator('main').boundingBox()).height>compactHeight);
   await page.locator('.latest-message').evaluate(el=>{el.scrollTop=el.scrollHeight;});await page.locator('.latest-message').evaluate(el=>{el.scrollTop=0;});await page.getByRole('button',{name:'Ir al final ↓',exact:true}).click();
@@ -343,7 +347,7 @@ try {
   await emit({id:'progress',state:'thinking',message:'Consultando fuentes web…',activity:'searching',streamText:'Texto literal'});await page.locator('.header-status').filter({hasText:'Consultando web'}).waitFor();
   await emit({id:'progress',state:'completed',message:'Resultado de la lectura'});
   await emit({id:'control',state:'idle',message:'',preparation:{requestId:'folder',active:true}});await page.locator('.header-status').filter({hasText:'Leyendo'}).waitFor();
-  await emit({id:'control',state:'idle',message:'',preparation:{requestId:'folder',active:false}});await page.locator('.header-status').filter({hasText:'Listo'}).waitFor();
+  await emit({id:'control',state:'idle',message:'',preparation:{requestId:'folder',active:false}});await page.locator('.header-status').filter({hasText:'Tarea completada'}).waitFor();
   await page.evaluate(async()=>{
     window.zenDemo=false;const settings=await window.zen.settings();settings.value.settings.voiceConsent=true;window.zen.settings=async()=>settings;window.dispatchEvent(new Event('focus'));
     navigator.mediaDevices.getUserMedia=async()=>{const context=new AudioContext();await context.resume();const oscillator=context.createOscillator(),gain=context.createGain(),output=context.createMediaStreamDestination();gain.gain.value=.07;oscillator.connect(gain).connect(output);oscillator.start();window.fixtureInputContext=context;return output.stream;};
@@ -413,6 +417,7 @@ try {
   await page.goto(base);await page.getByRole('button',{name:'Desplegar panel'}).click();
   for(const activity of ['processing','thinking','searching','structuring'])await emit({id:'activity-test',state:'thinking',activity,request:'Resume los puntos clave de esta página',message:'Avance de prueba'});
   await page.getByRole('region',{name:'Actividad de la tarea'}).waitFor();
+  assert.equal(await page.locator('.activity-summary').getAttribute('aria-expanded'),'false');await page.locator('.activity-summary').click();
   assert.equal(await page.locator('.activity-step').count(),4);
   assert.equal(await page.locator('.activity-step.current').innerText(),'Estructurando respuesta\nAhora');
   await page.waitForFunction(()=>Array.from(document.querySelectorAll('.activity-node img')).every(image=>image.complete&&image.naturalWidth===48));
@@ -482,7 +487,7 @@ try {
   await page.setViewportSize({width:1000,height:900});await page.emulateMedia({reducedMotion:'no-preference'});
   await page.goto(base);await page.getByRole('button',{name:'Desplegar panel'}).click();
   assert.equal(await page.locator('.robot-dock .robot-hand').count(),2);
-  assert.equal((await page.locator('.robot-dock .zen-companion').boundingBox()).height,144);
+  assert.equal((await page.locator('.robot-dock .zen-companion').boundingBox()).height,36);
   await page.evaluate(()=>{window.robotRunCalls=0;window.zen.run=async()=>{window.robotRunCalls++;throw Error('Greeting must stay local');};});
   await page.getByRole('button',{name:'Saludar a ZEN'}).click();await page.locator('.robot-dock .robot-waving').waitFor();
   assert.equal(await page.evaluate(()=>window.robotRunCalls),0);
@@ -502,6 +507,6 @@ try {
   await page.waitForFunction(()=>document.querySelector('main').classList.contains('motion-off'));
   assert(await page.locator('.zen-robot').evaluateAll(robots=>robots.every(robot=>[...robot.querySelectorAll('*')].every(el=>getComputedStyle(el).animationName==='none'))));
   assert.deepEqual(errors,[]);
-  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, nativeResizeCycle, streamMetrics, compactHeight, checks: ['text, file and native-window drop UI: no automatic request, removable local references, preview, explicit send IDs and Codex folder route', 'larger full-body robot, two hands, observed task gestures, greeting without API, paused/failure/approval semantics and reduced-motion gestures', 'compact real Web Audio microphone meter with mock transport; mute removes meter', 'observed local reading and Live progress', 'actual activity stages, bounded timeline, no duplicate steps or resizing per delta', 'capsule shows only current status without text clipping', 'GIF assets decode, reduced motion uses static SVG', 'cancelled task never becomes completed; small viewport controls remain usable', 'computer task leaves chat available; exact preview and chat confirmation continue the same task', 'confirmation code visible; chat confirmation avoids screen capture', 'desktop Codex handoff uses neutral En Codex status, one local chime, no repeat on updates/unmute, meeting silence and genuine input prompts preserved', 'streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with six context options; no window or media picker', 'favorites persist locally, editable resume carries task id, selected text and cropped image sent only on submit, chat omits cost controls and uses the configured backend budget', 'original companion follows pointer', 'header drag captures pointer and suppresses click', '320×72 top capsule, 72×320 side rail and 640px chat', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view', 'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution', 'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
+  const report = { at: new Date().toISOString(), browser: 'Edge headless', passed: true, nativeResizeCycle, streamMetrics, compactHeight, checks: ['text, file and native-window drop UI: no automatic request, removable local references, preview, explicit send IDs and Codex folder route', 'compact full-body avatar, two hands, observed task gestures, greeting without API, paused/failure/approval semantics and reduced-motion gestures', 'compact real Web Audio microphone meter with mock transport; mute removes meter', 'observed local reading and Live progress', 'actual activity stages, bounded timeline, no duplicate steps or resizing per delta', 'capsule shows only current status without text clipping', 'GIF assets decode, reduced motion uses static SVG', 'cancelled task never becomes completed; small viewport controls remain usable', 'computer task leaves chat available; exact preview and chat confirmation continue the same task', 'confirmation code visible; chat confirmation avoids screen capture', 'desktop Codex handoff uses neutral En Codex status, one local chime, no repeat on updates/unmute, meeting silence and genuine input prompts preserved', 'streaming: stable DOM/header/bounds, batched literal text', 'compact height and expanded long response', 'copy exact response and follow tail', 'voice warning preserves conversation', 'Codex project handoff and return to latest conversation', 'project file preview and exact destination approval', 'project review on small viewport', 'screen context status preserves latest message', 'compact visual context indicator and expiry', 'Live exact transcript review and stale request blocked', 'latest message with text composer and clipboard image priority', 'manual image stays local before send', 'exact screenshot preview and stale caption suppression', 'partial captions and public agent stream', 'old responses suppressed after interruption', 'source links retained during spoken summary', 'single clip with six context options; no window or media picker', 'favorites persist locally, editable resume carries task id, selected text and cropped image sent only on submit, chat omits cost controls and uses the configured backend budget', 'original companion follows pointer', 'header drag captures pointer and suppresses click', '320×72 top capsule, 72×320 side rail and 640px chat', 'real Web Audio tone scheduling', 'meeting immediately silences sounds', 'task updates do not repeat completion sound', 'appearance preferences save and disable sounds and animations', 'top edge in every view', 'collapse and expand without losing context', 'execution island excludes configuration', 'compact attachment popover and removable project folder', 'preferences in separate view', 'stop available while compact', 'full latest result scrolls without truncation', 'representative states', 'approval demo single use, no execution', 'Escape hides without Stop', 'latest message retained on hide', 'settings scroll panel', 'profile import editable preview, correction, export and deletion', 'reduced motion', 'small viewport', 'no page errors'], screenshots };
   await mkdir('test-results', { recursive: true }); await writeFile('test-results/ui.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

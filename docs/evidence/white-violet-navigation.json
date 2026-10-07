@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-07T08:58:49.549Z",
+  "passed": true,
+  "defaultChatGptVerified": true,
+  "chatDraftPreserved": true,
+  "browserStatePreserved": true,
+  "capsuleHidesBrowser": true,
+  "googleRecoveryUiVerified": true,
+  "recoverySurvivesCollapse": true,
+  "recoveryReturnsToChatGpt": true,
+  "curvedNavigationVerified": true,
+  "iconsOnlyNavigationVerified": true,
+  "keyboardNavigationVerified": true,
+  "reducedMotionVerified": true,
+  "smallScreenNavigation": true,
+  "apiCalls": 0,
+  "screenshots": "docs/ui-preview/latest-navigation-1791363525869"
+}

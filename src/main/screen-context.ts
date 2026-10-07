@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { WindowInfo } from '../tools/windows/native';
 
 export type ScreenSnapshot = { id:string; image:string; capturedAt:number; sourceTitle?:string;scope?:'display'|'window' };
-export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'; capturedAt?:number;sourceTitle?:string;scope?:'display'|'window';snapshotId?:string };
+export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'|'removed'; capturedAt?:number;sourceTitle?:string;scope?:'display'|'window';snapshotId?:string };
 export function underlyingPoint(bounds:{x:number;y:number;width:number;height:number},edge:DockEdge){ return edge==='left'?{x:bounds.x+bounds.width+1,y:bounds.y+bounds.height/2}:edge==='right'?{x:bounds.x-1,y:bounds.y+bounds.height/2}:{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height+1}; }
 
 type Deps = {
@@ -25,6 +25,7 @@ export class ScreenContext {
   private snapshot?:ScreenSnapshot;
   private expiry?:ReturnType<typeof setTimeout>;
   private pending?:Promise<ScreenSnapshot|undefined>;
+  private dismissed=false;
   constructor(private deps:Deps){}
   private now(){return this.deps.now?.()??Date.now();}
   current(){
@@ -33,9 +34,12 @@ export class ScreenContext {
     return undefined;
   }
   queued(id:string){if(this.current()?.id===id)this.deps.status({state:'queued',capturedAt:this.snapshot!.capturedAt,sourceTitle:this.snapshot!.sourceTitle,scope:this.snapshot!.scope,snapshotId:id});}
-  cancel(){++this.generation;this.controller?.abort();this.controller=undefined;this.pending=undefined;this.snapshot=undefined;clearTimeout(this.expiry);this.deps.status({state:'idle'});}
+  cancel(){++this.generation;this.controller?.abort();this.controller=undefined;this.pending=undefined;this.snapshot=undefined;clearTimeout(this.expiry);this.deps.status({state:this.dismissed?'removed':'idle'});}
+  dismiss(){this.dismissed=true;this.cancel();}
   ensure(){return this.pending??(this.current()?Promise.resolve(this.current()):this.refresh());}
-  refresh(){
+  refresh(explicit=false){
+    if(explicit)this.dismissed=false;
+    if(this.dismissed)return Promise.resolve(undefined);
     this.cancel();const generation=this.generation;const controller=new AbortController();this.controller=controller;
     this.deps.status({state:'capturing'});
     const timer=setTimeout(()=>controller.abort(),this.deps.timeoutMs??5000);timer.unref?.();

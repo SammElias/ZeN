@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-07T08:55:00.4900201Z",
+  "executable": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "sha256": "e3b72d2a7f91bbc063d9640e1ef0b333e6f50c711625a2fa51f783019259d6f9",
+  "bytes": 114703305,
+  "baseCommit": "17f5d3adae7d518d0c8aa1c97c2f0a5c6dc0bc0f",
+  "localCurvedNavigation": true,
+  "iconsOnlyNavigation": true,
+  "navigationIconSizePx": 15,
+  "expandedHeaderHeightDip": 60,
+  "sourceHashes": {
+    "src\\renderer\\NavigationTabs.tsx": "32a12e635db2534df65f3139b76c0b024362fb3a172d87a3baf8c1e4863c00f4",
+    "src\\renderer\\App.tsx": "df5e51498ac95996137c1ada2c947c14cda17da5a821e95718fce91a880a50fa",
+    "src\\renderer\\navigation.css": "07a6c8eeb987e25897460ff2da1f3c88b29085061496bec4134c3846df24c849"
+  },
+  "startupVerified": true,
+  "desktopHashMatchesTestedExecutable": true,
+  "navigationUiVerified": true,
+  "iconsOnlyNavigationVerified": true,
+  "fullInterfaceUiVerified": true,
+  "googleRecoveryPreserved": true,
+  "apiCalled": false,
+  "previousExecutableBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\icons-only-desktop-20261007085459920\\ZEN-before-icons-only.exe",
+  "fullObjectiveVerified": false
+}

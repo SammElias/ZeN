@@ -1,5 +1,3 @@
-import {IntegratedBrowser} from './integrated-browser';
-import {BrowserCommandSchema,BrowserViewportSchema} from '../shared/browser';
 import {DropContext,validateDropPath} from './drop-context';
 import {watchWindowDrops} from './window-drops';
 import type {WindowDropEvent} from '../shared/drop-context';
@@ -287,10 +285,6 @@ void app.whenReady().then(async () => {
     });
   }
   const noArg = z.undefined();
-  const browser=new IntegratedBrowser(window,state=>{if(!window.isDestroyed())window.webContents.send('zen:browser-state',state);},()=>layout.mode==='browser');
-  handle('browser-state',noArg,()=>browser.snapshot());
-  handle('browser-command',BrowserCommandSchema,value=>browser.command(value));
-  handle('browser-viewport',BrowserViewportSchema,value=>browser.setViewport(value));
   handle('library-roots',noArg,()=>store.libraryRoots());
   handle('mcp-connection',noArg,()=>store.publicMcp());
   handle('save-mcp-connection',McpConnectionSchema.extend({token:z.string().min(1).max(8000).optional()}),value=>{
@@ -306,7 +300,7 @@ void app.whenReady().then(async () => {
     const viewer=new BrowserWindow({width:960,height:720,show:false,icon:appIconPath,title:item.meta.title,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,partition:'zen-artifact-'+randomUUID()}});
     viewer.setMenu(null);viewer.webContents.setWindowOpenHandler(()=>({action:'deny'}));viewer.webContents.on('will-navigate',event=>event.preventDefault());viewer.webContents.session.setPermissionRequestHandler((_c,_p,reply)=>reply(false));
     const body=item.meta.kind==='image'?`<img alt="${escape(item.meta.title)}" src="data:${item.mime};base64,${item.data.toString('base64')}" style="max-width:100%;max-height:90vh">`:`<pre style="white-space:pre-wrap">${escape(item.data.toString('utf8'))}</pre>`;
-    try{await viewer.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(`<html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><title>${escape(item.meta.title)}</title></head><body style="background:#13141a;color:#eee;font:15px system-ui;padding:16px">${body}</body></html>`));viewer.show();return true;}catch(error){viewer.destroy();throw error;}
+    try{await viewer.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(`<html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><title>${escape(item.meta.title)}</title></head><body style="background:#f5f5f7;color:#18151e;font:15px system-ui;padding:16px">${body}</body></html>`));viewer.show();return true;}catch(error){viewer.destroy();throw error;}
   });
   const nativeDirectory = join(__dirname, 'native');
   let nativeAbort = new AbortController();
@@ -386,10 +380,11 @@ void app.whenReady().then(async () => {
     own:row=>row.pid===process.pid,
     blocked:row=>sensitive(row.title),
     edge: () => dockEdge,
-    status:status=>{if(['idle','expired','unavailable'].includes(status.state))voice.invalidateScreenContext();window.webContents.send('zen:task',{id:'voice',state:'idle',message:'',screenContext:status});}
+    status:status=>{if(['idle','expired','unavailable','removed'].includes(status.state))voice.invalidateScreenContext();window.webContents.send('zen:task',{id:'voice',state:'idle',message:'',screenContext:status});}
   });
   const windows = async () => { const result = (await native(nativeDirectory, 'windows', z.array(WindowSchema))).filter(row => !sensitive(row.title)); selectedWindows = new Map(result.map(row => [row.id, row])); return result; };
   handle('screen-preview',noArg,()=>{const snapshot=screenContext?.current();return snapshot??null;});
+  handle('screen-remove',noArg,()=>{voice.invalidateRequest();screenContext?.dismiss();return true;});
   handle('attach-image',z.object({image:z.string().max(4000000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/)}).strict(),({image})=>{const value=compactImage(image,1920);if(value.length>3000000)throw new ZenError('La imagen es demasiado grande.');const observationId=randomUUID();observations.set(observationId,{image:value,at:Date.now()});setTimeout(()=>observations.delete(observationId),120000).unref();if(observations.size>5)observations.delete(observations.keys().next().value!);return{observationId};});
   handle('apps', noArg, () => native(nativeDirectory, 'apps', z.array(z.object({ id: z.string() }))));
   handle('open-app', z.string().min(1).max(200), id => { if (/^notepad\.exe$/i.test(id) && !settings.allowNotepad) throw new ZenError('Bloc de notas está deshabilitado.'); return orchestrator.desktopRun(nativeAbort.signal, () => native(nativeDirectory, 'open-app', z.object({ id: z.string(), pid: z.number(), windowHandle: z.string(), verified: z.literal(true) }), id, nativeAbort.signal)); });
@@ -610,7 +605,7 @@ void app.whenReady().then(async () => {
   handle('cancel-task', z.string().uuid(), id => { orchestrator.cancelTask(id); return true; });
   handle('stop', noArg, async () => { await emergencyStop(); return true; });
   handle('hide', noArg, hide);
-  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; browser.sync(); syncGaze(); await position(opening); browser.sync(); return true; });
+  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; syncGaze(); await position(opening); return true; });
   handle('cursor',noArg,()=>gaze.current());
   handle('dock', noArg, () => dockEdge);
   handle('drag', OverlayDragSchema, phase => { if (phase === 'start') startDrag(); else endDrag(); return true; });
@@ -622,7 +617,7 @@ void app.whenReady().then(async () => {
     return voice.start(sdp);
   });
   const liveId = z.string().min(1).max(256).refine(value=>!/[\x00-\x1f\x7f]/.test(value));
-  handle('screen-refresh',noArg,async()=>{voice.invalidateRequest();const generation=hideGeneration;await screenContext?.refresh();if(generation!==hideGeneration)throw new ZenError('Captura cancelada.');await queueScreen();return !!screenContext?.current();});
+  handle('screen-refresh',z.boolean().optional(),async explicit=>{voice.invalidateRequest();const generation=hideGeneration;await screenContext?.refresh(explicit??true);if(generation!==hideGeneration)throw new ZenError('Captura cancelada.');await queueScreen();return !!screenContext?.current();});
   handle('voice-end', liveId, async id => { await voice.end(id); return true; });
   handle('live-ready', liveId, async id => { voice.started(id); if(voiceFolderId)voice.folderContext(true);await queueScreen(); return true; });
   handle('live-end', liveId, id => voice.end(id));
@@ -631,7 +626,7 @@ void app.whenReady().then(async () => {
   tray = new Tray(trayIconPath); tray.setToolTip('ZEN · Disponible');
   const openPreferences = async (show = true) => {
     if (preferences && !preferences.isDestroyed()) { preferences.show(); preferences.focus(); return; }
-    preferences = new BrowserWindow({ width: 580, height: 680, title: 'ZEN · Preferencias', icon: appIconPath, show: false, backgroundColor: '#10111A', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
+    preferences = new BrowserWindow({ width: 580, height: 680, title: 'ZEN · Preferencias', icon: appIconPath, show: false, backgroundColor: '#f5f5f7', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
     const current = preferences; current.setMenu(null); current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     current.webContents.on('will-navigate', (event, url) => { if (url !== preferencesUrl) event.preventDefault(); });
     current.on('closed', () => { if (preferences === current) preferences = undefined; });
@@ -641,7 +636,7 @@ void app.whenReady().then(async () => {
   tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir ZEN', click: () => invoke('focus') }, { label: 'Conversar por voz', click: () => invoke('voice') }, {label:'Tareas y favoritos…',click:()=>{void invoke('focus').then(()=>window.webContents.send('zen:workspace'));}}, { label: 'Preferencias…', click: () => { void openPreferences(); } }, { label: 'Detener', click: () => { void emergencyStop(); window.webContents.send('zen:task', { id: 'voice', state: 'cancelled', message: 'Sesión detenida desde la bandeja.' }); } }, { type: 'separator' }, { label: 'Salir', click: () => app.quit() }]));
   tray.on('double-click', () => invoke('focus'));
   window.on('close', event => { if (!quitting) { event.preventDefault(); void hide(); } });
-  app.on('before-quit', event => { if(quitting)return;quitting = true;browser.dispose();windowDropWatcher?.dispose();gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
+  app.on('before-quit', event => { if(quitting)return;quitting = true;windowDropWatcher?.dispose();gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
   await window.loadFile(rendererPath);
   window.showInactive();
   let documentReaderVerified=false;
@@ -716,10 +711,13 @@ void app.whenReady().then(async () => {
     await new Promise(resolve=>setTimeout(resolve,80));window.removeListener('resize',resized);
     const stableStreamingVerified=fluidResizes===0&&JSON.stringify(fluidBounds)===JSON.stringify(window.getBounds())&&await window.webContents.executeJavaScript(`window.zenFluidArticle===document.querySelector('.live-message')&&window.zenFluidHeader===document.querySelector('.brand-home')&&document.querySelector('.result-text').textContent===${JSON.stringify('Texto literal ñ '.repeat(40))}&&getComputedStyle(document.querySelector('.companion-float')).animationName==='none'`);
     let activityTimelineVerified=false;
+    const activityFolded=await window.webContents.executeJavaScript(`document.querySelector('.activity-summary')?.getAttribute('aria-expanded')==='false'&&document.querySelector('.activity-steps')?.hidden`);
+    await window.webContents.executeJavaScript(`document.querySelector('.activity-summary')?.click()`);
     for(let attempt=0;attempt<30&&!activityTimelineVerified;attempt++){
-      activityTimelineVerified=await window.webContents.executeJavaScript(`document.querySelector('.activity-step.current')?.textContent.includes('Escribiendo')&&document.querySelector('.activity-step.current img')?.naturalWidth===48`);
+      activityTimelineVerified=activityFolded&&await window.webContents.executeJavaScript(`document.querySelector('.activity-summary')?.getAttribute('aria-expanded')==='true'&&!document.querySelector('.activity-steps')?.hidden&&document.querySelector('.activity-step.current')?.textContent.includes('Escribiendo')&&document.querySelector('.activity-step.current img')?.naturalWidth===48`);
       if(!activityTimelineVerified)await new Promise(resolve=>setTimeout(resolve,25));
     }
+    await window.webContents.executeJavaScript(`document.querySelector('.activity-summary')?.click()`);
     emit({id:fluidTaskId,request:fluidRequest,state:'completed',message:'Respuesta útil conservada.'});emit({id:'voice',state:'failed',message:'Voz desconectada por inactividad.'});
     await new Promise(resolve=>setTimeout(resolve,80));
     const voiceNoticePreserved=await window.webContents.executeJavaScript(`document.querySelector('.result-text').textContent==='Respuesta útil conservada.'&&document.querySelector('.voice-notice')?.textContent.includes('Voz desconectada por inactividad.')`);
@@ -833,6 +831,8 @@ void app.whenReady().then(async () => {
     await new Promise(resolve=>setTimeout(resolve,80));
     const refreshedReference=contextFixture.current();
     const taskbarReturnVerified=backgroundTaskbarVerified && !window.isMinimized() && skipTaskbar && presentation==='overlay' && layout.mode==='capsule' && !!refreshedReference && refreshedReference.id!==previousReference?.id && restoreCaptures===2 && await window.webContents.executeJavaScript(`document.querySelector('main').classList.contains('capsule')`);
+    const screenRemovalVerified=await window.webContents.executeJavaScript(`(async()=>{const removed=await window.zen.removeScreen();const automatic=await window.zen.refreshScreen(false);const empty=await window.zen.previewScreen();const invalid=await window.zen.refreshScreen('invalid');const fresh=await window.zen.refreshScreen(true);const restored=await window.zen.previewScreen();return removed.ok&&automatic.ok&&!automatic.value&&empty.ok&&empty.value===null&&!invalid.ok&&fresh.ok&&fresh.value&&restored.ok&&!!restored.value;})()`);
+    if(!screenRemovalVerified)throw new Error('Screen removal IPC did not preserve explicit capture choice.');
     contextFixture.cancel();screenContext=previousScreenContext;
     await hide();
     let objective: Record<string, unknown> | undefined;
@@ -949,26 +949,11 @@ void app.whenReady().then(async () => {
       const outcome=await task;const replay=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({text:`confirmo ${proposal.code}`,requestId:randomUUID(),priority:2})})`);
       computerIpcVerified=approved.ok&&outcome.state==='completed'&&Number(effects)===1&&rounds===2&&!replay.ok&&!!proposal.preview;
     }finally{computer.run=computerRun;confirmations.revokePrefix('computer:');}
-    // Exercise the user browser through the same isolated renderer IPC and layout.
+    // Verify that the removed account/browser surface has no UI or preload route.
     await invoke('focus');
-    const browserSession=session.fromPartition('persist:zen-user-browser-v1');
-    browserSession.protocol.handle('https',request=>new URL(request.url).hostname==='zen-browser.test'?new Response('<title>ZEN browser IPC fixture</title><h1>Local fixture</h1>',{headers:{'Content-Type':'text/html'}}):new Response('',{status:403}));
-    const invalidBrowser=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'file:///C:/secret.txt'})");
-    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.getAttribute('aria-label')==='Navegador').click()");
-    for(let attempt=0;attempt<40&&!browser.snapshot().url;attempt++)await new Promise(resolve=>setTimeout(resolve,25));
-    const browserDefaultVerified=browser.snapshot().url==='https://chatgpt.com/';
-    const browserNavigation=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'https://zen-browser.test/'})");
-    for(let attempt=0;attempt<60&&(browser.snapshot().loading||window.getBounds().width!==overlayBounds(display.workArea,{mode:'browser',height:900},horizontalRatio,dockEdge,verticalRatio).width);attempt++)await new Promise(resolve=>setTimeout(resolve,25));
-    await new Promise(resolve=>setTimeout(resolve,100));
-    const browserView=window.contentView.children.find(child=>'webContents'in child&&(child as Electron.WebContentsView).webContents!==window.webContents) as Electron.WebContentsView;
-    const browserBounds=browserView?.getBounds();
-    const browserVisible=!!browserView?.getVisible()&&!!browserBounds&&browserBounds.y>=80&&browserBounds.height>100&&browserBounds.width>300&&browserBounds.width<=window.getContentBounds().width;
-    const remoteIsolated=browserView&&await browserView.webContents.executeJavaScript("typeof window.zen==='undefined'&&typeof require==='undefined'");
-    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.getAttribute('aria-label')==='Chat').click()");
-    for(let attempt=0;attempt<40&&browserView?.getVisible();attempt++)await new Promise(resolve=>setTimeout(resolve,25));
-    const integratedBrowserVerified=browserDefaultVerified&&!invalidBrowser.ok&&browserNavigation.ok&&browser.snapshot().title==='ZEN browser IPC fixture'&&browserVisible&&remoteIsolated&&!browserView.getVisible();
-    if(!integratedBrowserVerified)throw Error('Browser IPC failed: '+JSON.stringify({invalidRejected:!invalidBrowser.ok,browserNavigation:browserNavigation.ok,browserVisible,remoteIsolated,browserBounds,visible:browserView?.getVisible()}));
-    console.log(JSON.stringify({ ...result, integratedBrowserVerified, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    const homeChatOnlyVerified=await window.webContents.executeJavaScript("JSON.stringify([...document.querySelectorAll('.top-navigation button')].map(button=>button.getAttribute('aria-label')))==='[\"Home\",\"Chat\"]'&&!document.querySelector('.browser-page,.chatgpt-page,.web-space-tabs')&&typeof window.zen.chatGPTSignIn==='undefined'&&typeof window.zen.browserCommand==='undefined'");
+    if(!homeChatOnlyVerified)throw Error('Home/Chat removal check failed');
+    console.log(JSON.stringify({ ...result, screenRemovalVerified, homeChatOnlyVerified, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

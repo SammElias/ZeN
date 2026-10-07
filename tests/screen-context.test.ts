@@ -7,6 +7,19 @@ const deferred=<T>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T>
 function fixture(){const status=vi.fn(),capture=vi.fn().mockResolvedValue(image),windows=vi.fn().mockResolvedValue([external]);const context=new ScreenContext({windows,capture,own:row=>row.pid===200,blocked:row=>/password/i.test(row.title),status,ttlMs:50});return{context,status,capture,windows};}
 afterEach(()=>vi.useRealTimers());
 describe('automatic invocation context',()=>{
+  it('removes the reference and suppresses automatic captures until an explicit refresh',async()=>{
+    const f=fixture();await f.context.refresh();f.context.dismiss();
+    expect(f.context.current()).toBeUndefined();
+    f.context.cancel();await f.context.ensure();await f.context.refresh();
+    expect(f.capture).toHaveBeenCalledOnce();expect(f.status).toHaveBeenLastCalledWith({state:'removed'});
+    expect(await f.context.refresh(true)).toBeDefined();expect(f.capture).toHaveBeenCalledTimes(2);f.context.cancel();
+  });
+  it('discards an in-flight capture when removed and allows a fresh explicit reference',async()=>{
+    const f=fixture(),pending=deferred<string>();f.capture.mockReturnValueOnce(pending.promise);
+    const run=f.context.refresh();await Promise.resolve();f.context.dismiss();pending.resolve(image);await run;
+    expect(f.context.current()).toBeUndefined();expect(f.status).toHaveBeenLastCalledWith({state:'removed'});
+    expect(await f.context.refresh(true)).toBeDefined();f.context.cancel();
+  });
   it.each(['left','right'] as const)('captures inward from the %s rail and refreshes after background restore',async edge=>{
     const f=fixture(),monitor={x:-1920,y:-200,width:1920,height:1040};
     const anchor={...zen,bounds:{x:edge==='left'?-1920:-40,y:100,width:40,height:240},monitorBounds:monitor};

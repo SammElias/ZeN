@@ -1,10 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { ZenBridge, TaskEvent, DockEdge } from '../shared/contracts';
 const bridge: ZenBridge = {
-  browserState:()=>ipcRenderer.invoke('zen:browser-state'),
-  browserCommand:command=>ipcRenderer.invoke('zen:browser-command',command),
-  browserViewport:viewport=>ipcRenderer.invoke('zen:browser-viewport',viewport),
-  onBrowserState:callback=>{const listener=(_event:unknown,state:Parameters<typeof callback>[0])=>callback(state);ipcRenderer.on('zen:browser-state',listener);return()=>ipcRenderer.removeListener('zen:browser-state',listener);},
   dropFiles:async files=>{try{if(files.length>8)throw Error('Máximo 8 archivos.');const paths=files.map(file=>webUtils.getPathForFile(file));if(paths.some(path=>!path))throw Error('Ese elemento no es un archivo local. Arrastra el archivo desde el Explorador.');return await ipcRenderer.invoke('zen:drop-files',paths);}catch(error){return{ok:false,error:(error as Error).message};}},
   dropText:value=>ipcRenderer.invoke('zen:drop-text',value),dropImage:image=>ipcRenderer.invoke('zen:drop-image',image),removeContextAttachment:id=>ipcRenderer.invoke('zen:remove-context-attachment',id),activeContextAttachments:ids=>ipcRenderer.invoke('zen:active-context-attachments',ids),
   onWindowDrop:callback=>{const listener=(_e:unknown,event:Parameters<typeof callback>[0])=>callback(event);ipcRenderer.on('zen:window-drop',listener);return()=>ipcRenderer.removeListener('zen:window-drop',listener);},
@@ -60,7 +56,8 @@ const bridge: ZenBridge = {
   onDock: callback => { const handler = (_event: unknown, edge: DockEdge) => callback(edge); ipcRenderer.on('zen:dock', handler); return () => ipcRenderer.removeListener('zen:dock', handler); },
   voiceInterrupt: () => ipcRenderer.invoke('zen:voice-interrupt'),
   voiceContext: id => ipcRenderer.invoke('zen:voice-context', id),
-  refreshScreen:()=>ipcRenderer.invoke('zen:screen-refresh'),
+  refreshScreen:explicit=>ipcRenderer.invoke('zen:screen-refresh',explicit),
+  removeScreen:()=>ipcRenderer.invoke('zen:screen-remove'),
   previewScreen:()=>ipcRenderer.invoke('zen:screen-preview'),
   attachImage:image=>ipcRenderer.invoke('zen:attach-image',{image}),
   voiceStart: sdp => ipcRenderer.invoke('zen:voice-start', sdp),

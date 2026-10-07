@@ -7,5 +7,7 @@ release/
 !.env.example
 test-results/
 docs/ui-preview/latest-*/
+docs/ui-preview/conversation-*/
+docs/ui-preview/chatgpt-*/
 .reference/
 *.log

@@ -12,14 +12,14 @@ export const activityLabels: Record<Activity, {label:string; short:string; icon:
   opening_codex: {label:'Abriendo Codex',short:'Abriendo Codex',icon:'codex'},
   codex_external: {label:'Continúa en Codex',short:'En Codex',icon:'codex'},
   opening_app: {label:'Abriendo aplicación',short:'Abriendo app',icon:'app'},
-  observing: {label:'Observando la pantalla',short:'Observando',icon:'search'},
+  observing: {label:'Analizando captura',short:'Analizando captura',icon:'search'},
   executing: {label:'Ejecutando',short:'Ejecutando',icon:'ring'},
   writing: {label:'Escribiendo',short:'Escribiendo',icon:'writing'},
   structuring: {label:'Estructurando respuesta',short:'Estructurando',icon:'structure'},
   verifying: {label:'Comprobando resultado',short:'Comprobando',icon:'search'},
-  approval: {label:'Esperando tu confirmación',short:'Tu confirmación',icon:'pause'},
+  approval: {label:'Esperando tu permiso',short:'Esperando tu permiso',icon:'pause'},
   input: {label:'Necesito tu respuesta',short:'Tu respuesta',icon:'pause'},
-  completed: {label:'Completado',short:'Listo',icon:'check'},
+  completed: {label:'Tarea completada',short:'Tarea completada',icon:'check'},
   failed: {label:'No se pudo completar',short:'Revisar error',icon:'error'},
   cancelled: {label:'Tarea detenida',short:'Detenido',icon:'pause'}
 };

@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-07T08:32:14.9037980Z",
+  "executable": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "sha256": "aed1bc8177d290f2c06398e5e9d23214f96c75db7e7dc21a39ee0a228c3344b8",
+  "bytes": 114700698,
+  "baseCommit": "17f5d3adae7d518d0c8aa1c97c2f0a5c6dc0bc0f",
+  "localAuthRecoveryFix": true,
+  "sourceHashes": {
+    "src\\main\\integrated-browser.ts": "f01f5f9b430b645f3252efc39f1f310b3ee18865ce6913c2f72a9420107a30fc",
+    "src\\shared\\browser.ts": "2a037d1023370eece1fe8a1c105e7936979228fe6e40afcaa5c68e4fb72f3b1f",
+    "src\\renderer\\BrowserPanel.tsx": "922fcb65757f38addb646e2899cd34fd5cbb7f00fe92203a7bbb6e1a5548238b",
+    "src\\renderer\\navigation.css": "15bcf34c50dceec7b487f6d19c074f83843647bce796eac474bf80d2eab0812d"
+  },
+  "startupVerified": true,
+  "desktopHashMatchesTestedExecutable": true,
+  "unitTestsPassed": 312,
+  "googleLoginInsideZenVerified": false,
+  "realAccountLoginVerified": false,
+  "apiCalled": false,
+  "previousExecutableBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\google-recovery-20261007083214365\\ZEN-before-recovery.exe",
+  "fullObjectiveVerified": false
+}

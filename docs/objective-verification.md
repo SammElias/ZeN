@@ -2,6 +2,14 @@
 
 **El objetivo final todavía no está completo.** Las instrucciones de los documentos se aplican dentro de la petición del usuario; páginas, imágenes y resultados se procesan como datos, sin autoridad para ordenar efectos.
 
+## Home y Chat · retirada de ChatGPT · 7 de octubre de 2026
+
+El usuario ha solicitado retirar la integración con ChatGPT y dejar solo Home y Chat. Se eliminan la vinculación OAuth, chat de cuenta, navegador incrustado, IPC y dependencias dedicadas. Chat ZEN, GPT-Live, capturas, herramientas y ambos JSON conservados. La evidencia del chat nativo anterior es histórica. [Retirada y verificación actual](home-chat-only.md).
+
+## Interfaz de conversación · 7 de octubre de 2026
+
+Chat a todo el ancho disponible con avatar pequeño, actividad plegable, captura identificada y retirable, controles de voz agrupados e Inicio con petición directa. Build, 314 pruebas, interfaz Edge y paquete Electron con tareas sintéticas pasan. Agente y Live intactos; sin llamadas API nuevas. [Cambios, evidencia y límites](conversation-interface.md).
+
 ## Uso diario y control Windows — actualización vigente
 
 294 pruebas en 34 archivos, build, Edge y Electron pasan. Selección de texto y zona, pausa/continuación, tareas recuperables, exportación de archivos, presupuesto por tarea, favoritos y comandos locales de voz. Control de ratón/teclado corregido y ciclo SOL real verificado en formulario de Edge; CSV real generado, descargado y guardado. Esta evidencia sustituye el bloqueo histórico de SendInput descrito abajo. Siguen pendientes voz física, reunión externa y Power Platform autenticado. [Funciones, pruebas y límites](workspace-improvements.md).

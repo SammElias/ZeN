@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-07T10:22:01.789Z",
+  "passed": true,
+  "scope": "simulated-account-real-browser-renderer",
+  "nativeConnectCard": true,
+  "explicitManualImageMenu": true,
+  "stableStreamingHeight": true,
+  "latestMessageOnly": true,
+  "partialResponsePreserved": true,
+  "noApiFallback": true,
+  "noAgentEffects": true,
+  "nativeDraftPreserved": true,
+  "browserPreserved": true,
+  "smallScreen": true,
+  "apiCalled": false,
+  "realAccountVerified": false,
+  "screenshots": "docs/ui-preview/chatgpt-1791368519025"
+}

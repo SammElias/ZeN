@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-07T14:49:28.390Z",
+  "passed": true,
+  "apiCalls": 0,
+  "syntheticRequests": 2,
+  "compactActivity": true,
+  "fullWidthConversation": true,
+  "explicitCaptureControls": true,
+  "removedCaptureRespectedBySendAndReopen": true,
+  "homeSendAndDraft": true,
+  "analyzeReviewsBeforeSend": true,
+  "voiceGrouped": true,
+  "smallViewport": true,
+  "keyboardFocus": true,
+  "screenshots": "docs/ui-preview/conversation-1791384563985"
+}

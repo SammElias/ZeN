@@ -11,8 +11,9 @@ export async function prepareInputImage(file:File){
     const context=canvas.getContext('2d');if(!context)throw new Error('No se pudo preparar la imagen.');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);
     const data=canvas.toDataURL('image/jpeg',.85);if(data.length>3000000)throw new Error('La captura es demasiado grande.');return data;
 }
-export function Composer({send,notify,refresh,chooseFolder,folder,removeFolder,draft,clipboard,selection,region,changed,contextAttached=false,preparingContext=false}: {contextAttached?:boolean;preparingContext?:boolean;draft?:{text:string;stamp:number};clipboard?:()=>void;selection?:()=>void;region?:()=>void;changed?:(text:string)=>void;send:(text:string,image?:string)=>Promise<void>;notify:(text:string)=>void;refresh:()=>Promise<boolean>;chooseFolder:()=>Promise<void>;folder?:FolderAttachment;removeFolder:()=>void}){
+export function Composer({send,notify,refresh,chooseFolder,folder,removeFolder,draft,clipboard,selection,region,changed,contextAttached=false,preparingContext=false,attachmentChanged}: {attachmentChanged?:(attached:boolean)=>void;contextAttached?:boolean;preparingContext?:boolean;draft?:{text:string;stamp:number};clipboard?:()=>void;selection?:()=>void;region?:()=>void;changed?:(text:string)=>void;send:(text:string,image?:string)=>Promise<void>;notify:(text:string)=>void;refresh:()=>Promise<boolean>;chooseFolder:()=>Promise<void>;folder?:FolderAttachment;removeFolder:()=>void}){
   const [text,setText]=useState(''),[image,setImage]=useState<string>(),[sending,setSending]=useState(false),[preparing,setPreparing]=useState(false);
+  useEffect(()=>{attachmentChanged?.(!!image);},[image,attachmentChanged]);
   useEffect(()=>{if(draft){setText(draft.text);changed?.(draft.text);input.current?.focus();}},[draft]);
   const picker=useRef<HTMLInputElement>(null),generation=useRef(0),sendingRef=useRef(false);
   const input=useRef<HTMLTextAreaElement>(null);
