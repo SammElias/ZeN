@@ -954,7 +954,7 @@ void app.whenReady().then(async () => {
     const browserSession=session.fromPartition('persist:zen-user-browser-v1');
     browserSession.protocol.handle('https',request=>new URL(request.url).hostname==='zen-browser.test'?new Response('<title>ZEN browser IPC fixture</title><h1>Local fixture</h1>',{headers:{'Content-Type':'text/html'}}):new Response('',{status:403}));
     const invalidBrowser=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'file:///C:/secret.txt'})");
-    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.textContent==='Navegador').click()");
+    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.getAttribute('aria-label')==='Navegador').click()");
     const browserNavigation=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'https://zen-browser.test/'})");
     for(let attempt=0;attempt<60&&(browser.snapshot().loading||window.getBounds().width!==overlayBounds(display.workArea,{mode:'browser',height:900},horizontalRatio,dockEdge,verticalRatio).width);attempt++)await new Promise(resolve=>setTimeout(resolve,25));
     await new Promise(resolve=>setTimeout(resolve,100));
@@ -962,7 +962,7 @@ void app.whenReady().then(async () => {
     const browserBounds=browserView?.getBounds();
     const browserVisible=!!browserView?.getVisible()&&!!browserBounds&&browserBounds.y>=80&&browserBounds.height>100&&browserBounds.width>300&&browserBounds.width<=window.getContentBounds().width;
     const remoteIsolated=browserView&&await browserView.webContents.executeJavaScript("typeof window.zen==='undefined'&&typeof require==='undefined'");
-    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.textContent==='Chat').click()");
+    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.getAttribute('aria-label')==='Chat').click()");
     for(let attempt=0;attempt<40&&browserView?.getVisible();attempt++)await new Promise(resolve=>setTimeout(resolve,25));
     const integratedBrowserVerified=!invalidBrowser.ok&&browserNavigation.ok&&browser.snapshot().title==='ZEN browser IPC fixture'&&browserVisible&&remoteIsolated&&!browserView.getVisible();
     if(!integratedBrowserVerified)throw Error('Browser IPC failed: '+JSON.stringify({invalidRejected:!invalidBrowser.ok,browserNavigation:browserNavigation.ok,browserVisible,remoteIsolated,browserBounds,visible:browserView?.getVisible()}));

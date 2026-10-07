@@ -1,10 +1,10 @@
 {
-  "at": "2026-10-07T07:11:40.737Z",
+  "at": "2026-10-07T07:23:23.106Z",
   "passed": true,
   "chatDraftPreserved": true,
   "browserStatePreserved": true,
   "capsuleHidesBrowser": true,
   "smallScreenNavigation": true,
   "apiCalls": 0,
-  "screenshots": "docs/ui-preview/latest-navigation-1791357098417"
+  "screenshots": "docs/ui-preview/latest-navigation-1791357801049"
 }

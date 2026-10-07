@@ -1,7 +1,8 @@
 .zen-overlay [hidden]{display:none!important}
 .chat-page{display:contents}
 .island .top-navigation{display:flex;align-items:center;gap:3px;flex-shrink:0;background:#17151d;border:1px solid #2d2837;border-radius:11px;padding:3px;margin-left:12px}
-.top-navigation button{padding:6px 11px;border:0;border-radius:8px;background:transparent;color:#a9a2b5;font-size:11px}
+.top-navigation button{width:38px;height:30px;padding:6px;border:0;border-radius:8px;background:transparent;color:#a9a2b5;font-size:11px}
+.top-navigation button svg{width:18px;height:18px}
 .top-navigation button[aria-current=page]{background:#332940;color:#f0e6ff;box-shadow:inset 0 0 0 1px #554264}
 .top-navigation button:hover{color:#eee6f8;background:#27212f}
 .zen-overlay.island.live-only.browser{width:min(1040px,100vw);max-width:100vw}

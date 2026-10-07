@@ -4,6 +4,8 @@ Petición del usuario: navegación superior y acceso a Google/ChatGPT desde ZEN 
 
 ## Uso y diseño
 
+Petición posterior: navegación con iconos SVG (casa, conversación y globo), nombre accesible y tooltip, sección activa resaltada. Visible solo en modo expandido.
+
 - **Home:** robot, acceso al chat y al navegador. La apertura habitual conserva Chat para mantener el flujo anterior.
 - **Chat:** último mensaje, borrador, adjuntos y controles anteriores. Cambiar de sección conserva el borrador. Créditos e importes siguen retirados.
 - **Navegador:** vista integrada hasta 1040 DIP, adaptada al monitor, dirección HTTPS, Atrás/Adelante, Recargar/Detener, accesos Google/ChatGPT y Abrir fuera. El chat mantiene 640 DIP y las cápsulas 320×72 / 72×320. El navegador se oculta al recoger o minimizar; no destruye la sesión.
