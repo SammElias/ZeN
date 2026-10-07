@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-07T07:11:43.396Z",
+  "passed": true,
+  "scope": "real Electron, synthetic HTTPS fixture, persistent cookies and storage across two processes",
+  "results": [
+    {
+      "phase": "write",
+      "passed": true,
+      "isolatedRenderer": true,
+      "persistentStorage": false,
+      "googleEmbeddedLoginBlocked": true,
+      "unsafeNavigationBlocked": true,
+      "historyVerified": true,
+      "hideAndBoundsVerified": true,
+      "apiCalled": false
+    },
+    {
+      "phase": "read",
+      "passed": true,
+      "isolatedRenderer": true,
+      "persistentStorage": true,
+      "googleEmbeddedLoginBlocked": true,
+      "unsafeNavigationBlocked": true,
+      "historyVerified": true,
+      "hideAndBoundsVerified": true,
+      "apiCalled": false
+    }
+  ],
+  "realGoogleLoginVerified": false,
+  "realChatGptLoginVerified": false,
+  "apiCalled": false
+}

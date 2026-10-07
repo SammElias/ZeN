@@ -49,7 +49,7 @@ export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | '
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type SpendingSummary = { month: string; estimatedMonthEur: number; committedMonthEur: number; estimatedDayEur: number; pendingEur: number; inputTokens: number; outputTokens: number; cachedTokens: number; uncertainCalls: number; pricingDate: string };
 export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean };
-export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel']), height: z.number().int().min(40).max(1000), reducedMotion: z.boolean().default(false) }).strict();
+export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel', 'browser']), height: z.number().int().min(40).max(1000), reducedMotion: z.boolean().default(false) }).strict();
 export type OverlayLayout = z.infer<typeof OverlayLayoutSchema>;
 export const DockEdgeSchema = z.enum(['top', 'left', 'right']);
 export type DockEdge = z.infer<typeof DockEdgeSchema>;
@@ -57,6 +57,10 @@ export const OverlayPositionSchema = z.object({ displayId: z.number().int(), hor
 export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
 export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
+  browserState():Promise<Result<import('./browser').BrowserState>>;
+  browserCommand(command:import('./browser').BrowserCommand):Promise<Result<import('./browser').BrowserState>>;
+  browserViewport(viewport:import('./browser').BrowserViewport):Promise<Result<boolean>>;
+  onBrowserState(callback:(state:import('./browser').BrowserState)=>void):()=>void;
   dropFiles(files:File[]):Promise<Result<{items?:ContextAttachment[];folder?:FolderAttachment}>>;
   dropText(value:{text:string;link:boolean}):Promise<Result<ContextAttachment>>;
   dropImage(image:string):Promise<Result<ContextAttachment>>;

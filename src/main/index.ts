@@ -1,3 +1,5 @@
+import {IntegratedBrowser} from './integrated-browser';
+import {BrowserCommandSchema,BrowserViewportSchema} from '../shared/browser';
 import {DropContext,validateDropPath} from './drop-context';
 import {watchWindowDrops} from './window-drops';
 import type {WindowDropEvent} from '../shared/drop-context';
@@ -285,6 +287,10 @@ void app.whenReady().then(async () => {
     });
   }
   const noArg = z.undefined();
+  const browser=new IntegratedBrowser(window,state=>{if(!window.isDestroyed())window.webContents.send('zen:browser-state',state);},()=>layout.mode==='browser');
+  handle('browser-state',noArg,()=>browser.snapshot());
+  handle('browser-command',BrowserCommandSchema,value=>browser.command(value));
+  handle('browser-viewport',BrowserViewportSchema,value=>browser.setViewport(value));
   handle('library-roots',noArg,()=>store.libraryRoots());
   handle('mcp-connection',noArg,()=>store.publicMcp());
   handle('save-mcp-connection',McpConnectionSchema.extend({token:z.string().min(1).max(8000).optional()}),value=>{
@@ -604,7 +610,7 @@ void app.whenReady().then(async () => {
   handle('cancel-task', z.string().uuid(), id => { orchestrator.cancelTask(id); return true; });
   handle('stop', noArg, async () => { await emergencyStop(); return true; });
   handle('hide', noArg, hide);
-  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; syncGaze(); await position(opening); return true; });
+  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; browser.sync(); syncGaze(); await position(opening); browser.sync(); return true; });
   handle('cursor',noArg,()=>gaze.current());
   handle('dock', noArg, () => dockEdge);
   handle('drag', OverlayDragSchema, phase => { if (phase === 'start') startDrag(); else endDrag(); return true; });
@@ -635,7 +641,7 @@ void app.whenReady().then(async () => {
   tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir ZEN', click: () => invoke('focus') }, { label: 'Conversar por voz', click: () => invoke('voice') }, {label:'Tareas y favoritos…',click:()=>{void invoke('focus').then(()=>window.webContents.send('zen:workspace'));}}, { label: 'Preferencias…', click: () => { void openPreferences(); } }, { label: 'Detener', click: () => { void emergencyStop(); window.webContents.send('zen:task', { id: 'voice', state: 'cancelled', message: 'Sesión detenida desde la bandeja.' }); } }, { type: 'separator' }, { label: 'Salir', click: () => app.quit() }]));
   tray.on('double-click', () => invoke('focus'));
   window.on('close', event => { if (!quitting) { event.preventDefault(); void hide(); } });
-  app.on('before-quit', event => { if(quitting)return;quitting = true;windowDropWatcher?.dispose();gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
+  app.on('before-quit', event => { if(quitting)return;quitting = true;browser.dispose();windowDropWatcher?.dispose();gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
   await window.loadFile(rendererPath);
   window.showInactive();
   let documentReaderVerified=false;
@@ -943,7 +949,24 @@ void app.whenReady().then(async () => {
       const outcome=await task;const replay=await window.webContents.executeJavaScript(`window.zen.run(${JSON.stringify({text:`confirmo ${proposal.code}`,requestId:randomUUID(),priority:2})})`);
       computerIpcVerified=approved.ok&&outcome.state==='completed'&&Number(effects)===1&&rounds===2&&!replay.ok&&!!proposal.preview;
     }finally{computer.run=computerRun;confirmations.revokePrefix('computer:');}
-    console.log(JSON.stringify({ ...result, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    // Exercise the user browser through the same isolated renderer IPC and layout.
+    await invoke('focus');
+    const browserSession=session.fromPartition('persist:zen-user-browser-v1');
+    browserSession.protocol.handle('https',request=>new URL(request.url).hostname==='zen-browser.test'?new Response('<title>ZEN browser IPC fixture</title><h1>Local fixture</h1>',{headers:{'Content-Type':'text/html'}}):new Response('',{status:403}));
+    const invalidBrowser=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'file:///C:/secret.txt'})");
+    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.textContent==='Navegador').click()");
+    const browserNavigation=await window.webContents.executeJavaScript("window.zen.browserCommand({action:'navigate',url:'https://zen-browser.test/'})");
+    for(let attempt=0;attempt<60&&(browser.snapshot().loading||window.getBounds().width!==overlayBounds(display.workArea,{mode:'browser',height:900},horizontalRatio,dockEdge,verticalRatio).width);attempt++)await new Promise(resolve=>setTimeout(resolve,25));
+    await new Promise(resolve=>setTimeout(resolve,100));
+    const browserView=window.contentView.children.find(child=>'webContents'in child&&(child as Electron.WebContentsView).webContents!==window.webContents) as Electron.WebContentsView;
+    const browserBounds=browserView?.getBounds();
+    const browserVisible=!!browserView?.getVisible()&&!!browserBounds&&browserBounds.y>=80&&browserBounds.height>100&&browserBounds.width>300&&browserBounds.width<=window.getContentBounds().width;
+    const remoteIsolated=browserView&&await browserView.webContents.executeJavaScript("typeof window.zen==='undefined'&&typeof require==='undefined'");
+    await window.webContents.executeJavaScript("[...document.querySelectorAll('.top-navigation button')].find(b=>b.textContent==='Chat').click()");
+    for(let attempt=0;attempt<40&&browserView?.getVisible();attempt++)await new Promise(resolve=>setTimeout(resolve,25));
+    const integratedBrowserVerified=!invalidBrowser.ok&&browserNavigation.ok&&browser.snapshot().title==='ZEN browser IPC fixture'&&browserVisible&&remoteIsolated&&!browserView.getVisible();
+    if(!integratedBrowserVerified)throw Error('Browser IPC failed: '+JSON.stringify({invalidRejected:!invalidBrowser.ok,browserNavigation:browserNavigation.ok,browserVisible,remoteIsolated,browserBounds,visible:browserView?.getVisible()}));
+    console.log(JSON.stringify({ ...result, integratedBrowserVerified, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

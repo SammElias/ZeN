@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-07T07:14:59.898Z",
+  "scope": "public pages in isolated embedded Chromium, no account or login automation",
+  "pages": [
+    {
+      "name": "google",
+      "url": "https://www.google.com/",
+      "title": "Google",
+      "loading": false,
+      "canBack": false,
+      "canForward": false
+    },
+    {
+      "name": "chatgpt",
+      "url": "https://chatgpt.com/",
+      "title": "ChatGPT: Chat, Work, Create & Code with AI",
+      "loading": false,
+      "canBack": true,
+      "canForward": false
+    }
+  ],
+  "apiCalled": false,
+  "authenticatedChatVerified": false
+}

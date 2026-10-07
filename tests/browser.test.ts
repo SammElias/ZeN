@@ -1,0 +1,10 @@
+import {describe,it,expect} from 'vitest';
+import {browserUrl,googleSignIn,externalBrowserUrl,BrowserCommandSchema,BrowserViewportSchema} from '../src/shared/browser';
+import {overlayBounds} from '../src/main/overlay';
+describe('user browser boundaries',()=>{
+  it.each(['javascript:alert(1)','file:///C:/secrets.txt','data:text/html,hi','http://example.com','https://user:secret@example.com','ms-settings:privacy'])('rejects unsafe navigation: %s',url=>expect(()=>browserUrl(url)).toThrow());
+  it('normalizes HTTPS addresses without modifying identity',()=>{expect(browserUrl('chatgpt.com')).toBe('https://chatgpt.com/');expect(browserUrl('https://example.com/path?q=x')).toBe('https://example.com/path?q=x');});
+  it('recognizes only the Google identity host and strips ChatGPT login callbacks externally',()=>{expect(googleSignIn('https://accounts.google.com/o/oauth2/auth')).toBe(true);expect(googleSignIn('https://accounts.google.com.evil.test/')).toBe(false);expect(externalBrowserUrl('https://auth.openai.com/callback?code=private')).toBe('https://chatgpt.com/');});
+  it('does not expose scripts, cookies or arbitrary window commands over IPC',()=>{expect(BrowserCommandSchema.safeParse({action:'navigate',url:'https://example.com',script:'alert(1)'}).success).toBe(false);expect(BrowserCommandSchema.safeParse({action:'cookies'}).success).toBe(false);expect(BrowserViewportSchema.safeParse({visible:true,bounds:{x:0,y:-10,width:800,height:700}}).success).toBe(false);});
+  it('fits the wider browser to each edge and restores existing chat/capsule dimensions',()=>{for(const edge of ['left','right','top'] as const){const area={x:-1600,y:-100,width:1600,height:1000};const b=overlayBounds(area,{mode:'browser',height:900},.8,edge,.7);expect(b.width).toBe(1040);expect(b.height).toBe(800);expect(b.x).toBeGreaterThanOrEqual(area.x);expect(b.y).toBeGreaterThanOrEqual(area.y);expect(b.x+b.width).toBeLessThanOrEqual(0);expect(b.y+b.height).toBeLessThanOrEqual(900);expect(overlayBounds(area,{mode:'card',height:400},.8,edge).width).toBe(640);}});
+});

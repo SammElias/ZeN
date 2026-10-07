@@ -1,0 +1,27 @@
+.zen-overlay [hidden]{display:none!important}
+.chat-page{display:contents}
+.island .top-navigation{display:flex;align-items:center;gap:3px;flex-shrink:0;background:#17151d;border:1px solid #2d2837;border-radius:11px;padding:3px;margin-left:12px}
+.top-navigation button{padding:6px 11px;border:0;border-radius:8px;background:transparent;color:#a9a2b5;font-size:11px}
+.top-navigation button[aria-current=page]{background:#332940;color:#f0e6ff;box-shadow:inset 0 0 0 1px #554264}
+.top-navigation button:hover{color:#eee6f8;background:#27212f}
+.zen-overlay.island.live-only.browser{width:min(1040px,100vw);max-width:100vw}
+.home-page{padding:24px 26px 18px;overflow:auto;min-height:0;flex:1}
+.home-greeting{display:flex;align-items:center;gap:28px;margin:2px 0 26px}
+.home-greeting .zen-robot{width:110px;height:124px;flex-shrink:0}
+.home-eyebrow{font-size:9px;letter-spacing:1.5px;color:#b69ad9}
+.home-greeting h1{font-size:26px;margin:9px 0;color:#eee8f8;font-weight:550;letter-spacing:-.6px}
+.home-greeting p{font-size:12px;line-height:1.6;color:#aaa2b4;margin:0}
+.home-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.home-cards button{display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;padding:20px;background:linear-gradient(145deg,#201a2b,#141218);border-color:#3a2d47;border-radius:17px}
+.home-cards button>span{font-size:26px;color:#c5adeb}.home-cards strong{font-size:15px;font-weight:500}.home-cards small{font-size:12px;line-height:1.6;color:#a9a0b6}.home-cards b{font-size:11px;font-weight:500;color:#cbb2e8;margin-top:6px}.home-footnote{font-size:10px;text-align:center;color:#877d94;margin:20px 0 0}
+.browser-page{display:flex;flex-direction:column;flex:1;min-height:0;padding:0 10px 10px;gap:7px}
+.browser-toolbar{display:flex;align-items:center;gap:5px;flex-shrink:0;padding:6px;border:1px solid #302a3b;background:#17151d;border-radius:12px}
+.browser-toolbar button{padding:5px 9px;font-size:12px;border:0;background:transparent;flex-shrink:0}
+.browser-toolbar input{flex:1;min-width:0;border:1px solid #34303d;border-radius:7px;background:#0d0c11;color:#ddd4e8;font-size:12px;padding:8px 10px}
+.browser-toolbar .browser-external{font-size:10px;color:#beabd5}
+.browser-shortcuts{display:flex;align-items:center;gap:5px;flex-shrink:0;padding:0 4px}.browser-shortcuts button{font-size:10px;padding:4px 10px;background:#201a2a;border:1px solid #34283f;border-radius:8px}.browser-shortcuts span{margin-left:auto;font-size:10px;color:#aaa0b6}
+.browser-error{display:flex;align-items:center;gap:12px;flex-shrink:0;max-height:100px;overflow:auto;padding:10px 12px;border:1px solid #635339;border-radius:10px;background:#282217;font-size:11px;line-height:1.5;color:#e0cdaa}.browser-error button{font-size:10px;flex-shrink:0;padding:6px 8px}
+.browser-slot{flex:1;min-height:0;position:relative;border-radius:12px;overflow:auto;background:#111015;border:1px solid #292330}
+.browser-welcome{max-width:600px;margin:auto;padding:48px 32px;color:#e7def0}.browser-welcome h1{font-size:27px;margin:14px 0;letter-spacing:-.5px}.browser-welcome p{font-size:13px;line-height:1.8;color:#b1a6bd}.browser-welcome>div{display:flex;gap:10px;margin:22px 0}.browser-welcome button{font-size:12px}.browser-welcome small{display:block;color:#97899f;font-size:11px;line-height:1.7}.browser-demo{padding:50px;text-align:center;color:#ac9abf;line-height:2;font-size:14px}
+@media(max-width:600px){.island .top-navigation{margin-left:2px}.top-navigation button{padding:5px 7px;font-size:10px}.island:not(.capsule) .brand{display:none}.home-page{padding:14px}.home-greeting{gap:15px;margin-bottom:16px}.home-greeting h1{font-size:21px}.home-cards button{padding:13px}.browser-toolbar .browser-external{font-size:0}.browser-toolbar .browser-external::after{content:'↗';font-size:14px}.browser-welcome{padding:24px 18px}.browser-error{display:block}.browser-shortcuts span{font-size:9px}}
+@media(max-width:420px){.island:not(.capsule) .header-status{display:none}.island .top-navigation{margin-right:auto}.home-greeting .zen-robot{width:76px;height:86px}.home-cards{grid-template-columns:1fr}.browser-toolbar{gap:1px}.browser-toolbar button{padding:4px 6px}}
