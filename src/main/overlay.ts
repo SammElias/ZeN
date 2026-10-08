@@ -4,6 +4,7 @@ export type Area = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 // All geometry is in Electron DIP, including monitors at negative coordinates.
 export function overlayBounds(area: Area, layout: Pick<OverlayLayout, 'mode' | 'height'>, horizontalRatio = .5, edge: DockEdge = 'top', verticalRatio = .5): Area {
+  if (layout.mode === 'fullscreen') return { ...area };
   const side = edge !== 'top'; const compact = layout.mode === 'capsule';
   const width = Math.max(1, Math.min(compact ? side ? CAPSULE_HEIGHT : CAPSULE_WIDTH : CHAT_WIDTH, Math.max(1, area.width - (compact && side ? 0 : 24))));
   const limit = compact ? side ? CAPSULE_WIDTH : CAPSULE_HEIGHT : Math.min(600, Math.max(48, Math.floor(area.height * .8)));

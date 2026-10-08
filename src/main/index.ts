@@ -158,8 +158,8 @@ void app.whenReady().then(async () => {
     if (snapshot) { try { if (await voice.screenContext(snapshot)) screenContext?.queued(snapshot.id); } catch { window.webContents.send('zen:task', { id:'voice', state:'idle', message:'', screenContext:{state:'unavailable'} }); } }
   };
   const position = (animate = false): Promise<void> => {
-    cancelResize?.(); const target = overlayBounds(display.workArea, layout, horizontalRatio, dockEdge, verticalRatio);
-    if (!animate || !window.isVisible() || layout.reducedMotion) { window.setBounds(target); return Promise.resolve(); }
+    cancelResize?.(); const target = overlayBounds(layout.mode === 'fullscreen' ? display.bounds : display.workArea, layout, horizontalRatio, dockEdge, verticalRatio);
+    if (!animate || layout.mode === 'fullscreen' || !window.isVisible() || layout.reducedMotion) { window.setBounds(target); return Promise.resolve(); }
     const start = window.getBounds(); const started = Date.now();
     return new Promise(resolve => {
       const timer = setInterval(() => {
@@ -198,6 +198,7 @@ void app.whenReady().then(async () => {
     if (moved) { try { store.saveOverlayPosition({ displayId: display.id, horizontalRatio, edge: dockEdge, verticalRatio }); } catch { emit({ id: 'storage', state: 'failed', message: 'La posición funciona, pero no se pudo guardar para el próximo inicio.' }); } }
   };
   const startDrag = () => {
+    if (layout.mode === 'fullscreen') throw new ZenError('Sal de pantalla completa para mover la cápsula.');
     if (!window.isVisible() || window.isMinimized() || presentation === 'background') throw new ZenError('ZEN debe estar visible para moverlo.');
     if (drag) endDrag();
     cancelResize?.();
@@ -605,7 +606,7 @@ void app.whenReady().then(async () => {
   handle('cancel-task', z.string().uuid(), id => { orchestrator.cancelTask(id); return true; });
   handle('stop', noArg, async () => { await emergencyStop(); return true; });
   handle('hide', noArg, hide);
-  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;layout = next; syncGaze(); await position(opening); return true; });
+  handle('layout', OverlayLayoutSchema, async (next: OverlayLayout) => { if(layout.mode===next.mode&&layout.height===next.height&&layout.reducedMotion===next.reducedMotion)return true;const opening=layout.mode!==next.mode;const fullscreenTransition=layout.mode==='fullscreen'||next.mode==='fullscreen';if(fullscreenTransition)endDrag();layout = next; syncGaze(); await position(opening&&!fullscreenTransition); return true; });
   handle('cursor',noArg,()=>gaze.current());
   handle('dock', noArg, () => dockEdge);
   handle('drag', OverlayDragSchema, phase => { if (phase === 'start') startDrag(); else endDrag(); return true; });
@@ -670,6 +671,11 @@ void app.whenReady().then(async () => {
     const imageIpcVerified=await window.webContents.executeJavaScript(`(async()=>{const canvas=document.createElement('canvas');canvas.width=24;canvas.height=24;const attached=await window.zen.attachImage(canvas.toDataURL('image/png'));const invalid=await window.zen.attachImage('data:image/svg+xml;base64,PHN2Zz4=');const preview=await window.zen.previewScreen();return attached.ok&&typeof attached.value.observationId==='string'&&!invalid.ok&&preview.ok&&preview.value===null;})()`);
     const initialBounds = window.getBounds();
     await openPreferences(false);
+    // loadFile can finish before React commits the preferences surface.
+    for(let n=0;n<90;n++){
+      if(await preferences!.webContents.executeJavaScript(`document.body.innerText.includes('Preferencias')`))break;
+      await new Promise(resolve=>setTimeout(resolve,16));
+    }
     const preferencesCheck = await preferences!.webContents.executeJavaScript(`(async () => ({ settings: (await window.zen.settings()).ok, nodeAbsent: typeof require === 'undefined', executionBlocked: !(await window.zen.run({text:'Hola',requestId:'${randomUUID()}'})).ok, dragBlocked: !(await window.zen.drag('start')).ok, rendered: document.body.innerText.includes('Preferencias') }))()`);
     preferences!.close();
     const preferencesIsolated = preferencesCheck.settings && preferencesCheck.nodeAbsent && preferencesCheck.executionBlocked && preferencesCheck.dragBlocked && preferencesCheck.rendered && JSON.stringify(initialBounds) === JSON.stringify(window.getBounds());
@@ -953,7 +959,28 @@ void app.whenReady().then(async () => {
     await invoke('focus');
     const homeChatOnlyVerified=await window.webContents.executeJavaScript("JSON.stringify([...document.querySelectorAll('.top-navigation button')].map(button=>button.getAttribute('aria-label')))==='[\"Home\",\"Chat\"]'&&!document.querySelector('.browser-page,.chatgpt-page,.web-space-tabs')&&typeof window.zen.chatGPTSignIn==='undefined'&&typeof window.zen.browserCommand==='undefined'");
     if(!homeChatOnlyVerified)throw Error('Home/Chat removal check failed');
-    console.log(JSON.stringify({ ...result, screenRemovalVerified, homeChatOnlyVerified, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
+    // Full-screen is a reversible view of the same renderer, never a new conversation.
+    const waitLayout = async (mode: OverlayLayout['mode']) => {
+      for(let n=0;n<90;n++){
+        if(layout.mode===mode&&await window.webContents.executeJavaScript(`document.querySelector('main')?.classList.contains('${mode}')`))return;
+        await new Promise(resolve=>setTimeout(resolve,16));
+      }
+      throw new Error('Full-screen layout did not settle');
+    };
+    await waitLayout('card');
+    const fullscreenAnchor={displayId:display.id,horizontalRatio,dockEdge,verticalRatio};
+    await window.webContents.executeJavaScript(`window.fullscreenComposer=document.querySelector('textarea');document.querySelector('button[aria-label="Pantalla completa (F11)"]').click()`);
+    await waitLayout('fullscreen');
+    const fullscreenBounds=window.getBounds();
+    const fullscreenPixelsVerified=JSON.stringify(fullscreenBounds)===JSON.stringify(display.bounds)&&await window.webContents.executeJavaScript(`document.querySelector('main').getBoundingClientRect().width===innerWidth&&document.querySelector('main').getBoundingClientRect().height===innerHeight&&document.querySelector('textarea')===window.fullscreenComposer`);
+    const fullscreenDragBlocked=!(await window.webContents.executeJavaScript(`window.zen.drag('start')`)).ok;
+    const fullscreenInvalidBoundsBlocked=!(await window.webContents.executeJavaScript(`window.zen.layout({mode:'fullscreen',height:72,x:0,width:9000})`)).ok;
+    await window.webContents.executeJavaScript(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))`);
+    await waitLayout('card');
+    const fullscreenReturnVerified=JSON.stringify(fullscreenAnchor)===JSON.stringify({displayId:display.id,horizontalRatio,dockEdge,verticalRatio})&&window.getBounds().width===overlayBounds(display.workArea,layout,horizontalRatio,dockEdge,verticalRatio).width&&await window.webContents.executeJavaScript(`document.querySelector('textarea')===window.fullscreenComposer`);
+    const fullscreenChatVerified=fullscreenPixelsVerified&&fullscreenDragBlocked&&fullscreenInvalidBoundsBlocked&&fullscreenReturnVerified;
+    if(!fullscreenChatVerified)throw new Error('Full-screen chat check failed');
+    console.log(JSON.stringify({ ...result, screenRemovalVerified, homeChatOnlyVerified, fullscreenChatVerified, fullscreenBounds, dropContextIpcVerified, workspaceIpcVerified, cursorGazeVerified, documentReaderVerified, focusProbe, activityTimelineVerified, computerIpcVerified, edgeDockingVerified, edgeChecks, backgroundTaskbarVerified, taskbarReturnVerified, restoreCaptures, miniCapsuleVerified, stableStreamingVerified, voiceNoticePreserved, pasteImageCspVerified, singleAttachmentClipVerified, folderIpcVerified, folderDelegationVerified, humanConfirmationVerified, imageIpcVerified, projectIpcVerified, unknownProjectBlocked, objective, protectedRoundTrip, preferencesIsolated, shortcutRegistered, trayCreated: !tray.isDestroyed(), invalidIpcBlocked: !invalidIpc.ok, startedCompact, shownOnTop, hiddenNotOnTop, topAnchorStable: capsuleBounds.y === cardBounds.y && cardBounds.y === display.workArea.y, collapsedHeightVerified: capsuleBounds.height === CAPSULE_HEIGHT, latestOnlyExpanded, latestTranscriptVerified, latestInterruptionVerified, unknownArtifactBlocked, invalidLiveSessionBlocked, mcpSecretProtectionVerified, libraryRootsLocal, localFileWithoutApiVerified, invalidDragBlocked, horizontalDragVerified, dragPositionPersisted, dragChecks, dragInput: 'synthetic cursor on real displays', widthsVerified: capsuleBounds.width === overlayBounds(display.workArea, { mode: 'capsule', height: CAPSULE_HEIGHT }).width && cardBounds.width === overlayBounds(display.workArea, { mode: 'card', height: 260 }).width, positionLocked: !window.isMovable(), capsuleBounds, cardBounds }));
     app.quit();
   }
 }).catch(error => { console.error('ZEN no pudo iniciarse. Revisa configuración, almacenamiento y dependencias.'); if (process.argv.some(value => ['--zen-smoke', '--zen-objective-smoke', '--zen-desktop-live-smoke', '--zen-image-chat-smoke','--zen-folder-context-smoke'].includes(value))) console.error(error.message); app.exit(1); });

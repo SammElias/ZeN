@@ -1,0 +1,33 @@
+/* Fill the capsule's monitor; keep a comfortable reading column and fixed controls. */
+.zen-overlay.island.live-only.fullscreen {
+  width:100vw;
+  max-width:none;
+  max-height:100dvh;
+  border:0;
+  border-radius:0;
+  animation:none;
+}
+.island.live-only.fullscreen .chat-page:not([hidden]) {
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  min-height:0;
+  width:100%;
+  max-width:1040px;
+  margin:8px auto 0;
+}
+.island.fullscreen .home-page {
+  width:100%;
+  max-width:1040px;
+  margin-inline:auto;
+}
+.island.fullscreen .conversation-pane { flex:1; min-height:0; }
+.island.fullscreen .message-stage { height:100%; }
+.island.live-only.fullscreen .with-robot .live-message { padding:20px 24px; }
+.island.fullscreen .live-message .result-text { font-size:16px; line-height:1.8; }
+.island.fullscreen .text-composer { flex-shrink:0; }
+body.preview:has(.zen-overlay.fullscreen) { padding:0; }
+@media(max-width:560px) {
+  .island.live-only.fullscreen .with-robot .live-message { padding:14px 16px; }
+  .island.fullscreen .live-message .result-text { font-size:15px; }
+}

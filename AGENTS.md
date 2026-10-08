@@ -1,5 +1,7 @@
 # Reglas estables de ZEN
 
+- Pantalla completa autorizada el 08/10/2026: botón discreto en la cabecera y F11 para leer Chat ocupando el monitor de la cápsula, Esc/botón para volver al panel y Recoger para volver a la cápsula. Conservar borrador, adjuntos, último mensaje/stream, voz, Home/Chat y anclaje; sin nuevas capturas ni llamadas API al cambiar de vista. Estado y pruebas en docs/fullscreen-chat.md.
+
 - Petición vigente del 07/10/2026: **solo Home y Chat**. Retirar el navegador incrustado y toda la integración nativa SIWC con ChatGPT (UI, IPC, runtime y dependencias). Sustituye la autorización anterior de vinculación. Conservar chat ZEN, voz GPT-Live, herramientas, capturas, preferencias y ambos JSON exactos. Pruebas y límites de la retirada en docs/home-chat-only.md; evidencia anterior en docs/chatgpt-native.md es histórica.
 
 - Prioridad: objetivo final y UI Capsule, isla superior compacta dedicada a contexto/ejecución/stream y preferencias separadas desde bandeja (docs/island-v1.md). Petición explícita del 01/10/2026 adelanta GPT-Live; ya no depende de completar antes el objetivo general. Conservar el JSON exacto vigente de config/live-session.json y documentar pendientes.
