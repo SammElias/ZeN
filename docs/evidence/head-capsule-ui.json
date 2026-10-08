@@ -1,0 +1,251 @@
+{
+  "scope": "Edge renderer fixtures; input simulated; scale factors are browser rasterization only",
+  "apiCalls": 0,
+  "physicalWindowsDPI": false,
+  "rest": {
+    "width": 488,
+    "height": 46,
+    "buttons": [
+      {
+        "label": "Ver último mensaje",
+        "x": 6,
+        "y": 3,
+        "width": 56,
+        "height": 40
+      },
+      {
+        "label": "Inicio",
+        "x": 66,
+        "y": 7,
+        "width": 34,
+        "height": 32
+      },
+      {
+        "label": "Chat",
+        "x": 104,
+        "y": 7,
+        "width": 34,
+        "height": 32
+      },
+      {
+        "label": "Tareas",
+        "x": 142,
+        "y": 7,
+        "width": 34,
+        "height": 32
+      },
+      {
+        "label": "Estado: Disponible. Ver actividad",
+        "x": 181,
+        "y": 8,
+        "width": 201,
+        "height": 30
+      },
+      {
+        "label": "Micrófono apagado · comenzar voz",
+        "x": 387,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      },
+      {
+        "label": "Desplegar panel",
+        "x": 422,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      },
+      {
+        "label": "Ocultar ZEN (Esc)",
+        "x": 454,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      }
+    ],
+    "overflow": false
+  },
+  "desktopGaze": {
+    "left": {
+      "head": "matrix(0.985235, -0.171207, 0.171207, 0.985235, -7.886, 0.502)",
+      "eyes": "matrix(1, 0, 0, 1, -8.872, 0.502)",
+      "headX": 31.23058795928955,
+      "eyeX": 28.000722885131836,
+      "top": 4.582699298858643,
+      "bottom": 40.083542346954346,
+      "left": 10.351016998291016,
+      "right": 50.81951904296875
+    },
+    "right": {
+      "head": "matrix(0.985286, 0.170915, -0.170915, 0.985286, 7.873, 0.53)",
+      "eyes": "matrix(1, 0, 0, 1, 8.857, 0.53)",
+      "headX": 36.76485252380371,
+      "eyeX": 39.98769569396973,
+      "top": 4.5970683097839355,
+      "bottom": 40.08892774581909,
+      "left": 17.178260803222656,
+      "right": 57.63987731933594
+    },
+    "fixedGeometry": true
+  },
+  "hoverOnceAndFixedGeometry": true,
+  "dragNotClick": true,
+  "foldPreservesDraftAttachmentsAndReading": true,
+  "buttonsDoNotDrag": true,
+  "keyboardNavigation": true,
+  "permissionExpiresVisuallyButRemainsAccessible": true,
+  "receivingHands": true,
+  "completionOnce": true,
+  "codexAwaitingSend": true,
+  "horizontalAllEdges": true,
+  "minimumWidth": {
+    "width": 318,
+    "height": 46,
+    "buttons": [
+      {
+        "label": "Ver último mensaje",
+        "x": 4,
+        "y": 3,
+        "width": 52,
+        "height": 40
+      },
+      {
+        "label": "Inicio",
+        "x": 58,
+        "y": 7,
+        "width": 32,
+        "height": 32
+      },
+      {
+        "label": "Chat",
+        "x": 92,
+        "y": 7,
+        "width": 32,
+        "height": 32
+      },
+      {
+        "label": "Tareas",
+        "x": 126,
+        "y": 7,
+        "width": 32,
+        "height": 32
+      },
+      {
+        "label": "Estado: Esperando tu permiso. Revisar permiso",
+        "x": 161,
+        "y": 8,
+        "width": 25,
+        "height": 30
+      },
+      {
+        "label": "Micrófono apagado · comenzar voz",
+        "x": 189,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      },
+      {
+        "label": "Desplegar panel",
+        "x": 222,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      },
+      {
+        "label": "Detener todas las tareas",
+        "x": 254,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      },
+      {
+        "label": "Ocultar ZEN (Esc)",
+        "x": 286,
+        "y": 7,
+        "width": 30,
+        "height": 32
+      }
+    ],
+    "overflow": false
+  },
+  "reducedMotion": true,
+  "reducedMotionStopsHeadAndEyes": true,
+  "counts": {
+    "run": 0,
+    "voice": 0,
+    "drag": [
+      "start",
+      "end",
+      "start",
+      "end"
+    ],
+    "layouts": [
+      {
+        "mode": "card",
+        "height": 560,
+        "reducedMotion": false
+      },
+      {
+        "mode": "capsule",
+        "height": 46,
+        "reducedMotion": false
+      },
+      {
+        "mode": "card",
+        "height": 560,
+        "reducedMotion": false
+      },
+      {
+        "mode": "capsule",
+        "height": 46,
+        "reducedMotion": false
+      },
+      {
+        "mode": "card",
+        "height": 560,
+        "reducedMotion": false
+      },
+      {
+        "mode": "capsule",
+        "height": 46,
+        "reducedMotion": false
+      },
+      {
+        "mode": "capsule",
+        "height": 46,
+        "reducedMotion": true
+      }
+    ]
+  },
+  "browserRasterScales": [
+    {
+      "scale": 1,
+      "cssSize": [
+        490,
+        46
+      ]
+    },
+    {
+      "scale": 1.25,
+      "cssSize": [
+        490,
+        46
+      ]
+    },
+    {
+      "scale": 1.5,
+      "cssSize": [
+        490,
+        46
+      ]
+    },
+    {
+      "scale": 2,
+      "cssSize": [
+        490,
+        46
+      ]
+    }
+  ],
+  "passed": true
+}

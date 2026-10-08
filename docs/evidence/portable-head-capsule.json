@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-07T22:39:52.1082861+02:00",
+  "deployedExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
+  "sha256": "FB01E3FD41D1C65F591CE745213D4042761288D2B088DA6DE054250B772A4067",
+  "bytes": 114715888,
+  "backup": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\desktop-backups\\ZEN-before-head-capsule-20261007-223951.exe",
+  "sourceCommit": "dbda6f730f4f83e0288c5c820a5089a871579e36",
+  "includesUncommittedCompactAndHeadCapsuleChanges": true,
+  "packageDirectory": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007203435266",
+  "singleExecutableOnDesktop": true,
+  "newDesktopDirectories": 0,
+  "packagedStartupVerified": true,
+  "desktopHashMatchesTestedExecutable": true,
+  "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC-and-head-capsule-geometry",
+  "capsuleDIP": {
+    "width": 490,
+    "height": 46
+  },
+  "observedWindowsScaleFactors": [
+    1
+  ],
+  "unitTestsTotal": 325,
+  "unitTestsPassed": 325,
+  "apiCalledForThisBuild": false,
+  "existingConfigurationUnchanged": true,
+  "liveConfigSha256": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
+  "savedAgentConfigSha256": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
+  "userConfigurationMoved": false,
+  "fullObjectiveVerified": false,
+  "physicalInputTested": false,
+  "remainingChecks": [
+    "physical-input-and-focus",
+    "physical-click-through",
+    "Windows-DPI-125-150-200",
+    "physical-monitor-disconnection",
+    "physical-capture-exclusions",
+    "real-model-and-voice"
+  ],
+  "desktopLaunchVerified": true,
+  "runningMainMatchesPackage": true,
+  "runningInstanceNeedsRestart": false,
+  "strengthenedDesktopGaze": true,
+  "desktopInterfaceObserved": true,
+  "draftBackup": "release/desktop-backups/draft-before-gaze-update.txt",
+  "draftRestoredToComposer": false,
+  "draftRestoreNote": "User input detected; stopped further input, retained local text backup"
+}

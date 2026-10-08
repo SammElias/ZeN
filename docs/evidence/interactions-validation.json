@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-07T18:09:50.619214+00:00",
+  "implemented": "Guion 02 contextual interactions",
+  "buildPassed": true,
+  "unitTests": {
+    "passed": 321,
+    "files": 38
+  },
+  "rendererSuites": [
+    "interactions-ui",
+    "daily-workspace-ui",
+    "pet-ui"
+  ],
+  "native": "interactions-native: real Windows/Electron IPC and bounds, simulated DOM events",
+  "apiCalled": false,
+  "published": false,
+  "desktopExeReplaced": false,
+  "fullyValidated": false,
+  "pending": [
+    "physical Explorer drag/drop and native focus",
+    "multiple monitors and DPI",
+    "physical capture exclusions and global shortcuts",
+    "real model guide and annotation output",
+    "physical voice"
+  ],
+  "preserved": {
+    "config/live-session.json": {
+      "sha256": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
+      "unchanged": true
+    },
+    "config/saved-agent.json": {
+      "sha256": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
+      "unchanged": true
+    },
+    "C:/Users/Gamming/Desktop/ZEN.exe": {
+      "sha256": "9E416992824F5C676748436C3E12A38CB6B11D8F5D727A1C6AA8FDB0BB9C568F",
+      "unchanged": true
+    }
+  }
+}

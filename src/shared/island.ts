@@ -1,3 +1,3 @@
-export const CAPSULE_WIDTH = 320;
-export const CAPSULE_HEIGHT = 72;
+export const CAPSULE_WIDTH = 490;
+export const CAPSULE_HEIGHT = 46;
 export const CHAT_WIDTH = 640;

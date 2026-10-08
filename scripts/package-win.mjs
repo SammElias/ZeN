@@ -6,6 +6,7 @@ import { applyWindowsIcon } from './windows-icon.mjs';
 if (process.platform !== 'win32') throw Error('Este paquete requiere Windows.');
 const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '');
 const interfaceOnly = process.argv.includes('--interface');
+const interactionsOnly=process.argv.includes('--interactions');
 const root = resolve('release'); const destination = join(root, `ZEN-${stamp}`);
 if (!destination.startsWith(root + '\\')) throw Error('Destino de paquete inválido.');
 await mkdir(destination, { recursive: true });
@@ -26,7 +27,7 @@ const files = [];
 async function inspect(directory, relative = '') { for (const item of await readdir(directory, { withFileTypes: true })) { const path = join(directory, item.name); const name = join(relative, item.name); if (item.isDirectory()) await inspect(path, name); else files.push({ path: name, sha256: createHash('sha256').update(await readFile(path)).digest('hex') }); } }
 await inspect(appDirectory);
 const env = { ...process.env }; delete env.OPENAI_API_KEY; delete env.ELECTRON_RUN_AS_NODE;
-const child = spawn(join(destination, 'ZEN.exe'), [interfaceOnly ? '--zen-smoke' : '--zen-objective-smoke'], { env, windowsHide: true });
+const child = spawn(join(destination, 'ZEN.exe'), [interactionsOnly?'--zen-interactions-smoke':interfaceOnly ? '--zen-smoke' : '--zen-objective-smoke'], { env, windowsHide: true });
 let output = ''; let errors = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => errors += chunk);
 const timer = setTimeout(() => child.kill(), 40000);
 const code = await new Promise(resolve => { child.on('error', error => { errors = error.message; resolve(1); }); child.on('exit', resolve); }); clearTimeout(timer);
@@ -37,8 +38,17 @@ if (code !== 0 || !line) {
   await writeFile('docs/evidence/portable-attempt.json', JSON.stringify({ at: new Date().toISOString(), passed: false, executable: join(destination, 'ZEN.exe'), exitCode: code, assertions }, null, 2));
   throw Error('El paquete no pasó el arranque real: ' + errors.slice(0, 2000));
 }
-const smoke = JSON.parse(line); if (!smoke.shownOnTop || !smoke.startedCompact || !smoke.preferencesIsolated || !smoke.topAnchorStable || !smoke.positionLocked || !smoke.collapsedHeightVerified || !smoke.latestOnlyExpanded || !smoke.latestTranscriptVerified || !smoke.latestInterruptionVerified || !smoke.unknownArtifactBlocked || !smoke.mcpSecretProtectionVerified || !smoke.libraryRootsLocal || !smoke.localFileWithoutApiVerified || !smoke.widthsVerified || !smoke.invalidDragBlocked || !smoke.horizontalDragVerified || !smoke.dragPositionPersisted || (!interfaceOnly && (!smoke.objective || Object.values(smoke.objective).some(value => value !== true)))) throw Error('Pruebas funcionales del paquete fallidas: ' + JSON.stringify(smoke));
-if (!smoke.homeChatOnlyVerified || !smoke.dropContextIpcVerified || !smoke.workspaceIpcVerified || !smoke.cursorGazeVerified || !smoke.documentReaderVerified || !smoke.activityTimelineVerified || !smoke.computerIpcVerified || !smoke.edgeDockingVerified || !smoke.taskbarReturnVerified || !smoke.backgroundTaskbarVerified || !smoke.miniCapsuleVerified || !smoke.stableStreamingVerified || !smoke.voiceNoticePreserved || !smoke.pasteImageCspVerified || !smoke.singleAttachmentClipVerified || !smoke.folderIpcVerified || !smoke.folderDelegationVerified || !smoke.humanConfirmationVerified || !smoke.imageIpcVerified || !smoke.projectIpcVerified || !smoke.unknownProjectBlocked || !smoke.invalidLiveSessionBlocked || !smoke.bridge || !smoke.nodeAbsent || !smoke.rendered || !smoke.protectedRoundTrip) throw Error('Pruebas de proyectos, voz o aislamiento del paquete fallidas.');
+const smoke = JSON.parse(line);
+if(interactionsOnly){
+  if(smoke.passed!==true||!smoke.quickNativeWidth||!smoke.chatNativeWidth||!smoke.rendererNodeUnavailable||!smoke.frozenContextAndDedup||!smoke.invalidVisualRejected||!smoke.localGuidePersisted||!smoke.appearanceSaved)throw Error('El paquete no pasó las comprobaciones de interacciones.');
+  const report={validationScope:'contextual-interactions-IPC-and-native-bounds',fullObjectivePassed:false,at:new Date().toISOString(),destination,executable:join(destination,'ZEN.exe'),smoke,files,credentialsIncluded:false,selfContainedElectron:true,requiresDotNetDesktop10:true,installer:false,customApplicationSigning:false};
+  await writeFile('docs/evidence/portable-interactions.json',JSON.stringify(report,null,2));
+  console.log(JSON.stringify({executable:report.executable,passed:true,validationScope:report.validationScope,fullObjectivePassed:false,credentialsIncluded:false}));
+}else{
+if (!smoke.shownOnTop || !smoke.startedCompact || !smoke.preferencesIsolated || !smoke.topAnchorStable || !smoke.positionLocked || !smoke.collapsedHeightVerified || !smoke.latestOnlyExpanded || !smoke.latestTranscriptVerified || !smoke.latestInterruptionVerified || !smoke.unknownArtifactBlocked || !smoke.mcpSecretProtectionVerified || !smoke.libraryRootsLocal || !smoke.localFileWithoutApiVerified || !smoke.widthsVerified || !smoke.invalidDragBlocked || !smoke.horizontalDragVerified || !smoke.dragPositionPersisted || (!interfaceOnly && (!smoke.objective || Object.values(smoke.objective).some(value => value !== true)))) throw Error('Pruebas funcionales del paquete fallidas: ' + JSON.stringify(smoke));
+if (!smoke.dailyWorkspaceVerified || !smoke.homeChatOnlyVerified || !smoke.dropContextIpcVerified || !smoke.workspaceIpcVerified || !smoke.cursorGazeVerified || !smoke.documentReaderVerified || !smoke.activityTimelineVerified || !smoke.computerIpcVerified || !smoke.edgeDockingVerified || !smoke.taskbarReturnVerified || !smoke.backgroundTaskbarVerified || !smoke.miniCapsuleVerified || !smoke.stableStreamingVerified || !smoke.voiceNoticePreserved || !smoke.pasteImageCspVerified || !smoke.singleAttachmentClipVerified || !smoke.folderIpcVerified || !smoke.folderDelegationVerified || !smoke.humanConfirmationVerified || !smoke.imageIpcVerified || !smoke.projectIpcVerified || !smoke.unknownProjectBlocked || !smoke.invalidLiveSessionBlocked || !smoke.bridge || !smoke.nodeAbsent || !smoke.rendered || !smoke.protectedRoundTrip) throw Error('Pruebas de proyectos, voz o aislamiento del paquete fallidas.');
 const report = { validationScope: interfaceOnly ? 'interface' : 'full-objective', fullObjectivePassed: !interfaceOnly, at: new Date().toISOString(), destination, executable: join(destination, 'ZEN.exe'), smoke, files, credentialsIncluded: false, selfContainedElectron: true, requiresDotNetDesktop10: true, installer: false, customApplicationSigning: false };
 await writeFile(interfaceOnly ? 'docs/evidence/portable-interface.json' : 'docs/evidence/portable-package.json', JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ executable: report.executable, passed: true, validationScope: report.validationScope, fullObjectivePassed: report.fullObjectivePassed, credentialsIncluded: false }));
+
+}

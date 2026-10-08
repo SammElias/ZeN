@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-07T17:25:41.139801+00:00",
+  "spec": "guion(1).md, explicitly confirmed",
+  "build": true,
+  "nativeBuild": true,
+  "unitTests": {
+    "passed": 315,
+    "files": 37
+  },
+  "rendererUiPassed": true,
+  "dailyWorkspaceRegressionPassed": true,
+  "nativeIntegrationPassed": true,
+  "nativeVisualCaptureVerified": false,
+  "fullElectronRegression": {
+    "passed": false,
+    "observedFailure": "shownOnTop false in two completed runs; final run timed out after 30 seconds"
+  },
+  "physicalComputerUse": {
+    "screenshots": "black, including synthetic background window",
+    "input": "rejected twice because another Chrome Legacy Window covered the selected synthetic fixture; no action on that other window"
+  },
+  "apiCalled": false,
+  "desktopExeReplaced": false,
+  "published": false,
+  "desktopExeSha256": "9e416992824f5c676748436c3e12a38cb6b11d8f5d727a1c6aa8fdb0bb9c568f",
+  "configPreserved": [
+    "config/saved-agent.json",
+    "config/live-session.json"
+  ],
+  "fullyValidated": false
+}

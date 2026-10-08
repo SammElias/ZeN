@@ -1,0 +1,189 @@
+{
+  "at": "2026-10-07T21:11:41.6775899+02:00",
+  "sourceCommit": "dbda6f730f4f83e0288c5c820a5089a871579e36",
+  "buildPassed": true,
+  "unitTestsPassed": 322,
+  "unitTestFiles": 38,
+  "renderer": {
+    "at": "2026-10-07T19:11:21.409Z",
+    "passed": true,
+    "scope": "Renderer in Edge with simulated local IPC; no API or physical Windows/DPI input",
+    "sizes": [
+      {
+        "width": 960,
+        "height": 640
+      },
+      {
+        "width": 640,
+        "height": 480
+      },
+      {
+        "width": 480,
+        "height": 360
+      },
+      {
+        "width": 360,
+        "height": 400
+      },
+      {
+        "width": 320,
+        "height": 480
+      }
+    ],
+    "homeFits": true,
+    "sharedComposer": true,
+    "chatScrollRestored": true,
+    "taskFilterAndScrollRestored": true,
+    "taskDraftSeparated": true,
+    "projectDraftAndAttachmentsRestored": true,
+    "keyboardFocusRestored": true,
+    "actionsDoNotSend": true,
+    "singleExplicitRequest": true,
+    "meetingReachable": true,
+    "favoritesPrepareOnly": true,
+    "permissionsAndStopReachable": true,
+    "enlargedTextReflow": true,
+    "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\compact"
+  },
+  "native": {
+    "at": "2026-10-07T19:07:20.187Z",
+    "scope": "Windows Electron: real local IPC, native bounds, renderer capture; DOM events simulated",
+    "apiCalled": false,
+    "physicalInputTested": false,
+    "fourFanActions": true,
+    "quickNativeWidth": true,
+    "rendererNodeUnavailable": true,
+    "frozenContextAndDedup": true,
+    "invalidVisualRejected": true,
+    "localGuidePersisted": true,
+    "appearanceSaved": true,
+    "chatNativeWidth": true,
+    "projectAttachmentsIsolated": true,
+    "nativeSizes": [
+      {
+        "requested": {
+          "width": 360,
+          "height": 400
+        },
+        "bounds": {
+          "x": 3200,
+          "y": 472,
+          "width": 360,
+          "height": 400
+        },
+        "width": 360,
+        "height": 400,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 480,
+          "height": 360
+        },
+        "bounds": {
+          "x": 3200,
+          "y": 472,
+          "width": 480,
+          "height": 360
+        },
+        "width": 480,
+        "height": 360,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 640,
+          "height": 480
+        },
+        "bounds": {
+          "x": 3200,
+          "y": 472,
+          "width": 640,
+          "height": 480
+        },
+        "width": 640,
+        "height": 480,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 960,
+          "height": 640
+        },
+        "bounds": {
+          "x": 3200,
+          "y": 472,
+          "width": 960,
+          "height": 640
+        },
+        "width": 960,
+        "height": 640,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 320,
+          "height": 480
+        },
+        "bounds": {
+          "x": 3200,
+          "y": 472,
+          "width": 320,
+          "height": 480
+        },
+        "width": 320,
+        "height": 480,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      }
+    ],
+    "nativeResponsive": true,
+    "observedDisplays": [
+      {
+        "id": 3254546382,
+        "scaleFactor": 1,
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1032
+        }
+      },
+      {
+        "id": 2419412400,
+        "scaleFactor": 1,
+        "workArea": {
+          "x": 1920,
+          "y": 0,
+          "width": 1920,
+          "height": 1032
+        }
+      }
+    ],
+    "DPIChangesTested": false,
+    "passed": true,
+    "nativeProcessExited": true
+  },
+  "interactions": true,
+  "pet": true,
+  "apiCalled": false,
+  "published": false,
+  "packaged": false,
+  "desktopExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
+  "desktopSha256": "6E69398E766845E9F1E15953FBB02321B29A5042DD1B5427209ECA5C188E74A3",
+  "liveConfigSha256": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
+  "savedAgentConfigSha256": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
+  "fullObjectiveVerified": false,
+  "pending": [
+    "physical Windows DPI at 125%, 150%, 200%",
+    "physical resize and focus between monitors",
+    "native transparent hit targets with real pointer input",
+    "physical voice and capture exclusions"
+  ],
+  "desktopUnchanged": true,
+  "configurationUnchanged": true
+}

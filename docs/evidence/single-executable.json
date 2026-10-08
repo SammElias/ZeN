@@ -1,23 +1,391 @@
 {
-  "at": "2026-10-07T14:58:00.723Z",
-  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\home-chat-single-202610071453\\ZEN.exe",
-  "extractedExecutable": "C:\\Users\\samme\\AppData\\Local\\Temp\\nsh7FAC.tmp\\app\\ZEN.exe",
-  "sha256": "0c189dbf9d392b4f38f52a5308ca6b0c252f9a0a6205a127397d897e8e3fbdb6",
+  "at": "2026-10-07T21:39:05.890Z",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\single-file\\ZEN.exe",
+  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nsq93B9.tmp\\app\\ZEN.exe",
+  "sha256": "b3bf792e47e57587fd13620f20b2e0cb1dd89812872ea4415a14b1e2243923f1",
   "exitCode": 0,
   "packagedStartupVerified": true,
-  "validationScope": "single-executable-extraction-and-real-Electron-smoke-synthetic-tasks",
+  "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC",
   "apiCalled": false,
   "fullObjectiveVerified": false,
-  "remainingChecks": [],
-  "homeChatOnlyVerified": true,
-  "dropContextIpcVerified": true,
-  "workspaceIpcVerified": true,
-  "cursorGazeVerified": true,
-  "documentReaderVerified": true,
-  "folderDelegationVerified": true,
-  "humanConfirmationVerified": true,
-  "activityTimelineVerified": true,
-  "edgeDockingVerified": true,
-  "stableStreamingVerified": true,
-  "shownOnTop": true
+  "remainingChecks": [
+    "physical-input-and-focus",
+    "multiple-monitors-and-DPI",
+    "physical-capture-exclusions",
+    "real-model-and-voice"
+  ],
+  "interactions": {
+    "at": "2026-10-07T21:39:00.115Z",
+    "scope": "Windows Electron: real local IPC, native bounds, renderer capture; DOM events simulated",
+    "apiCalled": false,
+    "physicalInputTested": false,
+    "fourFanActions": true,
+    "quickNativeWidth": true,
+    "rendererNodeUnavailable": true,
+    "frozenContextAndDedup": true,
+    "invalidVisualRejected": true,
+    "localGuidePersisted": true,
+    "appearanceSaved": true,
+    "chatNativeWidth": true,
+    "projectAttachmentsIsolated": true,
+    "nativeSizes": [
+      {
+        "requested": {
+          "width": 360,
+          "height": 400
+        },
+        "bounds": {
+          "x": 1280,
+          "y": 472,
+          "width": 360,
+          "height": 400
+        },
+        "width": 360,
+        "height": 400,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 480,
+          "height": 360
+        },
+        "bounds": {
+          "x": 1280,
+          "y": 472,
+          "width": 480,
+          "height": 360
+        },
+        "width": 480,
+        "height": 360,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 640,
+          "height": 480
+        },
+        "bounds": {
+          "x": 1280,
+          "y": 472,
+          "width": 640,
+          "height": 480
+        },
+        "width": 640,
+        "height": 480,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 960,
+          "height": 640
+        },
+        "bounds": {
+          "x": 1280,
+          "y": 472,
+          "width": 960,
+          "height": 640
+        },
+        "width": 960,
+        "height": 640,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      },
+      {
+        "requested": {
+          "width": 320,
+          "height": 480
+        },
+        "bounds": {
+          "x": 1280,
+          "y": 472,
+          "width": 320,
+          "height": 480
+        },
+        "width": 320,
+        "height": 480,
+        "noHorizontalScroll": true,
+        "sendReachable": true
+      }
+    ],
+    "nativeResponsive": true,
+    "headCapsuleBounds": {
+      "x": 715,
+      "y": 0,
+      "width": 490,
+      "height": 46
+    },
+    "headCapsuleNative": true,
+    "singlePanelNavigation": true,
+    "nativeFoldAnchor": true,
+    "nativeEdgeProbe": [
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "top",
+        "ratio": 0,
+        "compact": {
+          "x": 0,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 0,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "top",
+        "ratio": 1,
+        "compact": {
+          "x": 1430,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1280,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "left",
+        "ratio": 0,
+        "compact": {
+          "x": 0,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 0,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "left",
+        "ratio": 1,
+        "compact": {
+          "x": 0,
+          "y": 986,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 0,
+          "y": 472,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "right",
+        "ratio": 0,
+        "compact": {
+          "x": 1430,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1280,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 3254546382,
+        "scaleFactor": 1,
+        "edge": "right",
+        "ratio": 1,
+        "compact": {
+          "x": 1430,
+          "y": 986,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1280,
+          "y": 472,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "top",
+        "ratio": 0,
+        "compact": {
+          "x": 1920,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1920,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "top",
+        "ratio": 1,
+        "compact": {
+          "x": 3350,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 3200,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "left",
+        "ratio": 0,
+        "compact": {
+          "x": 1920,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1920,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "left",
+        "ratio": 1,
+        "compact": {
+          "x": 1920,
+          "y": 986,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 1920,
+          "y": 472,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "right",
+        "ratio": 0,
+        "compact": {
+          "x": 3350,
+          "y": 0,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 3200,
+          "y": 0,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      },
+      {
+        "displayId": 2419412400,
+        "scaleFactor": 1,
+        "edge": "right",
+        "ratio": 1,
+        "compact": {
+          "x": 3350,
+          "y": 986,
+          "width": 490,
+          "height": 46
+        },
+        "panel": {
+          "x": 3200,
+          "y": 472,
+          "width": 640,
+          "height": 560
+        },
+        "within": true,
+        "restored": true
+      }
+    ],
+    "nativeEdgesWithinWorkArea": true,
+    "observedDisplays": [
+      {
+        "id": 3254546382,
+        "scaleFactor": 1,
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1032
+        }
+      },
+      {
+        "id": 2419412400,
+        "scaleFactor": 1,
+        "workArea": {
+          "x": 1920,
+          "y": 0,
+          "width": 1920,
+          "height": 1032
+        }
+      }
+    ],
+    "DPIChangesTested": false,
+    "passed": true
+  }
 }

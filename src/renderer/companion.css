@@ -195,7 +195,7 @@ button:hover { background: #232329; border-color: #4f465f; }
 .mood-cancelled .companion-float { animation: none; transform: translateY(3px); }
 .mood-cancelled { opacity: .65; }
 .still *, .motion-off *, .zen-overlay.hidden * { animation: none!important; transition: none!important; }
-.motion-off .companion-gaze,.still .companion-gaze { transform: none!important; }
+.motion-off :is(.companion-gaze,.companion-head-gaze),.still .zen-companion:not(.motion-explicit) :is(.companion-gaze,.companion-head-gaze) { transform: none!important; }
 @keyframes zen-float { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-3px) rotate(2deg); } }
 @keyframes zen-blink { 0%,41%,45%,84%,88%,100% { transform: scaleY(1); } 43%,86% { transform: scaleY(.12); } }
 @keyframes zen-satellite { 0%,100% { opacity: .65; } 50% { opacity: 1; } }
@@ -207,7 +207,7 @@ button:hover { background: #232329; border-color: #4f465f; }
 @keyframes zen-curious { 0%,100% { transform: rotate(0); } 40%,65% { transform: rotate(8deg) translateY(-2px); } }
 @keyframes zen-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-1px); } }
 @keyframes zen-reveal { from { opacity: 0; transform: translateY(-7px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@media(prefers-reduced-motion:reduce) { .zen-companion *, .island * { animation: none!important; transition: none!important; } }
+@media(prefers-reduced-motion:reduce) { .zen-companion:not(.motion-explicit) *, .island:not(.pet-motion-normal):not(.pet-motion-expressive) * { animation: none!important; transition: none!important; } }
 @media(max-width:400px) { .island .suggestion-grid { grid-template-columns: 1fr; } .island .suggestion-grid button { padding: 8px; } .companion-welcome { gap: 8px; padding-inline: 0; } .companion-welcome h1 { font-size: 18px!important; } .zen-companion.large { width: 64px; height: 64px; } }
 
 /* Edge rails keep controls upright; the chat expands toward the work area. */
@@ -270,5 +270,5 @@ button:hover { background: #232329; border-color: #4f465f; }
 .mood-awaiting_input .robot-beacon,.mood-awaiting_approval .robot-beacon { fill: #ffd89c; }
 .mood-failed .robot-beacon { fill: #ff99a9; }
 .mood-failed .robot-mouth { transform: rotate(180deg); transform-origin: 48px 57px; }
-@media(prefers-reduced-motion:reduce) { .companion-gaze { transform: none!important; } }
+@media(prefers-reduced-motion:reduce) { .zen-companion:not(.motion-explicit) :is(.companion-gaze,.companion-head-gaze) { transform: none!important; } }
 @media(max-width:420px) { .island.live-only .live-empty { padding: 12px; gap: 10px; } .island.live-only .live-empty .zen-companion.large { width: 72px; height: 72px; } }

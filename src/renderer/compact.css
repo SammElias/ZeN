@@ -1,0 +1,83 @@
+/* Guion 03: the native viewport owns height; only the central content scrolls. */
+html,body,#root{height:100%;min-height:0;margin:0}
+.zen-overlay.island.live-only.compact-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100%;max-width:none;min-width:0;min-height:0;max-height:none;padding:0;overflow:visible;box-sizing:border-box;border-radius:18px;font-family:'Segoe UI',sans-serif}
+.compact-shell *, .compact-shell *::before,.compact-shell *::after{box-sizing:border-box}
+.compact-shell [hidden]{display:none!important}
+.compact-shell :is(button,input,textarea){font:inherit}
+.compact-shell button{font-size:13px;min-height:32px;padding:5px 9px;border-radius:10px;cursor:pointer}
+.compact-shell button:disabled{cursor:default}
+.compact-shell button svg{width:18px;height:18px;flex-shrink:0}
+.compact-shell :is(input,textarea){max-width:100%;min-width:0;border:1px solid var(--border);border-radius:9px;padding:8px;font-size:14px}
+.compact-shell :is(button,input,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.zen-overlay.island.live-only.compact-shell>.overlay-header{position:relative;z-index:5;display:flex;gap:8px;height:56px;min-height:56px;padding:6px 10px;flex-wrap:nowrap;border-bottom:1px solid var(--border);background:var(--surface);border-radius:18px 18px 0 0}
+.compact-shell .header-actions{margin-left:auto;flex:0 0 auto;gap:2px}
+.compact-shell .header-actions :is(button,.icon-button){width:32px;height:36px;min-height:32px;padding:6px}
+.zen-overlay.island.live-only.compact-shell .navigation-dock:not(.compact){display:flex;gap:5px;padding:0;height:auto;border:0;background:none;box-shadow:none;flex:0 0 auto}
+.zen-overlay.island.live-only.compact-shell .top-navigation{display:flex;gap:2px;width:auto;height:auto;flex:none}
+.zen-overlay.island.live-only.compact-shell .top-navigation .navigation-tab{display:flex;gap:6px;width:auto;height:36px;padding:6px 8px;border-radius:10px;color:var(--secondary);background:transparent}
+.zen-overlay.island.live-only.compact-shell .navigation-tab[aria-current=page]{background:var(--violet-soft,#ede4fa);color:var(--accent);box-shadow:inset 0 0 0 1px #bca3d850}
+.zen-overlay.island.live-only.compact-shell .navigation-dock .brand-home{width:30px;height:36px;flex:0 0 30px;background:none;box-shadow:none;border:0}
+.compact-shell .header-status{display:none!important}
+.project-picker{min-width:0;flex:1}
+.project-chip{display:flex;align-items:center;gap:5px;max-width:100%;border:1px solid var(--border);background:var(--surface-soft)!important}
+.project-chip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.project-chip small{font-size:11px;color:var(--secondary)}
+.project-picker-panel{position:absolute;right:8px;top:calc(100% + 6px);z-index:60;width:min(380px,calc(100vw - 18px));max-height:calc(100dvh - 140px);display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 35px #25103830;font-size:13px}
+.project-choices{overflow-y:auto;min-height:0;display:grid;gap:7px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.project-card-choice{display:flex;align-items:center;gap:7px;text-align:left;min-height:64px!important;white-space:normal;background:var(--surface-soft)!important}
+.project-card-choice[aria-pressed=true]{border-color:var(--accent);background:var(--violet-soft)!important}
+.project-card-choice>span{min-width:0;flex:1;overflow-wrap:anywhere}.project-card-choice strong,.project-card-choice small{display:block}.project-card-choice small{font-size:11px;color:var(--secondary);margin-top:4px}
+.project-card-choice>svg:last-child{width:14px}.manage-projects{flex-shrink:0}
+.compact-shell .main-region,.compact-shell .view-region,.compact-shell .view{min-height:0;min-width:0}
+.compact-shell .main-region{display:flex;flex-direction:column;position:relative}
+.compact-shell .view-region,.compact-shell .view{flex:1;display:flex;flex-direction:column}
+.compact-shell .content-scroll{min-height:0;min-width:0;overflow-y:auto;overflow-x:clip;overscroll-behavior:contain;scrollbar-width:thin;overflow-wrap:anywhere;flex:1}
+.compact-shell .content-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 10px;border-bottom:1px solid var(--border);font-size:12px;flex-shrink:0}
+.content-toolbar>span{min-width:0;flex:1}.content-toolbar button{font-size:12px;min-height:30px;padding:3px 8px}.content-toolbar small{color:var(--secondary)}
+.compact-shell .chat-page{display:flex;overflow:visible}
+.zen-overlay.island.live-only.compact-shell .chat-scroll-content{display:block;overflow-y:auto;max-height:none;min-height:0;padding:12px}
+.zen-overlay.island.live-only.compact-shell :is(.conversation-pane,.message-stage,.workspace-body.latest-message){display:block;min-height:0;max-height:none;height:auto;overflow:visible;flex:none;margin:0;padding:0}
+.compact-shell .live-message{font-size:14px;margin:0;max-width:100%;padding:12px;line-height:1.6}
+.compact-shell .message-content{min-width:0}.compact-shell .message-content :is(pre,table){max-width:100%;overflow-x:auto}.compact-shell .message-content img{max-width:100%}
+.compact-shell .result-text,.compact-shell .task-result{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+.compact-shell .message-speaker{margin-bottom:8px}.compact-shell .live-empty{padding:20px 0}.compact-shell .follow-response{position:sticky;bottom:0;display:block;margin-left:auto}
+.zen-overlay.island.live-only.compact-shell .home-page{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:14px;padding:16px 24px;flex:1;overflow-y:auto;min-height:0}
+.compact-shell .home-greeting{display:flex;justify-content:center;align-items:center;gap:16px;margin:0;flex-shrink:0}
+.compact-shell .home-greeting .zen-companion{width:78px!important;height:88px!important;flex-shrink:0}
+.compact-shell .home-greeting h1{font-size:23px;letter-spacing:-.4px;color:var(--text);margin:0;line-height:1.25}
+.compact-shell .home-shortcuts{display:flex;justify-content:center;gap:8px;margin:0;flex-shrink:0}.compact-shell .home-shortcuts button{display:flex;align-items:center;gap:6px;padding:8px 12px}
+.compact-shell .resume-card{margin:0;padding:9px 12px;font-size:12px}.compact-shell .resume-card>strong{display:none}.compact-shell .resume-card p{margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.compact-shell .resume-card .context-actions{display:flex;justify-content:flex-end;gap:7px}
+.compact-shell .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.compact-shell .panel-heading h2,.compact-shell .panel-heading strong{margin:0;font-size:15px;color:var(--text);min-width:0;overflow-wrap:anywhere}
+.compact-shell .panel-content{padding:12px}.compact-shell .panel-content>.context-tray{margin:0;padding:0;border:0;background:none}.compact-shell .context-row :is(small,strong){overflow-wrap:anywhere}
+.compact-shell .workspace-panel{display:flex;flex-direction:column;flex:1;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;max-height:none;color:var(--text)}
+.compact-shell .workspace-list,.compact-shell .task-detail{padding:10px 12px;max-height:none}.compact-shell .workspace-panel label{display:grid;gap:5px;font-size:12px}.compact-shell .task-filter{margin-bottom:8px}
+.compact-shell .task-row{display:flex;align-items:center;gap:12px;margin:0;padding:10px 2px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:none}
+.compact-shell .task-row>div{flex:1;min-width:0}.compact-shell .task-row strong{font-size:13px;line-height:1.5;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.compact-shell .task-row small{display:block;color:var(--secondary);font-size:12px;margin-top:4px}.compact-shell .task-row button{flex:none}
+.compact-shell .favorite-row{padding:10px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px}.compact-shell .favorite-row strong{font-size:13px}.compact-shell .favorite-list{display:block}.compact-shell .workspace-panel form{display:grid;gap:8px;margin:12px 0}
+.compact-shell .task-detail p{font-size:13px;line-height:1.6}.compact-shell .context-actions{display:flex;gap:6px;flex-wrap:wrap}.compact-shell .project-editor{min-width:0}.compact-shell .project-editor label{display:grid;gap:6px}.compact-shell .project-editor-choices{display:flex;flex-wrap:wrap;gap:7px}.compact-shell .project-editor-choices [aria-pressed=true]{background:var(--violet-soft);border-color:var(--accent)}
+.compact-shell .activity-panel,.compact-shell .activity-panel.expanded{height:auto;padding:0;margin:0;border:0;background:none;overflow:visible}.compact-shell .activity-steps{height:auto;overflow:visible}.compact-shell .activity-copy>span{white-space:normal}.compact-shell .activity-copy{font-size:13px}.compact-shell .activity-copy small{font-size:11px}
+.compact-shell .composer-shell{min-width:0;padding:6px 10px 10px;border-top:1px solid var(--border);background:var(--surface);border-radius:0 0 18px 18px;position:relative;z-index:4}
+.zen-overlay.island.live-only.compact-shell .text-composer{margin:0;padding:6px 8px;background:var(--surface-soft);border:1px solid var(--border);border-radius:16px;min-width:0}
+.compact-shell .composer-row{display:flex;align-items:flex-end;gap:5px;min-width:0}.compact-shell .text-composer textarea{font-size:14px;line-height:22px;padding:7px 0;max-height:70px;border:0;border-radius:0;min-width:0;flex:1;background:transparent}
+.compact-shell .composer-send,.compact-shell .composer-attach{width:34px;height:36px;min-width:34px;flex:0 0 34px;min-height:36px;padding:6px}.compact-shell .composer-attach{font-size:25px;line-height:1}.compact-shell .composer-send{background:var(--accent);color:white;border-radius:12px}
+.compact-shell .composer-voice{display:flex;gap:1px;flex-shrink:0}.compact-shell .composer-voice button{width:32px;height:36px;padding:6px;background:transparent;border:0}.compact-shell .composer-voice [aria-pressed=true]{background:var(--violet-soft);color:var(--accent)}
+.compact-shell .attach-menu{width:300px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 150px);overflow-y:auto;background:var(--surface);color:var(--text);border-color:var(--border);left:-3px;bottom:calc(100% + 10px)}
+.compact-shell .attach-menu button{font-size:13px;color:var(--text);min-height:36px;line-height:1.4}.compact-shell .attach-menu button:hover,.compact-shell .attach-menu button:focus-visible{background:var(--violet-soft)}.compact-shell .attach-menu small{color:var(--secondary)}
+.compact-shell .context-summary{display:flex;align-items:center;gap:5px;margin:0 0 5px;min-width:0}.compact-shell .context-summary>button:first-child{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;border:0;background:transparent;text-align:left}.compact-shell .context-summary span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.compact-shell .context-summary>button:last-child{flex-shrink:0}.compact-shell .composer-folder{display:none} /* Reached from the compact context row; folder details are in its panel. */
+.compact-shell .compact-notice{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1.4;max-height:54px;overflow-y:auto;margin-bottom:4px}.compact-shell .compact-notice>span{flex:1;overflow-wrap:anywhere}.compact-shell .compact-notice button{flex:none}
+.compact-shell .voice-active-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);padding:4px 2px 0}.compact-shell .execution-controls{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:0;border:0;font-size:13px;height:auto;min-height:0}.compact-shell .execution-actions{display:flex;gap:8px;flex-wrap:wrap}.compact-shell .voice-toggle{font-size:13px}.compact-shell .voice-toggle span{display:flex;align-items:center;gap:5px}
+.compact-shell .screen-context-note{flex-wrap:wrap;margin:0;max-width:100%;font-size:12px}.compact-shell .screen-context-description{flex:1;min-width:0}.compact-shell .screen-context-actions{display:flex;flex-wrap:wrap;gap:6px}
+.compact-shell .region-picker{margin:0;max-height:none;flex:1;min-height:0}.compact-shell .guide-card,.compact-shell .guide-setup{margin:0 0 12px}.compact-shell .guide-instruction{max-height:none;overflow:visible}.compact-shell .guide-setup textarea{font-size:14px}
+.compact-shell .resume-note{display:flex;align-items:center;justify-content:space-between;font-size:12px;margin:0 0 4px;padding:0}
+@media(max-width:740px){.compact-shell .nav-label,.compact-shell .project-chip small{display:none}.zen-overlay.island.live-only.compact-shell:not(.head-shell) .navigation-tab{width:36px!important;padding:7px!important}.compact-shell .project-chip{width:100%}}
+@media(max-width:420px){.zen-overlay.island.live-only.compact-shell>.overlay-header{gap:5px;padding:5px 7px;height:48px;min-height:48px}.zen-overlay.island.live-only.compact-shell .navigation-dock .brand-home{display:none}.compact-shell .project-chip>svg{display:none}.compact-shell .composer-shell{padding:5px 7px 7px}.compact-shell .composer-row{gap:3px}.compact-shell .home-page{padding:12px}.compact-shell .home-greeting{gap:10px}.compact-shell .home-greeting h1{font-size:21px}.compact-shell .home-shortcuts button{padding:6px 8px}.compact-shell .project-picker-panel{right:7px;top:100%;max-height:calc(100dvh - 135px)}.compact-shell .content-toolbar{gap:4px;padding:4px 7px}.compact-shell .content-toolbar>span{flex-basis:100%}.compact-shell .home-greeting .zen-companion{width:62px!important;height:70px!important}}
+@media(max-height:520px){.compact-shell .home-greeting .zen-companion{width:48px!important;height:54px!important}.compact-shell .home-greeting h1{font-size:21px}.compact-shell .home-resume{display:none}.compact-shell .home-page{gap:12px;padding:12px}.compact-shell .home-shortcuts{gap:6px}}
+@media(max-height:420px){.compact-shell .home-shortcuts{display:none}.compact-shell .home-page{padding:8px}.compact-shell .home-greeting .zen-companion{width:38px!important;height:44px!important}.compact-shell .content-toolbar{flex-wrap:nowrap}.compact-shell .content-toolbar>span{display:none}.compact-shell .panel-heading{padding:6px 10px}.compact-shell .chat-scroll-content{padding:8px!important}}
+@media(prefers-reduced-motion:reduce){.compact-shell *{scroll-behavior:auto!important}}
+.compact-shell .project-choices{grid-auto-rows:max-content;align-content:start}.compact-shell .project-card-choice{height:auto!important}
+.compact-shell .content-toolbar{flex-wrap:wrap}
+.compact-shell .compact-notice{max-height:none;overflow:visible;flex-shrink:0}
+.compact-shell .notice-detail{display:flex;align-items:center;gap:8px;min-width:0;flex:1;border:0;background:transparent;text-align:left;padding:2px}
+.compact-shell .notice-detail span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-size:12px}.compact-shell .notice-detail small{white-space:nowrap;font-size:11px;color:var(--accent)}
+.compact-shell .compact-notice .notice-detail{flex:1 1 0;min-width:0}
+@media(max-width:740px){.compact-shell .navigation-tab:is(:hover,:focus-visible) .nav-label{display:block;position:absolute;top:100%;left:0;z-index:80;padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;white-space:nowrap;box-shadow:0 3px 10px #24173320}}

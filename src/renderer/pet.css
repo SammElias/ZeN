@@ -1,0 +1,50 @@
+.zen-overlay.island.live-only.pet { background:transparent; border:0; border-radius:0; box-shadow:none; padding:0; max-height:none; transform:none; overflow:hidden; }
+.floating-pet { position:absolute; inset:0; }
+.pet-avatar { position:absolute; padding:4px; border-radius:50%; border:1px solid #c5b0e955; background:radial-gradient(circle,#ece1f9dd 10%,#e5d6ff44 80%,#e5d6ff18); display:grid; place-items:center; cursor:grab; touch-action:none; }
+.pet-avatar:active { cursor:grabbing; }
+.pet-avatar:hover { background:radial-gradient(circle,#f3ebffff,#e5d6ff66); }
+.pet-avatar:focus-visible { outline:3px solid #7c3aed; outline-offset:-4px; }
+.pet-avatar .zen-companion { width:100%!important; height:100%!important; }
+.pet-bubble,.pet-menu { position:absolute; border-radius:12px; background:#f9f7ff; border:1px solid #baa0df; color:#241733; overflow:hidden; }
+.pet-bubble { display:flex; padding:8px 4px 8px 10px; gap:2px; }
+.pet-bubble-content { flex:1; min-width:0; border:0; background:transparent; padding:0; text-align:left; }
+.pet-bubble strong,.pet-bubble span { display:block; font-size:12px; line-height:17px; }
+.pet-bubble span { font-size:11px; max-height:34px; overflow:hidden; }
+.pet-bubble-close { border:0; padding:2px 6px; align-self:flex-start; background:transparent; }
+.pet-menu { display:flex; flex-direction:column; padding:6px; gap:1px; }
+.pet-menu button { flex:1; min-height:28px; padding:3px 8px; font-size:12px; text-align:left; border:0; border-radius:7px; background:transparent; }
+.pet-menu button:focus-visible { outline:2px solid #7c3aed; }
+.pet-accessible-status { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.zen-robot .companion-gaze { transition:transform 200ms ease-out; transform-origin:64px 56px; }
+.zen-robot:not(.still).pose-idle .companion-eyes { animation:pet-blink 7s 1.4s infinite; }
+.zen-robot:not(.still).pose-idle .companion-float { transform-origin:64px 100px; animation:pet-breathe 5s ease-in-out infinite; }
+.zen-robot.pose-idle .robot-head { animation:none; }
+.zen-robot.drop-attention .companion-gaze { transform:translate(2px,3px)!important; }
+.zen-robot.still *, .motion-off .zen-robot * { animation:none!important; transition:none!important; }
+.pet .zen-robot.pose-listening .robot-heart { opacity:calc(.5 + var(--input-level,0)*.5); }
+.zen-overlay.island.live-only.pet { animation:none; }
+.pet:not(.motion-off) .zen-robot { animation:pet-arrive 180ms ease-out; }
+@keyframes pet-arrive { from { transform:scale(.99); } to { transform:scale(1); } }
+@keyframes pet-blink { 0%,43%,47%,100% { transform:scaleY(1); } 45% { transform:scaleY(.1); } }
+@keyframes pet-breathe { 0%,100% { transform:scale(1); } 50% { transform:scale(1.008); } }
+
+.island.live-only .zen-robot:not(.still).pose-idle .companion-float { animation:pet-breathe 5s ease-in-out infinite; }
+.island.live-only .zen-robot:not(.still).pose-idle .companion-eyes { animation:pet-blink 7s 1.4s infinite; }
+.pet-motion-normal .zen-robot.robot-waving .arm-right { animation:pet-wave-normal .45s ease-in-out 3; }
+.pet-motion-expressive .zen-robot.robot-waving .arm-right { animation:robot-wave .4s ease-in-out 4; }
+@keyframes pet-wave-normal { 0%,100% {transform:rotate(-118deg)} 50% {transform:rotate(-108deg)} }
+
+
+.zen-overlay.island.live-only.pet {width:min(300px,100vw);font-family:'Segoe UI',sans-serif;}
+.island.live-only.pet .pet-bubble-content {display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;}
+.island.live-only.pet .pet-menu button {justify-content:flex-start;}
+.zen-overlay.island.live-only.pet{width:100%;height:100vh!important}
+.pet-fan.arc{position:absolute;inset:0;pointer-events:none}.pet-fan.arc button{position:absolute;pointer-events:auto}
+.pet-fan button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px;border:1px solid #baa0df;border-radius:12px;background:#f9f7ff;color:#241733;font:12px 'Segoe UI',sans-serif;box-shadow:0 2px 6px #24173320;animation:pet-fan-in 180ms ease-out}
+.pet-fan button svg{width:19px;height:19px}.pet-fan button:hover{background:#ede2ff}.pet-fan button:focus-visible{outline:2px solid #7c3aed;outline-offset:-3px}
+.pet-fan.fallback{position:absolute;display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:8px;background:#f9f7ff;border:1px solid #baa0df;border-radius:12px}
+.pet-actions,.pet-more{position:absolute;z-index:4;width:32px;height:26px;min-height:0;padding:0;border:1px solid #baa0df;border-radius:12px;background:#fcfaff;color:#533481;font:12px 'Segoe UI',sans-serif;display:grid;place-items:center}.pet-more svg{width:15px;height:15px}
+.pet-actions{opacity:0;transition:opacity 160ms ease}.floating-pet:hover .pet-actions,.floating-pet:focus-within .pet-actions{opacity:1}.motion-off .pet-fan button{animation:none}.motion-off .pet-actions{transition:none}
+@keyframes pet-fan-in{from{opacity:.3;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.pet-fan button{animation:none}.pet-actions{transition:none}}
+.island.live-only.pet .pet-fan button:focus-visible{outline-offset:-3px}

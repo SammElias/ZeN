@@ -28,7 +28,7 @@ describe('Memoria y modo de respuesta', () => {
   });
   it('streaming updates remain transient and do not replace durable task state', () => {
     const directory = mkdtempSync(join(tmpdir(), 'zen-stream-'));
-    try { const store = new PersonalStore(directory); store.task({ id: 'task', state: 'thinking', message: 'Preparando' }); store.task({ id: 'task', state: 'thinking', message: 'Actividad en directo', streamText: 'Texto provisional' }); expect(store.tasks()).toEqual([{ id: 'task', state: 'thinking', message: 'Preparando' }]); }
+    try { const store = new PersonalStore(directory); store.task({ id: 'task', state: 'thinking', message: 'Preparando' }); const saved=store.tasks(); expect(saved[0].createdAt).toEqual(expect.any(Number)); expect(saved[0].updatedAt).toEqual(expect.any(Number)); store.task({ id: 'task', state: 'thinking', message: 'Actividad en directo', streamText: 'Texto provisional' }); expect(store.tasks()).toEqual(saved); expect(saved[0]).toMatchObject({ id: 'task', state: 'thinking', message: 'Preparando' }); }
     finally { rmSync(directory, { recursive: true, force: true }); }
   });
 });

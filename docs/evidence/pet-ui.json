@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-07T19:24:57.739Z",
+  "passed": true,
+  "scope": "renderer-mocked-events",
+  "apiCalled": false,
+  "hoverDelay": true,
+  "keyboardMenu": true,
+  "dragDoesNotOpen": true,
+  "draftRestored": true,
+  "completionDeduplicated": true,
+  "errorPriority": true,
+  "codexPending": true,
+  "reducedMotion": true,
+  "silent": true,
+  "noMicOnOpen": true,
+  "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\pet"
+}

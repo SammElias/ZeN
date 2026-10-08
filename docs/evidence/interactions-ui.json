@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-07T19:25:54.496Z",
+  "passed": true,
+  "scope": "renderer with simulated local bridge; no desktop input or API",
+  "requests": 4,
+  "quickAndChatShareRequest": true,
+  "closePreservesExecution": true,
+  "dropRequiresSend": true,
+  "selectionFrozen": true,
+  "annotations": true,
+  "guideManual": true,
+  "resumeDoesNotRun": true,
+  "noMicrophoneOnOpen": true,
+  "dismissPreservesHistory": true,
+  "recoverableAttachmentError": true,
+  "accessoryAndReducedMotion": true,
+  "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\interactions"
+}

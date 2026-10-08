@@ -17,8 +17,8 @@ export function robotPresentation(c:Context):RobotPresentation{
     if(['executing','opening_app','opening_web','opening_codex'].includes(c.activity??''))return{pose:'working',label:'En marcha',hint:'Verás aquí el resultado.'};
     return{pose:'thinking',label:c.state==='queued'?'Esperando':'Pensando',hint:c.state==='queued'?'Tu tarea está en cola.':'Estoy preparando la respuesta.'};
   }
+  if(c.activity==='codex_external')return{pose:'idle',label:'Pendiente de enviar',hint:'Pendiente de enviar en Codex. ZEN no recibe su avance.'};
   if(c.composing)return{pose:'listening',label:'Te leo',hint:'Envía tu mensaje cuando esté listo.'};
-  if(c.activity==='codex_external')return{pose:'idle',label:'En Codex',hint:'Puedes seguir allí o pedirme otra cosa.'};
   if(c.state==='completed')return{pose:'success',label:'Tarea completada',hint:'Puedes revisar el resultado.'};
   if(c.state==='cancelled')return{pose:'paused',label:'Detenido',hint:'No iniciaré nuevas acciones.'};
   if(c.contextReady)return{pose:'curious',label:'Todo preparado',hint:'Dime qué hacemos con esta referencia.'};

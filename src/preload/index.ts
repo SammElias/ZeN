@@ -1,8 +1,22 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { ZenBridge, TaskEvent, DockEdge } from '../shared/contracts';
 const bridge: ZenBridge = {
+  conversations:command=>ipcRenderer.invoke('zen:conversations',command),
+  onConversation:callback=>{const listener=(_e:unknown,event:{chatId:string})=>callback(event);ipcRenderer.on('zen:conversation',listener);return()=>ipcRenderer.removeListener('zen:conversation',listener);},
+  focusOverlay:()=>ipcRenderer.invoke('zen:focus-overlay'),
+  chooseContextFiles:()=>ipcRenderer.invoke('zen:choose-context-files'),
+  interactions:()=>ipcRenderer.invoke('zen:interactions'),saveInteractions:value=>ipcRenderer.invoke('zen:save-interactions',value),
+  openConversation:()=>ipcRenderer.invoke('zen:open-conversation'),
+  onSettingsChanged:callback=>{const handler=(_event:unknown,value:Parameters<typeof callback>[0])=>callback(value);ipcRenderer.on('zen:settings-changed',handler);return()=>ipcRenderer.removeListener('zen:settings-changed',handler);},
+  petSurface:kind=>ipcRenderer.invoke('zen:pet-surface',kind),petGreeting:()=>ipcRenderer.invoke('zen:pet-greeting'),openPreferences:()=>ipcRenderer.invoke('zen:open-preferences'),
+  onPetGeometry:callback=>{const handler=(_e:unknown,value:Parameters<typeof callback>[0])=>callback(value);ipcRenderer.on('zen:pet-geometry',handler);return()=>ipcRenderer.removeListener('zen:pet-geometry',handler);},
+  undoCreation:id=>ipcRenderer.invoke('zen:undo-creation',id),
+  projectContexts:()=>ipcRenderer.invoke('zen:project-contexts'),
+  saveProjectContexts:value=>ipcRenderer.invoke('zen:save-project-contexts',value),
+  importProjectReference:()=>ipcRenderer.invoke('zen:import-project-reference'),
+  onRegion:callback=>{const handler=(_e:unknown,image:string)=>callback(image);ipcRenderer.on('zen:region',handler);return()=>ipcRenderer.removeListener('zen:region',handler);},
   dropFiles:async files=>{try{if(files.length>8)throw Error('Máximo 8 archivos.');const paths=files.map(file=>webUtils.getPathForFile(file));if(paths.some(path=>!path))throw Error('Ese elemento no es un archivo local. Arrastra el archivo desde el Explorador.');return await ipcRenderer.invoke('zen:drop-files',paths);}catch(error){return{ok:false,error:(error as Error).message};}},
-  dropText:value=>ipcRenderer.invoke('zen:drop-text',value),dropImage:image=>ipcRenderer.invoke('zen:drop-image',image),removeContextAttachment:id=>ipcRenderer.invoke('zen:remove-context-attachment',id),activeContextAttachments:ids=>ipcRenderer.invoke('zen:active-context-attachments',ids),
+  dropText:value=>ipcRenderer.invoke('zen:drop-text',value),dropImage:image=>ipcRenderer.invoke('zen:drop-image',image),removeContextAttachment:id=>ipcRenderer.invoke('zen:remove-context-attachment',id),activeContextAttachments:(ids,folderId)=>ipcRenderer.invoke('zen:active-context-attachments',{ids,folderId}),
   onWindowDrop:callback=>{const listener=(_e:unknown,event:Parameters<typeof callback>[0])=>callback(event);ipcRenderer.on('zen:window-drop',listener);return()=>ipcRenderer.removeListener('zen:window-drop',listener);},
   favorites:()=>ipcRenderer.invoke('zen:favorites'),saveFavorites:rows=>ipcRenderer.invoke('zen:save-favorites',rows),
   selection:()=>ipcRenderer.invoke('zen:selection'),clipboardContext:()=>ipcRenderer.invoke('zen:clipboard-context'),

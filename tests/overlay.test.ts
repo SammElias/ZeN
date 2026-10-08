@@ -1,12 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
-import { overlayBounds, draggedRatio, draggedVerticalRatio, nearestEdge } from '../src/main/overlay';
+import { overlayBounds, draggedRatio, draggedVerticalRatio, nearestEdge, capsuleShape } from '../src/main/overlay';
 import { SuccessTimer, canAutoHide, type HideConditions } from '../src/renderer/auto-hide';
 import { OverlayLayoutSchema, OverlayDragSchema, SettingsSchema } from '../src/shared/contracts';
 import {CAPSULE_HEIGHT,CAPSULE_WIDTH} from '../src/shared/island';
 const area = { x: -1920, y: -200, width: 1920, height: 1040 };
 describe('overlay geometry in DIP', () => {
+  it('excludes rounded corners without reserving the previous window height',()=>{
+    const shape=capsuleShape({width:490,height:46});
+    expect(shape.every(r=>r.x>=0&&r.y>=0&&r.x+r.width<=490&&r.y+r.height<=46)).toBe(true);
+    expect(shape.some(r=>r.x===0&&r.y===0)).toBe(false);
+    expect(shape.some(r=>r.x===0&&r.y===23&&r.width===490)).toBe(true);
+    expect(Math.max(...shape.map(r=>r.y+r.height))).toBe(46);
+  });
+  it('recovers every edge within a replacement monitor and returns to its capsule anchor',()=>{
+    for(const edge of ['top','left','right'] as const)for(const ratio of [-1,0,.5,1,2]){
+      const work={x:0,y:0,width:800,height:600},args={mode:'capsule' as const,height:72};
+      const before=overlayBounds(work,args,ratio,edge,ratio),panel=overlayBounds(work,{mode:'card',height:560},ratio,edge,ratio);
+      for(const r of [before,panel]){expect(r.x).toBeGreaterThanOrEqual(0);expect(r.y).toBeGreaterThanOrEqual(0);expect(r.x+r.width).toBeLessThanOrEqual(800);expect(r.y+r.height).toBeLessThanOrEqual(600);}
+      expect(before.height).toBe(46);expect(overlayBounds(work,args,ratio,edge,ratio)).toEqual(before);
+    }
+  });
   it('retains top anchor while expanding on a negative-coordinate monitor', () => { const a = overlayBounds(area, { mode: 'capsule', height: CAPSULE_HEIGHT }); const b = overlayBounds(area, { mode: 'card', height: 330 }); expect(a.y).toBe(b.y); expect(a.x).toBeLessThan(0); expect(a.width).toBe(CAPSULE_WIDTH); expect(a.height).toBe(CAPSULE_HEIGHT); expect(b.width).toBe(640); expect(a.y).toBe(area.y); });
-  it.each([1, 1.25, 1.5])('bounds remain within useful DIP area at simulated scale %s', scale => { const work = { x: -1280, y: -180, width: Math.round(1920 / scale), height: Math.round(1040 / scale) }; const bounds = overlayBounds(work, { mode: 'panel', height: 1000 }); expect(bounds.height).toBeLessThanOrEqual(work.height * .8); expect(bounds.y).toBe(work.y); expect(bounds.x).toBeGreaterThanOrEqual(work.x); expect(bounds.x + bounds.width).toBeLessThanOrEqual(work.x + work.width); });
+  it.each([1, 1.25, 1.5, 2])('bounds remain within useful DIP area at simulated scale %s', scale => { const work = { x: -1280, y: -180, width: Math.round(1920 / scale), height: Math.round(1040 / scale) }; const bounds = overlayBounds(work, { mode: 'panel', height: 1000 }); expect(bounds.height).toBeLessThanOrEqual(work.height * .8); expect(bounds.y).toBe(work.y); expect(bounds.x).toBeGreaterThanOrEqual(work.x); expect(bounds.x + bounds.width).toBeLessThanOrEqual(work.x + work.width); });
   it('fits small screens without outside transparent region', () => { const a = overlayBounds({ x: 0, y: 0, width: 320, height: 240 }, { mode: 'card', height: 560 }); expect(a.width).toBe(296); expect(a.height).toBe(192); expect(a.y).toBe(0); });
   it('keeps a dragged position when expanded, then returns to the same capsule position', () => {
     const layout = { mode: 'capsule' as const, height: CAPSULE_HEIGHT };
@@ -31,10 +46,10 @@ describe('overlay geometry in DIP', () => {
   it('drag IPC accepts only start/end, never coordinates or native movement commands', () => { expect(OverlayDragSchema.safeParse('start').success).toBe(true); expect(OverlayDragSchema.safeParse({ phase: 'start', x: 1, y: 200 }).success).toBe(false); });
   it('rejects arbitrary window commands', () => expect(OverlayLayoutSchema.safeParse({ mode: 'card', height: 250, x: 0, alwaysOnTop: true }).success).toBe(false));
   it('old preferences receive new safe defaults', () => { const c = SettingsSchema.parse({}); expect(c.autoHideSuccess).toBe(false); expect(c.listenOnInvoke).toBe(false); });
-  it.each(['left','right'] as const)('uses a vertical rail on %s and expands inward', edge => {
+  it.each(['left','right'] as const)('keeps the horizontal capsule on %s and expands inward', edge => {
     const compact = overlayBounds(area, {mode:'capsule',height:CAPSULE_HEIGHT}, .5, edge, .4);
     const expanded = overlayBounds(area, {mode:'card',height:330}, .5, edge, .4);
-    expect(compact.width).toBe(CAPSULE_HEIGHT); expect(compact.height).toBe(CAPSULE_WIDTH); expect(expanded.width).toBe(640);
+    expect(compact.width).toBe(CAPSULE_WIDTH); expect(compact.height).toBe(CAPSULE_HEIGHT); expect(expanded.width).toBe(640);
     expect(expanded.y).toBe(compact.y);
     if (edge === 'left') expect(expanded.x).toBe(area.x);
     else expect(expanded.x + expanded.width).toBe(area.x + area.width);
@@ -42,7 +57,7 @@ describe('overlay geometry in DIP', () => {
   });
   it('clamps vertical movement at either end and stays inside small work areas', () => {
     for (const cursorY of [-9000,9000]) { const ratio=draggedVerticalRatio(area,cursorY,.5); const rail=overlayBounds(area,{mode:'capsule',height:CAPSULE_HEIGHT},.5,'right',ratio); expect(rail.y).toBeGreaterThanOrEqual(area.y); expect(rail.y+rail.height).toBeLessThanOrEqual(area.y+area.height); }
-    const tiny={x:-300,y:-100,width:200,height:200}; const rail=overlayBounds(tiny,{mode:'capsule',height:CAPSULE_HEIGHT},.5,'left',1); expect(rail.y+rail.height).toBeLessThanOrEqual(100); expect(rail.width).toBe(CAPSULE_HEIGHT);
+    const tiny={x:-300,y:-100,width:200,height:200}; const rail=overlayBounds(tiny,{mode:'capsule',height:CAPSULE_HEIGHT},.5,'left',1); expect(rail.y+rail.height).toBeLessThanOrEqual(100); expect(rail.width).toBe(tiny.width);
   });
   it('selects all three edges with corner hysteresis and no bottom docking', () => {
     expect(nearestEdge(area,{x:-1000,y:-190})).toBe('top');

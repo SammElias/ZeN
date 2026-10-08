@@ -1,0 +1,67 @@
+/* Guion 04: one horizontal header, with the same 46-DIP height on every edge. */
+.zen-overlay.island.live-only.head-shell.capsule{width:min(490px,100vw);max-width:none;height:46px;max-height:46px;min-height:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;box-shadow:none;padding:0;animation:none}
+.zen-overlay.island.live-only.head-shell>.overlay-header{position:relative;display:flex;flex-direction:row;align-items:center;width:100%;height:44px;min-height:44px;padding:2px 5px;gap:5px;border:0;border-radius:14px;background:var(--surface);flex-shrink:0;touch-action:none}
+.zen-overlay.island.live-only.head-shell .navigation-dock{display:flex;align-items:center;flex-direction:row;gap:4px;height:40px;width:auto;flex:0 0 auto;padding:0;border:0;background:none;box-shadow:none}
+.zen-overlay.island.live-only.head-shell .navigation-dock .brand-home{position:relative;width:56px;min-width:56px;height:40px;min-height:40px;flex:0 0 56px;margin:0;padding:0;border:0;border-radius:10px;overflow:visible;background:transparent;cursor:grab;box-shadow:none}
+.zen-overlay.island.live-only.head-shell .brand-home:active{cursor:grabbing}
+.head-shell .brand{display:none!important}
+.capsule-character{display:flex;align-items:center;justify-content:center;width:56px;height:40px;pointer-events:auto}
+.zen-overlay.island.live-only.head-shell .capsule-character .zen-companion{display:block;width:56px;height:36px;flex:none;margin:0;pointer-events:none}
+.zen-overlay.island.live-only.head-shell .robot-head .companion-float{animation:none!important;transform:none!important}
+.zen-overlay.island.live-only.head-shell .robot-head .robot-head{animation:none!important;transform:none!important}
+.capsule-character .companion-head-gaze{transform-origin:64px 57px;transition:transform 130ms ease-out}
+.robot-head .head-hands{pointer-events:none}
+.robot-head .head-hand{transform-box:fill-box;transform-origin:50% 90%}
+.robot-head.hands-wave:not(.still) .right-hand{animation:head-wave 420ms ease-in-out 3}
+.robot-head.hands-success:not(.still) .right-hand{animation:head-approve 500ms ease-in-out 2}
+.robot-head.hands-permission:not(.still) .right-hand{animation:head-approve 700ms ease-in-out 1}
+@keyframes head-wave{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(14deg)}}
+@keyframes head-approve{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.zen-overlay.island.live-only.head-shell .top-navigation{display:flex;align-items:center;gap:4px;width:auto;height:36px;flex:none;margin:0;padding:0;border:0;background:transparent}
+.zen-overlay.island.live-only.head-shell .top-navigation .navigation-tab{position:relative;display:flex;justify-content:center;align-items:center;width:34px;min-width:34px;height:32px;min-height:32px;padding:6px;flex:none;border:0;border-radius:9px;background:transparent;color:var(--secondary)}
+.zen-overlay.island.live-only.head-shell .navigation-tab[aria-current=page]{background:var(--violet-soft,#e9ddfa);color:var(--accent);box-shadow:inset 0 0 0 1px #ac8cda33}
+.zen-overlay.island.live-only.head-shell .navigation-tab svg{width:17px;height:17px}
+.zen-overlay.island.live-only.head-shell .nav-label{display:none}
+.zen-overlay.island.live-only.head-shell .navigation-tab:is(:hover,:focus-visible) .nav-label{display:block;position:absolute;top:auto;bottom:-4px;left:50%;transform:translateX(-50%);padding:0 2px;font-size:9px;line-height:11px;white-space:nowrap;background:var(--surface);color:var(--text);border:0;border-radius:3px;box-shadow:none;z-index:6}
+.zen-overlay.island.live-only.head-shell .header-status{display:flex!important;flex:1 1 0;align-items:center;justify-content:flex-start;flex-direction:row;writing-mode:horizontal-tb;text-orientation:mixed;gap:6px;width:auto;min-width:0;max-width:none;min-height:30px;height:30px;padding:3px 4px;margin:0;overflow:hidden;background:none;border:0;border-radius:6px;font-size:11px;color:var(--secondary);white-space:nowrap}
+.head-shell .status-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.head-shell .header-status i{width:4px;height:4px;flex:0 0 4px}
+.zen-overlay.island.live-only.head-shell .header-actions{display:flex;flex-direction:row;gap:2px;flex:0 0 auto;margin:0;width:auto}
+.zen-overlay.island.live-only.head-shell .overlay-header :is(.fold-button,.icon-button){width:30px;height:32px;min-height:32px;min-width:30px;padding:6px;border:0;border-radius:9px;flex:0 0 30px}
+.zen-overlay.island.live-only.head-shell .fold-button svg{rotate:0deg}
+.zen-overlay.island.live-only.head-shell .overlay-header :is(.fold-button,.icon-button) svg{width:17px;height:17px}
+.head-shell .overlay-header .island-microphone.active{background:var(--violet-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.head-shell .overlay-header .compact-meter{position:absolute;right:69px;bottom:2px;height:6px;width:10px;pointer-events:none}
+.head-shell .overlay-header :is(button,a):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.head-shell .expanded-content{display:contents}
+.head-shell .expanded-content[hidden]{display:none!important}
+.head-shell .project-bar{position:relative;z-index:5;display:flex;align-items:center;padding:4px 10px;border-bottom:1px solid var(--border);flex:none;min-height:38px}
+.head-shell .project-bar .project-chip{font-size:12px;min-height:28px;padding:3px 8px}
+.head-shell .project-bar .project-picker-panel{top:100%;max-height:calc(100dvh - 150px)}
+.zen-overlay.island.live-only.head-shell.compact-shell{border:1px solid var(--border);border-radius:14px}
+@media(max-width:360px){.head-shell .header-status .status-label{font-size:10px}.zen-overlay.island.live-only.head-shell>.overlay-header{gap:3px;padding-inline:3px}.zen-overlay.island.live-only.head-shell .top-navigation{gap:2px}.zen-overlay.island.live-only.head-shell .navigation-dock{gap:2px}}
+
+.zen-overlay.island.live-only.head-shell{animation:none}
+.zen-overlay.island.live-only.head-shell .navigation-dock .brand-home{display:flex}
+.head-shell .project-bar .project-chip{width:auto;justify-content:flex-start}
+@media(max-width:420px){.head-shell.compact-shell .content-toolbar>span{display:none}.head-shell .content-toolbar button{font-size:11px;min-height:28px;padding:3px 6px}.head-shell .panel-heading{padding:6px 10px}.head-shell .project-bar{min-height:34px;padding-block:2px}}
+
+.zen-overlay.island.live-only.head-shell .capsule-character .zen-companion>svg{width:100%;height:100%;display:block}
+
+.head-shell .status-symbol-compact{display:none}
+@media(max-width:360px){
+ .zen-overlay.island.live-only.head-shell .navigation-dock .brand-home{width:52px;min-width:52px;flex-basis:52px}
+ .zen-overlay.island.live-only.head-shell .capsule-character,.zen-overlay.island.live-only.head-shell .capsule-character .zen-companion{width:52px}
+ .zen-overlay.island.live-only.head-shell .top-navigation .navigation-tab{width:32px;min-width:32px}
+ .zen-overlay.island.live-only.head-shell .header-status{min-width:24px;padding:3px;justify-content:center}
+ .head-shell .header-status :is(i,.status-label){display:none}
+ .head-shell .status-symbol-compact{display:inline-flex}
+ .head-shell .status-symbol-compact svg{width:16px;height:16px}
+}
+/* The expanded navigation inherited a 36px media rule; use the capsule metrics in both modes. */
+.zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .navigation-dock{gap:4px}
+.zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .top-navigation .navigation-tab{width:34px;min-width:34px;padding:6px}
+@media(max-width:360px){
+ .zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .navigation-dock{gap:2px}
+ .zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .top-navigation .navigation-tab{width:32px;min-width:32px;padding:6px}
+}

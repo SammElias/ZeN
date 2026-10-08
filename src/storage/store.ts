@@ -1,3 +1,4 @@
+import {PetPositionSchema,type PetPosition} from '../shared/pet';
 import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { SettingsSchema, OverlayPositionSchema, type Settings, type OverlayPosition } from '../shared/contracts';
@@ -32,6 +33,9 @@ export class Store {
     try { const result = OverlayPositionSchema.safeParse(JSON.parse(readFileSync(this.path('overlay-position.json'), 'utf8'))); return result.success ? result.data : undefined; } catch { return undefined; }
   }
   saveOverlayPosition(value: Pick<OverlayPosition, 'displayId' | 'horizontalRatio'> & Partial<OverlayPosition>) { this.write('overlay-position.json', JSON.stringify(OverlayPositionSchema.parse(value))); }
+  petPosition():PetPosition|undefined{try{return PetPositionSchema.parse(JSON.parse(readFileSync(this.path('pet-position.json'),'utf8')));}catch{return undefined;}}
+  savePetPosition(value:PetPosition){this.write('pet-position.json',JSON.stringify(PetPositionSchema.parse(value)));}
+  claimPetGreeting(){const today=new Date().toLocaleDateString('sv-SE');let previous='';try{previous=readFileSync(this.path('pet-greeting.txt'),'utf8');}catch{}if(previous===today)return false;this.write('pet-greeting.txt',today);return true;}
   protectedStorage() { return process.platform === 'win32' && this.protection.isEncryptionAvailable(); }
   hasKey() { return existsSync(this.path('key.bin')); }
   saveKey(value: string) {

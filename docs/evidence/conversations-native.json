@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-07T21:34:35.453Z",
+  "scope": "Windows Electron/SQLite/IPC real; tareas y entrada DOM simuladas",
+  "apiCalled": false,
+  "physicalInputTested": false,
+  "restoredActiveDraft": true,
+  "draftsIsolated": true,
+  "historyPagination": true,
+  "sizes": [
+    {
+      "width": 320,
+      "height": 480,
+      "noHorizontalScroll": true,
+      "composerVisible": true,
+      "internalScroll": true
+    },
+    {
+      "width": 640,
+      "height": 560,
+      "noHorizontalScroll": true,
+      "composerVisible": true,
+      "internalScroll": true
+    },
+    {
+      "width": 960,
+      "height": 640,
+      "noHorizontalScroll": true,
+      "composerVisible": true,
+      "internalScroll": true
+    }
+  ],
+  "responsive": true,
+  "noCostControls": true,
+  "localChatQueue": true,
+  "deleteConfirmation": true,
+  "passed": true
+}

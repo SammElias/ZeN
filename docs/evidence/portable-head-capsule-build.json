@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-07T22:40:00.8039549+02:00",
+  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\single-file\\ZEN.exe",
+  "sha256": "fb01e3fd41d1c65f591ce745213d4042761288d2b088da6de054250b772a4067",
+  "packagedStartupVerified": true,
+  "packageDirectory": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007203435266",
+  "headCapsuleNative": true,
+  "desktopGaze": {
+    "left": {
+      "head": "matrix(0.985235, -0.171207, 0.171207, 0.985235, -7.886, 0.502)",
+      "eyes": "matrix(1, 0, 0, 1, -8.872, 0.502)",
+      "headX": 31.23058795928955,
+      "eyeX": 28.000722885131836,
+      "top": 4.582699298858643,
+      "bottom": 40.083542346954346,
+      "left": 10.351016998291016,
+      "right": 50.81951904296875
+    },
+    "right": {
+      "head": "matrix(0.985286, 0.170915, -0.170915, 0.985286, 7.873, 0.53)",
+      "eyes": "matrix(1, 0, 0, 1, 8.857, 0.53)",
+      "headX": 36.76485252380371,
+      "eyeX": 39.98769569396973,
+      "top": 4.5970683097839355,
+      "bottom": 40.08892774581909,
+      "left": 17.178260803222656,
+      "right": 57.63987731933594
+    },
+    "fixedGeometry": true
+  },
+  "reducedMotionStopsHeadAndEyes": true,
+  "apiCalled": false,
+  "deployedExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
+  "desktopHashMatchesTestedExecutable": true,
+  "userConfigurationUnchanged": true,
+  "fullObjectiveVerified": false
+}

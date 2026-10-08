@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Artifact } from '../shared/contracts';
 import { ZenError } from '../shared/errors';
 export class Artifacts {
+  constructor(private durable?:(id:string)=>{meta:Artifact;data:Buffer;mime:string;at:number}|undefined){}
   private items = new Map<string, {meta:Artifact;data:Buffer;mime:string;at:number}>();
   add(title: string, data: Buffer, mime: string): Artifact {
     if(data.length>10000000) throw new ZenError('El resultado generado supera 10 MB.');
@@ -11,7 +12,7 @@ export class Artifacts {
     return meta;
   }
   get(id: string) {
-    const item=this.items.get(id);if(!item || Date.now()-item.at>1800000) {this.items.delete(id);throw new ZenError('El resultado ya no está disponible. Las vistas generadas son temporales (30 minutos).');}
+    const stored=this.durable?.(id);if(stored)return stored;const item=this.items.get(id);if(!item || Date.now()-item.at>1800000) {this.items.delete(id);throw new ZenError('El resultado ya no está disponible. Las vistas generadas son temporales (30 minutos).');}
     return item;
   }
 }

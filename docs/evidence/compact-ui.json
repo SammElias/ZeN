@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-07T19:27:55.011Z",
+  "passed": true,
+  "scope": "Renderer in Edge with simulated local IPC; no API or physical Windows/DPI input",
+  "sizes": [
+    {
+      "width": 960,
+      "height": 640
+    },
+    {
+      "width": 640,
+      "height": 480
+    },
+    {
+      "width": 480,
+      "height": 360
+    },
+    {
+      "width": 360,
+      "height": 400
+    },
+    {
+      "width": 320,
+      "height": 480
+    }
+  ],
+  "homeFits": true,
+  "sharedComposer": true,
+  "chatScrollRestored": true,
+  "taskFilterAndScrollRestored": true,
+  "taskDraftSeparated": true,
+  "projectDraftAndAttachmentsRestored": true,
+  "keyboardFocusRestored": true,
+  "actionsDoNotSend": true,
+  "singleExplicitRequest": true,
+  "meetingReachable": true,
+  "favoritesPrepareOnly": true,
+  "permissionsAndStopReachable": true,
+  "enlargedTextReflow": true,
+  "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\compact"
+}

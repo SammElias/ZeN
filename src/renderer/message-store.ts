@@ -35,5 +35,6 @@ export class MessageStore {
   utterance(event: Utterance) { this.update(latestUtterance(this.state, event), event.phase !== 'done'); }
   newRequest(event: Utterance) { this.update(latestUtterance({}, event), false); }
   startLive() { this.update(beginLiveSession(this.state), false); }
+  reset() { clearTimeout(this.timer);clearTimeout(this.quiet);this.timer=undefined;this.quiet=undefined;this.active=false;this.state={};this.flush(); }
   dispose() { clearTimeout(this.timer); clearTimeout(this.quiet); }
 }

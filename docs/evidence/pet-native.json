@@ -1,0 +1,72 @@
+{
+  "at": "2026-10-07T17:20:18.397Z",
+  "scope": "native-electron-and-windows-capture",
+  "apiCalled": false,
+  "shapeApplied": true,
+  "bounds": {
+    "x": 1503,
+    "y": 422,
+    "width": 300,
+    "height": 390
+  },
+  "invalidSurfaceBlocked": true,
+  "noMicrophone": true,
+  "captureExcluded": false,
+  "capturePixel": [
+    0,
+    0,
+    0,
+    255
+  ],
+  "frameSize": {
+    "width": 1920,
+    "height": 1080
+  },
+  "surfaceDoesNotMoveAvatar": true,
+  "dragStored": true,
+  "dragStaysFolded": true,
+  "openChat": true,
+  "foldRestoresAvatar": true,
+  "cancelRestores": true,
+  "errorRestores": true,
+  "fullscreenOpacity": true,
+  "hiddenGazeStopped": true,
+  "recover": true,
+  "dom": {
+    "class": "zen-overlay island live-only  pet pet-motion-normal dock-top calm  visible ",
+    "pet": {
+      "x": 102,
+      "y": 252,
+      "width": 96,
+      "height": 96,
+      "top": 252,
+      "right": 198,
+      "bottom": 348,
+      "left": 102
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 390,
+      "top": 0,
+      "right": 300,
+      "bottom": 390,
+      "left": 0
+    },
+    "body": {
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 390,
+      "top": 0,
+      "right": 300,
+      "bottom": 390,
+      "left": 0
+    },
+    "display": "flex",
+    "opacity": "1"
+  },
+  "integrationPassed": true,
+  "passed": false
+}

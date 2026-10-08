@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-07T19:30:07.712Z",
+  "buildPassed": true,
+  "unitTests": 325,
+  "testFiles": 38,
+  "reports": [
+    {
+      "name": "head-capsule-ui",
+      "passed": true,
+      "at": null
+    },
+    {
+      "name": "head-capsule-native",
+      "passed": true,
+      "at": "2026-10-07T19:28:44.654Z"
+    },
+    {
+      "name": "compact-ui",
+      "passed": true,
+      "at": "2026-10-07T19:27:55.011Z"
+    },
+    {
+      "name": "interactions-ui",
+      "passed": true,
+      "at": "2026-10-07T19:25:54.496Z"
+    },
+    {
+      "name": "pet-ui",
+      "passed": true,
+      "at": "2026-10-07T19:24:57.739Z"
+    }
+  ],
+  "hashes": [
+    {
+      "path": "C:/Users/Gamming/Desktop/ZEN.exe",
+      "sha256": "6E69398E766845E9F1E15953FBB02321B29A5042DD1B5427209ECA5C188E74A3",
+      "unchanged": true
+    },
+    {
+      "path": "config/live-session.json",
+      "sha256": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
+      "unchanged": true
+    },
+    {
+      "path": "config/saved-agent.json",
+      "sha256": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
+      "unchanged": true
+    }
+  ],
+  "compactDIP": {
+    "width": 490,
+    "height": 46,
+    "minSupportedWidth": 320
+  },
+  "nativeWindowsScalesObserved": [
+    1
+  ],
+  "browserRasterScalesOnly": [
+    1,
+    1.25,
+    1.5,
+    2
+  ],
+  "apiCalls": 0,
+  "published": false,
+  "packaged": false,
+  "desktopExeReplaced": false,
+  "fullObjectiveComplete": false,
+  "pending": [
+    "Physical pointer/drag and transparent corner click-through",
+    "Physical microphone/voice",
+    "Focus against other applications",
+    "Physical monitor disconnection",
+    "Windows display DPI 125/150/200%"
+  ]
+}

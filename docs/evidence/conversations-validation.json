@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-07T21:35:12.194993+00:00",
+  "unitTests": {
+    "passed": 342,
+    "total": 342
+  },
+  "electron": {
+    "at": "2026-10-07T21:34:35.453Z",
+    "scope": "Windows Electron/SQLite/IPC real; tareas y entrada DOM simuladas",
+    "apiCalled": false,
+    "physicalInputTested": false,
+    "restoredActiveDraft": true,
+    "draftsIsolated": true,
+    "historyPagination": true,
+    "sizes": [
+      {
+        "width": 320,
+        "height": 480,
+        "noHorizontalScroll": true,
+        "composerVisible": true,
+        "internalScroll": true
+      },
+      {
+        "width": 640,
+        "height": 560,
+        "noHorizontalScroll": true,
+        "composerVisible": true,
+        "internalScroll": true
+      },
+      {
+        "width": 960,
+        "height": 640,
+        "noHorizontalScroll": true,
+        "composerVisible": true,
+        "internalScroll": true
+      }
+    ],
+    "responsive": true,
+    "noCostControls": true,
+    "localChatQueue": true,
+    "deleteConfirmation": true,
+    "passed": true
+  },
+  "realApi": {
+    "at": "2026-10-07T21:18:07.602Z",
+    "realApi": true,
+    "model": "gpt-6.1-sol",
+    "personalDataSent": false,
+    "toolsExecuted": false,
+    "firstCompleted": true,
+    "realCompaction": true,
+    "continuityAfterRestart": true,
+    "localMessages": 4,
+    "passed": true,
+    "pendingCleanup": 0
+  },
+  "noNewConsumptionFeatures": true,
+  "configurationUnchanged": true,
+  "fullProductObjectiveVerified": false,
+  "hashes": {
+    "src/shared/conversations.ts": "5c8518b8d983abab6844f812ef81992a4636d08f7c9f4b7634a5fbb879797c32",
+    "src/storage/conversations.ts": "696f03684c72c9633c2def9126e7bd6583dff02dae9b3e809561b01398d601a5",
+    "src/agent/conversation-provider.ts": "72b4ab9b3ecb4d55b69ecfb919f565716c4944608cc86e727ce7501d4d60e726",
+    "src/main/conversations.ts": "81049cd84bb133012d09c7c8c676107b4f5cc0c2fb51052bef16fec4ca0a864a",
+    "src/main/index.ts": "bf683902bbd55fbc029e801228eff3bb91bb5e8415ec1e9cd6ebd29ba134399d",
+    "src/renderer/Conversations.tsx": "31d657908984e9d3f0619d4dc90b3cfd998ba02debd839fe04e2c5515007c847",
+    "src/renderer/useConversations.ts": "0cf15b2a7358f8668d07190339d0d4454da4f1a3ee94b4d02d99a860d93be879",
+    "src/renderer/App.tsx": "831340b9676d67860e902fbcd329381785d1a0f58dc0bce2188a07315107d5a5",
+    "dist/main.cjs": "7745893d46bbff662412f872fa9bd77416f808d66b0adb163c85a6099c721bc6"
+  }
+}

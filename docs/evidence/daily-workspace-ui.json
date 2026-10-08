@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-07T18:09:19.454Z",
+  "passed": true,
+  "scope": "renderer-with-mocked-bridge",
+  "realShortcutGesture": false,
+  "apiCalled": false,
+  "taskTransitions": true,
+  "projectIsolation": true,
+  "draftsRestored": true,
+  "favoritesPrepareOnly": true,
+  "cropLocalUntilSend": true,
+  "capsulePreserved": true,
+  "errors": [],
+  "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\daily-workspace"
+}

@@ -10,7 +10,7 @@ export const activityLabels: Record<Activity, {label:string; short:string; icon:
   searching: {label:'Consultando la web',short:'Consultando web',icon:'search'},
   opening_web: {label:'Abriendo web',short:'Abriendo web',icon:'web'},
   opening_codex: {label:'Abriendo Codex',short:'Abriendo Codex',icon:'codex'},
-  codex_external: {label:'Continúa en Codex',short:'En Codex',icon:'codex'},
+  codex_external: {label:'Continúa en Codex',short:'Pendiente de enviar',icon:'codex'},
   opening_app: {label:'Abriendo aplicación',short:'Abriendo app',icon:'app'},
   observing: {label:'Analizando captura',short:'Analizando captura',icon:'search'},
   executing: {label:'Ejecutando',short:'Ejecutando',icon:'ring'},

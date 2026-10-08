@@ -9,6 +9,7 @@ export class FolderContext{
   async grant(path:string,signal:AbortSignal){signal.throwIfAborted();const info=await lstat(path),canonical=await realpath(path);if(!info.isDirectory()||info.isSymbolicLink())throw new ZenError('Elige una carpeta real, sin enlaces.');signal.throwIfAborted();const value={id:randomUUID(),name:basename(canonical)||canonical,label:canonical};this.entries.set(value.id,{public:value,path:canonical,ino:info.ino,dev:info.dev,at:Date.now()});if(this.entries.size>5)this.entries.delete(this.entries.keys().next().value!);return value;}
   revoke(id:string){this.entries.delete(id);}
   clear(){this.entries.clear();}
+  validate(id:string){const entry=this.entries.get(id);if(!entry||Date.now()-entry.at>=1800000)throw new ZenError('Vuelve a elegir la carpeta del proyecto.');}
   async read(id:string,request:string,signal:AbortSignal,maxChars:number){
     const path=await this.resolve(id,signal);
     const result=await new LocalLibrary(()=>[path]).projectContext(request,signal,maxChars);signal.throwIfAborted();await this.resolve(id,signal);return result;

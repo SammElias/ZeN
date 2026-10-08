@@ -2,7 +2,7 @@ import {spawn,type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {join} from 'node:path';
 import {z} from 'zod';
 import type {BrowserWindow} from 'electron';
-const Event=z.object({state:z.enum(['hover','leave','drop']),id:z.string().regex(/^\d+$/).max(24),pid:z.number().int().positive(),name:z.string().max(256)});
+const Event=z.union([z.object({state:z.enum(['hover','leave','drop']),id:z.string().regex(/^\d+$/).max(24),pid:z.number().int().positive(),name:z.string().max(256)}),z.object({state:z.literal('foreground'),fullscreen:z.boolean()})]);
 export type NativeWindowDrop=z.infer<typeof Event>;
 export function watchWindowDrops(window:BrowserWindow,directory:string,onEvent:(value:NativeWindowDrop)=>void,onError:()=>void){
   let child:ChildProcessWithoutNullStreams|undefined,disposed=false;
