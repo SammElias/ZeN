@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-07T19:27:55.011Z",
+  "at": "2026-10-08T14:44:39.078Z",
   "passed": true,
   "scope": "Renderer in Edge with simulated local IPC; no API or physical Windows/DPI input",
   "sizes": [
@@ -37,5 +37,5 @@
   "favoritesPrepareOnly": true,
   "permissionsAndStopReachable": true,
   "enlargedTextReflow": true,
-  "screenshots": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\docs\\ui-preview\\compact"
+  "screenshots": "C:\\Users\\samme\\Desktop\\ZeN\\docs\\ui-preview\\compact"
 }

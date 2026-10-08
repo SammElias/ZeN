@@ -26,15 +26,15 @@ export function Composer({visible=true,voiceControl,guide,imageValue,imageChange
   useLayoutEffect(()=>{
     const field=input.current;if(!field)return;
     const resize=()=>{
-      field.style.height='36px';
+      const limit=window.innerHeight<430?70:Math.min(124,Math.max(70,Math.floor(window.innerHeight*.24)));field.style.maxHeight=limit+'px';field.style.height='36px';
       // Placeholder wrapping during the capsule's opening animation is not input.
       const naturalHeight=field.value?field.scrollHeight:36;
-      field.style.height=Math.min(70,naturalHeight)+'px';
-      field.style.overflowY=naturalHeight>70?'auto':'hidden';
+      field.style.height=Math.min(limit,naturalHeight)+'px';
+      field.style.overflowY=naturalHeight>limit?'auto':'hidden';
     };
     let width=field.getBoundingClientRect().width;
     const observer=new ResizeObserver(()=>{const next=field.getBoundingClientRect().width;if(next!==width){width=next;resize();}});
-    resize();observer.observe(field);return()=>observer.disconnect();
+    resize();observer.observe(field);window.addEventListener('resize',resize);return()=>{observer.disconnect();window.removeEventListener('resize',resize);};
   },[text]);
   const attach=async(file:File)=>{const current=++generation.current;setPreparing(true);try{const data=await prepareInputImage(file);if(current===generation.current){setImage(data);notify('');}}catch(error){if(current===generation.current)notify((error as Error).message);}finally{if(current===generation.current)setPreparing(false);}};
   const submit=async()=>{if(sendingRef.current||preparing||preparingContext||(!text.trim()&&!image&&!contextAttached))return;sendingRef.current=true;setSending(true);try{await send(text.trim()||(contextAttached?'Ayúdame a interpretar el contexto adjunto.':'Ayúdame con lo que aparece en esta captura.'),image);setText('');changed?.('');setImage(undefined);}catch(error){notify((error as Error).message);}finally{sendingRef.current=false;setSending(false);}};
@@ -44,6 +44,6 @@ export function Composer({visible=true,voiceControl,guide,imageValue,imageChange
     <div className="composer-row"><input ref={picker} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void attach(file);event.target.value='';}}/>
       <div className="attach-menu-anchor" ref={menuRoot}><button ref={menuButton} type="button" className="composer-attach" aria-label="Añadir contexto" aria-haspopup="menu" aria-expanded={menu} disabled={sending||preparing} onClick={()=>setMenu(value=>!value)}><span aria-hidden="true">+</span></button>
       {menu&&<div className="attach-menu" role="menu" aria-label="Añadir contexto"><span className="attach-menu-heading">Añadir</span>{guide&&<button type="button" role="menuitem" onClick={()=>option(guide)}>Guíame</button>}{attachFiles&&<button type="button" role="menuitem" onClick={()=>option(attachFiles)}>Adjuntar archivos</button>}{selection&&<button type="button" role="menuitem" onClick={()=>option(selection)}><span>Texto seleccionado · Ctrl+Alt+S</span></button>}{clipboard&&<button type="button" role="menuitem" onClick={()=>option(clipboard)}><span>Texto copiado</span></button>}{region&&<button type="button" role="menuitem" onClick={()=>option(region)}><span>Recortar pantalla</span></button>}<button type="button" role="menuitem" onClick={()=>option(()=>void refresh())}><AttachIcon kind="screen"/><span><strong>Captura automática</strong><small>Actualizar la pantalla de ZEN</small></span></button><button type="button" role="menuitem" onClick={()=>option(()=>picker.current?.click())}><AttachIcon/><span><strong>Captura manual</strong><small>Añadir una imagen · también Ctrl+V</small></span></button><button type="button" role="menuitem" onClick={()=>option(()=>void chooseFolder())}><AttachIcon kind="folder"/><span><strong>Carpeta del proyecto</strong><small>Abrir y analizar en Codex del escritorio</small></span></button></div>}</div>
-      <textarea ref={input} id="chat-input" aria-label="Mensaje para ZEN" placeholder="Escribe o pega una captura…" rows={1} maxLength={8000} value={text} disabled={sending} onChange={event=>{setText(event.target.value);changed?.(event.target.value);}} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void submit();}}}/>{voiceControl}<button type="submit" className="composer-send" aria-label="Enviar mensaje" disabled={sending||preparing||preparingContext||(!text.trim()&&!image&&!contextAttached)}>{sending||preparing?'…':'↑'}</button></div>
+      <textarea ref={input} id="chat-input" aria-label="Mensaje para ZEN" placeholder="Escribe a ZeN…" rows={1} maxLength={8000} value={text} disabled={sending} onChange={event=>{setText(event.target.value);changed?.(event.target.value);}} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void submit();}}}/>{voiceControl}<button type="submit" className="composer-send" aria-label="Enviar mensaje" disabled={sending||preparing||preparingContext||(!text.trim()&&!image&&!contextAttached)}>{sending||preparing?'…':'↑'}</button></div>
   </form>;
 }

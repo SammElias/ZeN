@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-08T14:57:48.730Z",
+  "sourceRevision": "cdbf4f96ebeda504f5bea9ee39d48ab516edb38c",
+  "sourceChangedSinceCommit": true,
+  "package": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008145019957",
+  "sourceSnapshot": {
+    "src/renderer/App.tsx": "81ab16db48c8e87d08b441cd39081e9dca9324590f22970c2e132c6c607f7cde",
+    "src/renderer/FloatingPet.tsx": "2c56e2e057edf021151bc3de97e1d3cc18908668885d514647c692bd343f20be",
+    "src/renderer/ScreenContextChip.tsx": "e9850a74ac3239922ee6ee722b68dd08e39d0fe4067ac9ef661d72b3a8c0812a",
+    "src/renderer/compact.css": "1a2297352b14f5e764b8841b9e8f566556b4b166d4f9a68650fe8ff996fc256b",
+    "src/renderer/Composer.tsx": "e7886107461928d9aa72b9b7e3f058ea0ef9289c1e4dd802c16ebee5c17bc37e",
+    "src/renderer/Conversations.tsx": "5c9011c66770d0206628d0b840b1296a0fdcc3054ca83cabc3d1f2bb207c24af",
+    "src/renderer/StreamingMessage.tsx": "a1bd541627d475bfb3257b9645a1a6b6b88ec4ef2e131b270631372a8d87f35c",
+    "src/renderer/MessageActions.tsx": "c6c8907e8c408a2dcbceb5e9f6e62a0bf97c9efa51c54a0ad98047a3a1f28adc",
+    "src/renderer/message-text.tsx": "b256837f07b8b5a755749c0d43b8e5051df40ba19ace71d3e7e8c7291f9b51f9",
+    "src/renderer/chat-design.css": "e01f351a01f38cfd58b2ec437ca2330e12fde43dccd904e1edaebc466fc3ae83",
+    "src/renderer/useConversations.ts": "53f194813384e57aa1100ae3f8915d5283c29c5caaa0591caa38c827c51b46ac",
+    "package.json": "faa8e4bb00e2991e01f3d8026e110078b611d6aa84d013e6865ed4ca466c5208",
+    "package-lock.json": "0ebefefd412ea9b69da9abf2eaf4f08c65d6cfe04b80c2e3596f5fbbe2cc7805",
+    "public/licenses/markdown-dependencies.txt": "8ffd2af8b3ac28053387801239124c026cf7fca415540f159ff7d7b24f2219f8"
+  },
+  "configHashes": {
+    "config/live-session.json": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+    "config/saved-agent.json": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6"
+  },
+  "apiCalled": false,
+  "fullObjectiveVerified": false,
+  "desktop": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "sha256": "508e6c653dea53039e95948bbcd124a7cee1455ac969e57caf82d6989380b467",
+  "bytes": 114796057,
+  "desktopUpdated": false,
+  "desktopSha256": "a2655a06f08e72c8e9b8aefe1436d68555e4f504c3f0c6330837e9755e77cd8e",
+  "blockedReason": "Windows rejected replacing Desktop/ZEN.exe because it is in use by the running ZEN instance",
+  "previousDesktopBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\ZEN-20261008164204202-desktop-before-chat06.exe",
+  "packagedStartupVerified": true,
+  "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC",
+  "unitTests": {
+    "passed": 348,
+    "files": 40
+  },
+  "chat06UiVerified": true,
+  "nativeResponsiveVerified": true,
+  "fullscreenChatVerified": true,
+  "features": [
+    "chat06-compact-header-and-reading-layout",
+    "flat-safe-markdown-and-message-actions",
+    "draft-reading-and-loaded-page-continuity",
+    "effective-composer-context",
+    "foreign-activity-origin-and-stop",
+    "visible-screen-context-refresh",
+    "robot-opens-home"
+  ],
+  "evidence": [
+    "docs/evidence/chat06-ui.json",
+    "docs/evidence/conversations-native.json",
+    "docs/evidence/interactions-native.json",
+    "docs/evidence/single-executable.json"
+  ],
+  "remainingChecks": [
+    "physical-input-and-focus",
+    "multiple-monitors-and-DPI",
+    "physical-capture-exclusions",
+    "real-model-and-voice"
+  ],
+  "historicalPending": [
+    "broad-Electron-suite-and-hover-greeting-see-docs/merge-20261008.md"
+  ],
+  "credentialsIncluded": false
+}

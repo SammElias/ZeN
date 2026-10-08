@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-08T14:44:37.274Z",
+  "passed": true,
+  "scope": "Edge real con IPC y captura simulados",
+  "apiCalled": false,
+  "visibleUpdate": true,
+  "singleRefreshWhilePending": true,
+  "draftPreserved": true,
+  "exactPreview": true,
+  "frozenSnapshotOnSubmit": true,
+  "noRunBeforeSubmit": true,
+  "expiredAndRemovedCanRefresh": true,
+  "manualImagePreserved": true,
+  "smallViewports": true,
+  "capsuleAndFloatingRobotOpenHome": true,
+  "explicitChatOpensChat": true,
+  "physicalCaptureTested": false
+}

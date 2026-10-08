@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-08T13:16:37.583806+00:00",
+  "desktop": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "sourceRevision": "cdbf4f96ebeda504f5bea9ee39d48ab516edb38c",
+  "productionSourceMatchesRevision": true,
+  "sourceChangedSinceCommit": false,
+  "package": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008130750703",
+  "sha256": "adb2b5d7c0c1bc439f61dca9c52c5314d62d9e77849c828157b2467d454168f4",
+  "bytes": 114753188,
+  "previousDesktopBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\ZEN-20261008150801981-desktop-before-cdbf4f9.exe",
+  "packagedStartupVerified": true,
+  "fullscreenChatVerified": true,
+  "capsuleVerified": true,
+  "nativeResponsiveVerified": true,
+  "conversationPersistenceVerified": true,
+  "unitTests": {
+    "passed": 345,
+    "files": 39
+  },
+  "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC",
+  "remainingChecks": [
+    "physical-input-and-focus",
+    "multiple-monitors-and-DPI",
+    "physical-capture-exclusions",
+    "real-model-and-voice"
+  ],
+  "historicalPending": [
+    "broad-Electron-suite-and-hover-greeting-regression-see-docs/merge-20261008.md"
+  ],
+  "apiCalled": false,
+  "credentialsIncluded": false,
+  "fullObjectiveVerified": false,
+  "configHashes": {
+    "config/live-session.json": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+    "config/saved-agent.json": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6"
+  },
+  "evidence": [
+    "docs/evidence/single-executable.json",
+    "docs/evidence/portable-interactions.json",
+    "docs/evidence/conversations-native.json",
+    "docs/evidence/fullscreen-ui.json"
+  ]
+}

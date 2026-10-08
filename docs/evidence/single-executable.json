@@ -1,8 +1,8 @@
 {
-  "at": "2026-10-07T21:39:05.890Z",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\single-file\\ZEN.exe",
-  "extractedExecutable": "C:\\Users\\Gamming\\AppData\\Local\\Temp\\nsq93B9.tmp\\app\\ZEN.exe",
-  "sha256": "b3bf792e47e57587fd13620f20b2e0cb1dd89812872ea4415a14b1e2243923f1",
+  "at": "2026-10-08T14:55:24.907Z",
+  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "extractedExecutable": "C:\\Users\\samme\\AppData\\Local\\Temp\\nsa5977.tmp\\app\\ZEN.exe",
+  "sha256": "508e6c653dea53039e95948bbcd124a7cee1455ac969e57caf82d6989380b467",
   "exitCode": 0,
   "packagedStartupVerified": true,
   "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC",
@@ -15,7 +15,7 @@
     "real-model-and-voice"
   ],
   "interactions": {
-    "at": "2026-10-07T21:39:00.115Z",
+    "at": "2026-10-08T14:55:18.065Z",
     "scope": "Windows Electron: real local IPC, native bounds, renderer capture; DOM events simulated",
     "apiCalled": false,
     "physicalInputTested": false,
@@ -120,6 +120,7 @@
     "headCapsuleNative": true,
     "singlePanelNavigation": true,
     "nativeFoldAnchor": true,
+    "fullscreenChatVerified": true,
     "nativeEdgeProbe": [
       {
         "displayId": 3254546382,

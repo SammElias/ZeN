@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-08T11:47:02.152Z",
+  "at": "2026-10-08T14:50:26.785Z",
   "scope": "Windows Electron: real local IPC, native bounds, renderer capture; DOM events simulated",
   "apiCalled": false,
   "physicalInputTested": false,
@@ -371,6 +371,5 @@
     }
   ],
   "DPIChangesTested": false,
-  "passed": false,
-  "nativeProcessExited": false
+  "passed": true
 }

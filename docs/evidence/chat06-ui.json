@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-08T14:50:19.456Z",
+  "passed": true,
+  "scope": "real Edge renderer with synthetic conversation IPC data; no API or physical input",
+  "headerOutsideMessageScroll": true,
+  "historyPreservesDraftAndScroll": true,
+  "olderMessagesPreserveAnchor": true,
+  "streamPreservesReading": true,
+  "tailAction": true,
+  "conversationDraftsIsolated": true,
+  "markdown": true,
+  "partialResultPreserved": true,
+  "widths": [
+    360,
+    480,
+    640,
+    900
+  ],
+  "lowHeight": 360,
+  "enlargedText": true,
+  "foreignActivityOrigin": true,
+  "activityCloseDoesNotStop": true,
+  "stopAccessible": true,
+  "secondaryMessageActions": true,
+  "copyFeedback": true,
+  "immediateSwitchSavesReading": true,
+  "contextDetachFutureOnly": true,
+  "loadedPageRestoredAcrossChats": true,
+  "deleteDoesNotSaveRemovedDraft": true,
+  "screenshots": "docs/ui-preview/chat06"
+}

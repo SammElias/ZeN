@@ -67,6 +67,12 @@ html,body,#root{height:100%;min-height:0;margin:0}
 .compact-shell .compact-notice{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1.4;max-height:54px;overflow-y:auto;margin-bottom:4px}.compact-shell .compact-notice>span{flex:1;overflow-wrap:anywhere}.compact-shell .compact-notice button{flex:none}
 .compact-shell .voice-active-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);padding:4px 2px 0}.compact-shell .execution-controls{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:0;border:0;font-size:13px;height:auto;min-height:0}.compact-shell .execution-actions{display:flex;gap:8px;flex-wrap:wrap}.compact-shell .voice-toggle{font-size:13px}.compact-shell .voice-toggle span{display:flex;align-items:center;gap:5px}
 .compact-shell .screen-context-note{flex-wrap:wrap;margin:0;max-width:100%;font-size:12px}.compact-shell .screen-context-description{flex:1;min-width:0}.compact-shell .screen-context-actions{display:flex;flex-wrap:wrap;gap:6px}
+.island.live-only.compact-shell .screen-context-bar{display:flex;flex-wrap:nowrap;gap:6px;min-height:32px;margin:0 0 5px;padding:0 2px;border:0;background:transparent;overflow:hidden}
+.compact-shell .screen-context-bar .screen-context-description{font-size:11px;overflow:hidden}
+.compact-shell .screen-context-bar .screen-context-source{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compact-shell .screen-context-bar .screen-context-actions{flex:none;flex-wrap:nowrap;gap:3px}
+.compact-shell .screen-context-bar button{min-height:30px;padding:4px 6px;font-size:11px;white-space:nowrap}
+.compact-shell .screen-context-bar button[aria-label="Actualizar captura"]{background:var(--violet-soft);color:var(--accent);border-color:#c9b1e6}
 .compact-shell .region-picker{margin:0;max-height:none;flex:1;min-height:0}.compact-shell .guide-card,.compact-shell .guide-setup{margin:0 0 12px}.compact-shell .guide-instruction{max-height:none;overflow:visible}.compact-shell .guide-setup textarea{font-size:14px}
 .compact-shell .resume-note{display:flex;align-items:center;justify-content:space-between;font-size:12px;margin:0 0 4px;padding:0}
 @media(max-width:740px){.compact-shell .nav-label,.compact-shell .project-chip small{display:none}.zen-overlay.island.live-only.compact-shell:not(.head-shell) .navigation-tab{width:36px!important;padding:7px!important}.compact-shell .project-chip{width:100%}}

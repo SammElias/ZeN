@@ -1,48 +1,49 @@
 {
-  "at": "2026-10-07T23:40:58.3881009+02:00",
-  "deployedExecutable": "C:\\Users\\Gamming\\Desktop\\ZEN.exe",
-  "sha256": "B3BF792E47E57587FD13620F20B2E0CB1DD89812872EA4415A14B1E2243923F1",
-  "bytes": 114731230,
-  "backup": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\desktop-backups\\ZEN-before-conversations-20261007-234057.exe",
-  "runningInstanceNeedsRestart": false,
-  "sourceCommit": "dbda6f730f4f83e0288c5c820a5089a871579e36",
-  "includesUncommittedCompactHeadCapsuleAndConversationsChanges": true,
-  "packageDirectory": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007213423268",
-  "singleExecutableOnDesktop": true,
-  "newDesktopDirectories": 0,
-  "packagedStartupVerified": true,
-  "desktopHashMatchesTestedExecutable": true,
-  "validationScope": "single-executable-Electron-contextual-IPC-head-capsule-and-durable-conversations",
-  "capsuleDIP": {
-    "width": 490,
-    "height": 46
-  },
-  "observedWindowsScaleFactors": [
-    1
+  "at": "2026-10-08T13:50:50.988397+00:00",
+  "desktop": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "sourceRevision": "cdbf4f96ebeda504f5bea9ee39d48ab516edb38c",
+  "sourceChangedSinceCommit": true,
+  "features": [
+    "visible-screen-context-refresh",
+    "robot-opens-home"
   ],
-  "unitTestsTotal": 342,
-  "unitTestsPassed": 342,
-  "conversationsNativeVerified": true,
-  "realSolContinuityVerified": true,
-  "realCompactionVerified": true,
-  "apiCalledForThisBuild": false,
-  "existingConfigurationUnchanged": true,
-  "liveConfigSha256": "D6350101A001788A934F06D28FF0FBDC57255D5F8966BFA71AFAFD82AC134B60",
-  "savedAgentConfigSha256": "FD844BFA7F2726EA684D6179995D6E94DEBF131DF6893CA8B012D76F2D1C42C7",
-  "userConfigurationMoved": false,
-  "fullObjectiveVerified": false,
-  "physicalInputTested": false,
+  "package": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008134222371",
+  "sha256": "a2655a06f08e72c8e9b8aefe1436d68555e4f504c3f0c6330837e9755e77cd8e",
+  "bytes": 114753734,
+  "previousDesktopBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\ZEN-20261008154232957-desktop-before-context-controls.exe",
+  "packagedStartupVerified": true,
+  "contextControlsUiVerified": true,
+  "robotOpensHomeVerified": true,
+  "fullscreenChatVerified": true,
+  "nativeResponsiveVerified": true,
+  "validationScope": "single-executable-extraction-and-real-Electron-contextual-IPC",
   "remainingChecks": [
     "physical-input-and-focus",
-    "physical-click-through",
-    "Windows-DPI-125-150-200",
-    "physical-monitor-disconnection",
+    "multiple-monitors-and-DPI",
     "physical-capture-exclusions",
-    "physical-voice-and-external-effects"
+    "real-model-and-voice"
   ],
-  "runningBundleMatchesBuild": true,
-  "runningBundleSha256": "7745893D46BBFF662412F872FA9BD77416F808D66B0ADB163C85A6099C721BC6",
-  "newConversationDatabaseCreated": true,
-  "desktopUiVerifiedByAccessibility": true,
-  "oldHistoryMigratedOnDesktop": true
+  "historicalPending": [
+    "broad-Electron-suite-and-hover-greeting-regression-see-docs/merge-20261008.md"
+  ],
+  "apiCalled": false,
+  "credentialsIncluded": false,
+  "fullObjectiveVerified": false,
+  "configHashes": {
+    "config/live-session.json": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+    "config/saved-agent.json": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6"
+  },
+  "sourceSnapshot": {
+    "src/renderer/App.tsx": "f5535f0df35b093ff724679c28c3a1c7e921fa0d4548e8c04fbda0eb4d0d5100",
+    "src/renderer/FloatingPet.tsx": "2c56e2e057edf021151bc3de97e1d3cc18908668885d514647c692bd343f20be",
+    "src/renderer/ScreenContextChip.tsx": "3cb5f6437062908553817085408ec80d8f3410b6b24c8e21ea695d16fdc8d835",
+    "src/renderer/compact.css": "1a2297352b14f5e764b8841b9e8f566556b4b166d4f9a68650fe8ff996fc256b"
+  },
+  "evidence": [
+    "docs/evidence/single-executable.json",
+    "docs/evidence/context-controls-ui.json",
+    "docs/evidence/compact-ui.json",
+    "docs/evidence/fullscreen-ui.json"
+  ]
 }

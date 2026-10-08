@@ -1,11 +1,11 @@
 {
   "validationScope": "contextual-interactions-IPC-and-native-bounds",
   "fullObjectivePassed": false,
-  "at": "2026-10-07T21:34:36.900Z",
-  "destination": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007213423268",
-  "executable": "C:\\Users\\Gamming\\Desktop\\PROYT\\ZeN\\release\\ZEN-20261007213423268\\ZEN.exe",
+  "at": "2026-10-08T14:50:32.593Z",
+  "destination": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008145019957",
+  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008145019957\\ZEN.exe",
   "smoke": {
-    "at": "2026-10-07T21:34:31.537Z",
+    "at": "2026-10-08T14:50:26.785Z",
     "scope": "Windows Electron: real local IPC, native bounds, renderer capture; DOM events simulated",
     "apiCalled": false,
     "physicalInputTested": false,
@@ -110,6 +110,7 @@
     "headCapsuleNative": true,
     "singlePanelNavigation": true,
     "nativeFoldAnchor": true,
+    "fullscreenChatVerified": true,
     "nativeEdgeProbe": [
       {
         "displayId": 3254546382,
@@ -465,7 +466,7 @@
     },
     {
       "path": "dist\\main.cjs",
-      "sha256": "7745893d46bbff662412f872fa9bd77416f808d66b0adb163c85a6099c721bc6"
+      "sha256": "a5438a774e67577c3444ec8a6a2f4b61632072ac03cae0b51287c0ea8f5340fb"
     },
     {
       "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
@@ -481,15 +482,15 @@
     },
     {
       "path": "dist\\native\\Zen.Windows.dll",
-      "sha256": "f491220d4b0740f7c667aa84a77c5e12569181ead4391345c9bbc531aaec4965"
+      "sha256": "552d3d1e27e8c318c968540f6cb70057e14f596e170e1cf5026db8c0d66dae9b"
     },
     {
       "path": "dist\\native\\Zen.Windows.exe",
-      "sha256": "8b533ff7bece627fd5f80495f821c04f074336282ffa1f83685347b18e2df4fb"
+      "sha256": "994df215535d28133351e834bd19a3c7538d73d7b3c325869eb41a9f41db6c5f"
     },
     {
       "path": "dist\\native\\Zen.Windows.pdb",
-      "sha256": "cdb2a61463338cdf94461f4e40b6bfae34b0f310b0751c112aab71e7b49918d8"
+      "sha256": "69aac94a4aedf5ff637ecf4a190f03fb0f1c3e3e84a895c12ece151dc5d2cb39"
     },
     {
       "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
@@ -580,20 +581,20 @@
       "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
     },
     {
-      "path": "dist\\renderer\\assets\\main-BRgfeMhb.js",
-      "sha256": "74eed5d45d80304667b3334c9b45f1f487d0a3c7e8e8b606b124db02940175d8"
+      "path": "dist\\renderer\\assets\\main-Ck5ndZpN.js",
+      "sha256": "5eaece21c9b9d6f8e0f760aeaffe3016d440928392cf240447a124d867cdfde0"
     },
     {
-      "path": "dist\\renderer\\assets\\preview-BEHRPqxX.js",
-      "sha256": "2928fbe72a85820fbdf403019ea7aab5e51d08d6f43f1049a977266232c63629"
+      "path": "dist\\renderer\\assets\\preview-CxiTjt1k.js",
+      "sha256": "a66be9a53ac769798284f01e8e0a3c801201518d8cf4dc1d8a45bbcc7aad9510"
     },
     {
-      "path": "dist\\renderer\\assets\\theme-Cqa_1J6J.css",
-      "sha256": "dbc1082ba3ae6a7f05dcf1fc9e4f70f1e74ee7cce8a1c7d32ffd8dcf9dab882a"
+      "path": "dist\\renderer\\assets\\theme-BXzvqguA.css",
+      "sha256": "ee21f76a70fdc4bf1b68f30e5aa3f77ffe3a79a28dfeb36a985ef3c9bb1812c8"
     },
     {
-      "path": "dist\\renderer\\assets\\theme-C_14gV2H.js",
-      "sha256": "1b4faa97c74e87d1ce02b9aa84a110d545e935c18244d40ff8cd159a49e45ac5"
+      "path": "dist\\renderer\\assets\\theme-C5OEhSHc.js",
+      "sha256": "ae24683b371b8c056e23ae20b9eaf16035382aa4c29e66b965cf684c7700a840"
     },
     {
       "path": "dist\\renderer\\icons\\robot.svg",
@@ -689,11 +690,15 @@
     },
     {
       "path": "dist\\renderer\\index.html",
-      "sha256": "192ca5ea309871890ca8fb39c92d6ff2d988d74477783274418f6a54626f2091"
+      "sha256": "3d90d1dfa2b878a37cbc6663f000d284e8bfc052d85cb07e6df55042f3c31283"
+    },
+    {
+      "path": "dist\\renderer\\licenses\\markdown-dependencies.txt",
+      "sha256": "8ffd2af8b3ac28053387801239124c026cf7fca415540f159ff7d7b24f2219f8"
     },
     {
       "path": "dist\\renderer\\preview.html",
-      "sha256": "080af92eea915915c1d9dad63163e23c6793d72ed902847745a57d2c1749555a"
+      "sha256": "6d4711daa5fa2647552217d134add71a62a8871c7e0d862c3a49066ab7b17917"
     },
     {
       "path": "dist\\tools\\document-fixtures.mjs",
@@ -705,7 +710,7 @@
     },
     {
       "path": "dist\\tools\\notepad.ps1",
-      "sha256": "35cd74ceedf19466aa58c940a680ae9fb5efd15b24ea8a26fb0c3f958eef4fa4"
+      "sha256": "c2aeef3374ec94d9e5270f1fce073e469c9af325c8b967adb3f57061bae836e2"
     },
     {
       "path": "node_modules\\@napi-rs\\canvas\\geometry.js",
