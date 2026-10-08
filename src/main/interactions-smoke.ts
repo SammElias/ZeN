@@ -1,6 +1,7 @@
 import {screen,type BrowserWindow} from 'electron';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
+import {fullscreenSmoke} from './fullscreen-smoke';
 // Isolated, keyless profile. Renderer DOM events here do not certify physical input.
 export async function interactionsSmoke(window:BrowserWindow,edgeProbe:()=>Promise<unknown>){
   // A portable executable starts in its fresh extraction directory, not the repository.
@@ -43,11 +44,13 @@ export async function interactionsSmoke(window:BrowserWindow,edgeProbe:()=>Promi
   await writeFile('docs/ui-preview/head-capsule/native-panel.png',(await window.webContents.capturePage()).toPNG());
   await call("document.querySelector('[aria-label=\"Recoger panel\"]').click()");await new Promise(r=>setTimeout(r,300));
   checks.nativeFoldAnchor=JSON.stringify(capsuleBefore)===JSON.stringify(window.getBounds());
+  checks.fullscreenChatVerified=await fullscreenSmoke(window);
+  await call("document.querySelector('[aria-label=\"Recoger panel\"]').click()");await wait('main.capsule');await new Promise(r=>setTimeout(r,300));
   checks.nativeEdgeProbe=await edgeProbe();
   checks.nativeEdgesWithinWorkArea=(checks.nativeEdgeProbe as Array<{within:boolean;restored:boolean}>).every(row=>row.within&&row.restored);
   checks.observedDisplays=screen.getAllDisplays().map(d=>({id:d.id,scaleFactor:d.scaleFactor,workArea:d.workArea}));
   checks.DPIChangesTested=false;
-  checks.passed=['quickNativeWidth','rendererNodeUnavailable','frozenContextAndDedup','invalidVisualRejected','localGuidePersisted','appearanceSaved','chatNativeWidth','fourFanActions','projectAttachmentsIsolated','nativeResponsive','headCapsuleNative','singlePanelNavigation','nativeFoldAnchor','nativeEdgesWithinWorkArea'].every(key=>checks[key]===true);
+  checks.passed=['fullscreenChatVerified','quickNativeWidth','rendererNodeUnavailable','frozenContextAndDedup','invalidVisualRejected','localGuidePersisted','appearanceSaved','chatNativeWidth','fourFanActions','projectAttachmentsIsolated','nativeResponsive','headCapsuleNative','singlePanelNavigation','nativeFoldAnchor','nativeEdgesWithinWorkArea'].every(key=>checks[key]===true);
   await writeFile('docs/evidence/head-capsule-native.json',JSON.stringify(checks,null,2));
   await writeFile('docs/evidence/compact-native.json',JSON.stringify(checks,null,2));
   await mkdir('docs/evidence',{recursive:true});await writeFile('docs/evidence/interactions-native.json',JSON.stringify(checks,null,2));console.log(JSON.stringify(checks));return checks.passed===true;

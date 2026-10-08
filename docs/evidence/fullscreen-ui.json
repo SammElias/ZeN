@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-08T11:52:12.741Z",
+  "passed": true,
+  "scope": "real-Edge-renderer-with-mocked-IPC",
+  "apiCalled": false,
+  "results": [
+    "full-viewport-readable-column-and-persistent-composer",
+    "escape-f11-and-scroll-preserved",
+    "escape-closes-menu-before-fullscreen",
+    "streaming-without-window-resize",
+    "large-small-and-narrow-displays",
+    "fold-restores-capsule-and-draft"
+  ]
+}

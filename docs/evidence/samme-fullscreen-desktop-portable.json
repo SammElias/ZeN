@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-08T10:45:32.4915293Z",
+  "desktop": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "sourceRevision": "dbda6f730f4f83e0288c5c820a5089a871579e36",
+  "sourceChangedSinceCommit": true,
+  "feature": "fullscreen-chat",
+  "package": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008103525382",
+  "sha256": "995f25fbed8f23646459be32c85ca0920313298bf6ace0fb2434138dc6ccc185",
+  "bytes": 114712622,
+  "previousDesktopBackup": "C:\\Users\\samme\\Desktop\\ZeN\\release\\desktop-backups\\ZEN-20261008123536138-before-fullscreen.exe",
+  "homeChatOnlyVerified": true,
+  "fullscreenChatVerified": true,
+  "packagedStartupVerified": true,
+  "stableStreamingVerified": true,
+  "remainingChecks": [],
+  "apiCalled": false,
+  "credentialsIncluded": false,
+  "fullObjectiveVerified": false,
+  "liveSessionSha256": "903ef46a93d52f5723349191fc9fd37ed59fae14151f8e314049d3781e9785f8",
+  "savedAgentSha256": "4ceaad69caff50df130f34c92f2778abaefb3ad695e48f9387500ab754bb6ca6",
+  "sourceSnapshot": {
+    "src/main/index.ts": "d9b8b5d0996e939a2eab708dd85e3eb22473676eb2c29bad23bd3d09cb2b07a7",
+    "src/main/overlay.ts": "8cb0f1375819299984ffa058dea04200ce165a7b3450194f50d29001248e5bf9",
+    "src/shared/contracts.ts": "de56b6a97d2be009a30638a50ca36c5899726de032d9ec70b6b84c4242e4f967",
+    "src/renderer/App.tsx": "f131ddb26742f090b4aac7f1138b60b1e43a6c48343fd8f2fdc87c9d994eaeb0",
+    "src/renderer/components.tsx": "e9fb587e7fdddcfbd5163e8530c775e15e9e24c46a763ce2cb0df6a6e9bdf455",
+    "src/renderer/fullscreen.css": "48b6e20b892910cb7cedfb1dcbf699ca30e3c351cab3308b21b3608fc061a432"
+  },
+  "evidence": "docs/evidence/single-executable.json"
+}

@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-08T10:34:17.696Z",
+  "passed": true,
+  "scope": "synthetic-model-and-surface-real-electron-ipc",
+  "model": "mock",
+  "windowsInput": "mock",
+  "apiCalled": false,
+  "computerIpcVerified": true,
+  "generalInterfacePending": false,
+  "shownOnTop": true
+}

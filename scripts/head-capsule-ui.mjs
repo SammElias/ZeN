@@ -48,4 +48,4 @@ checks.counts=await page.evaluate(()=>window.counts);assert.equal(checks.counts.
 checks.browserRasterScales=[];
 for(const scale of [1,1.25,1.5,2]){const context=await browser.newContext({viewport:{width:490,height:46},deviceScaleFactor:scale});const p=await context.newPage();await p.goto(url);await p.evaluate(()=>document.body.classList.remove('preview'));await p.screenshot({path:dir+'/scale-'+scale+'.png'});checks.browserRasterScales.push({scale,cssSize:await p.locator('main').evaluate(el=>[el.getBoundingClientRect().width,el.getBoundingClientRect().height])});await context.close();}
 checks.passed=true;await writeFile('docs/evidence/head-capsule-ui.json',JSON.stringify(checks,null,2));console.log(JSON.stringify(checks));
-}catch(e){await page.screenshot({path:dir+'/failure.png'});console.error(e);throw e;}finally{await browser.close();server.close();}
+}catch(e){console.error(e);await page.screenshot({path:dir+'/failure.png'}).catch(()=>{});throw e;}finally{await browser.close();server.close();}

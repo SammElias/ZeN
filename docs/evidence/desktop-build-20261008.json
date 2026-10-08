@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-08T09:39:26.9728991Z",
+  "executable": "C:\\Users\\samme\\Desktop\\ZEN.exe",
+  "source": "C:\\Users\\samme\\Desktop\\ZeN\\release\\single-file\\ZEN.exe",
+  "sourceRevision": "dbda6f730f4f83e0288c5c820a5089a871579e36",
+  "package": "release/ZEN-20261008092937863",
+  "sha256": "25e8539239234cf8994fdb8a0c91fd92ec62804cc4214b7cf3eb50a13b422d8a",
+  "bytes": 114709175,
+  "desktopBackup": null,
+  "previousCanonicalBackup": "release/desktop-backups/ZEN-20261008093035586-before-current-build.exe",
+  "homeChatOnlyVerified": true,
+  "packagedStartupVerified": true,
+  "stableStreamingVerified": true,
+  "apiCalled": false,
+  "credentialsIncluded": false,
+  "fullObjectiveVerified": false,
+  "evidence": "single-executable.json"
+}

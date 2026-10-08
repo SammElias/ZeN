@@ -1,0 +1,33 @@
+/* Fill the capsule's monitor; keep a comfortable reading column and fixed controls. */
+.zen-overlay.island.live-only.fullscreen {
+  width:100vw;
+  max-width:none;
+  max-height:100dvh;
+  border:0;
+  border-radius:0;
+  animation:none;
+}
+.zen-overlay.island.live-only.head-shell.fullscreen { border-radius:0; }
+.island.fullscreen .expanded-content > :is(.project-bar,.main-region,.composer-shell) { width:100%; max-width:1040px; margin-inline:auto; }
+.island.fullscreen .home-page {
+  width:100%;
+  max-width:1040px;
+  margin-inline:auto;
+}
+.island.live-only.fullscreen .with-robot .live-message { padding:20px 24px; }
+.island.fullscreen .live-message .result-text { font-size:16px; line-height:1.8; }
+.island.fullscreen .history-message .result-text { font-size:16px; line-height:1.8; }
+.island.fullscreen .overlay-header,.island.fullscreen .brand-home { cursor:default; }
+.island.fullscreen .text-composer { flex-shrink:0; }
+body.preview:has(.zen-overlay.fullscreen) { padding:0; }
+@media(max-width:560px) {
+  .island.live-only.fullscreen .with-robot .live-message { padding:14px 16px; }
+  .island.fullscreen .live-message .result-text { font-size:15px; }
+}
+/* Keep the extra expand control and Stop reachable in the minimum-width panel. */
+@media(max-width:360px) {
+  .zen-overlay.island.live-only.head-shell.compact-shell>.overlay-header { gap:2px; }
+  .zen-overlay.island.live-only.head-shell.compact-shell .overlay-header :is(.fold-button,.icon-button) { width:26px; min-width:26px; flex-basis:26px; padding:4px; }
+  .zen-overlay.island.live-only.head-shell.compact-shell .navigation-dock .brand-home { width:44px; min-width:44px; flex-basis:44px; }
+  .zen-overlay.island.live-only.head-shell.compact-shell .capsule-character,.zen-overlay.island.live-only.head-shell.compact-shell .capsule-character .zen-companion { width:44px; }
+}

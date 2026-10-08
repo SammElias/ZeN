@@ -58,6 +58,3 @@ try{
  const result={at:new Date().toISOString(),passed:true,scope:'Renderer in Edge with simulated local IPC; no API or physical Windows/DPI input',sizes:metrics.map(({width,height})=>({width,height})),homeFits:true,sharedComposer:true,chatScrollRestored:true,taskFilterAndScrollRestored:true,taskDraftSeparated:true,projectDraftAndAttachmentsRestored:true,keyboardFocusRestored:true,actionsDoNotSend:true,singleExplicitRequest:true,meetingReachable:true,favoritesPrepareOnly:true,permissionsAndStopReachable:true,enlargedTextReflow:true,screenshots:directory};
  console.log(JSON.stringify(result,null,2));await writeFile('docs/evidence/compact-ui.json',JSON.stringify(result,null,2));
 }finally{await browser.close();await new Promise(r=>server.close(r));}
-
-
-

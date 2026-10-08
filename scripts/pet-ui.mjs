@@ -35,4 +35,3 @@ try{
  await page.getByRole('button',{name:'Inicio',exact:true}).click();await page.waitForTimeout(300);await page.locator('main').screenshot({path:directory+'/home.png'});
  assert.deepEqual(errors,[]);await writeFile('docs/evidence/pet-ui.json',JSON.stringify({at:new Date().toISOString(),passed:true,scope:'renderer-mocked-events',apiCalled:false,hoverDelay:true,keyboardMenu:true,dragDoesNotOpen:true,draftRestored:true,completionDeduplicated:true,errorPriority:true,codexPending:true,reducedMotion:true,silent:true,noMicOnOpen:true,screenshots:directory},null,2));console.log('Pet renderer checks passed');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
-

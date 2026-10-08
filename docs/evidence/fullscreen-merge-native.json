@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-08T11:47:05.925Z",
+  "scope": "Electron/Windows real; entrada DOM simulada",
+  "apiCalled": false,
+  "checks": {
+    "monitorFilled": true,
+    "contentPreserved": true,
+    "dragBlocked": true,
+    "arbitraryBoundsBlocked": true,
+    "viewportFits": true,
+    "restored": true,
+    "keyboardToggle": true
+  },
+  "before": {
+    "x": 640,
+    "y": 0,
+    "width": 640,
+    "height": 560
+  },
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
+  "passed": true
+}

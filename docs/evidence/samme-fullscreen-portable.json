@@ -1,0 +1,568 @@
+{
+  "validationScope": "interface",
+  "fullObjectivePassed": false,
+  "at": "2026-10-08T10:35:38.458Z",
+  "destination": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008103525382",
+  "executable": "C:\\Users\\samme\\Desktop\\ZeN\\release\\ZEN-20261008103525382\\ZEN.exe",
+  "smoke": {
+    "bridge": true,
+    "nodeAbsent": true,
+    "rendered": true,
+    "settings": {
+      "ok": true,
+      "value": {
+        "settings": {
+          "reasoningModel": "gpt-6.1-sol",
+          "voiceModel": "gpt-live-1",
+          "shortcut": "Control+Alt+Z",
+          "maxToolCalls": 4,
+          "maxConcurrentTasks": 1,
+          "maxQueuedTasks": 8,
+          "taskTimeoutMs": 90000,
+          "computerMaxRounds": 40,
+          "computerMaxActions": 160,
+          "computerTimeoutMs": 600000,
+          "allowNotepad": true,
+          "voiceConsent": false,
+          "listenOnInvoke": false,
+          "autoHideSuccess": false,
+          "showResultsInMeeting": false,
+          "costControlsVersion": 1,
+          "monthlyBudgetEur": 100,
+          "taskBudgetEur": 0.5,
+          "dailyTargetEur": 1,
+          "eurPerUsd": 1,
+          "maxContextChars": 4000,
+          "interfaceSounds": true,
+          "interfaceAnimations": true,
+          "excludedWindows": []
+        },
+        "spending": {
+          "month": "2026-10",
+          "estimatedMonthEur": 0,
+          "committedMonthEur": 4,
+          "estimatedDayEur": 0,
+          "pendingEur": 4,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedTokens": 0,
+          "uncertainCalls": 2,
+          "pricingDate": "2026-10-01"
+        },
+        "hasKey": false,
+        "shortcutRegistered": true,
+        "protectedStorage": true
+      }
+    },
+    "screenRemovalVerified": true,
+    "homeChatOnlyVerified": true,
+    "fullscreenChatVerified": true,
+    "fullscreenBounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "dropContextIpcVerified": true,
+    "workspaceIpcVerified": true,
+    "cursorGazeVerified": true,
+    "documentReaderVerified": true,
+    "activityTimelineVerified": true,
+    "computerIpcVerified": true,
+    "edgeDockingVerified": true,
+    "edgeChecks": [
+      {
+        "edge": "left",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      },
+      {
+        "edge": "right",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      },
+      {
+        "edge": "top",
+        "rail": true,
+        "inward": true,
+        "restored": true,
+        "controlsFit": true
+      }
+    ],
+    "backgroundTaskbarVerified": true,
+    "taskbarReturnVerified": true,
+    "restoreCaptures": 3,
+    "miniCapsuleVerified": true,
+    "stableStreamingVerified": true,
+    "voiceNoticePreserved": true,
+    "pasteImageCspVerified": true,
+    "singleAttachmentClipVerified": true,
+    "folderIpcVerified": true,
+    "folderDelegationVerified": true,
+    "humanConfirmationVerified": true,
+    "imageIpcVerified": true,
+    "projectIpcVerified": true,
+    "unknownProjectBlocked": true,
+    "protectedRoundTrip": true,
+    "preferencesIsolated": true,
+    "shortcutRegistered": true,
+    "trayCreated": true,
+    "invalidIpcBlocked": true,
+    "startedCompact": true,
+    "shownOnTop": true,
+    "hiddenNotOnTop": true,
+    "topAnchorStable": true,
+    "collapsedHeightVerified": true,
+    "latestOnlyExpanded": true,
+    "latestTranscriptVerified": true,
+    "latestInterruptionVerified": true,
+    "unknownArtifactBlocked": true,
+    "invalidLiveSessionBlocked": true,
+    "mcpSecretProtectionVerified": true,
+    "libraryRootsLocal": true,
+    "localFileWithoutApiVerified": true,
+    "invalidDragBlocked": true,
+    "horizontalDragVerified": true,
+    "dragPositionPersisted": true,
+    "dragChecks": [
+      {
+        "displayId": 3254546382,
+        "withinDisplay": true,
+        "topPreserved": true,
+        "capsuleRestored": true
+      },
+      {
+        "displayId": 3254546382,
+        "withinDisplay": true,
+        "topPreserved": true,
+        "capsuleRestored": true
+      },
+      {
+        "displayId": 2419412400,
+        "withinDisplay": true,
+        "topPreserved": true,
+        "capsuleRestored": true
+      },
+      {
+        "displayId": 2419412400,
+        "withinDisplay": true,
+        "topPreserved": true,
+        "capsuleRestored": true
+      }
+    ],
+    "dragInput": "synthetic cursor on real displays",
+    "widthsVerified": true,
+    "positionLocked": true,
+    "capsuleBounds": {
+      "x": 800,
+      "y": 0,
+      "width": 320,
+      "height": 72
+    },
+    "cardBounds": {
+      "x": 640,
+      "y": 0,
+      "width": 640,
+      "height": 210
+    }
+  },
+  "files": [
+    {
+      "path": "dist\\documents\\pdf.mjs",
+      "sha256": "91e29f812c593904e8d48d022db5ddf93e3443575d4765ac9bfbb42494cfbd8d"
+    },
+    {
+      "path": "dist\\documents\\pdf.worker.mjs",
+      "sha256": "df3bf6bf6b8b8dac8a4042d8c4ecf1cf21e1d197e0fe231c192122409eba656b"
+    },
+    {
+      "path": "dist\\documents\\PDFJS-LICENSE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitDingbats.pfb",
+      "sha256": "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitFixed.pfb",
+      "sha256": "b6c8fe53f134b8b6d4578cd2d544df4cee9624c4efa8d51a560fb40ea296101b"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitFixedBold.pfb",
+      "sha256": "f1b7159702973f54fc86254ea38bcf3712b2a736eb3a0995751e9f4bb45ad603"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitFixedBoldItalic.pfb",
+      "sha256": "8a000945843bd31add06aee63bf9fd41b7578b4f3242a4b7cd46349ad9d24d4d"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitFixedItalic.pfb",
+      "sha256": "5007faf8320fa1fcc08b8894b356ad976f60b992ba29ee5272578bbdebaf3876"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitSerif.pfb",
+      "sha256": "4f57d2b9d884af8f907bf22df6019b52d86cbf6214fdbd02b1ae05472a543f35"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitSerifBold.pfb",
+      "sha256": "0bdf4b04e964139818d51eda03d566ba999fc3ba2421b1c6c51f9dc969022e80"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitSerifBoldItalic.pfb",
+      "sha256": "a406cac82583bf98175cb62c87ed5e95c45fbb34eece63a10b0a13e793cb2e10"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitSerifItalic.pfb",
+      "sha256": "610ae0687198045c4db5d1a6650fd5e92536631706382eb8b72e38df578d0ae9"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\FoxitSymbol.pfb",
+      "sha256": "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LiberationSans-Bold.ttf",
+      "sha256": "361c61b82d575c5c35fd9157fda8b0194bcfcd0d88ea8521a4fb5dd53d33dddc"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LiberationSans-BoldItalic.ttf",
+      "sha256": "a224075ac17495ad0a3af3bc0a419ac0704a8b3fd1095456201fb9b095fc281d"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LiberationSans-Italic.ttf",
+      "sha256": "832b4406dbef23628800d3aaad21048534ac84d7e3ad955be83b8172ed8ef512"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LiberationSans-Regular.ttf",
+      "sha256": "f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LICENSE_FOXIT",
+      "sha256": "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7"
+    },
+    {
+      "path": "dist\\documents\\standard_fonts\\LICENSE_LIBERATION",
+      "sha256": "d2c4d5b3e115a519cb58eb691aa64538397e2611f9ebe801392cf9667997e7dc"
+    },
+    {
+      "path": "dist\\documents\\worker.mjs",
+      "sha256": "66ebeb99194eab66ebbcc3f9662df68e6d5e9bed8a9dff5f83cdb0314611e4d5"
+    },
+    {
+      "path": "dist\\documents\\XML-LICENSE",
+      "sha256": "7883225d5e84a6bbb9b170c3d891b4bf6d6259cee869c86bd86381a927071745"
+    },
+    {
+      "path": "dist\\main.cjs",
+      "sha256": "e563080d4ba4dcb4072ee52625a5c69239c18e1f02fe29de63228e462ed43ab4"
+    },
+    {
+      "path": "dist\\native\\Microsoft.Windows.SDK.NET.dll",
+      "sha256": "0ec371d93798852e36461c8adddbeadce0f963a04752f0b64e54fe19c1c834a7"
+    },
+    {
+      "path": "dist\\native\\WinRT.Runtime.dll",
+      "sha256": "bcf3a14e8712a90837fc5c0d8c8a24696af2bd7f74e9767597ec81ededfb23db"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.deps.json",
+      "sha256": "9a48b1c8262122e22350bc1dc3d0d8849cc72dce06403476b3a0b4709743aa70"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.dll",
+      "sha256": "0747a33e0ec73ed42c476b0b769b6df8469ea610e015bdd4084d7702f21e936e"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.exe",
+      "sha256": "8b533ff7bece627fd5f80495f821c04f074336282ffa1f83685347b18e2df4fb"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.pdb",
+      "sha256": "fae2da285b4b63f6e23fad2b007c2384589d1243e1fd518340dec90c1560bc54"
+    },
+    {
+      "path": "dist\\native\\Zen.Windows.runtimeconfig.json",
+      "sha256": "96bc2946dff8790400d652ec7f8de7bb043e954980d59470c112788b68a1fbd3"
+    },
+    {
+      "path": "dist\\preload.cjs",
+      "sha256": "befad008a92db22187ee10a6b99d4daef2a44ca7ae242a3854ea5264fb50dd4f"
+    },
+    {
+      "path": "dist\\renderer\\activity\\app.gif",
+      "sha256": "f69fa051f7868bd5f626f4e20be758cadd1fbdf00bef5fb239adf1dee3197dd7"
+    },
+    {
+      "path": "dist\\renderer\\activity\\app.svg",
+      "sha256": "532bd0cb1ad1ac6f07dd9afb1a15e7b6814b87873f9b707e269c846dc209d212"
+    },
+    {
+      "path": "dist\\renderer\\activity\\check.svg",
+      "sha256": "a607b0bc9e08cae9331314cf3d0fb934a863e8c5381c9fd9933dee77a5235f00"
+    },
+    {
+      "path": "dist\\renderer\\activity\\codex.gif",
+      "sha256": "e70cb13d9dbcde5c48ee91b29c885aef14611df543a7a4b01c8283b15179b83a"
+    },
+    {
+      "path": "dist\\renderer\\activity\\codex.svg",
+      "sha256": "42589e4ff951c8010096fdfded49e96d7360b43b80a1fef3339020e552c224ec"
+    },
+    {
+      "path": "dist\\renderer\\activity\\dots.gif",
+      "sha256": "55d2a05adc73bdb8c364dbdd6f810d4b07c1b88d3eb4b84a6962560d7ed6b3f5"
+    },
+    {
+      "path": "dist\\renderer\\activity\\dots.svg",
+      "sha256": "7cf656dd4d9fa34504be325aa56fb98d2147ef083fd48ba3459228f515f33b6d"
+    },
+    {
+      "path": "dist\\renderer\\activity\\error.svg",
+      "sha256": "e500b63d4d3a936c3456dd0d3244a199ea156b989f2645ba6b2a0fbb338b6b73"
+    },
+    {
+      "path": "dist\\renderer\\activity\\iconos.gif",
+      "sha256": "b992981ced21625c6455fee6c63f54f95df870c5035534d91259b66ede6fcc4e"
+    },
+    {
+      "path": "dist\\renderer\\activity\\pause.svg",
+      "sha256": "5f9c10256b074278cc84a515d2634276e312f588c61523264b08c4a6a4907af1"
+    },
+    {
+      "path": "dist\\renderer\\activity\\ring.gif",
+      "sha256": "93667e93cca15ddf0d55cfce778e53bb866cba8d7e77461d789f4c484ed11c59"
+    },
+    {
+      "path": "dist\\renderer\\activity\\ring.svg",
+      "sha256": "a6f4e52afa07502873b90c24e4c0f84621b566bf4500fc3876ffe22a70759871"
+    },
+    {
+      "path": "dist\\renderer\\activity\\search.gif",
+      "sha256": "86f0c50bb90e0b9a4875374f0656476a49a613bb96236cc16ef02a5f124cfc0d"
+    },
+    {
+      "path": "dist\\renderer\\activity\\search.svg",
+      "sha256": "a143af977367dd60f160bfc698219117ff90accd45a8fa3c0763b35c3b27c83b"
+    },
+    {
+      "path": "dist\\renderer\\activity\\structure.gif",
+      "sha256": "fc7a24ffa23efd13fc9674d5a221abf524ee031109e0f95146b6b5fea62461c1"
+    },
+    {
+      "path": "dist\\renderer\\activity\\structure.svg",
+      "sha256": "616b1946c9a040ec209341d34570fbe53d6d173d0795cb0ab24633909c250143"
+    },
+    {
+      "path": "dist\\renderer\\activity\\web.gif",
+      "sha256": "309fb2bd882f5a78b204ac3a911604b8031df088056c20f76a1ad3308781e194"
+    },
+    {
+      "path": "dist\\renderer\\activity\\web.svg",
+      "sha256": "e33e22a0051fcd91aa0dda8683545a644638e338b1750dd82f448c6041199ac9"
+    },
+    {
+      "path": "dist\\renderer\\activity\\writing.gif",
+      "sha256": "5949fdf70a6edcddd944aef14c8c31036e46ce68b1f4132cac58db7e4bd5c164"
+    },
+    {
+      "path": "dist\\renderer\\activity\\writing.svg",
+      "sha256": "e42487a6c39f0adc064ca734cbde7b49ce2b63d04f34ef35999ae1c7697a7f10"
+    },
+    {
+      "path": "dist\\renderer\\assets\\main-Dr5Cy3Qw.js",
+      "sha256": "9f23bac99b045ff486d2a850eacd47a8ce5ed9b78ee5559eb7f1b3b57f2494e8"
+    },
+    {
+      "path": "dist\\renderer\\assets\\preview-Dm8M4q9_.js",
+      "sha256": "a390789c9f4e3ad8bcc68982884a8dcdfb43e53abde3998e9d66543ae8d98f63"
+    },
+    {
+      "path": "dist\\renderer\\assets\\theme-D5yWqomm.css",
+      "sha256": "6a6c4a41a902556b8360ea8fe455b4e704690ad489355b5e7cb51c85e91ae6ff"
+    },
+    {
+      "path": "dist\\renderer\\assets\\theme-DtIpWJsr.js",
+      "sha256": "5589cf5b2f4304d411a3de59846702ad850158e82f4d6cafefb541e3e934fe2d"
+    },
+    {
+      "path": "dist\\renderer\\icons\\robot.svg",
+      "sha256": "9c2ba2a201544ffcd2e35038048c4c2d0ab6e15b032ac4461b2fcfb426f461d0"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-128.png",
+      "sha256": "b1140648625495fafcbaa5614e8e9d6572770d6cb14bcf22dddca21b26829ba1"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-16.png",
+      "sha256": "c00b1df1c4bd278bcbcddd3821e06b10b730533c670cb9899ab83dd5dc6d613b"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-20.png",
+      "sha256": "dbda63bc9cfb6c8628fe964f6c5610e2c1755d27e28a0ef321a9b5304d8505b5"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-24.png",
+      "sha256": "650b7e534d8989d4dc1c6b6713c2c76d593e7d017f8ff738c2cd507e943b64a2"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-256.png",
+      "sha256": "3085a5a389cfbc1357a129a1c18deabb58a944b56123cbd3a4e5ad872581febc"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-32.png",
+      "sha256": "5e2b58186a1525aba76d03ede0fb1b87db0cb5513c10e40997502796281c422c"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-40.png",
+      "sha256": "c342f305d65555fdd7f6275d8cb6aae66b983fa7d1c5b7a1ebc4ee3ab7b47244"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-48.png",
+      "sha256": "cc39e2e92a62be2e64c4c759faba0253b9b58c8a2fa590076d7067194ceb721b"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray-64.png",
+      "sha256": "fc3a17c6d1778169f892c577c07b7ea228bb23b6f154743c4cd82f77c2c598c7"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray.ico",
+      "sha256": "8b8229aebe126d49263bb403f1695748213651b6185d8ce3fb17b66c832e2bf8"
+    },
+    {
+      "path": "dist\\renderer\\icons\\tray.svg",
+      "sha256": "f9c0b1a9089d4d340e0c1fc89b29c5d5b9081733a05e25fde40c6e277ae7d689"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-128.png",
+      "sha256": "e80d263193ec683734b94b943931977196bcdce24def1b16c2b053bcde5c5a97"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-16.png",
+      "sha256": "15e747a5b1efe97aca90501650d2add69d3d4bfe5c786ba17842bfd371bdee0b"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-20.png",
+      "sha256": "ac125f1b52897a9e91e08351335d56ea3c3c3cc52fa1c89a974571a8a6ae7896"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-24.png",
+      "sha256": "f8f497faea101714f931405eb134c8038ac76907f894fcae34d46895e8415857"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-256.png",
+      "sha256": "8792e61b666df70bca360f754db9cfff2ca25d3869523dbb428c942e94a39560"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-32.png",
+      "sha256": "f2f26e7aaa4974e93dd02d05c1dbcd3eba9f8efbc8f78b35b4fc27b4620d6c52"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-40.png",
+      "sha256": "311e1423d4e47e97c6d75bf8aba28a5bda835b92da43eca4dbb18d57eaf2e74a"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-48.png",
+      "sha256": "dca7fb9d0076b7bb0dc8e3d1e180d7c7de64c50f2a4205c42eb494b9dc9e5b74"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen-64.png",
+      "sha256": "7cc0b03ed1a42359d455854cc24f38c734a183814149ae298155555821a17491"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen.ico",
+      "sha256": "a5138d2406e5ca8ea009c23f90f263c948d84ead9b191e310d45cd236f87b684"
+    },
+    {
+      "path": "dist\\renderer\\icons\\zen.svg",
+      "sha256": "0783f2d5e6c372741dc83809bb1d6fb2a45f23986d06db95a259432d4f63a00c"
+    },
+    {
+      "path": "dist\\renderer\\index.html",
+      "sha256": "c407578849c3ced10895f7f8ce4248a3734af6565676abdc475c5a69f3c3553d"
+    },
+    {
+      "path": "dist\\renderer\\preview.html",
+      "sha256": "33e5fbf7d0e47c6b110281f257d1eb7f958c3cba9291d7559f82de0f8391df76"
+    },
+    {
+      "path": "dist\\tools\\document-fixtures.mjs",
+      "sha256": "afcb7a0acc51fde12348cb70abe9d4cec551b09cc2b7c7f6c7e83ed210e94172"
+    },
+    {
+      "path": "dist\\tools\\notepad.mjs",
+      "sha256": "965ebc214ccbd1577752f5bd77a43c423eb2fc432f4665ee575152d66ded80d2"
+    },
+    {
+      "path": "dist\\tools\\notepad.ps1",
+      "sha256": "c2aeef3374ec94d9e5270f1fce073e469c9af325c8b967adb3f57061bae836e2"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\geometry.js",
+      "sha256": "2e0ae365059fdb0424ddd2da8401e240a250c52b7efca68680996a99e804c1a1"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\index.d.ts",
+      "sha256": "0f04ed30163f6501da3a7e0832e987a9396b5223674849974fbd6594a8112556"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\index.js",
+      "sha256": "bbdad32cab670261983ea56d4625fc7d07b1382f8bb7d6d31232bb2834861597"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\js-binding.js",
+      "sha256": "be59c8d4888630cf88656f65b63dd150e60bdb1d5eab0ba5b47c0a6cb389533e"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\LICENSE",
+      "sha256": "8802fecf9da4367bc23bcf20b21cc143785fc6c92b152f3fa7fbe6ce08d344d6"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\load-image.js",
+      "sha256": "0237683fc138d2f2a60e656709ccec9425166d17fd9a831fe3a96a93b189a9cb"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\node-canvas.d.ts",
+      "sha256": "9bafd71a8907c9597f3548e97c68a70915844ccbdb00fa7a8e36f75001c497fb"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\node-canvas.js",
+      "sha256": "8e43a89cf0a01572b015a6746e8a287f0bc2f6c48a73abd67cf0e2a0934f2be6"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\package.json",
+      "sha256": "c466285520d5e8ded2d9c8cdff1cf8437964f28022283b5fdead42431d8ffe3b"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas\\README.md",
+      "sha256": "a26f13dc2b25969bc486210d4d6de2adf0d2cd856a7e4cb5ea2899163842f3a9"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas-win32-x64-msvc\\icudtl.dat",
+      "sha256": "9f48c7f9c7c94d516a14870707e910ab94d75ae640ff6842c4af53276cd26ebe"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas-win32-x64-msvc\\package.json",
+      "sha256": "9f9bdc1c60158b5693aaa76481c807ad0a6664fe08255ceca3ec6f4e8ee3c296"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas-win32-x64-msvc\\README.md",
+      "sha256": "852850d7f55f076f7b710882592132c6f75943875c81832eae136523a7801b59"
+    },
+    {
+      "path": "node_modules\\@napi-rs\\canvas-win32-x64-msvc\\skia.win32-x64-msvc.node",
+      "sha256": "c067e5d5df2abd36789c4d371efc60ce0a29d204575f316345b57dcd2f4b74e7"
+    },
+    {
+      "path": "package.json",
+      "sha256": "05d8464500161b88d7af8846c3b45e6f42b9785a93a03245795a9aa69e5bf657"
+    }
+  ],
+  "credentialsIncluded": false,
+  "selfContainedElectron": true,
+  "requiresDotNetDesktop10": true,
+  "installer": false,
+  "customApplicationSigning": false
+}

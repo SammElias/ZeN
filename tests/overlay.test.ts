@@ -5,6 +5,14 @@ import { OverlayLayoutSchema, OverlayDragSchema, SettingsSchema } from '../src/s
 import {CAPSULE_HEIGHT,CAPSULE_WIDTH} from '../src/shared/island';
 const area = { x: -1920, y: -200, width: 1920, height: 1040 };
 describe('overlay geometry in DIP', () => {
+  it.each(['top','left','right'] as const)('fills the monitor on %s and restores the same capsule position', edge => {
+    const compact = {mode:'capsule' as const,height:CAPSULE_HEIGHT};
+    const before = overlayBounds(area,compact,.73,edge,.62);
+    expect(overlayBounds(area,{mode:'fullscreen',height:CAPSULE_HEIGHT},.73,edge,.62)).toEqual(area);
+    expect(overlayBounds(area,compact,.73,edge,.62)).toEqual(before);
+    expect(overlayBounds({x:1920,y:360,width:800,height:600},{mode:'fullscreen',height:1000},0,edge,0)).toEqual({x:1920,y:360,width:800,height:600});
+  });
+
   it('excludes rounded corners without reserving the previous window height',()=>{
     const shape=capsuleShape({width:490,height:46});
     expect(shape.every(r=>r.x>=0&&r.y>=0&&r.x+r.width<=490&&r.y+r.height<=46)).toBe(true);

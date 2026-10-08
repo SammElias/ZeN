@@ -14,6 +14,7 @@ export function capsuleShape({width,height}:Pick<Area,'width'|'height'>):Area[]{
 }
 // All geometry is in Electron DIP, including monitors at negative coordinates.
 export function overlayBounds(area: Area, layout: Pick<OverlayLayout, 'mode' | 'height'> & {width?:number}, horizontalRatio = .5, edge: DockEdge = 'top', verticalRatio = .5): Area {
+  if (layout.mode === 'fullscreen') return { ...area };
   const side = edge !== 'top'; const compact = layout.mode === 'capsule';
   const width = Math.max(1, Math.min(compact ? CAPSULE_WIDTH : layout.mode==='quick'?380:layout.width??CHAT_WIDTH, Math.max(1, area.width - (compact ? 0 : 24))));
   const limit = compact ? CAPSULE_HEIGHT : layout.width ? Math.min(900, Math.max(48, area.height - 24)) : Math.min(600, Math.max(48, Math.floor(area.height * .8)));
