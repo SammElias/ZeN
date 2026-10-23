@@ -41,6 +41,8 @@ export const SettingsSchema = z.object({
   maxContextChars: z.number().int().min(1000).max(12000).default(4000),
   chatContextTokens:z.number().int().min(4000).max(180000).default(24000),
   petAccessory:z.enum(['none','bow']).default('none'),
+  mascotWardrobe:z.enum(['auto','signature','light','all_black','cozy','layered']).default('auto'),
+  mascotWalks:z.boolean().default(true),
   resumeSuggestion:z.boolean().default(true),
   petMotion:z.enum(['system','reduced','normal','expressive']).default('system'),
   showPetWhenFolded:z.boolean().default(false),
@@ -59,10 +61,10 @@ export type TaskState = 'idle' | 'queued' | 'listening' | 'thinking' | 'awaiting
 export type Utterance = { speaker: 'user' | 'zen'; id: string; text: string; phase: 'start' | 'delta' | 'done'; sourceItemId?: string; timeline?: {startMs:number;endMs:number} };
 export const ArtifactSchema = z.object({id:z.string().uuid(),title:z.string().max(160),kind:z.enum(['image','text','file'])}).strict();
 export type Artifact = z.infer<typeof ArtifactSchema>;
-export type TaskEvent = { localOnly?:boolean; chatId?:string; interaction?:'guide'; requestId?:string;createdAt?:number;updatedAt?:number; projectContextId?:string|null; undoAvailable?:boolean; id: string; state: TaskState; message: string; paused?:boolean;checkpoint?:string;route?:'local'|'codex'|'api';usage?:TaskUsage;activity?:Activity; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext;preparation?:{requestId:string;active:boolean} };
+export type TaskEvent = { responseComplete?:boolean; localOnly?:boolean; chatId?:string; interaction?:'guide'; requestId?:string;createdAt?:number;updatedAt?:number; projectContextId?:string|null; undoAvailable?:boolean; id: string; state: TaskState; message: string; paused?:boolean;checkpoint?:string;route?:'local'|'codex'|'api';usage?:TaskUsage;activity?:Activity; request?: string; streamText?: string; evidence?: Evidence; approval?: Approval; sessionId?: string; turnId?: string; utterance?: Utterance; contextConsumed?: boolean; artifacts?: Artifact[]; liveRequest?: {id:string;captionId:string;text:string}|null; screenContext?:ScreenContextStatus;workContext?:WorkContext;preparation?:{requestId:string;active:boolean} };
 export type Evidence = { application: 'notepad'; pid: number; windowHandle: string; alreadyOpen: boolean; verifiedAt: string };
 export const RequestSchema = z.object({ chatId:z.string().uuid().optional(), imageData:z.string().max(3000000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/).optional(), interaction:z.literal('guide').optional(),visual:VisualReferenceSchema.optional(),screenSnapshotId:z.string().uuid().optional(), projectContextId:z.string().uuid().nullable().optional(), text: z.string().trim().min(1).max(8000), requestId: z.string().uuid(), priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(2), observationId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), attachmentIds:z.array(z.string().uuid()).max(8).optional(), replyTaskId: z.string().uuid().optional(),budgetEur:z.number().min(.05).max(20).optional(),contextMode:z.enum(['auto','none']).optional() }).strict();
-export type TaskResult = { id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };
+export type TaskResult = { responseComplete?:boolean; id: string; state: 'completed' | 'awaiting_input' | 'failed' | 'cancelled'; message: string; evidence?: Evidence; sessionId?: string; turnId?: string; artifacts?: Artifact[];localOnly?:boolean;workContext?:WorkContext };
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type SpendingSummary = { month: string; estimatedMonthEur: number; committedMonthEur: number; estimatedDayEur: number; pendingEur: number; inputTokens: number; outputTokens: number; cachedTokens: number; uncertainCalls: number; pricingDate: string };
 export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean; regionShortcutRegistered?:boolean; selectionShortcutRegistered?:boolean };
@@ -74,6 +76,17 @@ export const OverlayPositionSchema = z.object({ displayId: z.number().int(), hor
 export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
 export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
+  codexStatus():Promise<Result<import('./codex').CodexStatus>>;
+  codexCheck():Promise<Result<import('./codex').CodexStatus>>;
+  codexAnswer(answer:import('./codex').CodexAnswer):Promise<Result<boolean>>;
+  codexOpen(chatId?:string):Promise<Result<boolean>>;
+  onCodex(callback:(status:import('./codex').CodexStatus)=>void):()=>void;
+  onShellDrop(callback:(value:{items?:ContextAttachment[];folder?:FolderAttachment})=>void):()=>void;
+  shellAction(action:import('./desktop-shell').ShellAction):Promise<Result<boolean>>;
+  shellStatus():Promise<Result<import('./desktop-shell').ShellStatus>>;
+  shellPublish(status:import('./desktop-shell').ShellStatus):Promise<Result<boolean>>;
+  onShellStatus(callback:(status:import('./desktop-shell').ShellStatus)=>void):()=>void;
+  onShellAction(callback:(action:import('./desktop-shell').ShellAction)=>void):()=>void;
   conversations(command:ConversationCommand):Promise<Result<ConversationReply>>;
   onConversation(callback:(event:{chatId:string;deleted?:boolean;taskIds?:string[]})=>void):()=>void;
   focusOverlay():Promise<Result<boolean>>;
@@ -103,7 +116,7 @@ export interface ZenBridge {
   clipboardContext():Promise<Result<SelectionContext>>;
   onSelection(callback:(value:SelectionContext)=>void):()=>void;
   onWorkspace(callback:()=>void):()=>void;
-  onReadResult(callback:(text:string|null)=>void):()=>void;
+  onReadResult(callback:(event:{text:string|null;chatId?:string;taskId?:string})=>void):()=>void;
   taskControl(action:'pause'|'resume'):Promise<Result<boolean>>;
   saveResult(value:{taskId:string}|{artifactId:string}|{chatId:string;messageId:string}):Promise<Result<{saved:boolean;name?:string}>>;
   revealResult(id:string):Promise<Result<boolean>>;

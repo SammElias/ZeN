@@ -132,9 +132,9 @@ internal static partial class Program {
     using var output = new System.IO.MemoryStream(); scaled.Save(output, System.Drawing.Imaging.ImageFormat.Png);
     return new { image = "data:image/png;base64," + Convert.ToBase64String(output.ToArray()), width = scaled.Width, height = scaled.Height };
   }
-  private static object CaptureScreen(string id, JsonElement excluded) {
+  private static async Task<object> CaptureScreen(string id, JsonElement excluded, int ownerPid) {
     CheckDesktop(); stage = "capture-screen";
-    var anchor = new IntPtr(long.Parse(id)); var rect = MonitorRect(anchor);
+    var anchor = new IntPtr(long.Parse(id)); GetWindowThreadProcessId(anchor,out var anchorPid);if(ownerPid!=0&&ownerPid!=anchorPid)throw new InvalidOperationException("Origen no verificable.");var rect = MonitorRect(anchor);
     var width = rect.Right - rect.Left; var height = rect.Bottom - rect.Top;
     if (width <= 0 || height <= 0 || width > 8000 || height > 8000 || (long)width * height > 25000000) throw new InvalidOperationException("Dimensiones fuera de límites.");
     var masks = new HashSet<string>();
@@ -142,15 +142,16 @@ internal static partial class Program {
       if (excluded.ValueKind != JsonValueKind.Array || excluded.GetArrayLength() > 200) throw new InvalidOperationException("Exclusiones inválidas.");
       foreach (var item in excluded.EnumerateArray()) { var value = item.GetString(); if (value == null || !long.TryParse(value, out var numeric) || numeric <= 0) throw new InvalidOperationException("Exclusión inválida."); masks.Add(value); }
     }
-    // Main temporarily excludes its own capsule via display affinity. Wait for
-    // composition before copying actual screen pixels; never use PrintWindow here.
+    // Main excludes all of its windows via display affinity. One WGC monitor
+    // snapshot retains external exclusion masks without activating any window.
     if (DwmFlush() != 0) throw new InvalidOperationException("Composición de pantalla no verificada.");
-    using var bitmap = new System.Drawing.Bitmap(width, height);
+    using var bitmap = await CaptureGraphicsItem(MonitorFromWindow(anchor, 2),true);
+    if(bitmap.Width!=width||bitmap.Height!=height)throw new InvalidOperationException("La pantalla cambió durante la captura.");
     using (var graphics = System.Drawing.Graphics.FromImage(bitmap)) {
-      graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, new System.Drawing.Size(width, height), System.Drawing.CopyPixelOperation.SourceCopy);
       var above = new List<System.Drawing.Rectangle>();
       EnumWindows((handle, _) => {
-        if (handle == anchor || !IsWindowVisible(handle) || IsIconic(handle)) return true;
+        GetWindowThreadProcessId(handle,out var windowPid);
+        if (handle == anchor || (ownerPid!=0&&windowPid==ownerPid) || !IsWindowVisible(handle) || IsIconic(handle)) return true;
         if (DwmGetWindowAttribute(handle, 14, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
         if (!GetWindowRect(handle, out var box)) return true;
         var area = System.Drawing.Rectangle.Intersect(new System.Drawing.Rectangle(box.Left, box.Top, box.Right - box.Left, box.Bottom - box.Top), new System.Drawing.Rectangle(rect.Left, rect.Top, width, height));
@@ -208,7 +209,8 @@ internal static partial class Program {
         "read" => new { text = ReadWindow(id ?? throw new InvalidOperationException("Falta ventana.")) },
         "selection" => SelectedText(),
         "capture" => CaptureWindow(id ?? throw new InvalidOperationException("Falta ventana.")),
-        "capture-screen" => CaptureScreen(id ?? throw new InvalidOperationException("Falta cápsula."), json.RootElement.TryGetProperty("excludedIds", out var excluded) ? excluded : default),
+        "capture-window-context" => await CaptureWindowContext(json.RootElement),
+        "capture-screen" => await CaptureScreen(id ?? throw new InvalidOperationException("Falta cápsula."), json.RootElement.TryGetProperty("excludedIds", out var excluded) ? excluded : default, json.RootElement.TryGetProperty("ownerPid",out var ownerPid)?ownerPid.GetInt32():0),
         "computer-frame" => ComputerFrame(json.RootElement),
         "computer-action" => ComputerAct(json.RootElement),
         "media" => await Media(null, false),

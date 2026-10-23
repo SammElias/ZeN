@@ -19,16 +19,18 @@ export class LiveVoiceClient {
   private cancelStart?:()=>void;
   private activity:SpeechActivity;
   private outputSpeaking=false;
+  private outputRms=0;
   private interruptedInput?:string;
   private inputBoundary=-1;
   private manualInterrupt=false;
   constructor(private bridge:ZenBridge,private state:(status:VoiceStatus,microphone:boolean)=>void,private message:(text:string)=>void,private speaking:(value:boolean)=>void=()=>{},private transcript:(event:Utterance)=>void=()=>{}){this.audio.autoplay=true;this.activity=new SpeechActivity(value=>{this.outputSpeaking=value;speaking(value);});}
   get active(){return this.starting||!!this.pc||!!this.closing;}
+  outputLevel(){return this.audio.muted||this.audio.paused?0:this.outputRms;}
   level(){if(!this.analyser||this.muted||!this.ready||this.closing)return 0;const data=new Uint8Array(this.analyser.fftSize);this.analyser.getByteTimeDomainData(data);return Math.min(1,Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length)*5);}
   setMicrophoneEnabled(enabled:boolean){this.muted=!enabled;if(enabled&&this.ready&&!this.closing){this.manualInterrupt=false;this.audio.muted=!this.allowed||this.inputBoundary>=0;}this.stream?.getAudioTracks().forEach(t=>{t.enabled=enabled&&this.ready&&!this.closing;});if(this.ready)this.state('connected',enabled);}
   mute(){this.setMicrophoneEnabled(this.muted);}
   setAudible(allowed:boolean){this.allowed=allowed;this.audio.muted=!allowed||this.manualInterrupt||this.inputBoundary>=0;if(!allowed)this.activity.reset();}
-  async interrupt(){this.manualInterrupt=true;this.audio.muted=true;this.activity.reset();await this.bridge.voiceInterrupt();}
+  async interrupt(){this.manualInterrupt=true;this.audio.muted=true;this.outputRms=0;this.activity.reset();await this.bridge.voiceInterrupt();}
   async start(startMuted=false){
     if(this.active)return;this.starting=true;this.interruptedInput=undefined;this.inputBoundary=-1;this.manualInterrupt=false;const generation=++this.generation;this.state('connecting',false);
     let started=false;let signalStarted!:()=>void;let rejectStarted!:(error:Error)=>void;
@@ -43,10 +45,11 @@ export class LiveVoiceClient {
       this.context=new AudioContext();this.analyser=this.context.createAnalyser();this.analyser.fftSize=256;this.context.createMediaStreamSource(stream).connect(this.analyser);
       const pc=new RTCPeerConnection();this.pc=pc;const dc=pc.createDataChannel('oai-events');
       pc.ontrack=event=>{
+        if(generation!==this.generation||this.pc!==pc)return;
         this.audio.srcObject=event.streams[0];this.audio.muted=!this.allowed||this.manualInterrupt||this.inputBoundary>=0;
         void this.audio.play().catch(()=>this.message('No se pudo reproducir audio. Revisa el dispositivo de salida.'));
         const analyser=this.context!.createAnalyser();analyser.fftSize=256;this.context!.createMediaStreamSource(event.streams[0]).connect(analyser);
-        clearInterval(this.meter);this.activity.reset();this.meter=setInterval(()=>{const data=new Uint8Array(analyser.fftSize);analyser.getByteTimeDomainData(data);this.activity.sample(Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length),this.allowed&&!this.audio.muted);},100);
+        clearInterval(this.meter);this.activity.reset();const data=new Uint8Array(analyser.fftSize);this.meter=setInterval(()=>{if(generation!==this.generation||this.pc!==pc)return;analyser.getByteTimeDomainData(data);this.outputRms=Math.sqrt(data.reduce((sum,v)=>sum+((v-128)/128)**2,0)/data.length);this.activity.sample(this.outputRms,this.allowed&&!this.audio.muted&&!this.audio.paused);},50);
       };
       pc.onconnectionstatechange=()=>{if(['failed','disconnected'].includes(pc.connectionState)){this.message('Conexión Live interrumpida; finalización incompleta.');rejectStarted(new Error('Conexión Live interrumpida.'));void this.stop(true);}};
       dc.onclose=()=>{if(generation===this.generation&&this.pc===pc&&!this.closing){rejectStarted(new Error('Canal Live cerrado antes de confirmar la sesión.'));this.message('Canal Live cerrado; finalización incompleta.');void this.stop(true);}};
@@ -94,7 +97,7 @@ export class LiveVoiceClient {
     if(this.closing)return this.closing;
     this.ready=false;this.stream?.getAudioTracks().forEach(t=>{t.enabled=false;});this.cancelStart?.();
     this.state('closing',false);
-    if(incomplete)this.audio.muted=true;
+    if(incomplete){this.audio.muted=true;this.outputRms=0;this.activity.reset();}
     const id=this.sessionId;
     this.closing=(async()=>{
       // Keep remote audio, data channel and peer alive during server finalization.

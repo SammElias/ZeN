@@ -11,3 +11,14 @@ docs/ui-preview/conversation-*/
 docs/ui-preview/chatgpt-*/
 .reference/
 *.log
+
+# Local artwork, captures and telemetry are not publication sources.
+ZeN_mascota_kit.zip
+zen_mascota_kit/
+public/mascot/
+public/coucou-sounds/
+public/icons/coucou-source.png
+src/coucou/mochi/engine.ts
+src/coucou/mochi/outfits.ts
+docs/ui-preview/
+docs/evidence/

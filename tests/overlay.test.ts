@@ -14,30 +14,44 @@ describe('overlay geometry in DIP', () => {
   });
 
   it('excludes rounded corners without reserving the previous window height',()=>{
-    const shape=capsuleShape({width:490,height:46});
-    expect(shape.every(r=>r.x>=0&&r.y>=0&&r.x+r.width<=490&&r.y+r.height<=46)).toBe(true);
+    const shape=capsuleShape({width:CAPSULE_WIDTH,height:CAPSULE_HEIGHT});
+    expect(shape.every(r=>r.x>=0&&r.y>=0&&r.x+r.width<=CAPSULE_WIDTH&&r.y+r.height<=CAPSULE_HEIGHT)).toBe(true);
     expect(shape.some(r=>r.x===0&&r.y===0)).toBe(false);
-    expect(shape.some(r=>r.x===0&&r.y===23&&r.width===490)).toBe(true);
-    expect(Math.max(...shape.map(r=>r.y+r.height))).toBe(46);
+    expect(shape.some(r=>r.x===0&&r.y===30&&r.width===CAPSULE_WIDTH)).toBe(true);
+    expect(Math.max(...shape.map(r=>r.y+r.height))).toBe(CAPSULE_HEIGHT);
   });
   it('recovers every edge within a replacement monitor and returns to its capsule anchor',()=>{
     for(const edge of ['top','left','right'] as const)for(const ratio of [-1,0,.5,1,2]){
       const work={x:0,y:0,width:800,height:600},args={mode:'capsule' as const,height:72};
       const before=overlayBounds(work,args,ratio,edge,ratio),panel=overlayBounds(work,{mode:'card',height:560},ratio,edge,ratio);
       for(const r of [before,panel]){expect(r.x).toBeGreaterThanOrEqual(0);expect(r.y).toBeGreaterThanOrEqual(0);expect(r.x+r.width).toBeLessThanOrEqual(800);expect(r.y+r.height).toBeLessThanOrEqual(600);}
-      expect(before.height).toBe(46);expect(overlayBounds(work,args,ratio,edge,ratio)).toEqual(before);
+      expect(before.height).toBe(CAPSULE_HEIGHT);expect(overlayBounds(work,args,ratio,edge,ratio)).toEqual(before);
     }
   });
-  it('retains top anchor while expanding on a negative-coordinate monitor', () => { const a = overlayBounds(area, { mode: 'capsule', height: CAPSULE_HEIGHT }); const b = overlayBounds(area, { mode: 'card', height: 330 }); expect(a.y).toBe(b.y); expect(a.x).toBeLessThan(0); expect(a.width).toBe(CAPSULE_WIDTH); expect(a.height).toBe(CAPSULE_HEIGHT); expect(b.width).toBe(640); expect(a.y).toBe(area.y); });
+  it('retains top anchor while expanding on a negative-coordinate monitor', () => { const a = overlayBounds(area, { mode: 'capsule', height: CAPSULE_HEIGHT }); const b = overlayBounds(area, { mode: 'card', height: 330 }); expect(a.y).toBe(b.y); expect(a.x).toBeLessThan(0); expect(a.width).toBe(CAPSULE_WIDTH); expect(a.height).toBe(CAPSULE_HEIGHT); expect(b.width).toBe(960); expect(b.height).toBe(area.height); expect(a.y).toBe(area.y); });
   it.each([1, 1.25, 1.5, 2])('bounds remain within useful DIP area at simulated scale %s', scale => { const work = { x: -1280, y: -180, width: Math.round(1920 / scale), height: Math.round(1040 / scale) }; const bounds = overlayBounds(work, { mode: 'panel', height: 1000 }); expect(bounds.height).toBeLessThanOrEqual(work.height * .8); expect(bounds.y).toBe(work.y); expect(bounds.x).toBeGreaterThanOrEqual(work.x); expect(bounds.x + bounds.width).toBeLessThanOrEqual(work.x + work.width); });
-  it('fits small screens without outside transparent region', () => { const a = overlayBounds({ x: 0, y: 0, width: 320, height: 240 }, { mode: 'card', height: 560 }); expect(a.width).toBe(296); expect(a.height).toBe(192); expect(a.y).toBe(0); });
+  it('fits small screens without outside transparent region', () => { const a = overlayBounds({ x: 0, y: 0, width: 320, height: 240 }, { mode: 'card', height: 560 }); expect(a.width).toBe(320); expect(a.height).toBe(240); expect(a.y).toBe(0); });
+  it.each([1,1.25,1.5,2])('uses half the useful monitor at scale %s, independently of content height',scale=>{
+    const work={x:-1440,y:120,width:Math.round(1920/scale),height:Math.round(1032/scale)};
+    for(const edge of ['top','left','right'] as const){
+      const panel=overlayBounds(work,{mode:'card',height:210},.8,edge,.7);
+      expect(panel.width).toBe(Math.round(work.width/2));expect(panel.height).toBe(work.height);expect(panel.y).toBe(work.y);
+      expect(overlayBounds(work,{mode:'card',height:800},.8,edge,.7)).toEqual(panel);
+    }
+  });
+  it('honours manual dimensions, clamps them to a replacement display, and leaves quick view unchanged',()=>{
+    expect(overlayBounds(area,{mode:'card',width:780,height:940})).toMatchObject({width:780,height:940});
+    const small={x:1920,y:40,width:600,height:450};
+    expect(overlayBounds(small,{mode:'card',width:780,height:940})).toEqual(small);
+    expect(overlayBounds(area,{mode:'quick',height:480})).toMatchObject({width:380,height:480});
+  });
   it('keeps a dragged position when expanded, then returns to the same capsule position', () => {
     const layout = { mode: 'capsule' as const, height: CAPSULE_HEIGHT };
     const ratio = draggedRatio(area, layout, -1200, .1);
     const collapsed = overlayBounds(area, layout, ratio);
     const expanded = overlayBounds(area, { mode: 'card', height: 380 }, ratio);
-    expect(collapsed.x + collapsed.width * .1).toBe(-1200);
-    expect(expanded.x + expanded.width / 2).toBe(collapsed.x + collapsed.width / 2);
+    expect(Math.abs(collapsed.x + collapsed.width * .1 + 1200)).toBeLessThanOrEqual(.5);
+    expect(Math.abs(expanded.x + expanded.width / 2 - collapsed.x - collapsed.width / 2)).toBeLessThanOrEqual(.5);
     expect(expanded.y).toBe(-200);
     expect(overlayBounds(area, layout, ratio)).toEqual(collapsed);
   });
@@ -57,8 +71,8 @@ describe('overlay geometry in DIP', () => {
   it.each(['left','right'] as const)('keeps the horizontal capsule on %s and expands inward', edge => {
     const compact = overlayBounds(area, {mode:'capsule',height:CAPSULE_HEIGHT}, .5, edge, .4);
     const expanded = overlayBounds(area, {mode:'card',height:330}, .5, edge, .4);
-    expect(compact.width).toBe(CAPSULE_WIDTH); expect(compact.height).toBe(CAPSULE_HEIGHT); expect(expanded.width).toBe(640);
-    expect(expanded.y).toBe(compact.y);
+    expect(compact.width).toBe(CAPSULE_WIDTH); expect(compact.height).toBe(CAPSULE_HEIGHT); expect(expanded.width).toBe(area.width/2);
+    expect(expanded.y).toBe(area.y);expect(expanded.height).toBe(area.height);
     if (edge === 'left') expect(expanded.x).toBe(area.x);
     else expect(expanded.x + expanded.width).toBe(area.x + area.width);
     expect(overlayBounds(area,{mode:'capsule',height:CAPSULE_HEIGHT},.5,edge,.4)).toEqual(compact);

@@ -1,9 +1,15 @@
 import {afterEach,describe,it,expect,vi} from 'vitest';
 import {CursorGaze} from '../src/main/cursor-gaze';
-import {gazeOffset,windowCursor} from '../src/shared/gaze';
+import {gazeOffset,windowCursor,mascotDirection} from '../src/shared/gaze';
 
 afterEach(()=>vi.useRealTimers());
 describe('local desktop gaze',()=>{
+  it('tracks strongly around the face and remains bounded on distant monitors',()=>{
+    const face={x:600,y:200};expect(mascotDirection(face,face)).toEqual({x:0,y:0});
+    const near=mascotDirection({x:740,y:60},face);expect(near.x).toBeGreaterThan(.7);expect(near.y).toBeLessThan(-.7);
+    const far=mascotDirection({x:-8000,y:6000},face);expect(far.x).toBeLessThan(-.99);expect(far.y).toBeGreaterThan(.99);expect(Math.abs(far.x)).toBeLessThan(1);expect(Math.abs(far.y)).toBeLessThan(1);
+    expect(mascotDirection(null,face)).toEqual({x:0,y:0});expect(mascotDirection({x:NaN,y:0},face)).toEqual({x:0,y:0});
+  });
   it('follows desktop points outside the capsule and preserves directions on negative monitors',()=>{
     const box={x:9,y:7,width:26,height:26};
     const left=windowCursor({x:-1800,y:500},{x:-960,y:200});
@@ -21,7 +27,7 @@ describe('local desktop gaze',()=>{
     vi.useFakeTimers();let point={x:100,y:100};const read=vi.fn(()=>point),send=vi.fn(),gaze=new CursorGaze(read,send);
     expect(gaze.current()).toBeNull();vi.advanceTimersByTime(1000);expect(read).not.toHaveBeenCalled();
     gaze.enable(true);vi.advanceTimersByTime(1000);expect(send).toHaveBeenCalledTimes(1);expect(read).toHaveBeenCalledTimes(21);
-    point={x:-400,y:40};vi.advanceTimersByTime(50);expect(send).toHaveBeenLastCalledWith(point);
+    point={x:-4000,y:2040};vi.advanceTimersByTime(50);expect(send).toHaveBeenLastCalledWith(point);
     gaze.enable(false);expect(send).toHaveBeenLastCalledWith(null);read.mockClear();vi.advanceTimersByTime(1000);expect(read).not.toHaveBeenCalled();
     gaze.enable(true);expect(send).toHaveBeenLastCalledWith(point);gaze.dispose();expect(vi.getTimerCount()).toBe(0);
   });

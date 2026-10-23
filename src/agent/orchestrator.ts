@@ -8,7 +8,7 @@ import type { Settings, Evidence, TaskEvent, TaskResult } from '../shared/contra
 import { authorize, authorizesNotepad } from '../policy/policy';
 import type { SavedAgent } from './saved';
 import type { DesktopHandler } from '../shared/desktop';
-import { diagnose, ZenError } from '../shared/errors';
+import { diagnose, errorMetadata, ZenError } from '../shared/errors';
 import type { ProjectDraft, WorkContext } from '../shared/project';
 import {computerRequest} from '../shared/computer';
 import {localFileRequest} from '../tools/local-files';
@@ -86,7 +86,7 @@ export class Orchestrator {
         emit('thinking','Preparando la conversación…',undefined,'processing');
         const result=await this.deps.conversations.run(chat.chatId,chat.requestId,text,controller.signal,(message,delta,activity)=>emit('thinking',message,delta,activity),image,memory,this.deps.desktop?.(text),this.deps.toolkit?.(text),this.deps.informational);
         const state=result.needsInput?'awaiting_input' as const:'completed' as const;
-        emit(state,result.message);return{id,state,message:result.message,artifacts:result.artifacts};
+        this.deps.emit({id,state,message:result.message,request:text,artifacts:result.artifacts,responseComplete:true});return{id,state,message:result.message,artifacts:result.artifacts,responseComplete:true};
       }
       if (this.deps.saved) {
         let message: string;
@@ -164,7 +164,7 @@ export class Orchestrator {
       const state = chat&&(controller.signal.reason?.message==='Timeout'||!controller.signal.aborted&&this.deps.conversations?.uncertain(chat.requestId))?'awaiting_input':controller.signal.aborted ? 'cancelled' : 'failed';
       const message = controller.signal.aborted ? 'Tarea detenida o tiempo agotado. Una aplicación ya abierta puede permanecer abierta.' : diagnose(error);
       emit(state, message);
-      this.deps.log({ type: 'task', taskId: id, state, durationMs: Date.now() - started, toolCalls: calls, error: message, evidence });
+      this.deps.log({ type: 'task', taskId: id, state, durationMs: Date.now() - started, toolCalls: calls, error: message, diagnostic: errorMetadata(error), evidence });
       return { id, state, message, evidence };
     } finally { clearTimeout(timer); }
   }

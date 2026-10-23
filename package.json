@@ -19,7 +19,7 @@
     "test:agent": "node scripts/saved-agent-smoke.mjs",
     "test:native": "node scripts/native-smoke.mjs",
     "test:objective": "node scripts/electron-smoke.mjs --objective",
-    "package:win": "npm run build:native && npm run build && node scripts/package-win.mjs",
+    "package:win": "npm run build:native && npm run build && node scripts/package-win.mjs --shell",
     "package:single": "node scripts/package-single.mjs",
     "test:desktop-agent": "node scripts/desktop-bridge-smoke.mjs"
   },

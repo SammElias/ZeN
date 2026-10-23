@@ -15,10 +15,12 @@ export function useDropContext({notify,expand,folder,onFolder,onAttach}:{notify:
     setError('');current.current=next;setItems(next);options.current.onAttach();options.current.expand();
   },[]);
   useEffect(()=>{void window.zen.activeContextAttachments(items.map(item=>item.id),folder?.id).then(result=>{if(!result.ok&&(items.length||folder))options.current.notify(result.error);});},[items,folder?.id]);
+  useEffect(()=>window.zen.onShellDrop?.(value=>{try{if(value.folder){if(current.current.length){void window.zen.removeContextFolder(value.folder.id);throw new Error('Quita los adjuntos antes de analizar una carpeta.');}options.current.onFolder(value.folder);options.current.onAttach();options.current.expand();}else if(value.items){if(options.current.folder){value.items.forEach(item=>void window.zen.removeContextAttachment(item.id));throw new Error('Quita la carpeta antes de añadir archivos.');}add(value.items);}}catch(e){options.current.notify((e as Error).message);}}),[add]);
   useEffect(()=>window.zen.onWindowDrop(event=>{
     setWindowEvent(event);
     if(event.state==='ready'&&event.item){setWindowEvent(undefined);if(options.current.folder){void window.zen.removeContextAttachment(event.item.id);return options.current.notify('Quita la carpeta antes de añadir una ventana.');}try{add([event.item]);}catch(error){options.current.notify((error as Error).message);}}
-    if(event.state==='error')options.current.notify(event.error??'No se pudo adjuntar la ventana.');
+    // Native notifications never activate ZEN while another window is being moved.
+    if(event.state==='error')setError(event.error??'No se pudo adjuntar la ventana.');
   }),[add]);
   const remove=(id:string)=>{void window.zen.removeContextAttachment(id);current.current=current.current.filter(item=>item.id!==id);setItems(current.current);};
   const clear=()=>{++generation.current;current.current.forEach(item=>void window.zen.removeContextAttachment(item.id));current.current=[];setItems([]);setHover(false);setWindowEvent(undefined);};

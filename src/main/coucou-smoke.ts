@@ -1,0 +1,56 @@
+import type {DesktopShell} from './desktop-shell';
+import type {ConversationStore} from '../storage/conversations';
+import {writeEvidence} from './evidence-file';
+import {readFileSync,mkdirSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import {saveChatImage} from './chat-images';
+import {BrowserWindow} from 'electron';
+export async function coucouSmoke(shell:DesktopShell,chats:ConversationStore){
+ mkdirSync('docs/ui-preview/coucou',{recursive:true});
+ const win=shell.workspace,cap=shell.capsule,call=(s:string)=>win.webContents.executeJavaScript(s),capsule=(s:string)=>cap.webContents.executeJavaScript(s),pause=(ms=100)=>new Promise(r=>setTimeout(r,ms));
+ const wait=async(fn:()=>Promise<any>)=>{for(let i=0;i<80;i++){if(await fn().catch(()=>false))return;await pause();}throw Error('Coucou smoke: condición no alcanzada.');};
+ const checks:Record<string,any>={at:new Date().toISOString(),scope:'Electron renderer + real IPC and SQLite; simulated clicks',apiCalled:false,physicalInputTested:false};
+ win.webContents.setBackgroundThrottling(false);cap.webContents.setBackgroundThrottling(false);
+ const shot=async(target:typeof cap,name:string)=>{await pause(350);for(let attempt=0;;attempt++){try{const image=await target.webContents.capturePage(undefined,{stayAwake:true});if(image.isEmpty())throw Error('Empty frame');await writeEvidence('docs/ui-preview/coucou/'+name+'.png',image.toPNG());return;}catch(error){if(attempt>=2)throw Error('Coucou screenshot '+name+': '+String(error));await pause(350);}}};
+ await wait(()=>capsule("!!document.querySelector('.coucou-mochi canvas')"));
+ await wait(()=>capsule("(()=>{const c=document.querySelector('canvas');return c.width>50&&c.getContext('2d').getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v>0);})()"));
+ await wait(()=>call("!!document.querySelector('#chat-input')"));
+ checks.capsuleSize=cap.getBounds().width===637&&cap.getBounds().height===60;
+ checks.mochi=await capsule("(()=>{const c=document.querySelector('canvas');return c.width>50&&c.getContext('2d').getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v>0)&&!document.querySelector('.mascot-host,.mascot-rig');})()");
+ checks.capsuleNoAuthority=await capsule("Promise.all([window.zen.run({text:'NO',requestId:crypto.randomUUID(),priority:2}),window.zen.codexAnswer({id:crypto.randomUUID(),decision:'accept'})]).then(rows=>rows.every(r=>!r.ok))");
+ await shot(cap,'capsule');
+ await capsule("document.querySelector('.coucou-more').click()");await wait(async()=>cap.getBounds().height===234);
+ checks.menu=await capsule("!!document.querySelector('.coucou-cards')&&document.querySelector('.coucou-deck').getBoundingClientRect().bottom<=innerHeight");await shot(cap,'options');
+ await capsule("[...document.querySelectorAll('.coucou-deck button')].find(b=>b.textContent==='Vestuario').click()");
+ await wait(()=>capsule("!!document.querySelector('.coucou-wardrobe')"));
+ await capsule("[...document.querySelectorAll('.coucou-wardrobe button')].find(b=>b.textContent==='Corona'||b.textContent==='Crown').click()");
+ checks.wardrobe=await capsule("localStorage.getItem('zen-coucou-outfit')==='crown'");await shot(cap,'wardrobe');
+ await capsule("document.querySelector('.coucou-more').click()");await wait(async()=>cap.getBounds().height===60);
+ const same=cap.getBounds();shell.open('chat');await wait(async()=>win.isVisible());
+ checks.independentWorkspace=JSON.stringify(same)===JSON.stringify(cap.getBounds())&&!win.isAlwaysOnTop();
+ await capsule("window.zen.dropText({text:'Referencia local revisable',link:false})");await wait(()=>call("!!document.querySelector('.context-summary')"));
+ checks.dropReviewed=await call("document.querySelectorAll('.history-message.user').length===0");
+ await call("(()=>{const e=document.querySelector('#chat-input');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Borrador intacto');e.dispatchEvent(new Event('input',{bubbles:true}));})()");shell.closeWorkspace();shell.open('chat');await pause();
+ checks.draftPreserved=await call("document.querySelector('#chat-input').value==='Borrador intacto'");
+ const chat=chats.list(null,'all','',0)[0],id=randomUUID();chats.begin(chat.id,id,'Referencia de prueba');saveChatImage(chats,chat.id,id,'data:image/png;base64,'+readFileSync('public/icons/zen-256.png').toString('base64'));chats.finish(id,{id,state:'completed',message:'Respuesta de prueba local. Historial e imágenes conservados.'});win.webContents.send('zen:conversation',{chatId:chat.id});await wait(()=>call("!!document.querySelector('.chat-image-thumbnail img')?.naturalWidth"));
+ checks.historyImages=true;checks.noOldCharacter=await call("!document.querySelector('.mascot-host,.mascot-rig,.mascot-stage')");
+ checks.sizes=[];for(const width of [380,640,960]){win.setBounds({...win.getBounds(),width,height:720});await pause(200);checks.sizes.push(await call("(()=>{const r=document.querySelector('.composer-send').getBoundingClientRect();return {width:innerWidth,ok:document.body.scrollWidth<=innerWidth&&r.right<=innerWidth&&r.bottom<=innerHeight};})()"));await shot(win,'chat-'+width);}checks.responsive=checks.sizes.every((r:any)=>r.ok);
+ for(const action of ['activity','context','projects','voice','permissions'] as const){shell.closeWorkspace();shell.open(action);await wait(async()=>shell.children.size===1);const child=[...shell.children][0];await pause();checks['panel_'+action]=child.isVisible()&&!win.isVisible();if(action==='voice')checks.noLiveVoice=await child.webContents.executeJavaScript("!!document.querySelector('.codex-voice')&&!document.querySelector('.voice-controls')");await shot(child,action);child.close();await wait(async()=>shell.children.size===0);}
+ checks.apiVoiceBlocked=await call("window.zen.voiceStart('v=0\\r\\nsynthetic-disabled-voice').then(r=>!r.ok)");
+ shell.open('permissions');await wait(async()=>shell.children.size===1);const permissionWindow=[...shell.children][0];
+ await wait(()=>permissionWindow.webContents.executeJavaScript("!!document.querySelector('.permissions-center')||document.body.textContent.includes('Permisos')"));
+ const reviewId=randomUUID();win.webContents.send('zen:codex-status',{connected:true,account:'chatgpt',reviews:[{id:reviewId,chatId:chat.id,taskId:id,kind:'question',title:'Prueba <script> sin ejecutar',detail:'Propuesta local de prueba',questions:[{id:'private',question:'Dato privado',secret:true,options:[]}],expiresAt:Date.now()+300000}]});
+ await wait(()=>permissionWindow.webContents.executeJavaScript("!!document.querySelector('.codex-review')"));
+ checks.codexReviewSafe=await permissionWindow.webContents.executeJavaScript("document.querySelector('.codex-review h3').textContent==='Prueba <script> sin ejecutar'&&!document.querySelector('.codex-review script')&&document.querySelector('.codex-review input').type==='password'");
+ await shot(permissionWindow,'codex-review');win.webContents.send('zen:codex-status',{connected:false,account:'missing',reviews:[]});permissionWindow.close();await wait(async()=>shell.children.size===0);
+ await call('window.zen.openPreferences()');const preferences=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('view=preferences'))!;
+ await wait(()=>preferences.webContents.executeJavaScript("!!document.querySelector('.coucou-preferences .codex-connection')"));
+ checks.preferencesNoApi=await preferences.webContents.executeJavaScript("!document.querySelector('input[type=password]')&&!!document.querySelector('.codex-voice')&&document.querySelectorAll('.coucou-settings-grid input').length===3");await shot(preferences,'preferences');preferences.close();
+ const base={...shell.status,busy:false,permission:false,attention:false,external:false,reduced:false,sounds:false};
+ for(const [name,patch]of Object.entries({thinking:{state:'thinking' as const,busy:true},working:{state:'executing' as const,busy:true},approval:{state:'awaiting_approval' as const,permission:true},question:{state:'awaiting_input' as const},error:{state:'failed' as const},finished:{state:'completed' as const}})){shell.publish({...base,...patch,label:name});await pause(120);checks['state_'+name]=await capsule(`document.querySelector('.coucou-island').dataset.state===${JSON.stringify(name)}`);await shot(cap,name);}
+ shell.publish({...base,state:'idle',label:'Disponible',reduced:true});await pause(200);const before=await capsule("document.querySelector('canvas').toDataURL()");await pause(200);checks.reducedMotion=before===await capsule("document.querySelector('canvas').toDataURL()");
+ shell.publish({...base,state:'idle',label:'Disponible',reduced:false});cap.webContents.send('zen:cursor',{x:-1200,y:200});await pause(500);const left=await capsule("document.querySelector('canvas').toDataURL()");cap.webContents.send('zen:cursor',{x:1800,y:200});await pause(500);checks.cursorResponse=left!==await capsule("document.querySelector('canvas').toDataURL()");
+ checks.stopAccepted=await capsule("window.zen.shellAction('stop').then(r=>r.ok)");await wait(()=>call("!document.querySelector('.context-summary')"));checks.stopRelayed=true;
+ checks.passed=Object.entries(checks).filter(([key,value])=>typeof value==='boolean'&&!['apiCalled','physicalInputTested'].includes(key)).every(([,value])=>value===true);
+ await writeEvidence('docs/evidence/coucou-native.json',JSON.stringify(checks,null,2));return checks;
+}

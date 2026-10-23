@@ -6,6 +6,7 @@ import {ZenError} from '../shared/errors';
 import {emptyChatDraft,type ChatDraft,type ChatRow,type ChatMessage,type ChatRunState,type ChatTransfer,type ChatCheckpoint} from '../shared/conversations';
 import type {Artifact,TaskEvent,TaskResult,Utterance} from '../shared/contracts';
 import type {StoredDrop} from '../main/drop-context';
+import {automaticTone,validateAppearance,type MessageAppearance} from '../shared/mascot';
 
 type Row=Record<string,any>;
 export class ConversationStore {
@@ -31,6 +32,9 @@ export class ConversationStore {
    CREATE TABLE IF NOT EXISTS cleanup(response TEXT PRIMARY KEY,chat TEXT NOT NULL,error TEXT);
    CREATE INDEX IF NOT EXISTS chats_project ON chats(project,archived,pinned,updated);
    CREATE INDEX IF NOT EXISTS messages_chat ON messages(chat,seq);`);
+  this.db.exec('CREATE TABLE IF NOT EXISTS message_images(id TEXT PRIMARY KEY, message TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE, name TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, thumbnail TEXT NOT NULL, data TEXT NOT NULL)');
+  this.db.exec('CREATE TABLE IF NOT EXISTS message_appearance(message TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE, data TEXT NOT NULL)');
+  if(!this.all('PRAGMA table_info(provider)').some(c=>c.name==='compaction_blocked'))this.db.exec('ALTER TABLE provider ADD COLUMN compaction_blocked INTEGER NOT NULL DEFAULT 0');
   const prior=join(directory,'tasks.json');if(existsSync(prior)&&!existsSync(prior+'.before-conversations.bak'))copyFileSync(prior,prior+'.before-conversations.bak');
  }
  caption(chat:string,key:string,utterance:Utterance){this.transaction(()=>{this.require(chat);const prior=this.get('SELECT message FROM captions WHERE key=? AND chat=?',key,chat);const id=prior?.message??this.insert(chat,utterance.speaker==='user'?'user':'assistant',utterance.text,'incomplete',null,true);if(!prior)this.exec('INSERT INTO captions(key,chat,message) VALUES(?,?,?)',key,chat,id);this.exec('UPDATE messages SET text=?,event=? WHERE id=?',utterance.text,JSON.stringify({id:'voice',state:'listening',message:'',localOnly:true,utterance}),id);this.exec('UPDATE chats SET updated=?,version=version+1 WHERE id=?',Date.now(),chat);});}
@@ -48,22 +52,59 @@ export class ConversationStore {
  create(project:string|null,title='Nuevo chat'){const id=randomUUID(),now=Date.now();this.exec('INSERT INTO chats(id,project,title,created,updated,draft) VALUES(?,?,?,?,?,?)',id,project,title,now,now,JSON.stringify(emptyChatDraft()));return this.chat(id);}
  active(project:string|null){const key='active:'+ (project??'general'),id=this.get('SELECT value FROM local_state WHERE key=?',key)?.value;const existing=id&&this.get('SELECT * FROM chats WHERE id=? AND project IS ? AND archived=0',id,project);if(existing)return this.row(existing);const chat=this.list(project,'recent','',0)[0]??this.create(project);this.setActive(chat.id);return chat;}
  setActive(id:string){const row=this.require(id);this.exec('INSERT OR REPLACE INTO local_state(key,value) VALUES(?,?)','active:'+(row.project??'general'),id);}
- list(project:string|null,filter='recent',query='',offset=0){const escaped='%'+query.replace(/[\\%_]/g,'\\$&')+'%';return this.all(`SELECT c.* FROM chats c WHERE project IS ? AND archived=? ${filter==='pinned'?'AND pinned=1':''} AND (title LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM messages m WHERE m.chat=c.id AND m.text LIKE ? ESCAPE '\\')) ORDER BY pinned DESC,updated DESC,id LIMIT 40 OFFSET ?`,project,filter==='archived'?1:0,escaped,escaped,offset).map(r=>this.row(r));}
+ list(project:string|null,filter='recent',query='',offset=0){const escaped='%'+query.replace(/[\\%_]/g,'\\$&')+'%';return this.all(`SELECT c.* FROM chats c WHERE project IS ? AND (?='all' OR archived=?) ${filter==='pinned'?'AND pinned=1':''} AND (title LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM messages m WHERE m.chat=c.id AND m.text LIKE ? ESCAPE '\\')) ORDER BY updated DESC,id LIMIT 40 OFFSET ?`,project,filter,filter==='archived'?1:0,escaped,escaped,offset).map(r=>this.row(r));}
  update(id:string,patch:{title?:string;pinned?:boolean;archived?:boolean}){this.require(id);for(const field of ['title','pinned','archived'] as const)if(patch[field]!==undefined)this.exec(`UPDATE chats SET ${field}=?,version=version+1 WHERE id=?`,field==='title'?patch[field]:Number(patch[field]),id);return this.chat(id);}
  draft(id:string):ChatDraft{return JSON.parse(this.require(id).draft);}
  saveDraft(id:string,draft:ChatDraft){this.require(id);this.exec('UPDATE chats SET draft=? WHERE id=?',JSON.stringify(draft),id);}
- private message(r:Row):ChatMessage{return{id:r.id,seq:r.seq,role:r.role,text:r.text,state:r.state,createdAt:r.created,runId:r.run??undefined,partial:!!r.partial,event:r.event?JSON.parse(r.event):undefined};}
+ private message(r:Row):ChatMessage{let appearance:unknown;try{appearance=JSON.parse(this.get('SELECT data FROM message_appearance WHERE message=?',r.id)?.data??'null');}catch{}return{images:this.all('SELECT id,name,width,height FROM message_images WHERE message=?',r.id) as import('../shared/conversations').ChatImage[],id:r.id,seq:r.seq,role:r.role,text:r.text,state:r.state,createdAt:r.created,runId:r.run??undefined,partial:!!r.partial,event:r.event?JSON.parse(r.event):undefined,appearance:r.role==='assistant'?validateAppearance(appearance,r.chat,r.id):undefined};}
+ putMessageImage(chat:string,run:string,image:{name:string;width:number;height:number;thumbnail:string;data:string}){
+  this.require(chat);const message=this.get("SELECT id FROM messages WHERE chat=? AND run=? AND role='user'",chat,run);
+  if(!message)throw new ZenError('Imagen ajena al mensaje.');
+  const valid=(data:string,max:number)=>data.length<=max&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(data);
+  if(!valid(image.data,3000000)||!valid(image.thumbnail,150000)||![image.width,image.height].every(n=>Number.isInteger(n)&&n>0&&n<=1920))throw new ZenError('Imagen no válida para el historial.');
+  this.exec('INSERT OR IGNORE INTO message_images(id,message,name,width,height,thumbnail,data) VALUES(?,?,?,?,?,?,?)',randomUUID(),message.id,image.name.slice(0,160),image.width,image.height,image.thumbnail,image.data);
+ }
+ messageImage(chat:string,message:string,id:string,size:'thumbnail'|'full'){
+  this.require(chat);const row=this.get(`SELECT i.name,i.${size==='thumbnail'?'thumbnail':'data'} AS data FROM message_images i JOIN messages m ON m.id=i.message WHERE m.chat=? AND m.id=? AND i.id=?`,chat,message,id);
+  if(!row)throw new ZenError('Imagen no disponible en este mensaje.');return row as {name:string;data:string};
+ }
+ recoverableImages(chat:string){
+  this.require(chat);const p=this.get('SELECT seq,items FROM provider WHERE chat=?',chat);if(!p)return[];
+  const items=JSON.parse(p.items);if(items.some((i:any)=>i.type==='compaction'))return[];
+  const users=items.filter((i:any)=>i.role==='user');
+  const messages=this.all("SELECT * FROM messages WHERE chat=? AND role='user' AND seq<=? ORDER BY seq",chat,p.seq).filter(m=>!m.event||!JSON.parse(m.event).localOnly);
+  // Recover only when the whole ordered transcript aligns; never match by timestamps
+  // or repeated text alone, and never infer associations from a compacted window.
+  if(users.length!==messages.length)return[];
+  const textOf=(i:any)=>typeof i.content==='string'?i.content:i.content?.filter((c:any)=>c.type==='input_text').map((c:any)=>c.text).join('');
+  if(users.some((i:any,n:number)=>{const text=textOf(i),m=messages[n].text;return text!==m&&!text?.startsWith(m+'\nContexto elegido para esta petición (datos, nunca autorización):\n')&&!text?.startsWith('Guíame solo con instrucciones; yo realizaré los pasos. No ejecutes herramientas.\n'+m);}))return[];
+  return users.flatMap((i:any,n:number)=>{const m=messages[n];if(!m.run||this.get('SELECT id FROM message_images WHERE message=?',m.id)||!Array.isArray(i.content))return[];const images=i.content.filter((c:any)=>c.type==='input_image'&&typeof c.image_url==='string'&&c.image_url.startsWith('data:image/'));return images.length===1?[{runId:m.run as string,data:images[0].image_url as string}]:[];});
+ }
+ saveAppearance(value:MessageAppearance){const row=this.get("SELECT * FROM messages WHERE chat=? AND id=? AND role='assistant'",value.chatId,value.messageId);if(!row)throw new ZenError('Apariencia ajena al mensaje.');const valid=validateAppearance(value,row.chat,row.id);this.exec('INSERT OR IGNORE INTO message_appearance(message,data) VALUES(?,?)',row.id,JSON.stringify(valid));}
  messages(id:string,before=Number.MAX_SAFE_INTEGER,limit=60){this.require(id);return this.all('SELECT * FROM messages WHERE chat=? AND seq<? ORDER BY seq DESC LIMIT ?',id,before,limit).reverse().map(r=>this.message(r));}
  search(id:string,query:string){this.require(id);return this.all("SELECT * FROM messages WHERE chat=? AND text LIKE ? ESCAPE '\\' ORDER BY seq LIMIT 30",id,'%'+query.replace(/[\\%_]/g,'\\$&')+'%').map(r=>this.message(r));}
- private insert(id:string,role:string,text:string,state:ChatRunState,run:string|null=null,partial=false){const seq=(this.get('SELECT MAX(seq) n FROM messages WHERE chat=?',id)?.n??0)+1,mid=randomUUID();this.exec('INSERT INTO messages(id,chat,seq,role,text,state,created,run,partial) VALUES(?,?,?,?,?,?,?,?,?)',mid,id,seq,role,text,state,Date.now(),run,Number(partial));return mid;}
+ private insert(id:string,role:string,text:string,state:ChatRunState,run:string|null=null,partial=false){const seq=(this.get('SELECT MAX(seq) n FROM messages WHERE chat=?',id)?.n??0)+1,mid=randomUUID();this.exec('INSERT INTO messages(id,chat,seq,role,text,state,created,run,partial) VALUES(?,?,?,?,?,?,?,?,?)',mid,id,seq,role,text,state,Date.now(),run,Number(partial));if(role==='assistant')this.saveAppearance({chatId:id,messageId:mid,tone:automaticTone()});return mid;}
  run(id:string){return this.get('SELECT * FROM runs WHERE id=?',id);}
  begin(chatId:string,requestId:string,text:string){return this.transaction(()=>{const chat=this.require(chatId),existing=this.run(requestId);if(existing){if(existing.chat!==chatId)throw new ZenError('La petición pertenece a otra conversación.');return false;}if(chat.archived)throw new ZenError('Recupera esta conversación antes de enviar.');const now=Date.now();this.exec('INSERT INTO runs(id,chat,state,created,updated) VALUES(?,?,?,?,?)',requestId,chatId,'pending',now,now);this.insert(chatId,'user',text,'completed',requestId);this.insert(chatId,'assistant','','pending',requestId);if(chat.title==='Nuevo chat')this.exec('UPDATE chats SET title=? WHERE id=?',text.replace(/\s+/g,' ').slice(0,70),chatId);this.exec('UPDATE chats SET updated=?,version=version+1 WHERE id=?',now,chatId);return true;});}
  runSeq(id:string){return this.get("SELECT seq FROM messages WHERE run=? AND role='assistant'",id)?.seq??0;}
  owner(event:TaskEvent){return this.get('SELECT * FROM runs WHERE id=? OR task=?',event.requestId??event.id,event.id);}
  accept(event:TaskEvent):TaskEvent {
   const run=this.owner(event);if(!run)return event;
-  const state:ChatRunState=event.workContext?.phase==='external'?'external':event.state==='queued'?'pending':['thinking','executing','awaiting_approval'].includes(event.state)?'running':event.state==='awaiting_input'?'incomplete':event.state==='completed'?'completed':event.state==='cancelled'?(run.response?'cancel_requested':'cancelled'):'failed';
-  this.transaction(()=>{this.exec('UPDATE runs SET task=?,state=?,updated=? WHERE id=?',event.id,state,Date.now(),run.id);const clean={...event,streamText:undefined,approval:undefined,usage:undefined};if(event.streamText!==undefined)this.exec("UPDATE messages SET text=text||?,state=? WHERE run=? AND role='assistant'",event.streamText,state,run.id);else if(['pending','running'].includes(state))this.exec("UPDATE messages SET state=?,event=? WHERE run=? AND role='assistant'",state,JSON.stringify(clean),run.id);else this.exec("UPDATE messages SET text=CASE WHEN ? IN ('failed','cancelled','cancel_requested','incomplete') AND text!='' THEN text||char(10)||char(10)||? ELSE ? END,state=?,event=?,partial=? WHERE run=? AND role='assistant'",state,event.message,event.message,state,JSON.stringify(clean),Number(['failed','cancelled','cancel_requested','incomplete'].includes(state)),run.id);this.exec('UPDATE chats SET updated=?,version=version+1 WHERE id=?',Date.now(),run.chat);});
+  const state:ChatRunState=event.workContext?.phase==='external'?'external':event.state==='queued'?'pending':['thinking','executing','awaiting_approval'].includes(event.state)?'running':event.state==='awaiting_input'?(event.responseComplete?'completed':'incomplete'):event.state==='completed'?'completed':event.state==='cancelled'?(run.response?'cancel_requested':'cancelled'):'failed';
+  this.transaction(()=>{
+   this.exec('UPDATE runs SET task=?,state=?,updated=? WHERE id=?',event.id,state,Date.now(),run.id);
+   const clean={...event,streamText:undefined,approval:undefined,usage:undefined};
+   if(event.streamText!==undefined)this.exec("UPDATE messages SET text=text||?,state=? WHERE run=? AND role='assistant'",event.streamText,state,run.id);
+   else if(['pending','running'].includes(state))this.exec("UPDATE messages SET state=?,event=? WHERE run=? AND role='assistant'",state,JSON.stringify(clean),run.id);
+   else {
+    const prior=this.get("SELECT text,state,event FROM messages WHERE run=? AND role='assistant'",run.id);
+    const partial=['failed','cancelled','cancel_requested','incomplete'].includes(state);
+    const repeat=prior?.state===state&&prior.event&&JSON.parse(prior.event).message===event.message;
+    const text=partial&&prior?.text?(repeat||prior.text===event.message?prior.text:prior.text+'\n\n'+event.message):event.message;
+    this.exec("UPDATE messages SET text=?,state=?,event=?,partial=? WHERE run=? AND role='assistant'",text,state,JSON.stringify(clean),Number(partial),run.id);
+   }
+   this.exec('UPDATE chats SET updated=?,version=version+1 WHERE id=?',Date.now(),run.chat);
+  });
   if(['completed','failed','cancelled','cancel_requested','external','incomplete'].includes(state))this.checkpoint(run.chat);
   return {...event,chatId:run.chat};
  }
@@ -78,8 +119,9 @@ export class ConversationStore {
  transfers(id:string):ChatTransfer[]{this.require(id);return this.all('SELECT * FROM transfers WHERE target=? ORDER BY created',id).map(r=>({id:r.id,sourceId:r.source,sourceTitle:r.title,sourceProject:r.project,sourceVersion:r.version,text:r.text,createdAt:r.created,active:!!r.active}));}
  transfer(source:string,target:string|null,project:string|null,version:number,text:string,attachmentIds:string[]){return this.transaction(()=>{const from=this.require(source);if(from.version!==version)throw new ZenError('El origen cambió; revisa una vista previa nueva.');const to=target?this.chat(target):this.create(project,'Continuación: '+from.title.slice(0,70));if(to.projectId!==project)throw new ZenError('Proyecto de destino diferente.');const all=this.attachments(source);for(const id of attachmentIds)if(!all.some(row=>row.item.id===id))throw new ZenError('Adjunto ajeno al origen.');this.exec('INSERT INTO transfers(id,target,source,title,project,version,text,created) VALUES(?,?,?,?,?,?,?,?)',randomUUID(),to.id,source,from.title,from.project,version,text,Date.now());for(const row of all.filter(row=>attachmentIds.includes(row.item.id)))this.putAttachment(to.id,{...row,item:{...row.item,id:randomUUID()}});this.insert(to.id,'context',text,'completed');this.exec('DELETE FROM provider WHERE chat=?',to.id);this.exec('UPDATE chats SET version=version+1,reconstructed=1 WHERE id=?',to.id);return to.id;});}
  detach(id:string,transfer:string){this.require(id);this.exec('UPDATE transfers SET active=0 WHERE target=? AND id=?',id,transfer);this.exec('DELETE FROM provider WHERE chat=?',id);this.exec('UPDATE chats SET reconstructed=1,version=version+1 WHERE id=?',id);}
- context(id:string,through=Number.MAX_SAFE_INTEGER){this.require(id);const saved=this.get('SELECT * FROM provider WHERE chat=?',id);const after=saved?.seq??0;const messages=this.all("SELECT * FROM messages WHERE chat=? AND seq>? AND seq<=? AND role!='context' AND text!='' ORDER BY seq",id,after,through).map(r=>this.message(r)).filter(m=>!m.event?.localOnly);return{items:saved?JSON.parse(saved.items) as any[]:[],seq:after,version:saved?.version??0,messages};}
- saveContext(id:string,seq:number,items:unknown[],compacted=false){this.require(id);this.exec('INSERT INTO provider(chat,seq,items,version) VALUES(?,?,?,?) ON CONFLICT(chat) DO UPDATE SET seq=excluded.seq,items=excluded.items,version=provider.version+?',id,seq,JSON.stringify(items),Number(compacted),Number(compacted));}
+ context(id:string,through=Number.MAX_SAFE_INTEGER){this.require(id);const saved=this.get('SELECT * FROM provider WHERE chat=?',id);const after=saved?.seq??0;const messages=this.all("SELECT * FROM messages WHERE chat=? AND seq>? AND seq<=? AND role!='context' AND text!='' ORDER BY seq",id,after,through).map(r=>this.message(r)).filter(m=>!m.event?.localOnly);return{items:saved?JSON.parse(saved.items) as any[]:[],seq:after,version:saved?.version??0,compactionBlocked:!!saved?.compaction_blocked,messages};}
+ saveContext(id:string,seq:number,items:unknown[],compacted=false){this.require(id);this.exec('INSERT INTO provider(chat,seq,items,version,compaction_blocked) VALUES(?,?,?,?,?) ON CONFLICT(chat) DO UPDATE SET seq=excluded.seq,items=excluded.items,version=provider.version+?,compaction_blocked=CASE WHEN excluded.compaction_blocked=1 THEN 1 ELSE provider.compaction_blocked END',id,seq,JSON.stringify(items),Number(compacted),Number(compacted),Number(compacted));}
+ contextFits(id:string){this.require(id);this.exec('UPDATE provider SET compaction_blocked=0 WHERE chat=?',id);}
  reconstructed(id:string){this.require(id);this.exec('UPDATE chats SET reconstructed=1 WHERE id=?',id);}
  response(id:string,chat:string,run:string,kind='response'){if(this.get('SELECT id FROM tombstones WHERE id=?',chat)){if(kind==='response')this.exec('INSERT OR IGNORE INTO cleanup(response,chat) VALUES(?,?)',id,chat);return;}this.exec('INSERT OR IGNORE INTO responses(id,chat,run,kind) VALUES(?,?,?,?)',id,chat,run,kind);if(kind==='response')this.exec('UPDATE runs SET response=? WHERE id=?',id,run);}
  startTool(run:string,call:string){if(this.get('SELECT call FROM tools WHERE run=? AND call=?',run,call))throw new ZenError('Herramienta ya registrada. No se repite un efecto incierto.');this.exec('INSERT INTO tools(run,call,state) VALUES(?,?,?)',run,call,'running');}

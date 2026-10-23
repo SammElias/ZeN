@@ -1,17 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96"><rect x="2" y="2" width="92" height="92" rx="23" fill="#211c30" stroke="#736183" stroke-width="1.5"/>
-  <defs>
-    <linearGradient id="shell" x2=".8" y2="1"><stop stop-color="#faf6ff"/><stop offset=".55" stop-color="#d9cdf9"/><stop offset="1" stop-color="#9c89d4"/></linearGradient>
-    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#303449"/><stop offset="1" stop-color="#141725"/></linearGradient>
-  </defs>
-  <path d="M48 24V16" stroke="#ada0d2" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="48" cy="12" r="5" fill="#a5eed6"/>
-  <rect x="7" y="41" width="11" height="20" rx="5" fill="#9d8dc8"/>
-  <rect x="78" y="41" width="11" height="20" rx="5" fill="#9d8dc8"/>
-  <rect x="15" y="22" width="66" height="55" rx="20" fill="url(#shell)" stroke="#b9a9e0" stroke-width="1.5"/>
-  <path d="M28 29Q40 25 56 28" stroke="#fff" stroke-width="2" opacity=".65" fill="none" stroke-linecap="round"/>
-  <rect x="23" y="32" width="50" height="33" rx="12" fill="url(#glass)" stroke="#615d7e"/>
-  <g fill="#baffeb"><rect x="33" y="40" width="8" height="12" rx="4"/><rect x="55" y="40" width="8" height="12" rx="4"/></g>
-  <path d="M44 56Q48 59 52 56" stroke="#baffeb" stroke-width="1.7" stroke-linecap="round" fill="none" opacity=".65"/>
-  <rect x="40" y="78" width="16" height="3" rx="1.5" fill="#9b8abd"/>
-  <rect x="33" y="83" width="30" height="4" rx="2" fill="#c9b8ee"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96"><defs><linearGradient id="zen" x2="1" y2="1"><stop stop-color="#d6c4ff"/><stop offset="1" stop-color="#9e79ed"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="24" fill="#181321" stroke="#c5a9ff" stroke-width="3"/><path d="M29 27h39v9L41 60h27v10H28V59l27-22H29Z" fill="url(#zen)"/></svg>

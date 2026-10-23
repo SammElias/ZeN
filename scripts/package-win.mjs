@@ -1,33 +1,44 @@
 import { cp, mkdir, writeFile, rename, readdir, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { applyWindowsIcon } from './windows-icon.mjs';
+async function writeEvidence(path,data){
+  const temporary=path+'.'+randomUUID()+'.tmp';
+  await writeFile(temporary,data);
+  for(let attempt=0;;attempt++){
+    try{await rename(temporary,path);return;}
+    catch(error){if(attempt>=4||!['EPERM','EACCES','EBUSY','UNKNOWN'].includes(error.code))throw error;await new Promise(r=>setTimeout(r,200*(attempt+1)));}
+  }
+}
 if (process.platform !== 'win32') throw Error('Este paquete requiere Windows.');
 const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '');
 const interfaceOnly = process.argv.includes('--interface');
 const interactionsOnly=process.argv.includes('--interactions');
+const shellOnly=process.argv.includes('--shell');
 const root = resolve('release'); const destination = join(root, `ZEN-${stamp}`);
 if (!destination.startsWith(root + '\\')) throw Error('Destino de paquete inválido.');
 await mkdir(destination, { recursive: true });
-await cp('node_modules/electron/dist', destination, { recursive: true, force: false, errorOnExist: true });
+await cp('node_modules/electron/dist', destination, { recursive: true, force: false, errorOnExist: true, filter:path=>!path.toLowerCase().endsWith('.log') });
 await rename(join(destination, 'electron.exe'), join(destination, 'ZEN.exe'));
 await applyWindowsIcon(join(destination, 'ZEN.exe'));
 const appDirectory = join(destination, 'resources/app'); await mkdir(join(appDirectory, 'dist'), { recursive: true });
-for (const path of ['main.cjs', 'preload.cjs', 'renderer', 'tools', 'native']) await cp(join('dist', path), join(appDirectory, 'dist', path), { recursive: true });
+for (const path of (shellOnly?['main.cjs','preload.cjs','renderer','hook']:['main.cjs', 'preload.cjs', 'renderer', 'tools', 'native'])) await cp(join('dist', path), join(appDirectory, 'dist', path), { recursive: true });
+if(!shellOnly){
 await mkdir(join(appDirectory,'dist/documents'),{recursive:true});
 for(const path of ['worker.mjs','pdf.mjs','pdf.worker.mjs','standard_fonts'])await cp(join('dist/documents',path),join(appDirectory,'dist/documents',path),{recursive:true});
 // PDF.js uses its local geometry implementation even for text extraction.
 await cp('node_modules/@napi-rs',join(appDirectory,'node_modules/@napi-rs'),{recursive:true});
 await cp('node_modules/pdfjs-dist/LICENSE',join(appDirectory,'dist/documents/PDFJS-LICENSE'));
 await cp('node_modules/fast-xml-parser/LICENSE',join(appDirectory,'dist/documents/XML-LICENSE'));
+}
 await writeFile(join(appDirectory, 'package.json'), JSON.stringify({ name: 'zen-desktop', version: '0.1.0', main: 'dist/main.cjs', private: true }, null, 2));
-await writeFile(join(destination, 'LEEME.txt'), 'ZEN Isla portable para Windows. Conserva esta carpeta completa y ejecuta ZEN.exe; aparece una cápsula de 320x72 arriba o una línea de 72x320 en ambos laterales. Arrastra la cabecera para cambiar de borde. Haz clic para abrir o usa Ctrl+Alt+Z. Ocultar deja ZEN en la barra de tareas; restaurarlo recoge la cápsula y renueva el contexto. El chat tiene un ancho máximo de 640 DIP. Incluye GPT-Live, contexto visual automático, preparación de proyectos con Codex y control visual mediante Responses SOL: ventana abierta, bloques revisados por voz/chat y contexto nuevo por paso. Ratón, teclado y ciclo SOL verificados en un formulario local; Power Platform real sigue pendiente; consulta docs/computer-control.md. El análisis de carpetas abre Codex del escritorio con la petición preparada: pulsa Enviar allí. ZEN no envía esos archivos a su API. Las confirmaciones locales admiten botón, chat y voz con el código visible; en voz suelta pulsar para hablar o silencia el micrófono al terminar. Preferencias disponibles por separado desde la bandeja de Windows. El auxiliar Windows requiere .NET Desktop Runtime 10. No incluye claves, perfil ni conversaciones; conserva la configuración local existente. Si falta la conexión, configura tu clave desde Preferencias. El objetivo completo y las pruebas físicas de voz/reunión siguen pendientes. Consulta docs/objective-verification.md en el repositorio para funciones y límites.\r\n');
+await writeFile(join(destination, 'LEEME.txt'), 'ZEN compañero de Codex. Cápsula ZEN sin personaje, con actividad observada, código, permisos de un uso y avisos. Sin chat, proyectos, capturas, contexto ni llamadas al modelo. Prepara la integración en Preferencias y revisa sus hooks con /hooks en Codex CLI; no se concede confianza automáticamente. Si ZEN está cerrado o no respondes, el permiso vuelve a Codex. Historial previo conservado fuera de la interfaz. Auxiliar requiere .NET Runtime 10. Incluye código MIT adaptado de Coucou; iconos ZEN y tonos propios. Consulta docs/codex-companion-reset.md.');
 const files = [];
 async function inspect(directory, relative = '') { for (const item of await readdir(directory, { withFileTypes: true })) { const path = join(directory, item.name); const name = join(relative, item.name); if (item.isDirectory()) await inspect(path, name); else files.push({ path: name, sha256: createHash('sha256').update(await readFile(path)).digest('hex') }); } }
 await inspect(appDirectory);
 const env = { ...process.env }; delete env.OPENAI_API_KEY; delete env.ELECTRON_RUN_AS_NODE;
-const child = spawn(join(destination, 'ZEN.exe'), [interactionsOnly?'--zen-interactions-smoke':interfaceOnly ? '--zen-smoke' : '--zen-objective-smoke'], { env, windowsHide: true });
+const child = spawn(join(destination, 'ZEN.exe'), [shellOnly?'--zen-shell-smoke':interactionsOnly?'--zen-interactions-smoke':interfaceOnly ? '--zen-smoke' : '--zen-objective-smoke'], { env, windowsHide: true });
 let output = ''; let errors = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => errors += chunk);
 const timer = setTimeout(() => child.kill(), 40000);
 const code = await new Promise(resolve => { child.on('error', error => { errors = error.message; resolve(1); }); child.on('exit', resolve); }); clearTimeout(timer);
@@ -39,10 +50,14 @@ if (code !== 0 || !line) {
   throw Error('El paquete no pasó el arranque real: ' + errors.slice(0, 2000));
 }
 const smoke = JSON.parse(line);
-if(interactionsOnly){
+if(shellOnly){
+ if(smoke.passed!==true||smoke.companionOnly!==true||smoke.capsuleNoAuthority!==true)throw Error('El paquete no pasó el compañero de Codex.');
+ const report={at:new Date().toISOString(),destination,executable:join(destination,'ZEN.exe'),validationScope:'codex-companion-native-hook-IPC',smoke,files,credentialsIncluded:false,fullObjectivePassed:false};
+ await writeEvidence('docs/evidence/portable-shell.json',JSON.stringify(report,null,2));console.log(JSON.stringify({executable:report.executable,passed:true,validationScope:report.validationScope}));
+}else if(interactionsOnly){
   if(smoke.fullscreenChatVerified!==true||smoke.passed!==true||!smoke.quickNativeWidth||!smoke.chatNativeWidth||!smoke.rendererNodeUnavailable||!smoke.frozenContextAndDedup||!smoke.invalidVisualRejected||!smoke.localGuidePersisted||!smoke.appearanceSaved)throw Error('El paquete no pasó las comprobaciones de interacciones.');
   const report={validationScope:'contextual-interactions-IPC-and-native-bounds',fullObjectivePassed:false,at:new Date().toISOString(),destination,executable:join(destination,'ZEN.exe'),smoke,files,credentialsIncluded:false,selfContainedElectron:true,requiresDotNetDesktop10:true,installer:false,customApplicationSigning:false};
-  await writeFile('docs/evidence/portable-interactions.json',JSON.stringify(report,null,2));
+  await writeEvidence('docs/evidence/portable-interactions.json',JSON.stringify(report,null,2));
   console.log(JSON.stringify({executable:report.executable,passed:true,validationScope:report.validationScope,fullObjectivePassed:false,credentialsIncluded:false}));
 }else{
 if (!smoke.shownOnTop || !smoke.startedCompact || !smoke.preferencesIsolated || !smoke.topAnchorStable || !smoke.positionLocked || !smoke.collapsedHeightVerified || !smoke.latestOnlyExpanded || !smoke.latestTranscriptVerified || !smoke.latestInterruptionVerified || !smoke.unknownArtifactBlocked || !smoke.mcpSecretProtectionVerified || !smoke.libraryRootsLocal || !smoke.localFileWithoutApiVerified || !smoke.widthsVerified || !smoke.invalidDragBlocked || !smoke.horizontalDragVerified || !smoke.dragPositionPersisted || (!interfaceOnly && (!smoke.objective || Object.values(smoke.objective).some(value => value !== true)))) throw Error('Pruebas funcionales del paquete fallidas: ' + JSON.stringify(smoke));

@@ -1,10 +1,11 @@
-// Export ZEN's original vector robot as native Windows icons, without an API.
+// Original ZEN monogram, exported to Windows icon sizes. No third-party artwork.
 import {chromium} from 'playwright';
 import {readFile,writeFile} from 'node:fs/promises';
+async function writeAsset(path,value){for(let attempt=0;;attempt++)try{await writeFile(path,value);return;}catch(error){if(attempt>=4||!['UNKNOWN','EPERM','EACCES','EBUSY'].includes(error.code))throw error;await new Promise(r=>setTimeout(r,200*(attempt+1)));}}
 const sizes=[16,20,24,32,40,48,64,128,256];
-const robot=(await readFile('public/icons/robot.svg','utf8')).replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'');
-const tile='<rect x="2" y="2" width="92" height="92" rx="23" fill="#211c30" stroke="#736183" stroke-width="1.5"/>';
-for(const name of ['zen','tray'])await writeFile(`public/icons/${name}.svg`,`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96">${name==='zen'?tile:''}${robot}</svg>\n`);
+const robot='<defs><linearGradient id="zen" x2="1" y2="1"><stop stop-color="#d6c4ff"/><stop offset="1" stop-color="#9e79ed"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="24" fill="#181321" stroke="#c5a9ff" stroke-width="3"/><path d="M29 27h39v9L41 60h27v10H28V59l27-22H29Z" fill="url(#zen)"/>';
+const tile='';
+for(const name of ['zen','tray'])await writeAsset(`public/icons/${name}.svg`,`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96">${tile}${robot}</svg>\n`);
 function bitmapIcon(rgba,size){
   const stride=Math.ceil(size/32)*4,pixels=size*size*4;
   const bitmap=Buffer.alloc(40+pixels+stride*size);
@@ -33,12 +34,12 @@ try{
       const png=Buffer.from(pixels.png,'base64');
       // Native DIB frames for small Windows shell/tray sizes; PNG for 256px.
       frames.push(size===256?png:bitmapIcon(pixels.rgba,size));
-      await writeFile(`public/icons/${name}-${size}.png`,png);
+      await writeAsset(`public/icons/${name}-${size}.png`,png);
     }
     const header=Buffer.alloc(6+sizes.length*16);header.writeUInt16LE(1,2);header.writeUInt16LE(sizes.length,4);
     let offset=header.length;
     frames.forEach((png,index)=>{const entry=6+index*16,size=sizes[index];header[entry]=header[entry+1]=size===256?0:size;header.writeUInt16LE(1,entry+4);header.writeUInt16LE(32,entry+6);header.writeUInt32LE(png.length,entry+8);header.writeUInt32LE(offset,entry+12);offset+=png.length;});
-    await writeFile(`public/icons/${name}.ico`,Buffer.concat([header,...frames]));
+    await writeAsset(`public/icons/${name}.ico`,Buffer.concat([header,...frames]));
   }
   console.log(JSON.stringify({icons:['zen','tray'],sizes,apiCalled:false}));
 }finally{await browser.close();}

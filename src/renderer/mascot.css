@@ -1,0 +1,73 @@
+.mascot-host{position:fixed;z-index:30;pointer-events:none;contain:layout style;display:grid;place-items:center}
+.mascot-rig{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.mascot-original{image-rendering:auto}
+.mascot-head-gaze{transform-origin:80px 85px;transition:transform 140ms ease-out}
+.mascot-body-gaze{transform-origin:90px 284px;transition:transform 180ms ease-out}
+.mascot-head-nod{--pose-angle:0deg;transform:rotate(calc(var(--pose-angle)*var(--gesture-strength)));transform-origin:80px 85px}
+.mascot-host[data-tone=smug] .activity-idle .mascot-head-nod{--pose-angle:-.5deg}
+.mascot-host[data-tone=confident] .activity-idle .mascot-head-nod{--pose-angle:.4deg}
+.mascot-host[data-tone=sad_empathic] .activity-idle .mascot-head-nod{--pose-angle:.6deg}
+.mascot-host[data-tone=playful_cocky] .activity-idle .mascot-head-nod{--pose-angle:-.8deg}
+.mascot-rig.activity-listening .mascot-head-nod{--pose-angle:-1deg}
+.mascot-rig.activity-thinking .mascot-head-nod{--pose-angle:1deg}
+.mascot-rig.activity-error .mascot-head-nod{--pose-angle:.5deg}
+.mascot-rig.animated.activity-speaking .mascot-head-nod{transform:rotate(calc(var(--audio-level,0)*var(--gesture-strength)*-1deg))}
+.mascot-rig.animated.delivering .mascot-head-nod{animation:zen-deliver 850ms ease-in-out both}
+.mascot-rig.animated.activity-thinking .mascot-head-nod{--thinking-tilt:3deg;animation:zen-think-head 2.8s ease-in-out infinite}
+.mascot-rig.animated.activity-thinking[data-rig=original-textured-2d] .mascot-head-nod{--thinking-tilt:.7deg}
+.mascot-rig.walking.animated .mascot-travel{animation:zen-travel 2.4s ease-in-out both}
+.mascot-rig.walking.animated .mascot-thigh.left{animation:zen-stride 600ms ease-in-out 4}
+.mascot-rig.walking.animated .mascot-thigh.right{animation:zen-stride 600ms ease-in-out 4 reverse}
+.mascot-rig.walking.animated .mascot-shin.left{animation:zen-knee 600ms ease-in-out 4}
+.mascot-rig.walking.animated .mascot-shin.right{animation:zen-knee 600ms ease-in-out 4 reverse}
+.mascot-rig.static *{animation:none!important;transition:none!important}.mascot-rig.static .mascot-head-gaze{transform:none!important}
+@keyframes zen-stride{0%,100%{transform:rotate(0)}25%{transform:rotate(3deg)}75%{transform:rotate(-3deg)}}
+@keyframes zen-knee{0%,50%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(2deg)}}
+@keyframes zen-travel{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+@keyframes zen-deliver{0%,100%{transform:rotate(0)}45%{transform:rotate(-1deg)}}
+@keyframes zen-think-head{0%,100%{transform:rotate(calc(-1 * var(--thinking-tilt)))}50%{transform:rotate(var(--thinking-tilt))}}
+/* Local state indicator; occupies no layout space and never intercepts input. */
+.mascot-thought{position:absolute;z-index:4;top:3%;right:0;display:flex;align-items:center;justify-content:center;gap:4px;width:36px;height:22px;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:0 2px 5px #25143814;pointer-events:none}
+.mascot-thought::after{content:'';position:absolute;left:3px;bottom:-4px;width:5px;height:5px;border-radius:50%;border:1px solid var(--border);background:var(--surface)}
+.mascot-thought i{display:block;flex:none;width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.7}
+.mascot-host[data-animated=true] .mascot-thought i{animation:zen-think-dot 1.35s ease-in-out infinite}
+.mascot-host[data-animated=true] .mascot-thought i:nth-child(2){animation-delay:150ms}
+.mascot-host[data-animated=true] .mascot-thought i:nth-child(3){animation-delay:300ms}
+.mascot-host:is([data-presentation=compact],[data-presentation=hands]) .mascot-thought{top:0;right:0;width:24px;height:14px;gap:2px;border-radius:8px}
+.mascot-host:is([data-presentation=compact],[data-presentation=hands]) .mascot-thought i{width:3px;height:3px}
+.mascot-host:is([data-presentation=compact],[data-presentation=hands]) .mascot-thought::after{width:3px;height:3px;bottom:-3px}
+.mascot-welcome .mascot-thought{top:9%;left:68%;right:auto}
+@keyframes zen-think-dot{0%,70%,100%{opacity:.45;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.mascot-host .mascot-thought i{animation:none!important;transform:none!important;opacity:.7}}
+.zen-overlay.compact-shell .view.chat-page.mascot-chat{display:grid;grid-template-columns:minmax(0,1fr) 176px;gap:0}
+.mascot-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0;border-left:1px solid var(--border);padding:8px;color:var(--secondary)}
+.mascot-stage-anchor{width:160px;height:280px;flex:0 1 280px;min-height:130px;pointer-events:none}
+.mascot-stage-status{font-size:11px;text-align:center;line-height:1.4}.mascot-stage button{font:inherit;font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--secondary);max-width:100%}.mascot-stage button:disabled{opacity:.45}
+.zen-overlay.compact-shell .view.mascot-chat:has(.chat-history-page:not([hidden])){grid-template-columns:minmax(0,1fr)}.mascot-chat:has(.chat-history-page:not([hidden])) .mascot-stage{display:none}
+.mascot-controls{position:absolute;z-index:80;top:48px;left:8px;width:min(320px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:auto;box-sizing:border-box;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);box-shadow:0 8px 28px #20162926;font-size:12px}
+.mascot-controls header{display:flex;align-items:center;justify-content:space-between}.mascot-controls header button{font-size:20px}.mascot-controls p{font-size:11px;color:var(--secondary);line-height:1.5}.mascot-controls label{display:flex;align-items:center;gap:8px;margin:12px 0}.mascot-controls select{min-width:0;width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px}.mascot-controls button{font:inherit;padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)}.mascot-controls button[aria-pressed=true]{background:var(--violet-soft);color:var(--accent)}.mascot-tones{display:flex;gap:5px;flex-wrap:wrap}.mascot-controls input[type=range]{width:150px}
+.mascot-controls :focus-visible,.mascot-stage button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chat-current-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;color:var(--secondary)}
+@media(min-width:580px){.head-shell:has(.chat-page.mascot-chat:not([hidden])):not(:has(.chat-history-page:not([hidden]))):not(:has(.view-region[hidden])):not(.capsule) .brand{display:block!important}}
+@media(max-width:579px){.zen-overlay.compact-shell .view.chat-page.mascot-chat{grid-template-columns:minmax(0,1fr)}.mascot-stage{display:none}.chat-current-title{display:none}}
+@media(prefers-reduced-motion:reduce){.mascot-rig *{animation:none!important;transition:none!important}.mascot-head-gaze{transform:none!important}}
+
+/* The welcome pose belongs to the same mascot host. Local layering lets the
+   title occlude the torso while the hands rest over its top edge. */
+.compact-shell .home-greeting.home-leaning{position:relative;isolation:isolate;display:block;width:min(100%,350px);height:clamp(146px,calc(100dvh - 285px),270px);min-height:132px;align-self:center;flex:0 1 auto}
+.zen-overlay.island.live-only.compact-shell .home-page{justify-content:safe center}
+.home-mascot-anchor{position:absolute;inset:0;pointer-events:none}
+.mascot-host.mascot-welcome{display:contents;position:static;contain:none;z-index:auto}
+.welcome-art{position:absolute;top:0;left:0;width:100%;height:calc(100% - 40px);pointer-events:none}
+.welcome-art img{width:100%;height:100%;object-fit:contain;object-position:center top;display:block}
+.welcome-art-back{z-index:0;filter:drop-shadow(0 5px 5px #21162917)}
+.welcome-art-back{clip-path:inset(0 0 22%)}
+.welcome-gaze{width:100%;height:100%;transform-origin:50% 82%;transition:transform 160ms ease-out}
+.mascot-host[data-animated=false] :is(.mascot-body-gaze,.welcome-gaze){transform:none!important;transition:none!important}
+.welcome-art-hands{z-index:3;clip-path:inset(78% 0 0);filter:drop-shadow(0 2px 1px #21162925)}
+.compact-shell .home-greeting.home-leaning h1{position:absolute;z-index:2;top:calc(85.5% - 34.2px);bottom:0;left:0;right:0;margin:0;display:flex;align-items:flex-end;justify-content:center;padding:22px 8px 8px;border:1px solid var(--border);border-radius:15px;background:linear-gradient(180deg,var(--surface),var(--surface-soft));box-shadow:0 9px 22px #2b1b4410,0 2px 0 var(--border),inset 0 1px 0 #ffffff80;font-size:23px;line-height:1.3;white-space:nowrap}
+.welcome-fallback{position:absolute;top:0;left:25%;width:50%;height:65%;object-fit:contain}
+.home-resume:empty{display:none}
+.head-shell:has(.home-view:not([hidden])):not(:has(.view-region[hidden])):not(.capsule) .brand{display:block!important}
+@media(max-width:420px){.compact-shell .home-greeting.home-leaning{width:min(100%,310px)}.compact-shell .home-greeting.home-leaning h1{font-size:21px}}
+@media(max-height:460px){.compact-shell .home-greeting.home-leaning h1{font-size:19px;padding-top:16px;border-radius:12px}}

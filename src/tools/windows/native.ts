@@ -7,7 +7,7 @@ export const WindowSchema = z.object({ id: z.string().regex(/^\d+$/), title: z.s
 export const MediaSchema = z.object({ id: z.string(), title: z.string().default(''), state: z.string(), canPause: z.boolean() });
 export type WindowInfo = z.infer<typeof WindowSchema>;
 export type MediaInfo = z.infer<typeof MediaSchema>;
-export async function native<T>(directory: string, command: 'selection' | 'windows' | 'read' | 'capture' | 'capture-screen' | 'media' | 'pause' | 'apps' | 'open-app' | 'computer-frame' | 'computer-action', schema: z.ZodType<T>, id?: string, signal?: AbortSignal, options?:Record<string,unknown>): Promise<T> {
+export async function native<T>(directory: string, command: 'selection' | 'windows' | 'read' | 'capture' | 'capture-window-context' | 'capture-screen' | 'media' | 'pause' | 'apps' | 'open-app' | 'computer-frame' | 'computer-action', schema: z.ZodType<T>, id?: string, signal?: AbortSignal, options?:Record<string,unknown>): Promise<T> {
   signal?.throwIfAborted();
   // Finish an already dispatched, bounded input transaction so key-up events
   // cannot be lost to process termination. No subsequent action survives Stop.
@@ -21,8 +21,13 @@ export async function native<T>(directory: string, command: 'selection' | 'windo
       child.stdout.on('data', chunk => { output += chunk; if (output.length > 12_000_000) child.kill(); });
       child.on('exit', code => {
         if (code === 0) return resolve(output);
-        let detail = ''; try { const error = JSON.parse(output); if (/^[A-Za-z0-9]+Exception$/.test(error.code)) detail = ` (${error.code}, ${Number(error.hresult)}, ${/^[a-z-]+$/.test(error.stage) ? error.stage : 'operation'}, Win32 ${Number(error.nativeCode??0)})`; } catch {}
-        reject(new ZenError('Operación Windows no verificada. Revisa permisos, selección y escritorio desbloqueado.' + detail));
+        let detail = '',message='Operación Windows no verificada. Revisa permisos, selección y escritorio desbloqueado.'; try { const error = JSON.parse(output); if (/^[A-Za-z0-9]+Exception$/.test(error.code)) detail = ` (${error.code}, ${Number(error.hresult)}, ${/^[a-z-]+$/.test(error.stage) ? error.stage : 'operation'}, Win32 ${Number(error.nativeCode??0)})`;
+          if(error.stage==='window-context-protected')message='Esta aplicación protege su imagen. Elige otra ventana o adjunta una imagen permitida.';
+          else if(error.stage==='window-context-blank')message='La ventana no devolvió una imagen visible. Muéstrala y vuelve a arrastrarla, o adjunta una captura.';
+          else if(error.stage==='window-context-changed')message='La ventana cambió durante la captura. Vuelve a arrastrarla cuando esté quieta.';
+          else if(error.stage==='window-context-frame')message='No llegó una imagen de la ventana a tiempo. Puedes volver a arrastrarla.';
+        } catch {}
+        reject(new ZenError(message + detail));
       });
     });
     const parsed = z.object({ ok: z.literal(true), value: schema }).safeParse(JSON.parse(result));

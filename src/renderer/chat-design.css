@@ -25,3 +25,36 @@
 .island.live-only.compact-shell .content-toolbar>span.execution-origin{display:block;max-width:100%;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .chat-full-title{font-size:13px;font-weight:600;line-height:1.5;overflow-wrap:anywhere;margin:0 0 8px}
+
+/* The everyday chat has two entry points; messages own the remaining space. */
+.simple-chat .chat-topbar{justify-content:space-between;gap:10px;padding:6px 14px;min-height:48px}
+.simple-chat .chat-topbar .chat-navigation button,.simple-chat .chat-topbar .new-chat{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;font-size:13px;font-weight:500;padding:7px 10px;white-space:nowrap;color:var(--secondary)}
+.simple-chat .chat-topbar .new-chat{background:var(--violet-soft);color:var(--accent)}
+.simple-chat .new-chat>span{font-size:19px;line-height:16px}
+.simple-chat .chat-reading-frame{position:relative;grid-template-rows:minmax(0,1fr)}
+.simple-chat .chat-tail{position:absolute;grid-area:auto;z-index:2;bottom:12px;right:16px;width:32px;height:32px;padding:0;margin:0;border-radius:50%;font-size:20px;background:var(--surface)!important;box-shadow:0 2px 10px #24143615}
+.simple-chat .chat-empty{display:grid;place-content:center;min-height:160px;margin:0;color:var(--secondary);font-size:15px}
+.simple-chat .message-tools{opacity:0;transition:opacity 120ms ease}
+.simple-chat .history-message:hover .message-tools,.simple-chat .history-message:focus-within .message-tools{opacity:1}
+@media(hover:none){.simple-chat .message-tools{opacity:.7}}
+@media(prefers-reduced-motion:reduce){.simple-chat .message-tools{transition:none}}
+@media(max-width:380px){.simple-chat .chat-topbar{padding-inline:8px;gap:4px}.simple-chat .chat-topbar .chat-navigation button,.simple-chat .chat-topbar .new-chat{padding-inline:7px;font-size:12px}}
+
+.simple-chat .chat-row{flex-direction:row;align-items:center;justify-content:flex-start;min-height:38px;gap:0;margin:3px 0;padding:8px 12px!important;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--text)}
+.simple-chat .chat-row strong{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;font-weight:500}
+.simple-chat .chat-row:hover{background:var(--violet-soft)}
+.simple-chat .chat-row[aria-current=page]{background:var(--violet-soft);color:var(--accent);box-shadow:inset 3px 0 var(--accent)}
+.simple-chat .chat-row:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.simple-chat .history-loading{font-size:12px;color:var(--secondary);padding:8px 12px;margin:0}
+.simple-chat .history-end{height:1px}
+
+.conversation-context-menu{position:fixed;z-index:1000;box-sizing:border-box;min-width:190px;max-width:calc(100vw - 16px);padding:5px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 6px 24px #24143624}
+.conversation-context-menu button{width:100%;padding:10px 12px;border:0;border-radius:6px;background:transparent;text-align:left;color:#b9344d;font:inherit;font-size:13px;cursor:pointer}
+.conversation-context-menu button:hover,.conversation-context-menu button:focus-visible{background:var(--violet-soft);outline:2px solid var(--accent);outline-offset:-2px}
+.conversation-delete-dialog{box-sizing:border-box;width:min(380px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;padding:20px;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);box-shadow:0 12px 44px #24143630;font:14px/1.5 system-ui}
+.conversation-delete-dialog::backdrop{background:#18102055}
+.conversation-delete-dialog h2{margin:0 0 10px;font-size:18px}.delete-chat-title{font-weight:600;overflow-wrap:anywhere}.delete-voice-code{font-size:12px;color:var(--secondary)}
+.delete-chat-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}.delete-chat-actions button{padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;cursor:pointer}.delete-chat-actions .confirm-delete{background:#b9344d;color:#fff;border-color:#b9344d}.delete-chat-actions button:disabled{opacity:.5;cursor:default}.delete-chat-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.delete-chat-input{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:9px;background:var(--surface);color:var(--text);font:inherit}

@@ -4,7 +4,7 @@ export type Area = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 /** Match the visible rounded capsule, including transparent corners, in local DIP. */
 export function capsuleShape({width,height}:Pick<Area,'width'|'height'>):Area[]{
-  const radius=Math.min(14,width/2,height/2),rows:Area[]=[];
+  const radius=Math.min(18,width/2,height/2),rows:Area[]=[];
   for(let y=0;y<height;y++){
     const dy=y<radius?radius-y-.5:y>=height-radius?y+.5-(height-radius):0;
     const inset=Math.max(0,Math.ceil(radius-Math.sqrt(radius*radius-dy*dy)));
@@ -15,10 +15,13 @@ export function capsuleShape({width,height}:Pick<Area,'width'|'height'>):Area[]{
 // All geometry is in Electron DIP, including monitors at negative coordinates.
 export function overlayBounds(area: Area, layout: Pick<OverlayLayout, 'mode' | 'height'> & {width?:number}, horizontalRatio = .5, edge: DockEdge = 'top', verticalRatio = .5): Area {
   if (layout.mode === 'fullscreen') return { ...area };
-  const side = edge !== 'top'; const compact = layout.mode === 'capsule';
-  const width = Math.max(1, Math.min(compact ? CAPSULE_WIDTH : layout.mode==='quick'?380:layout.width??CHAT_WIDTH, Math.max(1, area.width - (compact ? 0 : 24))));
-  const limit = compact ? CAPSULE_HEIGHT : layout.width ? Math.min(900, Math.max(48, area.height - 24)) : Math.min(600, Math.max(48, Math.floor(area.height * .8)));
-  const height = Math.max(1, Math.min(compact ? CAPSULE_HEIGHT : layout.height, limit, Math.max(1, area.height - 24)));
+  const side = edge !== 'top'; const compact = layout.mode === 'capsule', card = layout.mode === 'card';
+  // A fresh expanded panel uses half the monitor's work area, including its full
+  // useful height. Explicit dimensions are a user resize, kept until folding.
+  const cardWidth = layout.width ?? Math.max(320, Math.round(area.width / 2));
+  const width = Math.max(1, Math.min(compact ? CAPSULE_WIDTH : card ? cardWidth : layout.mode==='quick'?380:layout.width??CHAT_WIDTH, Math.max(1, area.width - (compact || card ? 0 : 24))));
+  const limit = card ? area.height : compact ? CAPSULE_HEIGHT : layout.width ? Math.min(900, Math.max(48, area.height - 24)) : Math.min(600, Math.max(48, Math.floor(area.height * .8)));
+  const height = Math.max(1, Math.min(compact ? CAPSULE_HEIGHT : card && layout.width === undefined ? area.height : layout.height, limit, Math.max(1, area.height - (compact || card ? 0 : 24))));
   const center = area.x + area.width * clamp(horizontalRatio, 0, 1);
   const x = edge === 'left' ? area.x : edge === 'right' ? area.x + area.width - width : clamp(center - width / 2, area.x, area.x + area.width - width);
   // The expanded panel grows inward/downward from the same rail, then clamps.

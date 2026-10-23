@@ -9,11 +9,17 @@ function fixture(){
   vi.stubGlobal('RTCPeerConnection',class{constructor(){peer=this;}iceGatheringState='complete';connectionState='connected';ontrack=null;onconnectionstatechange=null;addTrack(){}createDataChannel(){return channel;}async createOffer(){return{sdp:'v=0\r\n'};}async setLocalDescription(){}async setRemoteDescription(){}close(){close();channel.onclose?.();}});
   let end!: (value:any)=>void;const ending=new Promise(resolve=>end=resolve);
   const bridge={voiceStart:vi.fn(async()=>({ok:true,value:{sessionId:'opaque',sdp:'v=0\r\n'}})),liveReady:vi.fn(async()=>({ok:true,value:true})),liveEnd:vi.fn(()=>ending),voiceInterrupt:vi.fn(async()=>({ok:true,value:true}))} as unknown as ZenBridge;
-  const state=vi.fn(),message=vi.fn(),transcript=vi.fn();const client=new LiveVoiceClient(bridge,state,message,vi.fn(),transcript);
-  return{client,track,close,bridge,state,message,transcript,audio:()=>audio,remote:()=>peer.ontrack?.({streams:[stream]}),event:(event:unknown)=>channel.onmessage?.({data:JSON.stringify(event)}),finish:(finalized=true)=>end({ok:true,value:{finalized}})};
+  const state=vi.fn(),message=vi.fn(),transcript=vi.fn(),speaking=vi.fn();const client=new LiveVoiceClient(bridge,state,message,speaking,transcript);
+  return{client,track,close,bridge,state,message,transcript,speaking,audio:()=>audio,remote:()=>peer.ontrack?.({streams:[stream]}),event:(event:unknown)=>channel.onmessage?.({data:JSON.stringify(event)}),finish:(finalized=true)=>end({ok:true,value:{finalized}})};
 }
 afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();});
 describe('Live browser lifecycle',()=>{
+  it('stops speaking synchronously without ending work and rejects late audio after session closure',async()=>{
+    const f=fixture();const starting=f.client.start();await vi.waitFor(()=>expect(f.bridge.voiceStart).toHaveBeenCalled());f.event({type:'session.started'});await starting;
+    vi.useFakeTimers();f.remote();await vi.advanceTimersByTimeAsync(60);expect(f.speaking).toHaveBeenLastCalledWith(true);expect(f.client.outputLevel()).toBeGreaterThan(0);
+    const interrupt=f.client.interrupt();expect(f.speaking).toHaveBeenLastCalledWith(false);expect(f.client.outputLevel()).toBe(0);expect(f.bridge.liveEnd).not.toHaveBeenCalled();await interrupt;await vi.advanceTimersByTimeAsync(100);expect(f.speaking).toHaveBeenLastCalledWith(false);
+    const closing=f.client.stop(true);f.finish();await closing;f.remote();await vi.advanceTimersByTimeAsync(100);expect(f.speaking).toHaveBeenLastCalledWith(false);
+  });
   it('interrupts playback once on authenticated input, resumes fresh output and retains transport/work',async()=>{
     const f=fixture();const starting=f.client.start();await vi.waitFor(()=>expect(f.bridge.voiceStart).toHaveBeenCalled());f.event({type:'session.started'});await starting;expect(f.client.level()).toBeGreaterThan(0);
     vi.useFakeTimers();f.remote();await vi.advanceTimersByTimeAsync(110);

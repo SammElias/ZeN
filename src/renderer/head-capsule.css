@@ -1,5 +1,5 @@
-/* Guion 04: one horizontal header, with the same 46-DIP height on every edge. */
-.zen-overlay.island.live-only.head-shell.capsule{width:min(490px,100vw);max-width:none;height:46px;max-height:46px;min-height:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;box-shadow:none;padding:0;animation:none}
+/* One horizontal capsule on every edge; 30% larger than the original 490x46. */
+.zen-overlay.island.live-only.head-shell.capsule{width:min(637px,100vw);max-width:none;height:60px;max-height:60px;min-height:0;overflow:hidden;border:1px solid var(--border);border-radius:18px;box-shadow:none;padding:0;animation:none}
 .zen-overlay.island.live-only.head-shell>.overlay-header{position:relative;display:flex;flex-direction:row;align-items:center;width:100%;height:44px;min-height:44px;padding:2px 5px;gap:5px;border:0;border-radius:14px;background:var(--surface);flex-shrink:0;touch-action:none}
 .zen-overlay.island.live-only.head-shell .navigation-dock{display:flex;align-items:center;flex-direction:row;gap:4px;height:40px;width:auto;flex:0 0 auto;padding:0;border:0;background:none;box-shadow:none}
 .zen-overlay.island.live-only.head-shell .navigation-dock .brand-home{position:relative;width:56px;min-width:56px;height:40px;min-height:40px;flex:0 0 56px;margin:0;padding:0;border:0;border-radius:10px;overflow:visible;background:transparent;cursor:grab;box-shadow:none}
@@ -64,4 +64,23 @@
 @media(max-width:360px){
  .zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .navigation-dock{gap:2px}
  .zen-overlay.island.live-only.head-shell.compact-shell .overlay-header .top-navigation .navigation-tab{width:32px;min-width:32px;padding:6px}
+}
+/* Enlarge the actual hit targets and avatar, without scaling text via transform.
+   Narrow monitors keep compact controls so permission/stop/hide stay reachable. */
+.zen-overlay.island.live-only.head-shell.capsule>.overlay-header{height:58px;min-height:58px;border-radius:18px}
+@media(min-width:421px){
+ .zen-overlay.island.live-only.head-shell.capsule>.overlay-header{padding:3px 7px;gap:7px}
+ .zen-overlay.island.live-only.head-shell.capsule .navigation-dock{height:52px;gap:5px}
+ .zen-overlay.island.live-only.head-shell.capsule .navigation-dock .brand-home{width:73px;min-width:73px;flex-basis:73px;height:52px;min-height:52px}
+ .zen-overlay.island.live-only.head-shell.capsule .capsule-character{width:73px;height:52px}
+ .zen-overlay.island.live-only.head-shell.capsule .capsule-character .zen-companion{width:73px;height:47px}
+ .zen-overlay.island.live-only.head-shell.capsule .top-navigation{height:47px;gap:5px}
+ .zen-overlay.island.live-only.head-shell.capsule .top-navigation .navigation-tab{width:44px;min-width:44px;height:42px;min-height:42px;padding:8px;border-radius:12px}
+ .zen-overlay.island.live-only.head-shell.capsule .navigation-tab svg{width:22px;height:22px}
+ .zen-overlay.island.live-only.head-shell.capsule .header-status{height:39px;min-height:39px;padding:4px 5px;gap:8px;font-size:14px}
+ .zen-overlay.island.live-only.head-shell.capsule .header-status i{width:5px;height:5px;flex-basis:5px}
+ .zen-overlay.island.live-only.head-shell.capsule .header-actions{gap:3px}
+ .zen-overlay.island.live-only.head-shell.capsule .overlay-header :is(.fold-button,.icon-button){width:39px;min-width:39px;flex-basis:39px;height:42px;min-height:42px;padding:8px;border-radius:12px}
+ .zen-overlay.island.live-only.head-shell.capsule .overlay-header :is(.fold-button,.icon-button) svg{width:22px;height:22px}
+ .head-shell.capsule .overlay-header .compact-meter{right:90px;bottom:3px;height:8px;width:13px}
 }

@@ -10,7 +10,7 @@ import type {SpendingGuard} from '../storage/spending';
 import type {Settings} from '../shared/contracts';
 import type {DesktopHandler} from '../shared/desktop';
 import type {Activity} from '../shared/activity';
-import {ZenError} from '../shared/errors';
+import {ProviderResponseError,ZenError} from '../shared/errors';
 
 const tools:Tool[]=saved.tools.map(t=>t.type==='web_search'?{type:'web_search',search_context_size:'low'}:t) as Tool[];
 const plain=(r:Response)=>r.output.filter(x=>x.type==='message').flatMap(x=>x.content).filter(x=>x.type==='output_text').map(x=>x.text).join('');
@@ -35,28 +35,44 @@ export class ConversationProvider {
   for(let i=0;i<input.length;i++){const item=input[i] as any;if(item.type==='function_call'&&!answered.has(item.call_id)){input.splice(++i,0,{type:'function_call_output',call_id:item.call_id,output:'Estado por comprobar: la ejecución se interrumpió. No se repite esta llamada. El usuario debe revisar el resultado externo.'});answered.add(item.call_id);store.reconstructed(chatId);}}
   let reservation:string|undefined,confirmed=false,calls=0;
   const artifacts:import('../shared/contracts').Artifact[]=[];
+  const countContext=async()=>{
+   signal.throwIfAborted();
+   const counted=await client.responses.inputTokens.count({model:saved.model,input,instructions:economyInstructions,tools:informational?[]:tools},{signal,maxRetries:0});
+   if(!Number.isSafeInteger(counted.input_tokens)||counted.input_tokens<0)throw new ZenError('No se pudo comprobar el tamaño del contexto. No se ha iniciado otra respuesta.');
+   return counted.input_tokens;
+  };
+  const tooLarge=()=>new ZenError('El contexto supera el tamaño configurado incluso después de compactarlo. Se conserva el historial. Continúa en un chat nuevo con los fragmentos que necesites.');
   try{
-   reservation=this.deps.spending?.reserve('agent',saved.model,.02);
-   if(contextTokens(input)>settings.chatContextTokens){
-    if(contextTokens(input)>900000)throw new ZenError('El contexto recuperado excede el margen seguro. Selecciona fragmentos para continuar en un chat nuevo.');
+   // Local image allowances and encrypted byte lengths only trigger a preflight;
+   // they cannot decide whether the model's rendered context exceeds the limit.
+   const measured=contextTokens(input)>settings.chatContextTokens||start.compactionBlocked?await countContext():undefined;
+   if(measured!==undefined&&measured>settings.chatContextTokens){
+    if(measured>900000)throw new ZenError('El contexto recuperado excede el margen seguro. Selecciona fragmentos para continuar en un chat nuevo.');
+    if(start.compactionBlocked)throw tooLarge();
+    reservation=this.deps.spending?.reserve('agent',saved.model,.02);
     progress('Reduciendo el contexto; el historial original se conserva.',undefined,'processing');
     const compacted=await client.responses.compact({model:saved.model,input,instructions:economyInstructions},{signal,maxRetries:0});
+    store.response(compacted.id,chatId,requestId,'compaction');
+    if(reservation)confirmed=this.deps.spending?.record(reservation,compacted.id,saved.model,compacted.usage)??false;
     if(!compacted.output?.length)throw new ZenError('No se obtuvo contexto compacto. Se conserva el estado anterior.');
     input=compacted.output as ResponseInput;
-    if(contextTokens(input)>settings.chatContextTokens)throw new ZenError('La compactación no redujo lo suficiente el contexto. Selecciona un fragmento para un chat nuevo.');
-    store.response(compacted.id,chatId,requestId,'compaction');
-    if(reservation)this.deps.spending?.record(reservation,compacted.id,saved.model,compacted.usage);
-    // Store the full returned window; do not append the replaced transcript.
+    // Save every returned item before counting: a failed count or over-limit
+    // result must not discard this window and repeat a paid compaction.
     store.saveContext(chatId,lastSeq,input,true);
+    if(await countContext()>settings.chatContextTokens)throw tooLarge();
    }
+   store.contextFits(chatId);
+   reservation??=this.deps.spending?.reserve('agent',saved.model,.02);
    for(let round=0;round<settings.maxToolCalls+2;round++){
     signal.throwIfAborted();await this.deps.checkpoint?.(signal);store.require(chatId);if(reservation)this.deps.spending?.check(reservation);
     const params:ResponseCreateParamsStreaming={model:saved.model,input,store:true,stream:true,include:['reasoning.encrypted_content'],instructions:economyInstructions,reasoning:{effort:saved.reasoning.effort as 'low'},service_tier:'default',parallel_tool_calls:false,tools:informational?[]:tools,max_output_tokens:extendedOutput(text)?8192:2048,text:{format:{type:'json_schema',name:'zen_reply',strict:true,schema:{type:'object',properties:{result:{type:'string'},clarifications_requested:{type:'array',items:{type:'string'}}},required:['result','clarifications_requested'],additionalProperties:false}},verbosity:'low'}};
     let response:Response|undefined,raw='',painted='';const roundInput=[...input],completedItems:ResponseInput=[];
     store.saveContext(chatId,lastSeq,input);
+    confirmed=false;
     const stream=await client.responses.create(params,{signal,maxRetries:0,headers:{'Idempotency-Key':`${requestId}:${round}`}});
     for await(const event of stream){
      signal.throwIfAborted();
+     if(event.type==='error')throw new ProviderResponseError(event.code);
      if(event.type==='response.created')store.response(event.response.id,chatId,requestId);
      if(event.type==='response.output_item.done'){completedItems.push(event.item as ResponseInput[number]);store.saveContext(chatId,lastSeq,[...roundInput,...completedItems]);}
      if(event.type==='response.output_text.delta'){raw+=event.delta;const preview=publicResultPreview(raw);if(preview?.startsWith(painted)){const delta=preview.slice(painted.length);painted=preview;if(delta)progress('Respondiendo…',delta,'writing');}}
@@ -66,6 +82,7 @@ export class ConversationProvider {
     store.response(response.id,chatId,requestId);
     input=[...input,...response.output as ResponseInput];store.saveContext(chatId,lastSeq,input);
     if(reservation)confirmed=this.deps.spending?.record(reservation,response.id,response.model,response.usage)??false;
+    if(response.status==='failed')throw new ProviderResponseError(response.error?.code);
     if(response.status!=='completed')throw new ZenError('Respuesta incompleta. Se conserva el contenido parcial; revisa el estado antes de continuar.');
     const functions=response.output.filter(x=>x.type==='function_call');
     if(!functions.length){const result=presentAgentOutput(plain(response));return{...result,artifacts};}
@@ -97,7 +114,7 @@ export class ConversationProvider {
    try{const r=await this.deps.client().responses.retrieve(run.response,{include:['reasoning.encrypted_content']},{maxRetries:0});if(r.status!=='completed')continue;
     // Tool-bearing responses cannot prove whether their effects ran after a crash.
     if(r.output.some(x=>x.type==='function_call'))continue;
-    const current=store.context(chatId);if(current.seq!==store.runSeq(run.id)){store.reconstructed(chatId);continue;}const ids=new Set(current.items.map(i=>i.id).filter(Boolean));store.saveContext(chatId,current.seq,[...current.items,...r.output.filter(i=>!ids.has(i.id))]);const result=presentAgentOutput(plain(r));store.finish(run.id,{id:run.task??run.id,state:result.needsInput?'awaiting_input':'completed',message:result.message});checked++;
+    const current=store.context(chatId);if(current.seq!==store.runSeq(run.id)){store.reconstructed(chatId);continue;}const ids=new Set(current.items.map(i=>i.id).filter(Boolean));store.saveContext(chatId,current.seq,[...current.items,...r.output.filter(i=>!ids.has(i.id))]);const result=presentAgentOutput(plain(r));store.finish(run.id,{id:run.task??run.id,state:result.needsInput?'awaiting_input':'completed',message:result.message,responseComplete:true});checked++;
    }catch{store.reconstructed(chatId);}
   }
   return checked;

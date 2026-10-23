@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-23",
+  "scope": "source-publication-and-neutral-companion",
+  "productionBuildPassed": true,
+  "unitTestsPassed": 439,
+  "unitTestFiles": 50,
+  "maxTestWorkers": 4,
+  "cleanPublicSourceBuildPassed": true,
+  "cleanPublicSourceUnitTestsPassed": 439,
+  "sameRendererBundleWithoutPrivateFiles": true,
+  "nativeElectronAndHookPipePassed": true,
+  "nativeEventsWereSynthetic": true,
+  "noCharacterInCapsule": true,
+  "noCursorPolling": true,
+  "originalZenIcons": true,
+  "originalSynthesizedTones": true,
+  "modelRequests": 0,
+  "privateArtworkPublished": false,
+  "rawTelemetryPublished": false,
+  "physicalInputAndNotificationDeliveryVerified": false
+}

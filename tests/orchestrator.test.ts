@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Orchestrator } from '../src/agent/orchestrator';
 import { SettingsSchema } from '../src/shared/contracts';
-import { diagnose } from '../src/shared/errors';
+import { diagnose, errorMetadata } from '../src/shared/errors';
+import { APIError, APIConnectionError, APIConnectionTimeoutError, APIUserAbortError } from 'openai';
 const evidence = { application: 'notepad' as const, pid: 123, windowHandle: '456', alreadyOpen: false, verifiedAt: new Date().toISOString() };
 const fn = (call_id = 'c1', name = 'open_application', args = '{"application":"notepad"}') => ({ type: 'function_call', call_id, name, arguments: args });
 const response = (output: any[] = [], text = 'Done') => ({ output, output_text: text, status: 'completed', usage: { total_tokens: 4 } });
@@ -30,5 +31,35 @@ describe('single execution owner', () => {
   it('does not retry executor failure', async () => { const { o, execute } = setup([response([fn()])]); execute.mockRejectedValue(new Error('Timeout')); expect((await o.run('Abre el Bloc de notas', randomUUID())).state).toBe('failed'); expect(execute).toHaveBeenCalledTimes(1); });
 });
 describe('API diagnostics', () => {
+  it('recognizes actual SDK timeout subclasses even though their name is Error', async () => {
+    const error = new APIConnectionTimeoutError({ message: 'secret-upstream-body' });
+    expect(error.name).toBe('Error');
+    const { o, create, log } = setup([error]);
+    const result = await o.run('Prueba local', randomUUID());
+    expect(result.message).toContain('tiempo de espera');
+    expect(result.message).toContain('no se ha reenviado');
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls.at(-1)?.[0].diagnostic.kind).toBe('APIConnectionTimeoutError');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-upstream-body');
+  });
+  it.each([
+    ['insufficient_quota', 'saldo'], ['rate_limit_exceeded', 'Límite de solicitudes'],
+    ['server_error', 'temporalmente'], ['invalid_image', 'imagen'],
+    ['context_length_exceeded', 'contexto'], ['invalid_api_key', 'Clave'],
+  ])('classifies a streamed API error without HTTP status: %s', (code, message) => {
+    const e = new APIError(undefined, { code, message: 'private body' }, undefined, new Headers({'x-request-id':'req_fixture'}));
+    expect(diagnose(e)).toContain(message);
+    expect(errorMetadata(e)).toMatchObject({kind:'APIError',code,requestId:'req_fixture'});
+    expect(JSON.stringify(errorMetadata(e))).not.toContain('private body');
+  });
+  it('handles transport causes and aborts without exposing their contents', () => {
+    const cause = Object.assign(new Error('private URL'), {code:'ECONNRESET'});
+    expect(diagnose(new APIConnectionError({cause}))).toContain('conexión');
+    expect(errorMetadata(new APIConnectionError({cause}))).toMatchObject({kind:'APIConnectionError',causeCode:'ECONNRESET'});
+    expect(diagnose(new APIUserAbortError())).toContain('detenida');
+    expect(diagnose(null)).toContain('Error inesperado');
+    expect(diagnose(undefined)).toContain('Error inesperado');
+    expect(errorMetadata({message:'sk-secret',code:'sk-secret',type:'private',requestID:'sk-secret',headers:{Authorization:'sk-secret'},stack:'private'})).toEqual({kind:'UnknownError',unrecognizedCode:true});
+  });
   it.each([401, 403, 404, 400, 429, 500])('redacts upstream bodies for status %s', status => { expect(diagnose({ status, message: 'sk-secret' })).not.toContain('sk-secret'); });
 });

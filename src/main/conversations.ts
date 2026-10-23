@@ -5,12 +5,13 @@ import type {HumanConfirmations} from '../policy/human-confirmations';
 import {DropContext} from './drop-context';
 import {ZenError} from '../shared/errors';
 
-export function installConversations(d:{store:ConversationStore;provider:ConversationProvider;confirmations:HumanConfirmations;handle:(name:string,schema:any,fn:(v:any)=>unknown)=>void;project:()=>string|null;validProject:(id:string|null)=>boolean;drop:()=>DropContext;select:(id:string,drop:DropContext)=>Promise<void>;cancel:(task:string)=>void;changed:(id:string)=>void;removed:(id:string,taskIds:string[])=>void}){
+export function installConversations(d:{store:ConversationStore;recoverImages?:(chat:string)=>void;provider:Pick<ConversationProvider,'cleanup'|'reconcile'>;confirmations:HumanConfirmations;handle:(name:string,schema:any,fn:(v:any)=>unknown)=>void;project:()=>string|null;validProject:(id:string|null)=>boolean;drop:()=>DropContext;select:(id:string,drop:DropContext)=>Promise<void>;cancel:(task:string)=>void;changed:(id:string)=>void;removed:(id:string,taskIds:string[])=>void}){
  const contexts=new Map<string,DropContext>();
  const local=(id:string)=>{let ctx=contexts.get(id);if(!ctx){ctx=new DropContext(data=>data);contexts.set(id,ctx);}return ctx;};
  const snapshot=async(id:string):Promise<ChatSnapshot>=>{const messages=d.store.messages(id),ctx=local(id);return{chat:d.store.chat(id),messages,hasOlder:!!messages.length&&messages[0].seq>1,draft:d.store.draft(id),attachments:await Promise.all(d.store.attachmentReferences(id,d.store.draft(id).attachmentIds).map(row=>ctx.availability(row))),transfers:d.store.transfers(id),checkpoint:d.store.checkpointValue(id)};};
  const select=async(id:string)=>{
   if(d.store.chat(id).projectId!==d.project())throw new ZenError('Cambia al proyecto de esta conversación para abrirla.');
+  d.recoverImages?.(id);
   const ctx=local(id),draft=d.store.draft(id);ctx.restore(d.store.attachments(id).filter(row=>draft.attachmentIds.includes(row.item.id)));
   await d.select(id,ctx);d.store.setActive(id);return snapshot(id);
  };
@@ -22,6 +23,7 @@ export function installConversations(d:{store:ConversationStore;provider:Convers
    case 'open':return{snapshot:await select(c.id)};
    case 'activity':{const messages=d.store.messages(c.id);return{updates:{chat:d.store.chat(c.id),messages,hasOlder:!!messages.length&&messages[0].seq>1,checkpoint:d.store.checkpointValue(c.id)}};}
    case 'read':return c.before?{messages:d.store.messages(c.id,c.before)}:{snapshot:await snapshot(c.id)};
+   case 'message-image':return{image:d.store.messageImage(c.id,c.messageId,c.imageId,c.size)};
    case 'message':return{messages:[d.store.messageById(c.id,c.messageId)]};
    case 'use-message':{
     if(d.store.active(d.project()).id!==c.id)throw new ZenError('Abre esta conversación primero.');
@@ -56,12 +58,16 @@ export function installConversations(d:{store:ConversationStore;provider:Convers
    case 'detach':if(d.store.activeRuns(c.id).length)throw new ZenError('Espera o detén la ejecución antes de retirar contexto.');d.store.detach(c.id,c.transferId);return{snapshot:await snapshot(c.id),notice:'Referencia retirada de futuras peticiones; las respuestas ya escritas se conservan.'};
    case 'delete-preview':{
     const row=d.store.chat(c.id),version=row.version;
-    d.confirmations.offer('chat-delete:'+c.id,`Eliminar «${row.title}»: historial y copias locales del chat, y respuestas remotas propias. Se detienen sus tareas. Los archivos originales y referencias de otros chats se conservan.`,String(version),async()=>{
+    d.confirmations.revokePrefix('chat-delete:');
+    d.confirmations.offer('chat-delete:'+c.id,`Eliminar «${row.title}»: historial y copias locales del chat. El hilo de Codex se conserva en Codex. Se detienen sus tareas. Los archivos originales y referencias de otros chats se conservan.`,String(version),async()=>{
      if(d.store.chat(c.id).version!==version)throw new ZenError('La conversación cambió. Revisa una nueva confirmación.');
      for(const run of d.store.activeRuns(c.id)){try{d.cancel(run.task??run.id);}catch{}}
      const taskIds=d.store.taskIds(c.id);d.store.delete(c.id);contexts.delete(c.id);d.removed(c.id,taskIds);d.changed(c.id);await d.provider.cleanup();return true;
     });
-    return{code:d.confirmations.list().find(row=>row.key==='chat-delete:'+c.id)!.code};
+    return{code:d.confirmations.list().find(row=>row.key==='chat-delete:'+c.id)!.code,deletion:{id:row.id,title:row.title,version}};
+   }
+   case 'delete-cancel':{
+    if(d.confirmations.list().some(row=>row.key==='chat-delete:'+c.id&&row.code===c.code))d.confirmations.revoke('chat-delete:'+c.id);return{};
    }
    case 'delete-confirm':{
     if(!d.confirmations.list().some(row=>row.key==='chat-delete:'+c.id&&row.code===c.code))throw new ZenError('Confirmación distinta o caducada.');

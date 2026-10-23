@@ -1,6 +1,17 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { ZenBridge, TaskEvent, DockEdge } from '../shared/contracts';
 const bridge: ZenBridge = {
+  codexStatus:()=>ipcRenderer.invoke('zen:codex-status'),
+  codexCheck:()=>ipcRenderer.invoke('zen:codex-check'),
+  codexAnswer:value=>ipcRenderer.invoke('zen:codex-answer',value),
+  codexOpen:chatId=>ipcRenderer.invoke('zen:codex-open',chatId),
+  onCodex:callback=>{const listener=(_e:unknown,status:Parameters<typeof callback>[0])=>callback(status);ipcRenderer.on('zen:codex-status',listener);return()=>ipcRenderer.removeListener('zen:codex-status',listener);},
+  onShellDrop:callback=>{const listener=(_e:unknown,value:Parameters<typeof callback>[0])=>callback(value);ipcRenderer.on('zen:shell-drop',listener);return()=>ipcRenderer.removeListener('zen:shell-drop',listener);},
+  shellAction:action=>ipcRenderer.invoke('zen:shell-action',action),
+  shellStatus:()=>ipcRenderer.invoke('zen:shell-status'),
+  shellPublish:status=>ipcRenderer.invoke('zen:shell-publish',status),
+  onShellStatus:callback=>{const listener=(_e:unknown,value:Parameters<typeof callback>[0])=>callback(value);ipcRenderer.on('zen:shell-status',listener);return()=>ipcRenderer.removeListener('zen:shell-status',listener);},
+  onShellAction:callback=>{const listener=(_e:unknown,value:Parameters<typeof callback>[0])=>callback(value);ipcRenderer.on('zen:shell-action',listener);return()=>ipcRenderer.removeListener('zen:shell-action',listener);},
   conversations:command=>ipcRenderer.invoke('zen:conversations',command),
   onConversation:callback=>{const listener=(_e:unknown,event:{chatId:string})=>callback(event);ipcRenderer.on('zen:conversation',listener);return()=>ipcRenderer.removeListener('zen:conversation',listener);},
   focusOverlay:()=>ipcRenderer.invoke('zen:focus-overlay'),
@@ -23,7 +34,7 @@ const bridge: ZenBridge = {
   taskControl:action=>ipcRenderer.invoke('zen:task-control',action),saveResult:value=>ipcRenderer.invoke('zen:save-result',value),revealResult:id=>ipcRenderer.invoke('zen:reveal-result',id),
   onSelection:callback=>{const handler=(_e:unknown,data:Parameters<typeof callback>[0])=>callback(data);ipcRenderer.on('zen:selection',handler);return()=>ipcRenderer.removeListener('zen:selection',handler);},
   onWorkspace:callback=>{const handler=()=>callback();ipcRenderer.on('zen:workspace',handler);return()=>ipcRenderer.removeListener('zen:workspace',handler);},
-  onReadResult:callback=>{const handler=(_e:unknown,data:string|null)=>callback(data);ipcRenderer.on('zen:read-result',handler);return()=>ipcRenderer.removeListener('zen:read-result',handler);},
+  onReadResult:callback=>{const handler=(_e:unknown,data:Parameters<typeof callback>[0])=>callback(data);ipcRenderer.on('zen:read-result',handler);return()=>ipcRenderer.removeListener('zen:read-result',handler);},
   projectPreview:id=>ipcRenderer.invoke('zen:project-preview',id),
   projectDestination:value=>ipcRenderer.invoke('zen:project-destination',value),
   projectApprove:value=>ipcRenderer.invoke('zen:project-approve',value),
