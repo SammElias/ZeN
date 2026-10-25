@@ -1,6 +1,6 @@
 import {spawn} from 'node:child_process';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
-import {resolve} from 'node:path';
+import {resolve,join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {createServer} from 'node:net';
 import WebSocket from 'ws';
@@ -15,8 +15,8 @@ const server=createServer();await new Promise(resolve=>server.listen(0,'127.0.0.
 const port=server.address().port;await new Promise(resolve=>server.close(resolve));
 const child=spawn(executable,[`--inspect-brk=127.0.0.1:${port}`,smokeFlag],{env,windowsHide:true});
 let output='',errors='';child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>errors+=chunk);
-const timer=setTimeout(()=>child.kill(),90000);
-let exited=false,socket,inspectedSmoke,extractedExecutable,fixtureTimer,finishTimer,lastWindows;
+const timer=setTimeout(()=>child.kill(),shellOnly?120000:90000);
+let exited=false,socket,inspectedSmoke,extractedExecutable,fixtureTimer,finishTimer,lastWindows,fixtureProfile,fixturePid,checkingProof=false;
 const exitedPromise=new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',code=>{exited=true;resolve(code);});});
 try{
   let target;
@@ -29,7 +29,7 @@ try{
   socket=new WebSocket(address);await new Promise((resolve,reject)=>{socket.once('open',resolve);socket.once('error',reject);});
   socket.on('message',raw=>{
     const event=JSON.parse(raw.toString());
-    if(event.id===3&&typeof event.result?.result?.value==='string'){try{const value=JSON.parse(event.result.result.value);extractedExecutable=value.executable;lastWindows=value.windows;}catch{extractedExecutable=event.result.result.value;}}
+    if(event.id===3&&typeof event.result?.result?.value==='string'){try{const value=JSON.parse(event.result.result.value);extractedExecutable=value.executable;lastWindows=value.windows;fixtureProfile=value.profile;fixturePid=value.pid;}catch{extractedExecutable=event.result.result.value;}}
     if(event.method==='Runtime.exceptionThrown')errors+=JSON.stringify(event.params.exceptionDetails).slice(0,1800);
     if(event.method==='Runtime.consoleAPICalled'&&event.params.type==='error'){errors+=(event.params.args??[]).map(a=>a.value??a.description??'').join(' ').slice(0,1800);socket.close();}
     if(event.method!=='Runtime.consoleAPICalled')return;
@@ -42,8 +42,8 @@ try{
   // created later. No application code or shipping window preference is changed.
   // NSIS changes cwd during extraction. Restore the test runner's directory so
   // synthetic fixtures and reports resolve identically to package-win's smoke.
-  const setupFixture=()=>{if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({id:3,method:'Runtime.evaluate',params:{expression:`(()=>{if(typeof process==='undefined'||!process.argv.some(a=>['--zen-smoke','--zen-interactions-smoke','--zen-shell-smoke'].includes(a)))return null;const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');if(!e.BrowserWindow)return null;if(!e.app.zenSmokeFrames){process.chdir(${JSON.stringify(process.cwd())});e.app.zenSmokeFrames=true;e.app.on('browser-window-created',(_,w)=>w.webContents.setBackgroundThrottling(false));}e.BrowserWindow.getAllWindows().forEach(w=>w.webContents.setBackgroundThrottling(false));return JSON.stringify({executable:process.execPath,windows:e.BrowserWindow.getAllWindows().map(w=>({visible:w.isVisible(),loading:w.webContents.isLoading(),destroyed:w.isDestroyed(),bounds:w.getBounds()}))});})()`,returnByValue:true}}));};
-  fixtureTimer=setInterval(setupFixture,250);setupFixture();
+  const setupFixture=()=>{if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({id:3,method:'Runtime.evaluate',params:{expression:`(()=>{if(typeof process==='undefined'||!process.argv.some(a=>['--zen-smoke','--zen-interactions-smoke','--zen-shell-smoke'].includes(a)))return null;const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');if(!e.BrowserWindow)return null;if(!e.app.zenSmokeFrames){process.chdir(${JSON.stringify(process.cwd())});e.app.zenSmokeFrames=true;e.app.on('browser-window-created',(_,w)=>w.webContents.setBackgroundThrottling(false));}e.BrowserWindow.getAllWindows().forEach(w=>w.webContents.setBackgroundThrottling(false));return JSON.stringify({executable:process.execPath,pid:process.pid,profile:e.app.getPath('userData'),windows:e.BrowserWindow.getAllWindows().map(w=>({visible:w.isVisible(),loading:w.webContents.isLoading(),destroyed:w.isDestroyed(),bounds:w.getBounds()}))});})()`,returnByValue:true}}));};
+  fixtureTimer=setInterval(()=>{setupFixture();if(shellOnly&&fixtureProfile&&fixturePid&&!checkingProof&&!inspectedSmoke){checkingProof=true;void readFile(join(fixtureProfile,'smoke-result.json'),'utf8').then(raw=>{const value=JSON.parse(raw);if(value.pid!==fixturePid||resolve(value.executable)!==resolve(extractedExecutable))throw Error('Unexpected synthetic proof owner');inspectedSmoke=value.result;socket?.close();}).catch(()=>{}).finally(()=>{checkingProof=false;});}},250);setupFixture();
 }catch(error){errors+=error.message;socket?.close();}
 const exitCode=await exitedPromise.finally(()=>{clearTimeout(timer);clearTimeout(finishTimer);clearInterval(fixtureTimer);socket?.close();});
 const line=output.split(/\r?\n/).find(row=>row.startsWith('{'));

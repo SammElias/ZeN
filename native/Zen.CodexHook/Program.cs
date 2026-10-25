@@ -20,7 +20,11 @@ try {
  eventName=name;
  var request=Guid.NewGuid().ToString();var e=new JsonObject { ["id"]=request,["event"]=name,["session"]=session,["cwd"]=Str("cwd") };
  if(Str("turn_id")!="")e["turn"]=Str("turn_id");if(Str("tool_name")!="")e["tool"]=Str("tool_name");
- // Never forward prompt, transcript, model output, credentials or file contents.
+ // Only Stop may forward the latest user-facing answer, bounded and kept in RAM by ZEN.
+ // No prompt, transcript, reasoning or tool result is forwarded as an answer.
+ if(name=="Stop"&&input["last_assistant_message"] is JsonValue answer&&answer.TryGetValue<string>(out var answerText)&&!string.IsNullOrWhiteSpace(answerText)){
+  e["lastAssistantMessage"]=answerText.Length>64000?answerText[..64000]:answerText;e["lastAssistantMessageTruncated"]=answerText.Length>64000;
+ }
  // Only the requested operation is retained when needed for an explicit review.
  if(name=="PermissionRequest"&&input["tool_input"] is JsonNode tool){var preview=tool.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping});if(tool is JsonObject fields&&fields["command"] is JsonValue commandValue&&commandValue.TryGetValue<string>(out var commandText)){var remaining=fields.DeepClone().AsObject();remaining.Remove("command");preview=commandText+(remaining.Count>0?"\n\nParámetros adicionales:\n"+remaining.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping}):"");}e["truncated"]=preview.Length>64000;e["preview"]=preview.Length>64000?"Propuesta demasiado grande: revísala íntegra en Codex.":preview;}
  else if(name is "PreToolUse" or "PostToolUse"){

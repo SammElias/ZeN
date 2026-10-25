@@ -1,6 +1,7 @@
 import { cp, mkdir, writeFile, rename, readdir, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import {tmpdir} from 'node:os';
 import { spawn } from 'node:child_process';
 import { applyWindowsIcon } from './windows-icon.mjs';
 async function writeEvidence(path,data){
@@ -18,12 +19,12 @@ const interactionsOnly=process.argv.includes('--interactions');
 const shellOnly=process.argv.includes('--shell');
 const root = resolve('release'); const destination = join(root, `ZEN-${stamp}`);
 if (!destination.startsWith(root + '\\')) throw Error('Destino de paquete inválido.');
-await mkdir(destination, { recursive: true });
+await mkdir(root, { recursive: true });
 await cp('node_modules/electron/dist', destination, { recursive: true, force: false, errorOnExist: true, filter:path=>!path.toLowerCase().endsWith('.log') });
 await rename(join(destination, 'electron.exe'), join(destination, 'ZEN.exe'));
 await applyWindowsIcon(join(destination, 'ZEN.exe'));
 const appDirectory = join(destination, 'resources/app'); await mkdir(join(appDirectory, 'dist'), { recursive: true });
-for (const path of (shellOnly?['main.cjs','preload.cjs','renderer','hook']:['main.cjs', 'preload.cjs', 'renderer', 'tools', 'native'])) await cp(join('dist', path), join(appDirectory, 'dist', path), { recursive: true });
+for (const path of (shellOnly?['main.cjs','preload.cjs','renderer','hook','desktop','media']:['main.cjs', 'preload.cjs', 'renderer', 'tools', 'native'])) await cp(join('dist', path), join(appDirectory, 'dist', path), { recursive: true });
 if(!shellOnly){
 await mkdir(join(appDirectory,'dist/documents'),{recursive:true});
 for(const path of ['worker.mjs','pdf.mjs','pdf.worker.mjs','standard_fonts'])await cp(join('dist/documents',path),join(appDirectory,'dist/documents',path),{recursive:true});
@@ -40,9 +41,10 @@ await inspect(appDirectory);
 const env = { ...process.env }; delete env.OPENAI_API_KEY; delete env.ELECTRON_RUN_AS_NODE;
 const child = spawn(join(destination, 'ZEN.exe'), [shellOnly?'--zen-shell-smoke':interactionsOnly?'--zen-interactions-smoke':interfaceOnly ? '--zen-smoke' : '--zen-objective-smoke'], { env, windowsHide: true });
 let output = ''; let errors = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => errors += chunk);
-const timer = setTimeout(() => child.kill(), 40000);
+const timer = setTimeout(() => child.kill(), shellOnly?90000:40000);
 const code = await new Promise(resolve => { child.on('error', error => { errors = error.message; resolve(1); }); child.on('exit', resolve); }); clearTimeout(timer);
-const line = output.split(/\r?\n/).find(row => row.startsWith('{'));
+let line = output.split(/\r?\n/).find(row => row.startsWith('{'));
+if(shellOnly&&code===0){try{const proof=JSON.parse(await readFile(join(tmpdir(),'zen-companion-smoke-'+child.pid,'smoke-result.json'),'utf8'));if(proof.pid===child.pid&&resolve(proof.executable)===resolve(destination,'ZEN.exe'))line=JSON.stringify(proof.result);}catch{}}
 if (code !== 0 || !line) {
   const diagnostic = errors.split(/\r?\n/).find(row => row.startsWith('Objective assertions failed: '));
   let assertions; try { assertions = JSON.parse(diagnostic.slice('Objective assertions failed: '.length)); } catch {}

@@ -27,7 +27,7 @@ export class CodexRpc implements CodexTransport {
  private closed=false;
  onMessage:(message:any)=>void=()=>{};
  onClose:()=>void=()=>{};
- constructor(){
+ constructor(private requestTimeoutMs=30000){
   this.child=spawn(findCodex(),['app-server','--stdio','-c','model_provider="openai"','-c','forced_login_method="chatgpt"'],{shell:false,windowsHide:true,env:codexEnvironment(process.env),stdio:['pipe','pipe','pipe']});
   // Stderr may contain paths or upstream details; never persist it in ZEN logs.
   this.child.stderr.resume();
@@ -35,8 +35,8 @@ export class CodexRpc implements CodexTransport {
   this.child.on('error',()=>this.close());this.child.on('exit',()=>this.close());
  }
  private write(message:unknown){if(this.closed||!this.child.stdin.writable)throw new ZenError('Codex se desconectó. No se reenvía el trabajo automáticamente.');this.child.stdin.write(JSON.stringify(message)+'\n');}
- async initialize(){await this.request('initialize',{clientInfo:{name:'zen_local',title:'ZEN',version:'0.2.0'},capabilities:{experimentalApi:false}});this.write({method:'initialized',params:{}});}
- request(method:string,params:unknown){return new Promise<any>((resolve,reject)=>{const id=++this.next;const timer=setTimeout(()=>{this.pending.delete(id);reject(new ZenError('Codex no confirmó la operación a tiempo. Revisa el chat en Codex antes de reintentar.'));this.close();},30000);this.pending.set(id,{resolve,reject,timer});try{this.write({id,method,params});}catch(e){clearTimeout(timer);this.pending.delete(id);reject(e);}});}
+ async initialize(experimentalApi=false){await this.request('initialize',{clientInfo:{name:'zen_local',title:'ZEN',version:'0.2.0'},capabilities:{experimentalApi}});this.write({method:'initialized',params:{}});}
+ request(method:string,params:unknown){return new Promise<any>((resolve,reject)=>{const id=++this.next;const timer=setTimeout(()=>{this.pending.delete(id);reject(new ZenError('Codex no confirmó la operación a tiempo. Revisa el chat en Codex antes de reintentar.'));this.close();},this.requestTimeoutMs);this.pending.set(id,{resolve,reject,timer});try{this.write({id,method,params});}catch(e){clearTimeout(timer);this.pending.delete(id);reject(e);}});}
  respond(id:string|number,result:unknown){this.write({id,result});}
  reject(id:string|number){this.write({id,error:{code:-32601,message:'Request not supported by ZEN; no permission granted.'}});}
  close(){if(this.closed)return;this.closed=true;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new ZenError('Codex se desconectó. El estado del trabajo debe revisarse.'));}this.pending.clear();this.child.stdin.destroy();this.child.kill();this.onClose();}

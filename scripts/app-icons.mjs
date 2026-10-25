@@ -1,11 +1,10 @@
-// Original ZEN monogram, exported to Windows icon sizes. No third-party artwork.
+// Original orbital mark exported from the approved Figma design. No runtime downloads.
 import {chromium} from 'playwright';
 import {readFile,writeFile} from 'node:fs/promises';
 async function writeAsset(path,value){for(let attempt=0;;attempt++)try{await writeFile(path,value);return;}catch(error){if(attempt>=4||!['UNKNOWN','EPERM','EACCES','EBUSY'].includes(error.code))throw error;await new Promise(r=>setTimeout(r,200*(attempt+1)));}}
 const sizes=[16,20,24,32,40,48,64,128,256];
-const robot='<defs><linearGradient id="zen" x2="1" y2="1"><stop stop-color="#d6c4ff"/><stop offset="1" stop-color="#9e79ed"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="24" fill="#181321" stroke="#c5a9ff" stroke-width="3"/><path d="M29 27h39v9L41 60h27v10H28V59l27-22H29Z" fill="url(#zen)"/>';
-const tile='';
-for(const name of ['zen','tray'])await writeAsset(`public/icons/${name}.svg`,`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 96 96">${tile}${robot}</svg>\n`);
+const orbital=await readFile('public/icons/orbital/app.svg','utf8');
+for(const name of ['zen','tray'])await writeAsset(`public/icons/${name}.svg`,orbital);
 function bitmapIcon(rgba,size){
   const stride=Math.ceil(size/32)*4,pixels=size*size*4;
   const bitmap=Buffer.alloc(40+pixels+stride*size);

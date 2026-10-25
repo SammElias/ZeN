@@ -1,0 +1,8 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Orbital geometry">
+<path id="Front orbit" d="M10 42C2 37 11 25 26 16C42 7 57 8 57 16C57 25 41 39 25 44C17 47 11 46 9 43" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke="#85CFA9"/>
+<path id="Back orbit" d="M24 9C16 5 14 18 19 34C23 49 33 59 39 54C44 49 42 36 36 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke="#85CFA9"/>
+<path id="Satellite" d="M53.5 14C53.5 15.3807 52.3807 16.5 51 16.5C49.6193 16.5 48.5 15.3807 48.5 14C48.5 12.6193 49.6193 11.5 51 11.5C52.3807 11.5 53.5 12.6193 53.5 14Z" fill="#85CFA9" stroke-width="2" stroke="#101116"/>
+<path id="Confirmed turn end" d="M25 32L30 37L40 26" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke="#85CFA9"/>
+</g>
+</svg>

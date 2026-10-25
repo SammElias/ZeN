@@ -1,5 +1,7 @@
 # Publicación de ZEN — 23/10/2026
 
+Actualización del 25/10/2026: nueva publicación solicitada por el usuario. La identidad activa pasa al núcleo orbital original aprobado; se publican cápsula única, integraciones locales de música y Gmail, respuesta final de Codex y Home con estados. Se conservan las exclusiones de recursos Coucou y datos privados descritas aquí. Las referencias al monograma Z explican la entrega del día 23, no el icono actual. No se publican EXE, respaldos ni evidencias nuevas de ejecución.
+
 El usuario solicita subir ZEN a GitHub y después autoriza retirar la imagen de Coucou, dejando la creación de un personaje propio para el futuro.
 
 La cápsula activa muestra un monograma Z. Se retiran el personaje, vestuario y seguimiento periódico del cursor. Los iconos de aplicación y bandeja proceden de un SVG original, generado por `scripts/app-icons.mjs`; los avisos utilizan tonos propios sintetizados localmente. Estados, chat/proyecto fijados, permisos de un uso, atajos, silencio y notificaciones conservan su comportamiento.
