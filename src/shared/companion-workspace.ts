@@ -1,4 +1,6 @@
 import {z} from 'zod';
+export const CodexTab=z.enum(['activity','summary']);
+export type CodexTab=z.infer<typeof CodexTab>;
 export const WorkspacePage=z.enum(['home','spotify','gmail','codex','notices','settings','permissions','options','shortcuts']);
 export type WorkspacePage=z.infer<typeof WorkspacePage>;
 export const LauncherPage=z.enum(['home','spotify','gmail','codex','notices']);
@@ -6,5 +8,5 @@ export type LauncherPage=z.infer<typeof LauncherPage>;
 export const LauncherOrder=z.array(LauncherPage).length(5).refine(v=>new Set(v).size===5);
 export const CapsuleView=z.enum(['status','spotify','codex']);
 export type CapsuleView=z.infer<typeof CapsuleView>;
-export type WorkspaceState={expanded:boolean;launcher:boolean;page:WorkspacePage;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView;gmail?:{unread:number;checkedAt:number}};
+export type WorkspaceState={expanded:boolean;launcher:boolean;page:WorkspacePage;codexTab?:CodexTab;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView;gmail?:{unread:number;checkedAt:number}};
 export const CAPSULE_LAUNCHER_WIDTH=196;

@@ -1,0 +1,15 @@
+.mail-analysis{margin:16px 0;border:1px solid var(--line,#34313f);border-radius:14px;overflow:hidden;background:var(--surface,#191820)}
+.mail-analysis-toggle{width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0!important;background:transparent!important;padding:13px 16px!important}
+.mail-analysis-toggle>span:last-child{margin-left:auto}
+.mail-analysis-panel{padding:0 16px 16px;display:grid;gap:12px;min-width:0}
+.mail-analysis-panel p{margin:0;line-height:1.5;color:var(--muted,#b6b0c5)}
+.mail-analysis-panel label{display:grid;gap:7px;font-size:12px}.mail-analysis-panel label small{display:contents;color:var(--muted,#b6b0c5)}
+.mail-analysis-panel input,.mail-analysis-panel select{box-sizing:border-box;max-width:100%;width:100%;padding:10px;border:1px solid var(--line,#34313f);border-radius:9px;background:var(--bg,#101116);color:inherit;font:inherit}
+.mail-analysis-actions,.mail-analysis-buttons{display:flex;flex-wrap:wrap;gap:7px}.mail-analysis-actions button[aria-pressed=true]{background:#342a4d;border-color:#b99cfa;color:#e2d5ff}
+.mail-analysis-review{display:grid;gap:10px;border-top:1px solid var(--line,#34313f);padding-top:14px;min-width:0}.mail-analysis-review small{line-height:1.5;color:var(--muted,#b6b0c5)}
+.mail-analysis-review pre{margin:0;max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;font:12px/1.6 ui-monospace,monospace;background:var(--bg,#101116);border-radius:9px;padding:12px}
+.mail-analysis-notice{user-select:text}
+
+.codex-result-text{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;font-size:14px;line-height:1.65;max-height:340px;overflow:auto}.codex-result-waiting{display:block;padding:0 14px 12px;color:var(--muted)}.codex-result-pending{margin-bottom:8px}
+
+.codex-context .mail-analysis{margin:0 0 12px}.codex-context textarea{width:100%;box-sizing:border-box;min-height:95px;max-height:220px;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:inherit;font:inherit}.context-notice{display:block;margin:8px 0 12px;color:var(--muted);line-height:1.5}

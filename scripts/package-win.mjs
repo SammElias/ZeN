@@ -43,6 +43,9 @@ const child = spawn(join(destination, 'ZEN.exe'), [shellOnly?'--zen-shell-smoke'
 let output = ''; let errors = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => errors += chunk);
 const timer = setTimeout(() => child.kill(), shellOnly?90000:40000);
 const code = await new Promise(resolve => { child.on('error', error => { errors = error.message; resolve(1); }); child.on('exit', resolve); }); clearTimeout(timer);
+// Descendant Chromium processes can retain diagnostic pipe handles after the main has exited.
+// Keep the main exit code and exact PID/path receipt authoritative; these streams must not keep Node alive.
+child.stdout.unref?.();child.stderr.unref?.();
 let line = output.split(/\r?\n/).find(row => row.startsWith('{'));
 if(shellOnly&&code===0){try{const proof=JSON.parse(await readFile(join(tmpdir(),'zen-companion-smoke-'+child.pid,'smoke-result.json'),'utf8'));if(proof.pid===child.pid&&resolve(proof.executable)===resolve(destination,'ZEN.exe'))line=JSON.stringify(proof.result);}catch{}}
 if (code !== 0 || !line) {

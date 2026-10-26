@@ -24,13 +24,20 @@
     "test:desktop-agent": "node scripts/desktop-bridge-smoke.mjs"
   },
   "dependencies": {
+    "dom-serializer": "^3.1.1",
+    "domhandler": "^6.0.1",
     "fast-xml-parser": "^5.11.2",
+    "htmlparser2": "^12.0.0",
+    "image-size": "^2.0.4",
+    "ipaddr.js": "^2.5.0",
     "openai": "7.25.0",
     "pdfjs-dist": "^6.3.289",
+    "postcss": "^8.5.31",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
+    "sanitize-html": "^2.18.1",
     "ws": "^8.22.0",
     "zod": "4.6.5"
   },
@@ -38,6 +45,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sanitize-html": "^2.16.2",
     "@types/ws": "^8.18.2",
     "electron": "44.5.1",
     "electron-builder": "26.15.3",

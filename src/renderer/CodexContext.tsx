@@ -1,0 +1,27 @@
+import React,{useCallback,useEffect,useRef,useState} from 'react';
+import type {ContextPreview,ContextFile} from '../shared/companion-context';
+import {CodexResultPanel} from './CodexResultPanel';
+import './MailToCodex.css';
+
+export function CodexContext({disabled}:{disabled:boolean}){
+ const [open,setOpen]=useState(false),[kind,setKind]=useState<'file'|'page'|'text'>('file'),[file,setFile]=useState<ContextFile|null>(null),[url,setUrl]=useState(''),[text,setText]=useState(''),[instruction,setInstruction]=useState('Analiza este contenido y resume lo importante.'),[review,setReview]=useState<ContextPreview>(),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+ const live=useRef(true),seq=useRef(0),pending=useRef<ContextPreview|undefined>(undefined),flight=useRef(false);
+ const clear=()=>{seq.current++;const old=pending.current;pending.current=undefined;setReview(undefined);if(old)void window.companion.contextCancel(old.id);};
+ useEffect(()=>{live.current=true;const n=seq.current;void window.companion.contextStatus().then(r=>{if(live.current&&seq.current===n&&r.ok&&!document.hidden)setFile(r.value);});const hide=()=>{if(document.hidden){clear();setOpen(false);setFile(null);setUrl('');setText('');setInstruction('Analiza este contenido y resume lo importante.');setNotice('');}};document.addEventListener('visibilitychange',hide);return()=>{live.current=false;clear();document.removeEventListener('visibilitychange',hide);};},[]);
+ useEffect(()=>{if(disabled){clear();setOpen(false);setFile(null);setText('');setUrl('');setNotice('');}},[disabled]);
+ useEffect(()=>{if(!review)return;const timer=setTimeout(()=>{clear();setNotice('La revisión caducó.');},Math.max(0,review.expiresAt-Date.now()));return()=>clearTimeout(timer);},[review]);
+ const edit=()=>{clear();setNotice('');};
+ const choose=async()=>{if(disabled||flight.current)return;edit();const n=seq.current;flight.current=true;setBusy(true);try{const r=await window.companion.contextChoose();if(!live.current||n!==seq.current)return;if(r.ok)setFile(r.value);else setNotice(r.error);}finally{flight.current=false;if(live.current)setBusy(false);}};
+ const prepare=async()=>{if(disabled||flight.current)return;edit();const n=seq.current;flight.current=true;setBusy(true);try{const r=await window.companion.contextPrepare({kind,...(kind==='file'?{file:file?.id}:{}),url:kind==='page'?url:'',text:kind==='file'?'':text,instruction});if(!live.current||n!==seq.current){if(r.ok)void window.companion.contextCancel(r.value.id);return;}if(r.ok){pending.current=r.value;setReview(r.value);}else setNotice(r.error);}finally{flight.current=false;if(live.current)setBusy(false);}};
+ const handoff=async()=>{if(!review||disabled||flight.current)return;const n=seq.current;flight.current=true;setBusy(true);try{const r=await window.companion.contextHandoff(review.id);if(!live.current||n!==seq.current)return;pending.current=undefined;setReview(undefined);if(r.ok){window.dispatchEvent(new Event('zen:handoff'));setOpen(false);setText('');setUrl('');setNotice(r.value.opened?'Copiado · Pega con Ctrl+V y envía en Codex.':'Copiado · Abre Codex y pega la petición en el chat fijado.');}else setNotice(r.error);}finally{flight.current=false;if(live.current)setBusy(false);}};
+ const read=useCallback(()=>window.companion.contextResult(),[]);
+ if(disabled)return null;
+ return <div className="codex-context"><section className="mail-analysis" aria-label="Analizar contexto en Codex" onKeyDown={e=>{if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();clear();setOpen(false);}}}>
+  <button className="mail-analysis-toggle" disabled={disabled||busy} aria-expanded={open} onClick={()=>{clear();setOpen(!open);setNotice('');}}>✧ Analizar <span aria-hidden="true">{open?'−':'+'}</span></button>
+  {open&&<div className="mail-analysis-panel"><div className="mail-analysis-actions">{(['file','page','text'] as const).map(v=><button key={v} aria-pressed={v===kind} disabled={busy} onClick={()=>{edit();setKind(v);}}>{{file:'Archivo',page:'Página',text:'Texto'}[v]}</button>)}</div>
+   {kind==='file'?<button disabled={busy} onClick={()=>void choose()}>{file?.name??'Elegir archivo'}</button>:<>{kind==='page'&&<label>Dirección web<input aria-label="Página para analizar" value={url} maxLength={2048} disabled={busy} onChange={e=>{edit();setUrl(e.target.value);}} placeholder="https://…"/></label>}<label>{kind==='page'?'Texto seleccionado (opcional)':'Texto'}<textarea aria-label="Texto para analizar" value={text} maxLength={24000} disabled={busy} onChange={e=>{edit();setText(e.target.value);}}/></label></>}
+   <label>Qué necesitas<input aria-label="Indicación para Codex" value={instruction} maxLength={2000} disabled={busy} onChange={e=>{edit();setInstruction(e.target.value);}}/></label>
+   {review?<div className="mail-analysis-review"><strong>{review.label}</strong><small>Destino: {review.targetTitle}</small><pre tabIndex={0}>{review.prompt}</pre><div className="mail-analysis-buttons"><button disabled={busy} onClick={clear}>Cancelar</button><button className="primary context-handoff" disabled={busy} onClick={()=>void handoff()}>Copiar y abrir Codex</button></div></div>:<button className="context-prepare" disabled={busy||!instruction.trim()||kind==='file'&&!file||kind==='page'&&!url||kind==='text'&&!text.trim()} onClick={()=>void prepare()}>Revisar petición</button>}
+  </div>}
+ </section>{notice&&<small className="context-notice" role="status">{notice}</small>}<CodexResultPanel read={read} disabled={disabled} hideEmpty/></div>;
+}

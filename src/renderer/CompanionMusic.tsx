@@ -66,9 +66,9 @@ function useMediaPlayer(status:CompanionStatus,surface:'workspace'|'compact'){
 export function CompanionMusic({status}:{status:CompanionStatus}){
  const {sessions,track,busy,notice,loaded,blocked,list,refresh,showMusic,select,command,open}=useMediaPlayer(status,'workspace');
  return <section className="music-workspace" aria-busy={busy}>
-  <div className="music-heading"><div><span className="eyebrow">TU MÚSICA · EN ESTE PC</span><h2>Un momento para ti.</h2></div><div className="actions"><button className="music-refresh" aria-label="Actualizar contenido" title={blocked?'Sal de presentación o reanuda ZEN para consultar la música':'Consultar de nuevo la canción y su estado, sin cambiar la reproducción'} disabled={busy||blocked} onClick={()=>void refresh()}><MusicIcon name="refresh"/>{busy?'Actualizando…':'Actualizar contenido'}</button><button disabled={blocked} onClick={()=>void window.companion.compact('spotify')}>Ver en cápsula</button><button disabled={blocked} onClick={()=>void open()}>Abrir Spotify ↗</button></div></div>
-  {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2><p>{status.settings.presentation?'ZEN está ocultando la canción, la carátula y los controles. Reanudar una canción en Spotify no cambia este ajuste.':'La información musical está oculta mientras ZEN está en pausa.'}</p>{status.settings.presentation&&<button className="primary" aria-label="Salir de presentación y mostrar música" onClick={()=>void showMusic()}>Salir de presentación y mostrar música</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}<small>Al volver, elige el reproductor para recuperar su contenido.</small></div>:<>
-   <div className="media-source-row"><span className="media-local-indicator">Sesión multimedia de Windows</span></div>
+  <div className="music-heading"><div><h2>Música</h2></div><div className="actions"><button className="music-refresh" aria-label="Actualizar contenido" title={blocked?'Sal de presentación o reanuda ZEN para consultar la música':'Consultar de nuevo la canción y su estado, sin cambiar la reproducción'} disabled={busy||blocked} onClick={()=>void refresh()}><MusicIcon name="refresh"/>{busy?'Actualizando…':'Actualizar contenido'}</button><button disabled={blocked} onClick={()=>void window.companion.compact('spotify')}>Ver en cápsula</button><button disabled={blocked} onClick={()=>void open()}>Abrir Spotify ↗</button></div></div>
+  {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2>{status.settings.presentation&&<button className="primary" aria-label="Salir de presentación y mostrar música" onClick={()=>void showMusic()}>Salir de presentación y mostrar música</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}</div>:<>
+
    <div className="media-sources" aria-label="Elige un reproductor">{sessions.map((s,i)=><button key={s.id} aria-pressed={track?.session===s.id} disabled={busy} onClick={()=>void select(s.id)}><MusicIcon name="music"/>{s.name}{sessions.filter(v=>v.name===s.name).length>1?' · '+(i+1):''}{s.browser&&<small>Navegador</small>}</button>)}</div>
    {track?<article className="music-player" data-source={track.source}>
     <div className="music-artwork">{track.artwork?<img src={track.artwork} alt="Carátula compartida por el reproductor"/>:<MusicIcon name="music"/>}</div>
@@ -81,12 +81,12 @@ export function CompanionMusic({status}:{status:CompanionStatus}){
      <button aria-label="Repetir" aria-pressed={track.repeat==='list'||track.repeat==='track'} title={track.controls.repeat&&track.repeat!==null?'Cambiar repetición':'El reproductor no expone repetición'} disabled={busy||!track.controls.repeat||track.repeat===null} onClick={()=>void command('repeat',track.repeat==='none'?'all':track.repeat==='list'?'one':'off')}><MusicIcon name="repeat"/>{track.repeat==='track'&&<b>1</b>}</button>
     </div>
     {track.durationMs>0&&<div className="music-timeline"><progress aria-label="Posición informada por el reproductor" value={Math.min(track.positionMs,track.durationMs)} max={track.durationMs}/><span>{time(track.positionMs)}</span><span>{time(track.durationMs)}</span></div>}
-    {track.browser&&<p className="music-browser-note">Esta sesión pertenece a {track.source}. Windows no identifica la web: comprueba que sea la pestaña que quieres controlar.</p>}
-   </article>:<div className="music-empty"><MusicIcon name="music"/><h3>{busy?'Buscando reproducción…':sessions.length?'Elige dónde estás escuchando.':'Todo listo para tu próxima canción.'}</h3><p>{loaded&&sessions.length===0?'Abre Spotify o reproduce audio en tu navegador y pulsa Actualizar contenido. Windows solo muestra reproductores que publiquen una sesión multimedia.':'Selecciona una fuente para ver su canción y sus controles.'}</p></div>}
-   <div className="music-connection-note"><span>Local · sin API de Spotify ni llamadas al modelo</span><small>Solo se activan controles que el reproductor admite. El volumen se ajusta en Windows o en Spotify.</small></div>
+
+   </article>:<div className="music-empty"><MusicIcon name="music"/><h3>{busy?'Buscando reproducción…':sessions.length?'Elige un reproductor':'Sin reproducción'}</h3></div>}
+
   </>}
   {notice&&<p role="status" className="music-notice">{blocked?'Detalles ocultos.':notice}</p>}
-  <details className="music-api-info"><summary>Biblioteca, búsquedas y otros dispositivos</summary><p>Estas funciones necesitan una conexión propia con Spotify Web API mediante OAuth. Requiere registrar una aplicación y su Client ID; no necesitas compartir tu contraseña ni una clave de OpenAI. Tu conexión de Spotify en Codex sigue disponible para consultas desde ese chat.</p></details>
+
  </section>;
 }
 

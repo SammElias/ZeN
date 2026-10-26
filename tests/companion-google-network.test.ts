@@ -3,6 +3,13 @@ import {googleNetworkFetch,googleNetworkFailure} from '../src/main/companion-goo
 import {GMAIL_THREAD_METADATA_FIELDS,GMAIL_THREAD_FULL_FIELDS} from '../src/shared/companion-gmail';
 
 describe('Google isolated Chromium transport',()=>{
+ it('permits only an empty-body thread trash POST with the minimal response field',async()=>{
+  const network={fetch:vi.fn(async()=>Response.json({id:'one'}))},request=googleNetworkFetch(network),base='https://gmail.googleapis.com/gmail/v1/users/me/';
+  await request(base+'threads/one/trash?fields=id',{method:'POST'});
+  for(const route of ['threads/one/trash','threads/one/trash?fields=messages','threads/one/trash?fields=id&fields=id','threads/one/trash?fields=id&other=1','threads/one/untrash?fields=id','messages/one/trash?fields=id','threads/one/modify?fields=id','messages/send'])await expect(request(base+route,{method:'POST'})).rejects.toThrow('no permitido');
+  for(const method of ['GET','PATCH','DELETE'])await expect(request(base+'threads/one/trash?fields=id',{method})).rejects.toThrow('no permitido');
+  await expect(request(base+'threads/one/trash?fields=id',{method:'POST',body:'{}'})).rejects.toThrow('no permitido');expect(network.fetch).toHaveBeenCalledTimes(1);
+ });
  it('permits only the unread-count field for a Home summary',async()=>{
   const network={fetch:vi.fn(async()=>new Response('{}'))},request=googleNetworkFetch(network);
   await request('https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX?fields=messagesUnread');

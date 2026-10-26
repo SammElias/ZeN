@@ -1,0 +1,25 @@
+import React,{useEffect,useRef,useState} from 'react';
+import {mailAnalysisLabels,type MailAnalysisAction,type MailAnalysisPreview} from '../shared/companion-mail-analysis';
+import './MailToCodex.css';
+
+export function MailToCodex({thread,disabled=false}:{thread:string;disabled?:boolean}){
+ const [expanded,setExpanded]=useState(false),[action,setAction]=useState<MailAnalysisAction>('analyze'),[scope,setScope]=useState<'thread'|'latest'>('thread'),[notes,setNotes]=useState(''),[review,setReview]=useState<MailAnalysisPreview>(),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[openFailed,setOpenFailed]=useState(false);
+ const mounted=useRef(true),sequence=useRef(0),pending=useRef<MailAnalysisPreview|undefined>(undefined),flight=useRef(false);
+ const clear=()=>{sequence.current++;const old=pending.current;pending.current=undefined;setReview(undefined);setBusy(false);if(old)void window.companion.gmailAnalysisCancel(old.id);};
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;sequence.current++;const old=pending.current;pending.current=undefined;if(old)void window.companion.gmailAnalysisCancel(old.id);};},[]);
+ useEffect(()=>{if(!review)return;const timer=setTimeout(()=>{clear();setNotice('La revisión caducó. Puedes preparar una nueva.');},Math.max(0,review.expiresAt-Date.now()));return()=>clearTimeout(timer);},[review]);
+ const edit=()=>{clear();setNotice('');setOpenFailed(false);};
+ const prepare=async()=>{if(busy||flight.current||disabled)return;flight.current=true;clear();const n=sequence.current;setBusy(true);setNotice('');setOpenFailed(false);try{const result=await window.companion.gmailAnalysisPrepare({thread,action,scope,notes});if(!mounted.current||n!==sequence.current){if(result.ok)void window.companion.gmailAnalysisCancel(result.value.id);return;}if(result.ok){pending.current=result.value;setReview(result.value);}else setNotice(result.error);}finally{flight.current=false;if(mounted.current&&n===sequence.current)setBusy(false);}};
+ const handoff=async()=>{if(!review||busy||flight.current||disabled)return;flight.current=true;const id=review.id,n=sequence.current;setBusy(true);try{const result=await window.companion.gmailAnalysisHandoff(id);if(!mounted.current||n!==sequence.current)return;pending.current=undefined;setReview(undefined);if(result.ok){window.dispatchEvent(new Event('zen:handoff'));setNotes('');setNotice(result.value.opened?'Copiado · Pega con Ctrl+V y envía en Codex.':'Petición copiada. No se pudo abrir Codex; ábrelo y pega la petición en tu chat fijado.');setOpenFailed(!result.value.opened);}else setNotice(result.error);}finally{flight.current=false;if(mounted.current&&n===sequence.current)setBusy(false);}};
+ return <section onKeyDown={e=>{if(e.key==='Escape'&&expanded){e.preventDefault();e.stopPropagation();clear();setExpanded(false);}}} className="mail-analysis" aria-label="Analizar correo en Codex" aria-busy={busy}>
+  <button className="mail-analysis-toggle" disabled={disabled||busy} aria-expanded={expanded} onClick={()=>{if(expanded)clear();setExpanded(!expanded);}}><span aria-hidden="true">✧</span> Analizar en Codex <span aria-hidden="true">{expanded?'−':'+'}</span></button>
+  {expanded&&<div className="mail-analysis-panel">
+
+   <div className="mail-analysis-actions" role="group" aria-label="Tipo de análisis">{Object.entries(mailAnalysisLabels).map(([key,label])=><button key={key} disabled={disabled||busy} aria-pressed={action===key} onClick={()=>{edit();setAction(key as MailAnalysisAction);}}>{label}</button>)}</div>
+   <label>Contenido<select className="mail-analysis-scope" disabled={disabled||busy} value={scope} onChange={e=>{edit();setScope(e.target.value as 'thread'|'latest');}}><option value="thread">Conversación cargada</option><option value="latest">Último mensaje cargado</option></select></label>
+   <label>Indicación adicional <small>(opcional)</small><input className="mail-analysis-notes" disabled={disabled||busy} value={notes} maxLength={1000} placeholder="Ej.: respuesta breve y cercana en español" onChange={e=>{edit();setNotes(e.target.value);}}/></label>
+   {review?<div className="mail-analysis-review" role="region" aria-label="Revisar petición para Codex"><strong>{review.label}</strong><p>Destino: {review.targetTitle}</p><small>{review.scopeLabel} · {review.messages} {review.messages===1?'mensaje':'mensajes'}</small>{review.partial&&<p role="status">Lectura parcial: solo se incluye el contenido cargado. Codex verá esta limitación.</p>}<pre tabIndex={0}>{review.prompt}</pre><div className="mail-analysis-buttons"><button disabled={busy} onClick={()=>{clear();setNotice('');}}>Cancelar</button><button className="primary mail-analysis-handoff" disabled={disabled||busy} onClick={()=>void handoff()}>Copiar y abrir Codex</button></div></div>:<button className="mail-analysis-prepare" disabled={disabled||busy} onClick={()=>void prepare()}>{busy?'Preparando…':'Revisar petición'}</button>}
+   {notice&&<p className="mail-analysis-notice" role="status">{notice}</p>}{openFailed&&<button onClick={()=>void window.companion.openCodex()}>Abrir Codex</button>}
+  </div>}
+ </section>;
+}

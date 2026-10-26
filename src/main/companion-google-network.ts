@@ -11,7 +11,8 @@ export function googleNetworkFetch(network:{fetch:GoogleFetch}):GoogleFetch{
   const format=params.get('format'),thread=/^\/gmail\/v1\/users\/me\/threads\/[a-zA-Z0-9_-]{1,100}$/.test(u.pathname)&&only(['format','fields','metadataHeaders'])&&single('format')&&single('fields')&&(format==='full'&&params.get('fields')===GMAIL_THREAD_FULL_FIELDS&&!params.has('metadataHeaders')||format==='metadata'&&params.get('fields')===GMAIL_THREAD_METADATA_FIELDS&&params.getAll('metadataHeaders').length<=4&&params.getAll('metadataHeaders').every(name=>['Subject','From','To','Date'].includes(name)));
   const inbox=u.pathname==='/gmail/v1/users/me/labels/INBOX'&&(!u.search||only(['fields'])&&single('fields')&&params.get('fields')==='messagesUnread');
   const mailbox=u.origin==='https://gmail.googleapis.com'&&method==='GET'&&(list||thread||inbox)&&init.body==null;
-  if(u.username||u.password||u.hash||!token&&!mailbox)throw Error('Destino de Google no permitido.');
+  const trash=u.origin==='https://gmail.googleapis.com'&&method==='POST'&&/^\/gmail\/v1\/users\/me\/threads\/[a-zA-Z0-9_-]{1,100}\/trash$/.test(u.pathname)&&only(['fields'])&&params.getAll('fields').length===1&&params.get('fields')==='id'&&init.body==null;
+  if(u.username||u.password||u.hash||!token&&!mailbox&&!trash)throw Error('Destino de Google no permitido.');
   return network.fetch(u.href,{...init,credentials:'omit',redirect:'error',cache:'no-store',referrerPolicy:'no-referrer',bypassCustomProtocolHandlers:true} as RequestInit);
  };
 }

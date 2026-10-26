@@ -1,5 +1,7 @@
 # Publicación de ZEN — 23/10/2026
 
+Actualización del 26/10/2026: publicar las mejoras acumuladas de Gmail (papelera revisada, lector enriquecido por mensaje, citas y navegación), resultados correlacionados de Codex y contexto seleccionado, cápsula en una fila y vistas Actividad/Resumen. Se conserva el envío revisado mediante copiar/pegar en el chat de Codex. El resumen usa datos ya observados; no añade llamadas a modelos. La publicación se valida desde una copia limpia de las fuentes seleccionadas. EXE, cuentas, credenciales, capturas, nuevas evidencias y material local de mascota permanecen fuera del commit.
+
 Actualización del 25/10/2026: nueva publicación solicitada por el usuario. La identidad activa pasa al núcleo orbital original aprobado; se publican cápsula única, integraciones locales de música y Gmail, respuesta final de Codex y Home con estados. Se conservan las exclusiones de recursos Coucou y datos privados descritas aquí. Las referencias al monograma Z explican la entrega del día 23, no el icono actual. No se publican EXE, respaldos ni evidencias nuevas de ejecución.
 
 El usuario solicita subir ZEN a GitHub y después autoriza retirar la imagen de Coucou, dejando la creación de un personaje propio para el futuro.

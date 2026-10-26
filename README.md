@@ -4,7 +4,7 @@ ZEN muestra en una cápsula la actividad que recibe de Codex: acciones recientes
 
 La interfaz usa un núcleo orbital, sin personaje. El personaje, las ilustraciones y los sonidos de Coucou no se distribuyen. Los iconos ZEN y los tonos locales son originales; se conservan los avisos de licencia del código MIT adaptado de Coucou.
 
-La cápsula se despliega hacia abajo en una única ventana con Home, Spotify, Gmail, Codex y Avisos. Pulsar otra sección navega; repetir el icono activo recoge la cápsula. La cabecera mantiene visibles a la vez el estado de Codex y el contenido multimedia que esté reproduciendo Windows.
+La cápsula se despliega hacia abajo en una única ventana. Su cabecera de una fila reúne estado de Codex, navegación Home/Codex/Gmail/Spotify, música y controles con Avisos. Pulsar otra sección navega; repetir el icono activo recoge la cápsula. Codex y el contenido multimedia que esté reproduciendo Windows se mantienen visibles a la vez.
 
 ## Uso
 
@@ -16,8 +16,8 @@ La cápsula se despliega hacia abajo en una única ventana con Home, Spotify, Gm
 - Permisos: revisar la acción completa y permitir una vez, rechazar o devolver la decisión a Codex. La cápsula nunca aprueba por pulsar un estado.
 - Home: canción actual, correos sin leer, estado de Codex y avisos pendientes. El correo se consulta al abrir Home, cada minuto mientras esté visible o con Actualizar correo.
 - Spotify: reproductor de las sesiones multimedia de Windows, también publicadas por navegadores. Los controles requieren seleccionar una fuente y que esta los admita; este acceso local no usa Spotify Web API.
-- Gmail: conexión OAuth propia de Google Desktop, buzón agrupado por conversación y lectura del hilo completo dentro de los límites indicados. La credencial se configura localmente; no se distribuye con el proyecto.
-- Codex: última respuesta final observada del chat fijado y acceso para abrirlo en Codex.
+- Gmail: conexión OAuth propia de Google Desktop, buzón por conversación y lector Original / Texto con respuestas plegables y carga manual de imágenes externas. Eliminar mueve el hilo a la papelera tras confirmarlo; Permitir eliminar solicita el permiso adicional de Google. La credencial se configura localmente; no se distribuye con el proyecto. Analizar en Codex prepara un resumen, una sugerencia de respuesta, tareas, una propuesta de cita o un análisis del texto cargado: se revisa, copia y abre el chat fijado para pegar y enviar allí. El resultado coincidente vuelve al correo al abrirlo; actualizar conserva las ediciones locales.
+- Codex: dos vistas internas, Actividad (acciones, comandos y permisos) y Resumen (última respuesta y resultado observado del turno), con acceso para abrir el chat. Analizar permite elegir un archivo, aportar una página o pegar texto, revisar la petición y recuperar su resultado. La aplicación o entorno se indica en cada petición, sin prefijarlo en ZEN.
 - Presentación: ocultar detalles privados y silenciar avisos; pausar ZEN también suspende sus lecturas.
 
 Puedes fijar un chat y una carpeta exacta mediante `companion-target.json` en el perfil de ZEN (`%APPDATA%\ZEN`). Su formato es `{ "session": "identificador-del-chat", "cwd": "C:\\ruta\\al\\proyecto", "title": "Mi chat" }`. La configuración personal queda fuera del repositorio. Las sesiones ajenas se descartan sin decidir sus permisos.
@@ -56,3 +56,7 @@ Las credenciales de Gmail se cifran con la protección de Windows fuera del repo
 No se publican claves, perfiles, identificadores de chats personales, capturas ni telemetría local. Los informes y recorridos nativos se guardan localmente en `docs/evidence/` y `docs/ui-preview/`; algunos informes antiguos ya versionados se mantienen como históricos.
 
 Consulta [Home](docs/home-status.md), [cápsula e integraciones](docs/capsule-downward-extension.md), [contenido de escritorio](docs/desktop-content-improvements.md), [publicación y recursos](docs/github-publication.md) y [chat fijado](docs/codex-fixed-chat.md). Las pruebas físicas de sonido, notificaciones, foco, DPI y juegos a pantalla completa tienen límites documentados; una prueba sintética no los valida.
+
+El recorrido de correo a Codex y sus límites se documentan en [Analizar correo en Codex](docs/gmail-codex-analysis.md). El diseño del lector y la limpieza de textos se describen en [Interfaz limpia](docs/clean-interface.md). Las citas plegadas, navegación, recuperación de lectura, atajos y propuesta editable de Codex se documentan en [Lectura y respuesta con Codex](docs/mail-workflow.md).
+
+La sincronización, autoridad y límites del traspaso están descritos en [docs/codex-sync.md](docs/codex-sync.md).

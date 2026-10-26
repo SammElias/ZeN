@@ -3,7 +3,7 @@ import type {CompanionStatus} from './codex-companion';
 /** Redact at the main→renderer boundary, including hidden panels and IPC replies. */
 export function displayStatus(raw:CompanionStatus,revision:number):CompanionStatus{
  const value=structuredClone(raw);value.revision=revision;
- if(value.settings.presentation||value.settings.paused||!value.workspace?.expanded||value.workspace.page!=='codex')for(const session of value.sessions)delete session.lastReply;
+ if(value.settings.presentation||value.settings.paused||!value.workspace?.expanded||value.workspace.page!=='codex'||value.workspace.codexTab!=='summary')for(const session of value.sessions)delete session.lastReply;
  if(value.workspace&&(value.settings.presentation||value.settings.paused))delete value.workspace.gmail;
  if(!value.settings.presentation)return value;
  if(value.target){value.target.title='Chat de Codex';value.target.cwd='';}

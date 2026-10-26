@@ -1,7 +1,7 @@
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {z} from 'zod';
 import {LauncherOrder,LauncherPage,type WorkspacePage} from '../shared/companion-workspace';
-const Preferences=z.object({order:LauncherOrder.default(['home','spotify','gmail','codex','notices']),last:LauncherPage.default('home')}).strict();
+const Preferences=z.object({order:LauncherOrder.default(['home','codex','gmail','spotify','notices']),last:LauncherPage.default('home')}).strict();
 /** Only navigation preferences persist. Media sessions and mailbox data stay in RAM. */
 export class CompanionLauncher{
  private value=z.parse(Preferences,{});
