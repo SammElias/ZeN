@@ -22,3 +22,13 @@ src/coucou/mochi/engine.ts
 src/coucou/mochi/outfits.ts
 docs/ui-preview/
 docs/evidence/
+calendar-oauth.bin
+calendar-oauth.bin.tmp
+companion-appearance.json
+companion-desktop-window.json
+/appearance/
+guion_codex_zen.md
+gmail-client.json
+gmail-client-secret.bin
+gmail-oauth.bin
+companion-target.json

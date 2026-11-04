@@ -1,6 +1,6 @@
 import {z} from 'zod';
 export const GmailClientId=z.string().trim().max(200).regex(/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
-export type GmailState={configured:boolean;connected:boolean;authorizing:boolean;clientCredentialsReady?:boolean;canTrash?:boolean;readerKey?:string;error?:string};
+export type GmailState={configured:boolean;connected:boolean;authorizing:boolean;clientCredentialsReady?:boolean;canTrash?:boolean;readerKey?:string;needsReconnect?:boolean;error?:string};
 /** A short-lived, single-use review of one known conversation; never a mailbox-wide grant. */
 export type GmailTrashReview={token:string;threadId:string;subject:string;messageCount:number;expiresAt:number};
 /** Home may receive only an observed count, never conversation metadata or bodies. */
@@ -14,4 +14,7 @@ export type GmailThreadMessage=Omit<GmailItem,'messageCount'>&{to:string;text:st
 export type GmailMessage=GmailItem&{messages:GmailThreadMessage[];truncated:boolean;omittedMessages:number};
 export const GMAIL_THREAD_METADATA_FIELDS='id,messages(id,threadId,labelIds,snippet,internalDate,payload(headers))';
 export const GMAIL_THREAD_FULL_FIELDS='id,messages(id,threadId,labelIds,snippet,internalDate,payload)';
-export const GmailQuery=z.object({query:z.string().trim().max(240).default(''),page:z.string().max(2048).optional()}).strict();
+export const GmailFolder=z.enum(['inbox','starred','sent','drafts','all','spam','trash']);
+export type GmailFolder=z.infer<typeof GmailFolder>;
+export const gmailFolders={inbox:{label:'INBOX',name:'Recibidos'},starred:{label:'STARRED',name:'Destacados'},sent:{label:'SENT',name:'Enviados'},drafts:{label:'DRAFT',name:'Borradores'},all:{label:'',name:'Todos los correos'},spam:{label:'SPAM',name:'Spam'},trash:{label:'TRASH',name:'Papelera'}} as const;
+export const GmailQuery=z.object({query:z.string().trim().max(240).default(''),folder:GmailFolder.default('inbox'),page:z.string().max(2048).optional()}).strict();

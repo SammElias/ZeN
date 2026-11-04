@@ -1,3 +1,4 @@
+import {CopyVisible} from './WorkspaceTools';
 import React,{useEffect,useRef,useState} from 'react';
 import type {CompanionStatus} from '../shared/codex-companion';
 import type {MediaTrack,MediaSession,MediaCommand,MediaNowPlaying} from '../shared/companion-media';
@@ -69,6 +70,7 @@ export function CompanionMusic({status}:{status:CompanionStatus}){
   <div className="music-heading"><div><h2>Música</h2></div><div className="actions"><button className="music-refresh" aria-label="Actualizar contenido" title={blocked?'Sal de presentación o reanuda ZEN para consultar la música':'Consultar de nuevo la canción y su estado, sin cambiar la reproducción'} disabled={busy||blocked} onClick={()=>void refresh()}><MusicIcon name="refresh"/>{busy?'Actualizando…':'Actualizar contenido'}</button><button disabled={blocked} onClick={()=>void window.companion.compact('spotify')}>Ver en cápsula</button><button disabled={blocked} onClick={()=>void open()}>Abrir Spotify ↗</button></div></div>
   {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2>{status.settings.presentation&&<button className="primary" aria-label="Salir de presentación y mostrar música" onClick={()=>void showMusic()}>Salir de presentación y mostrar música</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}</div>:<>
 
+   <div className="music-source-tools"><small>Reproductores de este PC</small><button disabled={busy} onClick={()=>void list()}>Cambiar reproductor</button></div>
    <div className="media-sources" aria-label="Elige un reproductor">{sessions.map((s,i)=><button key={s.id} aria-pressed={track?.session===s.id} disabled={busy} onClick={()=>void select(s.id)}><MusicIcon name="music"/>{s.name}{sessions.filter(v=>v.name===s.name).length>1?' · '+(i+1):''}{s.browser&&<small>Navegador</small>}</button>)}</div>
    {track?<article className="music-player" data-source={track.source}>
     <div className="music-artwork">{track.artwork?<img src={track.artwork} alt="Carátula compartida por el reproductor"/>:<MusicIcon name="music"/>}</div>
@@ -80,6 +82,7 @@ export function CompanionMusic({status}:{status:CompanionStatus}){
      <button aria-label="Siguiente" disabled={busy||!track.controls.next} onClick={()=>void command('next')}><MusicIcon name="next"/></button>
      <button aria-label="Repetir" aria-pressed={track.repeat==='list'||track.repeat==='track'} title={track.controls.repeat&&track.repeat!==null?'Cambiar repetición':'El reproductor no expone repetición'} disabled={busy||!track.controls.repeat||track.repeat===null} onClick={()=>void command('repeat',track.repeat==='none'?'all':track.repeat==='list'?'one':'off')}><MusicIcon name="repeat"/>{track.repeat==='track'&&<b>1</b>}</button>
     </div>
+    <div className="music-copy"><CopyVisible text={[track.title,track.artist,track.album].filter(Boolean).join(' — ')} label="Copiar canción"/></div>
     {track.durationMs>0&&<div className="music-timeline"><progress aria-label="Posición informada por el reproductor" value={Math.min(track.positionMs,track.durationMs)} max={track.durationMs}/><span>{time(track.positionMs)}</span><span>{time(track.durationMs)}</span></div>}
 
    </article>:<div className="music-empty"><MusicIcon name="music"/><h3>{busy?'Buscando reproducción…':sessions.length?'Elige un reproductor':'Sin reproducción'}</h3></div>}

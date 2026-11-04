@@ -3,7 +3,7 @@ import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {z} from 'zod';
-import {GmailClientId,GmailQuery,GMAIL_THREAD_METADATA_FIELDS,GMAIL_THREAD_FULL_FIELDS,type GmailState,type GmailSummary,type GmailItem,type GmailMessage,type GmailThreadMessage,type GmailList,type GmailTrashReview} from '../shared/companion-gmail';
+import {GmailClientId,GmailQuery,gmailFolders,GMAIL_THREAD_METADATA_FIELDS,GMAIL_THREAD_FULL_FIELDS,type GmailState,type GmailSummary,type GmailItem,type GmailMessage,type GmailThreadMessage,type GmailList,type GmailTrashReview} from '../shared/companion-gmail';
 import {prepareMailHtml,mailMime,mailAttachment,type MailHtmlView} from './companion-mail-html';
 import {mailDocument} from './companion-mail-document';
 import {fetchMailImage,mailWebUrl} from './companion-mail-images';
@@ -66,15 +66,15 @@ export class CompanionGmail{
  private client?:string;private clientSecret?:string;private tokens:z.infer<typeof Tokens>={};private error?:string;private generation=0;private authGeneration=0;private exchanging=false;private refresh?:{generation:number;purpose:ReadPurpose;promise:Promise<string>};private ids=new Set<string>();private pages=new Set<string>();private activeQuery?:string;private pageCount=0;private listRevision=0;private requests=new Map<AbortController,'read'|'auth'>();
  private htmlViews=new Map<string,MailHtmlView>();private imageRequests=new Set<AbortController>();private imageCancels=new Map<string,AbortController>();private imageFlight?:object;
  private items=new Map<string,GmailItem>();private trashReview?:{value:GmailTrashReview;generation:number};private trashPending=false;
- private readerKey=randomBytes(16).toString('hex');
+ private readerKey=randomBytes(16).toString('hex');private needsReconnect=false;
  private analysisSource?:{version:string;thread:GmailMessage};private messageRevision=0;
  private pending?:{scope:string;server:Server;timer:ReturnType<typeof setTimeout>;state:string;verifier:string;redirect:string;generation:number;expiresAt:number};
  private receipt?:{server:Server;host:string;state:string;result:'working'|'success'|'error';timer:ReturnType<typeof setTimeout>};
  constructor(private deps:Deps){try{this.client=GmailClientId.parse(JSON.parse(readFileSync(join(deps.profile,'gmail-client.json'),'utf8')).clientId);}catch{}if(existsSync(join(deps.profile,'gmail-client-secret.bin')))try{if(!deps.cipher.isEncryptionAvailable())throw Error();const v=ClientCredentials.parse(JSON.parse(deps.cipher.decryptString(readFileSync(join(deps.profile,'gmail-client-secret.bin')))));if(v.clientId===this.client)this.clientSecret=v.clientSecret;}catch{this.error='Importa de nuevo el JSON de escritorio de Google en este usuario de Windows.';}if(existsSync(join(deps.profile,'gmail-oauth.bin')))try{if(deps.cipher.isEncryptionAvailable())this.tokens=Tokens.parse(JSON.parse(deps.cipher.decryptString(readFileSync(join(deps.profile,'gmail-oauth.bin')))));}catch{this.error='Vuelve a conectar Gmail en este usuario de Windows.';}}
- status():GmailState{return{readerKey:this.tokens.refresh_token||this.tokens.access_token?this.readerKey:undefined,configured:!!this.client,connected:!!(this.tokens.refresh_token||this.tokens.access_token),authorizing:!!this.pending||this.exchanging,clientCredentialsReady:!!this.clientSecret,canTrash:!!(this.tokens.refresh_token||this.tokens.access_token)&&this.tokens.scopes?.includes(MODIFY_SCOPE)===true,error:this.error};}
+ status():GmailState{const connected=!this.needsReconnect&&!!(this.tokens.refresh_token||this.tokens.access_token);return{readerKey:connected?this.readerKey:undefined,configured:!!this.client,connected,authorizing:!!this.pending||this.exchanging,clientCredentialsReady:!!this.clientSecret,canTrash:connected&&this.tokens.scopes?.includes(MODIFY_SCOPE)===true,...(this.needsReconnect?{needsReconnect:true}:{}),error:this.error};}
  private checkAuth(){if(!(this.deps.authAllowed??this.deps.allowed)())throw Error('La conexión se canceló por pausa o presentación.');}
  private check(purpose:ReadPurpose='mail'){if(purpose==='summary'?!this.deps.summaryAllowed?.():!this.deps.allowed())throw Error(purpose==='summary'?'Abre Inicio y desactiva Presentación o pausa para consultar el recuento de Gmail.':'Abre Gmail y desactiva Presentación o pausa para continuar.');}
- configure(raw:string){this.check();const id=GmailClientId.parse(raw);this.readerKey=randomBytes(16).toString('hex');this.suspend();if(id!==this.client){this.clientSecret=undefined;try{unlinkSync(join(this.deps.profile,'gmail-client-secret.bin'));}catch{}}this.client=id;writeFileSync(join(this.deps.profile,'gmail-client.json'),JSON.stringify({clientId:this.client}));this.tokens={};try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}this.error=undefined;return this.status();}
+ configure(raw:string){this.check();const id=GmailClientId.parse(raw);if(id===this.client)return this.status();const path=join(this.deps.profile,'gmail-client.json');writeFileSync(path+'.tmp',JSON.stringify({clientId:id}));renameSync(path+'.tmp',path);this.readerKey=randomBytes(16).toString('hex');this.suspend();this.clientSecret=undefined;try{unlinkSync(join(this.deps.profile,'gmail-client-secret.bin'));}catch{}this.client=id;this.tokens={};this.needsReconnect=false;try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}this.error=undefined;return this.status();}
  importClientJson(raw:string){
   this.check();let parsed:unknown;try{if(Buffer.byteLength(raw)>16384)throw Error();parsed=JSON.parse(raw);}catch{throw Error('Selecciona un JSON de credenciales de Google válido, de hasta 16 KB.');}
   const result=DesktopClient.safeParse(parsed);if(!result.success)throw Error('El JSON debe ser de una aplicación de escritorio y contener su Client ID y client_secret.');
@@ -83,10 +83,10 @@ export class CompanionGmail{
   let encrypted:Buffer;try{encrypted=this.deps.cipher.encryptString(JSON.stringify({clientId,clientSecret}));}catch{throw Error('No se pudieron proteger las credenciales de Google en este PC.');}
   this.suspend();const path=join(this.deps.profile,'gmail-client-secret.bin');
   try{writeFileSync(path+'.tmp',encrypted);renameSync(path+'.tmp',path);if(this.client!==clientId)writeFileSync(join(this.deps.profile,'gmail-client.json'),JSON.stringify({clientId}));}catch{throw Error('No se pudieron guardar las credenciales de Google en este PC.');}
-  if(this.client!==clientId){this.readerKey=randomBytes(16).toString('hex');this.tokens={};try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}}
+  if(this.client!==clientId){this.readerKey=randomBytes(16).toString('hex');this.tokens={};this.needsReconnect=false;try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}}
   this.client=clientId;this.clientSecret=clientSecret;this.error=undefined;return this.status();
  }
- private save(){if(!this.deps.cipher.isEncryptionAvailable())throw Error('Windows no ofrece almacenamiento seguro para esta conexión.');const p=join(this.deps.profile,'gmail-oauth.bin');writeFileSync(p+'.tmp',this.deps.cipher.encryptString(JSON.stringify(this.tokens)));renameSync(p+'.tmp',p);}
+ private save(tokens=this.tokens){if(!this.deps.cipher.isEncryptionAvailable())throw Error('Windows no ofrece almacenamiento seguro para esta conexión.');const p=join(this.deps.profile,'gmail-oauth.bin');writeFileSync(p+'.tmp',this.deps.cipher.encryptString(JSON.stringify(tokens)));renameSync(p+'.tmp',p);}
  private clientParameters(){return{client_id:this.client!,...(this.clientSecret?{client_secret:this.clientSecret}:{})};}
  private async http(url:string,init:RequestInit={},limit=1500000,scope:'read'|'auth'='read'){
   const c=new AbortController(),signal=AbortSignal.any([c.signal,AbortSignal.timeout(15000)]);this.requests.set(c,scope);
@@ -133,7 +133,7 @@ export class CompanionGmail{
    const code=u.searchParams.get('code');
    if(u.searchParams.has('error')||!code||code.length>4096){this.error='No se concedió el acceso de lectura a Gmail.';receipt.result='error';res.writeHead(303,{Location:'/oauth2/complete'}).end();return;}
    this.exchanging=true;
-   try{this.checkAuth();const t=await this.http('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({...this.clientParameters(),code,redirect_uri:p.redirect,grant_type:'authorization_code',code_verifier:p.verifier}).toString()},100000,'auth');if(generation!==this.authGeneration)throw Error('La conexión se canceló.');this.checkAuth();const scopes=typeof t.scope==='string'?grantedScopes(t.scope):[p.scope];if(typeof t.access_token!=='string'||!t.access_token||scopes.length===0)throw Error('Google no concedió acceso a Gmail.');const next=Tokens.parse({scopes,access_token:t.access_token,refresh_token:t.refresh_token,expires:Date.now()+Math.min(86400,Number(t.expires_in)||3600)*1000});const path=join(this.deps.profile,'gmail-oauth.bin');if(!this.deps.cipher.isEncryptionAvailable())throw Error('Windows no ofrece almacenamiento seguro para esta conexión.');writeFileSync(path+'.tmp',this.deps.cipher.encryptString(JSON.stringify(next)));renameSync(path+'.tmp',path);this.readerKey=randomBytes(16).toString('hex');this.tokens=next;this.error=undefined;receipt.result='success';}
+   try{this.checkAuth();const t=await this.http('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({...this.clientParameters(),code,redirect_uri:p.redirect,grant_type:'authorization_code',code_verifier:p.verifier}).toString()},100000,'auth');if(generation!==this.authGeneration)throw Error('La conexión se canceló.');this.checkAuth();const scopes=typeof t.scope==='string'?grantedScopes(t.scope):[p.scope];if(typeof t.access_token!=='string'||!t.access_token||scopes.length===0)throw Error('Google no concedió acceso a Gmail.');const next=Tokens.parse({scopes,access_token:t.access_token,refresh_token:t.refresh_token,expires:Date.now()+Math.min(86400,Number(t.expires_in)||3600)*1000});const path=join(this.deps.profile,'gmail-oauth.bin');if(!this.deps.cipher.isEncryptionAvailable())throw Error('Windows no ofrece almacenamiento seguro para esta conexión.');writeFileSync(path+'.tmp',this.deps.cipher.encryptString(JSON.stringify(next)));renameSync(path+'.tmp',path);this.readerKey=randomBytes(16).toString('hex');this.tokens=next;this.needsReconnect=false;this.error=undefined;receipt.result='success';}
    catch(e){receipt.result='error';if(generation===this.authGeneration)this.error=e instanceof GmailHttpError?e.message:'No se pudo completar y guardar la conexión de Gmail en este PC. Inicia una conexión nueva.';}
    finally{if(generation===this.authGeneration)this.exchanging=false;}
    if(!res.destroyed){if(generation!==this.authGeneration)page(res,'error',400);else res.writeHead(303,{Location:'/oauth2/complete'}).end();}
@@ -142,7 +142,28 @@ export class CompanionGmail{
   if(generation!==this.authGeneration){server.close();throw Error('La conexión se canceló.');}const timer=setTimeout(()=>{if(this.pending?.server===server){this.cancelAuth();this.error='El inicio de sesión caducó. Puedes intentarlo de nuevo.';}},300000);timer.unref();this.pending={scope:requestedScope,server,timer,state,verifier,redirect,generation,expiresAt:Date.now()+300000};
   const url=new URL('https://accounts.google.com/o/oauth2/v2/auth');url.search=new URLSearchParams({client_id:this.client,redirect_uri:redirect,response_type:'code',scope:requestedScope,state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256',access_type:'offline',prompt:'consent'}).toString();try{this.checkAuth();await this.deps.open(url.toString());}catch(e){this.cancelAuth();throw e;}return this.status();
  }
- private async token(purpose:ReadPurpose='mail'){this.check(purpose);if(this.tokens.access_token&&(this.tokens.expires??0)>Date.now()+30000)return this.tokens.access_token;if(this.refresh?.generation===this.generation&&this.refresh.purpose===purpose)return this.refresh.promise;if(!this.tokens.refresh_token||!this.client)throw Error('Conecta tu cuenta de Google.');const generation=this.generation,pending={generation,purpose,promise:undefined! as Promise<string>};this.refresh=pending;pending.promise=(async()=>{try{const t=await this.http('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({...this.clientParameters(),refresh_token:this.tokens.refresh_token!,grant_type:'refresh_token'}).toString()},100000);this.check(purpose);if(generation!==this.generation)throw Error('La consulta se canceló.');if(typeof t.access_token!=='string')throw Error('Vuelve a conectar Gmail.');const scopes=typeof t.scope==='string'?grantedScopes(t.scope):this.tokens.scopes;this.tokens={...this.tokens,scopes,access_token:t.access_token,refresh_token:t.refresh_token??this.tokens.refresh_token,expires:Date.now()+Math.min(86400,Number(t.expires_in)||3600)*1000};this.save();return t.access_token as string;}finally{if(this.refresh===pending)this.refresh=undefined;}})();return pending.promise;}
+ private async token(purpose:ReadPurpose='mail'){
+  this.check(purpose);if(this.needsReconnect)throw Error(this.error??'Vuelve a conectar Gmail con la configuración guardada.');
+  if(this.tokens.access_token&&(this.tokens.expires??0)>Date.now()+30000)return this.tokens.access_token;
+  if(this.refresh?.generation===this.generation&&this.refresh.purpose===purpose)return this.refresh.promise;
+  if(!this.tokens.refresh_token||!this.client)throw Error('Conecta tu cuenta de Google.');
+  const saved=this.tokens,generation=this.generation,pending={generation,purpose,promise:undefined! as Promise<string>};this.refresh=pending;
+  pending.promise=(async()=>{try{
+   const t=await this.http('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({...this.clientParameters(),refresh_token:saved.refresh_token!,grant_type:'refresh_token'}).toString()},100000);
+   this.check(purpose);if(generation!==this.generation||saved!==this.tokens)throw Error('La consulta se canceló.');
+   if(typeof t.access_token!=='string'||!t.access_token)throw Error('No se pudo renovar la sesión de Gmail.');
+   const scopes=typeof t.scope==='string'?grantedScopes(t.scope):saved.scopes;
+   const next=Tokens.parse({...saved,scopes,access_token:t.access_token,refresh_token:t.refresh_token??saved.refresh_token,expires:Date.now()+Math.min(86400,Math.max(60,Number(t.expires_in)||3600))*1000});
+   this.save(next);this.tokens=next;return next.access_token!;
+  }catch(e){
+   if(e instanceof GmailHttpError&&e.diagnosis.code==='invalid_grant'&&generation===this.generation&&saved===this.tokens){
+    this.suspendReads();this.needsReconnect=true;this.readerKey=randomBytes(16).toString('hex');
+    this.error='Google ha caducado o revocado el acceso. Vuelve a conectar con la configuración guardada. [invalid_grant]';
+    throw new GmailHttpError(this.error,e.diagnosis);
+   }
+   throw e;
+  }finally{if(this.refresh===pending)this.refresh=undefined;}})();return pending.promise;
+ }
  private async get(path:string,limit=1500000,purpose:ReadPurpose='mail'){this.check(purpose);const generation=this.generation,token=await this.token(purpose);this.check(purpose);if(generation!==this.generation)throw Error('La consulta se canceló.');const v=await this.http('https://gmail.googleapis.com/gmail/v1/users/me/'+path,{headers:{Authorization:'Bearer '+token}},limit);this.check(purpose);if(generation!==this.generation)throw Error('La consulta se canceló.');return v;}
  async summary():Promise<GmailSummary>{
   this.check('summary');const {configured,connected,authorizing}=this.status(),state={configured,connected};
@@ -161,14 +182,14 @@ export class CompanionGmail{
  private threadItem(id:string,messages:any[]):GmailItem{return{...this.item(messages[messages.length-1]),id,unread:messages.some(m=>Array.isArray(m.labelIds)&&m.labelIds.includes('UNREAD')),messageCount:messages.length};}
  async list(raw:unknown):Promise<GmailList>{
   this.check();this.clearRich();this.trashReview=undefined;const q=GmailQuery.parse(raw);
-  if(q.page&&(!this.pages.has(q.page)||this.activeQuery!==q.query||this.pageCount>=MAX_PAGES))throw Error('La página ya no pertenece a esta consulta.');
-  if(!q.page){this.suspendReads();this.activeQuery=q.query;}
+  if(q.page&&(!this.pages.has(q.page)||this.activeQuery!==q.folder+'\0'+q.query||this.pageCount>=MAX_PAGES))throw Error('La página ya no pertenece a esta consulta.');
+  if(!q.page){this.suspendReads();this.activeQuery=q.folder+'\0'+q.query;}
   const generation=this.generation,revision=++this.listRevision,assertCurrent=()=>{this.check();if(generation!==this.generation||revision!==this.listRevision)throw Error('La consulta se canceló.');};
-  const p=new URLSearchParams({labelIds:'INBOX',maxResults:String(PAGE_SIZE)});if(q.query)p.set('q',q.query);if(q.page)p.set('pageToken',q.page);
+  const p=new URLSearchParams({maxResults:String(PAGE_SIZE)}),label=gmailFolders[q.folder].label;if(label)p.set('labelIds',label);if(q.folder==='spam'||q.folder==='trash')p.set('includeSpamTrash','true');if(q.query)p.set('q',q.query);if(q.page)p.set('pageToken',q.page);
   const v=await this.get('threads?'+p);assertCurrent();
   const ids=[...new Set<string>((Array.isArray(v.threads)?v.threads:[]).map((m:any)=>m?.id).filter(validId))].slice(0,PAGE_SIZE),messages:GmailItem[]=[];
   for(let i=0;i<ids.length;i+=4){assertCurrent();const part=await Promise.all(ids.slice(i,i+4).map(async id=>{const metadata=await this.get('threads/'+id+'?'+new URLSearchParams({format:'metadata',fields:GMAIL_THREAD_METADATA_FIELDS})+'&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date');return this.threadItem(id,this.threadMessages(metadata,id));}));assertCurrent();messages.push(...part);}
-  let unread:number|undefined;if(!q.page){const label=await this.get('labels/INBOX').catch(()=>undefined);assertCurrent();if(Number.isSafeInteger(label?.messagesUnread)&&label.messagesUnread>=0&&label.messagesUnread<=2147483647)unread=label.messagesUnread;}
+  let unread:number|undefined;if(!q.page&&q.folder==='inbox'){const label=await this.get('labels/INBOX').catch(()=>undefined);assertCurrent();if(Number.isSafeInteger(label?.messagesUnread)&&label.messagesUnread>=0&&label.messagesUnread<=2147483647)unread=label.messagesUnread;}
   assertCurrent();for(const m of messages){this.ids.add(m.id);this.items.set(m.id,{...m});}this.pageCount++;if(q.page)this.pages.delete(q.page);
   const next=this.pageCount<MAX_PAGES&&typeof v.nextPageToken==='string'&&v.nextPageToken.length>0&&v.nextPageToken.length<=2048&&v.nextPageToken!==q.page?v.nextPageToken:undefined;if(next)this.pages.add(next);
   return{messages,next,unread,limited:this.pageCount>=MAX_PAGES&&typeof v.nextPageToken==='string'&&v.nextPageToken.length>0};
@@ -204,7 +225,7 @@ export class CompanionGmail{
  async openLink(viewId:string,linkId:string){const view=this.richView(viewId),value=view.links.get(linkId),url=value&&mailWebUrl(value);if(!url)throw Error('Este enlace no está disponible en el correo abierto.');await this.deps.open(url);return true;}
  private checkTrash(){this.check();if(this.status().authorizing)throw Error('Completa primero la conexión de Google.');if(!this.status().canTrash)throw Error('Pulsa Permitir eliminar y autoriza el permiso de Google para mover correos a la papelera.');}
  prepareTrash(id:string):GmailTrashReview{
-  this.checkTrash();if(this.trashPending)throw Error('Espera a que termine la operación actual.');const item=this.items.get(id);
+  this.checkTrash();if(this.activeQuery?.startsWith('trash\0'))throw Error('La conversación ya está en la papelera.');if(this.trashPending)throw Error('Espera a que termine la operación actual.');const item=this.items.get(id);
   if(!validId(id)||!this.ids.has(id)||!item)throw Error('Abre una conversación de la lista actual.');
   const value={token:randomBytes(24).toString('hex'),threadId:id,subject:item.subject,messageCount:item.messageCount,expiresAt:Date.now()+60000};
   this.deps.invalidateAnalysis?.();this.trashReview={value:{...value},generation:this.generation};return value;
@@ -222,6 +243,6 @@ export class CompanionGmail{
   }catch(e){if(dispatched)throw Error('No se pudo confirmar la eliminación. Comprueba la conversación en Gmail antes de volver a intentarlo. ZEN no ha repetido la petición.');throw e;}
   finally{this.trashPending=false;}
  }
- disconnect(){this.check();this.readerKey=randomBytes(16).toString('hex');this.suspend();this.tokens={};try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}this.error=undefined;return this.status();}
+ disconnect(){this.check();this.readerKey=randomBytes(16).toString('hex');this.suspend();this.tokens={};this.needsReconnect=false;try{unlinkSync(join(this.deps.profile,'gmail-oauth.bin'));}catch{}this.error=undefined;return this.status();}
  close(){this.suspend();}
 }

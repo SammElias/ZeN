@@ -54,3 +54,9 @@ describe('Google isolated Chromium transport',()=>{
   expect(googleNetworkFailure(Error('anything'),timeout.signal).kind).toBe('TIMEOUT');
  });
 });
+
+
+describe('bounded folder transport',()=>{
+ it.each(['INBOX','STARRED','SENT','DRAFT','SPAM','TRASH',''])('allows only the predefined %s folder',async label=>{const network={fetch:vi.fn(async()=>Response.json({}))},request=googleNetworkFetch(network),p=new URLSearchParams({maxResults:'20'});if(label)p.set('labelIds',label);if(['SPAM','TRASH'].includes(label))p.set('includeSpamTrash','true');await request('https://gmail.googleapis.com/gmail/v1/users/me/threads?'+p);expect(network.fetch).toHaveBeenCalledTimes(1);});
+ it('rejects arbitrary labels, duplicated selectors and broad spam/trash flags',async()=>{const network={fetch:vi.fn(async()=>Response.json({}))},request=googleNetworkFetch(network);for(const query of ['labelIds=PRIVATE&maxResults=20','labelIds=SENT&labelIds=INBOX&maxResults=20','maxResults=20&includeSpamTrash=true','labelIds=SENT&maxResults=20&includeSpamTrash=true','labelIds=TRASH&maxResults=20&includeSpamTrash=false'])await expect(request('https://gmail.googleapis.com/gmail/v1/users/me/threads?'+query)).rejects.toThrow('no permitido');expect(network.fetch).not.toHaveBeenCalled();});
+});

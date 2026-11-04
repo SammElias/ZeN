@@ -56,6 +56,7 @@ export function CompanionHome({status,nowPlaying,mail,mailLoading,mailError,onRe
     <button className="home-status-action" onClick={()=>onNavigate('notices')}>Ver avisos<HomeIcon name="arrow"/></button>
    </article>
   </div>
+  <div className="home-quick-tools" aria-label="Accesos rápidos"><button onClick={()=>onNavigate('calendar')}>Ver agenda <HomeIcon name="arrow"/></button></div>
   <button className="home-status-settings" onClick={()=>onNavigate('settings')}><span className="home-status-icon"><HomeIcon name="settings"/></span><span><strong>Preferencias</strong></span><HomeIcon name="arrow"/></button>
  </section>;
 }

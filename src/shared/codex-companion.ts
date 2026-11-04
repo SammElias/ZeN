@@ -1,10 +1,12 @@
+import type {AppearanceOptions,AppearanceState} from './companion-appearance';
+import type {CalendarState,CalendarList,CalendarEvents,CalendarEventDetail,CalendarQuery} from './companion-calendar';
 import type {ContextInput,ContextPreview,ContextFile} from './companion-context';
 import type {CodexResultState} from './companion-codex-result';
 import {z} from 'zod';
 import type {IntegrationStatus,IntegrationRequest,IntegrationTab,IntegrationReceipt} from './companion-integrations';
 import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying} from './companion-media';
 import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab} from './companion-workspace';
-import type {GmailState,GmailSummary,GmailList,GmailMessage,GmailTrashReview,GmailImageResult} from './companion-gmail';
+import type {GmailFolder,GmailState,GmailSummary,GmailList,GmailMessage,GmailTrashReview,GmailImageResult} from './companion-gmail';
 import type {MailAnalysisInput,MailAnalysisPreview,MailAnalysisReceipt,MailReply} from './companion-mail-analysis';
 export const CompanionSettingsSchema=z.object({shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),paused:z.boolean().default(false),presentation:z.boolean().default(false),followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),silencedUntil:z.number().int().nonnegative().max(8640000000000000).default(0)}).strict();
 export type CompanionSettings=z.infer<typeof CompanionSettingsSchema>;
@@ -22,9 +24,11 @@ export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:Com
 export type CompanionApproval={id:string;session:string;turn:string;label:string;tool:string;preview:string;expiresAt:number};
 export type CompanionNotice={id:string;session:string;title:string;kind:'permission'|'finished'|'error';read:boolean;audible?:boolean;at:number};
 export type CompanionConnection={state:'unchecked'|'missing'|'review'|'disabled'|'ready'|'unavailable';checkedAt?:number;total:number;trusted:number;enabled:number};
-export type CompanionStatus={workspace?:WorkspaceState;revision?:number;integrations?:IntegrationStatus;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
+export type CompanionStatus={appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;integrations?:IntegrationStatus;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
+ appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;windowAction(action:'maximize'|'minimize'):Promise<CompanionResult<boolean>>;
+ calendarStatus():Promise<CompanionResult<CalendarState>>;calendarList(view:string):Promise<CompanionResult<CalendarList>>;calendarRange(view:string,query:CalendarQuery):Promise<CompanionResult<CalendarEvents>>;calendarEvent(view:string,key:string):Promise<CompanionResult<CalendarEventDetail>>;calendarConnect(view:string):Promise<CompanionResult<CalendarState>>;calendarCancel(view:string):Promise<CompanionResult<CalendarState>>;calendarDisconnect(view:string):Promise<CompanionResult<CalendarState>>;calendarClose(view:string):Promise<CompanionResult<boolean>>;calendarOpen(view:string,key:string):Promise<CompanionResult<boolean>>;calendarWeb(view:string):Promise<CompanionResult<boolean>>;calendarCloud(view:string):Promise<CompanionResult<boolean>>;
  codexTab(tab:CodexTab):Promise<CompanionResult<boolean>>;
  contextStatus():Promise<CompanionResult<ContextFile|null>>;contextChoose():Promise<CompanionResult<ContextFile|null>>;contextPrepare(input:ContextInput):Promise<CompanionResult<ContextPreview>>;contextCancel(id:string):Promise<CompanionResult<boolean>>;contextHandoff(id:string):Promise<CompanionResult<{copied:boolean;opened:boolean;at:number}>>;contextResult():Promise<CompanionResult<CodexResultState>>;
  gmailEnableTrash():Promise<CompanionResult<GmailState>>;gmailPrepareTrash(id:string):Promise<CompanionResult<GmailTrashReview>>;gmailTrash(token:string):Promise<CompanionResult<{threadId:string}>>;gmailTrashCancel():Promise<CompanionResult<boolean>>;
@@ -32,7 +36,7 @@ export interface CompanionBridge{
  gmailSummary():Promise<CompanionResult<GmailSummary>>;
  mediaNowPlaying():Promise<CompanionResult<MediaNowPlaying|null>>;mediaObservationClose():Promise<CompanionResult<boolean>>;
  gmailResult(thread:string):Promise<CompanionResult<CodexResultState>>;gmailReply(thread:string):Promise<CompanionResult<MailReply>>;gmailAnalysisPrepare(input:MailAnalysisInput):Promise<CompanionResult<MailAnalysisPreview>>;gmailAnalysisCancel(id:string):Promise<CompanionResult<boolean>>;gmailAnalysisHandoff(id:string):Promise<CompanionResult<MailAnalysisReceipt>>;gmailMessageClose():Promise<CompanionResult<boolean>>;
- gmailStatus():Promise<CompanionResult<GmailState>>;gmailConfigure(id:string):Promise<CompanionResult<GmailState>>;gmailConnect():Promise<CompanionResult<GmailState>>;gmailCancel():Promise<CompanionResult<GmailState>>;gmailDisconnect():Promise<CompanionResult<GmailState>>;gmailList(query:string,page?:string):Promise<CompanionResult<GmailList>>;gmailMessage(id:string):Promise<CompanionResult<GmailMessage>>;
+ gmailStatus():Promise<CompanionResult<GmailState>>;gmailConfigure(id:string):Promise<CompanionResult<GmailState>>;gmailConnect():Promise<CompanionResult<GmailState>>;gmailCancel():Promise<CompanionResult<GmailState>>;gmailDisconnect():Promise<CompanionResult<GmailState>>;gmailList(query:string,page?:string,folder?:GmailFolder):Promise<CompanionResult<GmailList>>;gmailMessage(id:string):Promise<CompanionResult<GmailMessage>>;
  navigate(page:WorkspacePage):Promise<CompanionResult<boolean>>;
  togglePage(page:LauncherPage):Promise<CompanionResult<boolean>>;
  gmailImportClient():Promise<CompanionResult<GmailState>>;
