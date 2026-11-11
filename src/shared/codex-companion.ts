@@ -7,8 +7,8 @@ import {z} from 'zod';
 import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from './companion-media';
 import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab} from './companion-workspace';
 import type {CapsuleAlignment} from './overlay-position';
-import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession} from './knowledge-hub';
-export const CompanionSettingsSchema=z.object({shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),paused:z.boolean().default(false),presentation:z.boolean().default(false),followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),silencedUntil:z.number().int().nonnegative().max(8640000000000000).default(0)}).strict();
+import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
+export const CompanionSettingsSchema=z.object({shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),paused:z.boolean().default(false),presentation:z.boolean().default(false),followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),keepOnTop:z.boolean().default(false),silencedUntil:z.number().int().nonnegative().max(8640000000000000).default(0)}).strict();
 export type CompanionSettings=z.infer<typeof CompanionSettingsSchema>;
 export const CompanionTargetSchema=z.object({session:z.string().min(1).max(160).regex(/^[a-zA-Z0-9._:-]+$/),cwd:z.string().min(3).max(4096).regex(/^(?:[a-zA-Z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/).refine(v=>!/[\0\r\n]/.test(v)),title:z.string().trim().min(1).max(200)}).strict();
 export type CompanionTarget=z.infer<typeof CompanionTargetSchema>;
@@ -35,6 +35,7 @@ export interface CompanionBridge{
  contextSource(selection:CodexReferenceSelection):Promise<CompanionResult<string>>;
  mediaNowPlaying():Promise<CompanionResult<MediaNowPlaying|null>>;mediaObservationClose():Promise<CompanionResult<boolean>>;
  navigate(page:WorkspacePage):Promise<CompanionResult<boolean>>;
+ notesRecent():Promise<CompanionResult<RecentHubNote[]>>;
  notesRead():Promise<CompanionResult<HubSession>>;
  notesChange(change:HubAction):Promise<CompanionResult<HubResult>>;
  notesDraft(draft:HubDraft|null):Promise<CompanionResult<true>>;
@@ -53,6 +54,7 @@ export interface CompanionBridge{
  sound(enabled:boolean):Promise<CompanionResult<boolean>>;silence(minutes:0|30):Promise<CompanionResult<boolean>>;testNotice():Promise<CompanionResult<boolean>>;
  presentation(enabled:boolean):Promise<CompanionResult<boolean>>;returnApp():Promise<CompanionResult<boolean>>;locate(session:string,path:string):Promise<CompanionResult<boolean>>;
  hide():Promise<CompanionResult<boolean>>;drag(action:'start'|'end'):Promise<CompanionResult<boolean>>;
+ pinWindow(enabled:boolean):Promise<CompanionResult<boolean>>;
  moveCapsule(alignment:CapsuleAlignment):Promise<CompanionResult<boolean>>;
 }
 declare global{interface Window{companion:CompanionBridge;}}

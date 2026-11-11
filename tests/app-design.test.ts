@@ -24,6 +24,23 @@ describe('extension of the anchored capsule',()=>{
  });
 });
 describe('local glass appearance and bounded wallpapers',()=>{
+ it('loads older low opacity at the readable minimum and accepts a fully opaque setting',()=>{
+  const f=fixture();
+  try{
+   const path=join(f.root,'companion-appearance.json');
+   const options={theme:'dark',accent:'amber',background:'image',opacity:.41,blur:7};
+   const image={id:'f7a1d0c2-75d5-4f6c-ae19-4b236156d6d8',name:'wallpaper.png'};
+   mkdirSync(join(f.root,'appearance'));
+   writeFileSync(join(f.root,'appearance',image.id+'.png'),png);
+   const previous=JSON.stringify({options,image});
+   writeFileSync(path,previous);
+   const appearance=new CompanionAppearance(f.root,bytes=>bytes);
+   expect(appearance.status()).toMatchObject({...options,opacity:.74,imageName:image.name});
+   expect(readFileSync(path,'utf8')).toBe(previous);
+   appearance.save({...options,opacity:1});
+   expect(new CompanionAppearance(f.root,bytes=>bytes).status()).toMatchObject({...options,opacity:1,imageName:image.name});
+  }finally{f.dispose();}
+ });
  it('persists glass settings across restarts separately from account files',()=>{const f=fixture();try{writeFileSync(join(f.root,'gmail-oauth.bin'),'ENCRYPTED_ACCOUNT');const s=new CompanionAppearance(f.root,b=>b),options={theme:'light',accent:'amber',opacity:.83,blur:17,background:'dusk'};s.save(options);expect(new CompanionAppearance(f.root,b=>b).status()).toEqual(options);expect(readFileSync(join(f.root,'gmail-oauth.bin'),'utf8')).toBe('ENCRYPTED_ACCOUNT');}finally{f.dispose();}});
  it('normalizes a picker-selected raster and exposes only its opaque URL and basename',()=>{const f=fixture();try{const input=join(f.root,'wallpaper.png');writeFileSync(input,png);let normalized=false;const s=new CompanionAppearance(f.root,b=>{normalized=true;expect(b).toEqual(png);return png;}),r=s.import(input);expect(normalized).toBe(true);expect(r).toMatchObject({background:'image',imageName:'wallpaper.png'});expect(r.imageUrl).toMatch(/^zen-theme:\/\/background\/[a-f0-9-]{36}$/);expect(JSON.stringify(r)).not.toContain(f.root);expect(s.image(r.imageUrl!.split('/').at(-1)!)).toEqual(png);expect(new CompanionAppearance(f.root,b=>b).status()).toEqual(r);}finally{f.dispose();}});
  it('serves only the current owned image and rejects traversal, URLs or guessed paths',()=>{const f=fixture();try{const p=join(f.root,'image.png');writeFileSync(p,png);const s=new CompanionAppearance(f.root,b=>b);const a=s.import(p),b=s.import(p);expect(()=>s.image(a.imageUrl!.split('/').at(-1)!)).toThrow();for(const id of ['../../gmail-oauth.bin','file:///private','https://example.test','00000000-0000-4000-8000-000000000000'])expect(()=>s.image(id)).toThrow();expect(s.image(b.imageUrl!.split('/').at(-1)!)).toEqual(png);}finally{f.dispose();}});

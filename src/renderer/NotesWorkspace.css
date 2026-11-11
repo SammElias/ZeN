@@ -1,7 +1,7 @@
 .knowledge-hub {
   --hub-rgb: var(--glass-rgb);
   --hub-tint: var(--glass-accent-rgb);
-  --hub-bg: rgb(var(--hub-rgb) / calc(.57 + .39 * var(--glass-opacity)));
+  --hub-bg: rgb(var(--hub-rgb) / var(--glass-panel-opacity));
   --hub-sidebar: rgb(var(--hub-rgb) / calc(.42 + .38 * var(--glass-opacity)));
   --hub-paper: rgb(var(--hub-rgb) / calc(.46 + .39 * var(--glass-opacity)));
   --hub-popover: rgb(var(--hub-rgb) / .96);
@@ -51,7 +51,7 @@
   --hub-rgb: 28 28 29;
   --hub-tint: 245 245 245;
   --hub-text: #fafafa;
-  --hub-muted: #bdbdbf;
+  --hub-muted: #d2d2d4;
   --hub-on-accent: #18191a;
 }
 
@@ -379,7 +379,7 @@
   padding: clamp(12px, 2vw, 26px);
   gap: 11px;
 }
-.notes-editor > :is(header, footer) { flex: none; }
+.notes-editor > :is(header, footer, .notes-code-heading) { flex: none; }
 .notes-editor-heading { flex-wrap: wrap; align-items: start; }
 .notes-editor-heading > div:first-child { min-width: 0; flex: 1 1 145px; }
 @container note-reader (max-width: 430px) {
@@ -448,11 +448,11 @@
   overflow-wrap: anywhere;
   font-size: 13px;
 }
-.hub-document[data-kind=prompt] .notes-code-heading {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--hub-popover);
+.hub-prompt-markdown {
+  padding: 12px;
+  border: 1px solid var(--hub-line);
+  border-radius: 8px;
+  background: var(--hub-code);
 }
 .hub-highlight :is(.hljs-keyword,.hljs-selector-tag,.hljs-type) { color: var(--hub-keyword); }
 .hub-highlight :is(.hljs-string,.hljs-title,.hljs-addition) { color: var(--hub-string); }
@@ -481,7 +481,7 @@
 .hub-attachments { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .hub-attachments div { display: flex; align-items: center; gap: 5px; font-size: 11px; overflow-wrap: anywhere; }
 .hub-attachments div button { padding: 3px 5px; min-height: 25px; }
-.hub-undo { margin-top: 6px !important; }
+.hub-document .hub-undo { margin-top: 6px !important; }
 
 .hub-feedback {
   display: flex;

@@ -231,6 +231,11 @@
 }
 .companion-capsule .capsule-single-row .capsule-actions > button:hover:not(:disabled),
 .companion-capsule .capsule-single-row .capsule-actions > button[aria-expanded=true] { background: var(--rail-hover); color: var(--glass-text); }
+.companion-capsule .capsule-single-row .capsule-actions > .capsule-pin[aria-pressed=true] {
+  background: var(--rail-selected);
+  color: var(--glass-text);
+  border: 1px solid rgb(var(--glass-accent-rgb) / .45);
+}
 .companion-capsule .capsule-single-row .capsule-actions > .capsule-hide { margin-left: 2px; }
 .companion-capsule .capsule-single-row .capsule-actions > .capsule-hide:hover { background: #ae384238; color: var(--glass-text); }
 .capsule-single-row .return-app span { display: none; }
@@ -291,13 +296,8 @@
     gap: 1px;
   }
   .companion-capsule .capsule-single-row .capsule-actions > button { width: 100%; min-width: 0; height: 25px; }
-  .companion-capsule .capsule-single-row .capsule-actions > .capsule-hide {
-    grid-column: 5;
-    grid-row: 1 / 3;
-    height: 32px;
-    margin: 0;
-    align-self: center;
-  }
+  .capsule-single-row .capsule-pin { grid-column: 5; grid-row: 1; }
+  .companion-capsule .capsule-single-row .capsule-actions > .capsule-hide { grid-column: 5; grid-row: 2; margin: 0; }
   .capsule-single-row .capsule-move { grid-column: 1 / 5; grid-row: 2; justify-content: space-evenly; gap: 1px; padding: 0 1px; }
   .capsule-single-row .capsule-move-grip { width: 14px; height: 22px; }
   .capsule-single-row .capsule-move button { width: 20px; height: 22px; padding: 2px; }

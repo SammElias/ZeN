@@ -6,7 +6,7 @@ import {OpenCodex, Quiet, Signal} from './CompanionActions';
 
 export function CompanionSettings({status}:{status:CompanionStatus}){
  const [draft,setDraft]=useState<CompanionSettings>(status.settings),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- useEffect(()=>setDraft(status.settings),[JSON.stringify(status.settings)]);
+ useEffect(()=>setDraft(status.settings),[JSON.stringify({...status.settings,keepOnTop:undefined})]);
  const test=async()=>{if(status.settings.presentation){setNotice('Desactiva Presentación para probar avisos.');return;}if(isSilenced(status.settings)){setNotice('Los avisos están silenciados temporalmente. Reactívalos para probar.');return;}if(status.settings.sounds){Sound.setEnabled(true);Sound.setVolume(.1);await Sound.preload();Sound.resume();Sound.play('finish');}const r=await window.companion.testNotice();setNotice(r.ok?'Aviso de prueba enviado. Comprueba el sonido y la notificación.':r.error);};
  return <>
   <details className="settings-connection"><summary>Conexión y diagnóstico de Codex</summary>

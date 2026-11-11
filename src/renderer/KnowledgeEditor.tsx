@@ -25,9 +25,15 @@ export function KnowledgeEditor(props: Props) {
   const fields = draft.fields;
   const {kind, title, description, code, related, images, tags, language} = fields;
   const isPrompt = kind === 'prompt';
-  const [beforeFormat, setBeforeFormat] = useState<string>();
+  const [beforeFormat, setBeforeFormat] = useState<{text: string; version?: number}>();
+  const [promptView, setPromptView] = useState<'markdown' | 'text'>('markdown');
+  const [formatTooLong, setFormatTooLong] = useState(false);
   const [substitutions, setSubstitutions] = useState<Record<string,string>>({});
   const reading = mode !== 'edit';
+  const hasCode = Boolean(code.trim());
+  const markdownField = isPrompt ? 'code' : 'description';
+  const markdownSource = fields[markdownField];
+  const markdownLimit = noteLimits[markdownField];
   const codeKeys = kind === 'note' ? [] : variables(code).slice(0,32);
   const relatedEntries = data.entries.filter(item => kind === 'project'
     ? ['note','snippet','resource'].includes(item.kind) : kind === 'resource' && item.kind === 'note');
@@ -40,31 +46,85 @@ export function KnowledgeEditor(props: Props) {
   </select></label>;
   const tagsField = <label>Etiquetas<input defaultValue={tags.join(', ')}
     placeholder="mcp, arquitectura" maxLength={850} onChange={event => update({tags:tagsFrom(event.target.value)})}/></label>;
+  const undoFormat = dirty && beforeFormat && beforeFormat.version === draft.expected && <button type="button" className="hub-undo" onClick={() => {
+    update({[markdownField]:beforeFormat.text});
+    setBeforeFormat(undefined);
+    setMode('edit');
+  }}><Undo2 size={15}/>Deshacer formato</button>;
+  const codeHeading = <div className="notes-code-heading">
+    <strong>{isPrompt ? 'Prompt' : language || 'Comandos o código'}</strong>
+    <div className="hub-tools">
+      {isPrompt && <>
+        <div className="hub-switch" role="group" aria-label="Vista del prompt">
+          <button type="button" aria-pressed={promptView==='markdown'} onClick={() => setPromptView('markdown')}>Markdown</button>
+          <button type="button" aria-pressed={promptView==='text'} onClick={() => setPromptView('text')}>Texto</button>
+        </div>
+        {undoFormat}
+      </>}
+      <button type="button" aria-label="Copiar" disabled={busy || kind!=='note' && (!saved || dirty)} onClick={() => {
+        props.copy(Object.fromEntries(codeKeys.filter(key => Object.hasOwn(substitutions,key)).map(key => [key,substitutions[key]])));
+      }}><Copy size={15}/>Copiar</button>
+    </div>
+  </div>;
 
-  function format() {
-    const formatted = formatNoteMarkdown(description);
-    if (formatted.length > noteLimits.description) return;
-    if (formatted !== description) {
-      setBeforeFormat(description);
-      update({description:formatted});
-    }
+  function preview() {
+    setFormatTooLong(false);
+    setPromptView('markdown');
     setMode('preview');
   }
 
-  function insert(value: string) {
-    const area = document.getElementById('notes-description') as HTMLTextAreaElement | null;
+  function format() {
+    const formatted = formatNoteMarkdown(markdownSource);
+    if (formatted.length > markdownLimit) {
+      setFormatTooLong(true);
+      return;
+    }
+    if (formatted !== markdownSource) {
+      setBeforeFormat({text:markdownSource,version:draft.expected});
+      update({[markdownField]:formatted});
+    }
+    preview();
+  }
+
+  function updateMarkdown(text: string) {
+    update({[markdownField]:text});
+    setBeforeFormat(undefined);
+    setFormatTooLong(false);
+  }
+
+  function insert(value: string, formatSelection?: (selected: string) => string) {
+    const area = document.getElementById(isPrompt?'notes-code':'notes-description') as HTMLTextAreaElement | null;
     if (!area) return;
     const start = area.selectionStart;
     const end = area.selectionEnd;
-    const changed = description.slice(0,start) + value + description.slice(end);
-    if (changed.length > noteLimits.description) return;
-    update({description:changed});
-    setBeforeFormat(undefined);
+    const selection = markdownSource.slice(start,end);
+    const insertion = selection && formatSelection ? formatSelection(selection) : selection + value;
+    const changed = markdownSource.slice(0,start) + insertion + markdownSource.slice(end);
+    if (changed.length > markdownLimit) return;
+    updateMarkdown(changed);
     requestAnimationFrame(() => {
       area.focus();
-      area.setSelectionRange(start+value.length,start+value.length);
+      const cursor = start + insertion.length;
+      area.setSelectionRange(cursor,cursor);
     });
   }
+
+  const markdownTools = <>
+  <div className="hub-markdown-tools" role="group" aria-label="Herramientas Markdown">
+    <button type="button" onClick={() => insert('\n# Título\n', text => '\n# '+text+'\n')}>H1</button>
+    <button type="button" onClick={() => insert('\n## Subtítulo\n', text => '\n## '+text+'\n')}>H2</button>
+    <button type="button" onClick={() => insert('\n### Sección\n', text => '\n### '+text+'\n')}>H3</button>
+    <button type="button" aria-label="Insertar lista" title="Lista" onClick={() => insert('\n- ', text => '\n- '+text.replaceAll('\n','\n- ')+'\n')}><List size={16}/></button>
+    <button type="button" aria-label="Insertar checklist" title="Checklist" onClick={() => insert('\n- [ ] ', text => '\n- [ ] '+text.replaceAll('\n','\n- [ ] ')+'\n')}><ListChecks size={16}/></button>
+    <button type="button" aria-label="Insertar tabla" title="Tabla" onClick={() => insert('\n| Campo | Detalle |\n| --- | --- |\n| | |\n')}><Table size={16}/></button>
+    <button type="button" aria-label="Insertar bloque de código" title="Bloque de código" onClick={() => insert('\n```\n\n```\n', text => '\n```\n'+text+'\n```\n')}><Code2 size={16}/></button>
+    <button type="button" aria-label="Insertar enlace" title="Enlace" onClick={() => insert('[Texto](https://)', text => '['+text+'](https://)')}><ArrowUpRight size={16}/></button>
+    {kind==='note' && <button type="button" aria-label="Insertar plantilla técnica" title="Plantilla técnica"
+      onClick={() => insert('\n'+technicalTemplate)}><FilePlus2 size={16}/></button>}
+    <button className="notes-format" type="button" disabled={!markdownSource.trim()} onClick={format}><Sparkles size={15}/>Dar formato</button>
+  </div>
+  {formatTooLong && <p className="hub-muted" role="alert">El resultado supera el límite de {markdownLimit.toLocaleString('es')} caracteres.</p>}
+  </>;
 
   return <form className="notes-editor hub-paper" onSubmit={event => {event.preventDefault(); if (valid && dirty && !busy) save();}}>
     <header className="notes-editor-heading">
@@ -79,7 +139,7 @@ export function KnowledgeEditor(props: Props) {
         <button type="button" className="hub-reader-back" aria-label="Volver a la lista" title="Volver a la lista" onClick={props.back}><ArrowLeft size={16}/></button>
         {saved && <button type="button" title="Favorito" aria-label="Favorito" aria-pressed={saved.favorite}
           disabled={busy || dirty} onClick={props.favorite}><Star size={16} fill={saved.favorite?'currentColor':'none'}/></button>}
-        <button type="button" onClick={() => setMode(reading?'edit':'preview')} disabled={busy}>
+        <button type="button" onClick={() => reading ? setMode('edit') : preview()} disabled={busy}>
           {reading?<Pencil size={15}/>:<Code2 size={15}/>} {reading?'Editar':isPrompt?'Vista previa':'Vista Markdown'}
         </button>
         {saved && <details className="hub-menu">
@@ -93,6 +153,7 @@ export function KnowledgeEditor(props: Props) {
       </div>
     </header>
 
+    {reading && isPrompt && hasCode && codeHeading}
     {reading ? <div className="hub-document" data-kind={kind}>
       {tags.length > 0 && <div className="hub-tags">{tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
       {kind === 'project' && <p className="hub-meta"><strong>{statusLabels[fields.status]}</strong>{fields.technologies.length>0 && ' · '+fields.technologies.join(' · ')}</p>}
@@ -101,14 +162,11 @@ export function KnowledgeEditor(props: Props) {
       {kind === 'resource' && fields.url && <button type="button" className="hub-resource" onClick={() => props.openUrl(fields.url)}>
         <ArrowUpRight size={16}/><span>{fields.url}</span>
       </button>}
-      {code.trim() && <>
-        <div className="notes-code-heading">
-          <strong>{kind === 'prompt'?'Prompt':language || 'Comandos o código'}</strong>
-          <button type="button" disabled={busy || kind!=='note' && (!saved || dirty)} onClick={() => {
-            props.copy(Object.fromEntries(codeKeys.filter(key => Object.hasOwn(substitutions,key)).map(key => [key,substitutions[key]])));
-          }}><Copy size={15}/>Copiar</button>
-        </div>
-        <pre className="notes-code-preview" tabIndex={0}><KnowledgeCode text={code} language={language}/></pre>
+      {hasCode && <>
+        {!isPrompt && codeHeading}
+        {isPrompt && promptView==='markdown'
+          ? <MarkdownPreview text={code} className="notes-markdown hub-prompt-markdown" open={props.openUrl} renderCode={renderCode}/>
+          : <pre className="notes-code-preview" tabIndex={0}><KnowledgeCode text={code} language={language}/></pre>}
         {codeKeys.length>0 && <div className="hub-fields">{codeKeys.map(key => <label key={key}>{key}
           <input value={substitutions[key] ?? ''} maxLength={1024} placeholder={'{{'+key+'}}'}
             onChange={event => {
@@ -134,9 +192,7 @@ export function KnowledgeEditor(props: Props) {
         <div className="hub-related">{references.map(item => <button type="button" key={item.id}
           onClick={() => props.openEntry(item)}>{item.title}<ArrowUpRight size={14}/></button>)}</div>
       </section>}
-      {dirty && beforeFormat !== undefined && <button type="button" className="hub-undo" onClick={() => {
-        update({description:beforeFormat});setBeforeFormat(undefined);setMode('edit');
-      }}><Undo2 size={15}/>Deshacer formato</button>}
+      {!isPrompt && undoFormat}
     </div> : <fieldset className="hub-edit" data-kind={kind} disabled={busy}>
       <div className="hub-fields">
         <label htmlFor="notes-title-field">Título<input id="notes-title-field" required maxLength={noteLimits.title}
@@ -148,9 +204,10 @@ export function KnowledgeEditor(props: Props) {
           <label className="hub-field" htmlFor="notes-code">Contenido del prompt</label>
           <button type="button" disabled={!code.trim()} onClick={()=>props.copy({})}><Copy size={15}/>Copiar</button>
         </div>
+        {markdownTools}
         <textarea id="notes-code" className="notes-code" rows={7} spellCheck={false} required
           maxLength={noteLimits.code} value={code} placeholder="Escribe o pega aquí el prompt"
-          onChange={event => update({code:event.target.value})}/>
+          onChange={event => updateMarkdown(event.target.value)}/>
         <details className="hub-details">
           <summary>Datos opcionales</summary>
           <label className="hub-field">Objetivo<textarea rows={2} maxLength={noteLimits.description} value={description}
@@ -166,22 +223,10 @@ export function KnowledgeEditor(props: Props) {
         </details>
       </> : <>
       <label className="hub-field" htmlFor="notes-description">{kind==='project'?'Descripción y documentación':'Descripción'}</label>
-      <div className="hub-markdown-tools" aria-label="Herramientas Markdown">
-        <button type="button" onClick={() => insert('\n# Título\n')}>H1</button>
-        <button type="button" onClick={() => insert('\n## Subtítulo\n')}>H2</button>
-        <button type="button" onClick={() => insert('\n### Sección\n')}>H3</button>
-        <button type="button" aria-label="Insertar lista" title="Lista" onClick={() => insert('\n- ')}><List size={16}/></button>
-        <button type="button" aria-label="Insertar checklist" title="Checklist" onClick={() => insert('\n- [ ] ')}><ListChecks size={16}/></button>
-        <button type="button" aria-label="Insertar tabla" title="Tabla" onClick={() => insert('\n| Campo | Detalle |\n| --- | --- |\n| | |\n')}><Table size={16}/></button>
-        <button type="button" aria-label="Insertar bloque de código" title="Bloque de código" onClick={() => insert('\n```\n\n```\n')}><Code2 size={16}/></button>
-        <button type="button" aria-label="Insertar enlace" title="Enlace" onClick={() => insert('[Texto](https://)')}><ArrowUpRight size={16}/></button>
-        {kind==='note' && <button type="button" aria-label="Insertar plantilla técnica" title="Plantilla técnica"
-          onClick={() => insert('\n'+technicalTemplate)}><FilePlus2 size={16}/></button>}
-        <button className="notes-format" type="button" disabled={!description.trim()} onClick={format}><Sparkles size={15}/>Dar formato</button>
-      </div>
+      {markdownTools}
       <textarea id="notes-description" rows={kind==='note'||kind==='project'?7:3} required={kind==='note'}
         maxLength={noteLimits.description} value={description} placeholder="Escribe en Markdown…"
-        onChange={event => {update({description:event.target.value});setBeforeFormat(undefined);}}/>
+        onChange={event => updateMarkdown(event.target.value)}/>
       {kind !== 'resource' && kind !== 'project' && <>
         <div className="notes-code-heading">
           <label htmlFor="notes-code">Comandos o código</label>

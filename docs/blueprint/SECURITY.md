@@ -11,6 +11,7 @@ No publicar tokens, rutas personales, IDs reales, perfiles, historiales ni fondo
 - Electron usa sandbox, aislamiento de contexto y Node deshabilitado en el renderer. El proceso principal verifica frame, URL local y esquema antes de ejecutar.
 - Las respuestas se muestran como Markdown inerte; texto procedente de Codex o aportado por un tercero no adquiere permisos.
 - Pausa, Presentación y visibilidad se comprueban antes de IPC y en efectos asíncronos. En Resumen se verifica la vista y el chat antes de revelar la última respuesta.
+- Inicio recibe únicamente los metadatos de los apuntes recientes. Los cuerpos, adjuntos y borradores se consultan en Knowledge Hub. Inicio usa las etiquetas y fechas de actividad de Codex y abre Resumen para mostrar una respuesta.
 - La revisión de análisis caduca a los dos minutos, es de un uso y conserva una huella del archivo. La selección usa diálogo nativo y excluye enlaces simbólicos y archivos de más de 32 MiB.
 - La imagen de fondo se normaliza localmente; el protocolo de tema solo sirve el fondo vigente. No se adjunta a peticiones.
 - La observación de multimedia no envía acciones. El control exige selección vigente y gesto explícito.

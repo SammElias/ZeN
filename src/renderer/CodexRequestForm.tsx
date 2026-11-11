@@ -59,19 +59,13 @@ export function CodexRequestForm({fixedChat}: {fixedChat?: string}) {
     }
   }
 
-  return <form className="codex-request-form" onSubmit={event => {event.preventDefault(); void submit(draft, true);}}>
-    <label className="home-composer-title" htmlFor="codex-request">
+  return <form className="codex-request-form" aria-labelledby="home-composer-title" onSubmit={event => {event.preventDefault(); void submit(draft, true);}}>
+    <label id="home-composer-title" className="home-composer-title" htmlFor="codex-request">
       <span className="home-status-icon"><CompanionIcon name="code"/></span>
       Petición para Codex
     </label>
-    <div className="codex-quick-requests" role="group" aria-label="Atajos de Codex">
-      {quickRequests.map(({id, icon, label, detail, prompt}) => <button key={id} type="button" disabled={busy}
-        data-quick-request={id} title={detail} onClick={() => void submit(prompt)}>
-        <CompanionIcon name={icon}/>{label}
-      </button>)}
-    </div>
-    <textarea id="codex-request" rows={3} maxLength={MAX_CODEX_REQUEST} value={draft} disabled={busy}
-      placeholder="Por ejemplo: dime qué reuniones tengo mañana."
+    <textarea id="codex-request" rows={2} maxLength={MAX_CODEX_REQUEST} value={draft} disabled={busy}
+      aria-describedby="home-request-destination" placeholder="¿Qué necesitas que haga Codex?"
       onChange={event => {setDraft(event.target.value); setFeedback(undefined);}}
       onKeyDown={event => {
         if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
@@ -80,12 +74,18 @@ export function CodexRequestForm({fixedChat}: {fixedChat?: string}) {
         }
       }}/>
     <div className="codex-request-actions">
-      <small>{fixedChat ? `Chat fijado · ${fixedChat}` : 'Revisa y envía la petición en Codex.'}</small>
+      <div className="codex-quick-requests" role="group" aria-label="Atajos de Codex">
+        {quickRequests.map(({id, icon, label, detail, prompt}) => <button key={id} type="button" disabled={busy}
+          data-quick-request={id} title={detail} onClick={() => void submit(prompt)}>
+          <CompanionIcon name={icon}/>{label}
+        </button>)}
+      </div>
       <button type="submit" className="primary" disabled={busy || !CodexRequest.safeParse(draft).success}>
         {busy ? fixedChat ? 'Enviando…' : 'Abriendo…' : fixedChat ? 'Enviar a Codex' : 'Abrir en Codex'}
         <CompanionIcon name="arrow"/>
       </button>
     </div>
+    <small id="home-request-destination">{fixedChat ? `Chat fijado · ${fixedChat}` : 'Revisa y envía la petición en Codex.'}</small>
     {feedback && <div className="codex-request-actions">
       <small role={feedback.error ? 'alert' : 'status'}>{feedback.text}</small>
       {fixedChat && <button type="button" onClick={async () => {

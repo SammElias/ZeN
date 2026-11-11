@@ -1,11 +1,11 @@
 import {randomUUID} from 'node:crypto';
-import {closeSync, fstatSync, openSync, readSync} from 'node:fs';
+import {closeSync, existsSync, fstatSync, openSync, readSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {imageSize} from 'image-size';
 import {CompanionNotes} from './companion-notes';
 import {
   collections, HubAction, HubData, HubDraft, HubEntry, HubFolder, newFields, variables,
-  type HubFields, type HubResult, type HubSession,
+  type HubFields, type HubResult, type HubSession, type RecentHubNote,
 } from '../shared/knowledge-hub';
 
 export const hubMaximumBytes = 32 * 1024 * 1024;
@@ -138,6 +138,32 @@ export class KnowledgeHub {
       const draft = db.prepare("SELECT value FROM hub_state WHERE key='draft'").get()?.value;
       return {data, draft: draft ? HubDraft.parse(JSON.parse(String(draft))) : undefined};
     });
+  }
+
+  recentNotes(): RecentHubNote[] {
+    if (!existsSync(this.path)) {
+      const {notes, folders} = new CompanionNotes(this.legacyPath).read();
+      return notes.sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,4).map(({id,title,updatedAt,folderId})=>({
+        id, title, updatedAt, favorite:false, folder:folders.find(item=>item.id===folderId)?.name ?? null,
+      }));
+    }
+    const db = new DatabaseSync(this.path, {readOnly:true});
+    try {
+      const rows = db.prepare(`
+        SELECT entry.id, json_extract(entry.value, '$.title') AS title,
+               json_extract(entry.value, '$.updatedAt') AS updatedAt,
+               json_extract(entry.value, '$.favorite') AS favorite,
+               json_extract(folder.value, '$.name') AS folder
+        FROM hub_entries AS entry
+        LEFT JOIN hub_folders AS folder ON folder.id = json_extract(entry.value, '$.folderId')
+        WHERE json_extract(entry.value, '$.kind') = 'note'
+        ORDER BY updatedAt DESC, entry.id
+        LIMIT 4
+      `).all() as (Omit<RecentHubNote, 'favorite'> & {favorite: number})[];
+      return rows.map(row=>({...row,favorite:row.favorite===1}));
+    } finally {
+      db.close();
+    }
   }
 
   draft(value: HubDraft | null) {

@@ -40,14 +40,14 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  report.capsuleNativeOuterFrameRemoved=await nativeCapsuleFrame();report.capsuleNoCssOuterShadow=await js(cap,"getComputedStyle(document.querySelector('.companion-capsule')).boxShadow==='none'");
  await wait(()=>js(cap,"document.querySelector('.companion-capsule').dataset.background==='dusk'"));
  report.capsuleAppearanceAtStartup=await js(cap,"(()=>{const r=document.querySelector('.companion-capsule'),h=getComputedStyle(document.querySelector('.capsule-single-row'));return{theme:r.dataset.theme,background:r.dataset.background,color:h.backgroundColor,blur:h.backdropFilter,layer:getComputedStyle(r,'::before').content};})()");
- report.capsuleSavedAppearanceOnStartup=report.capsuleAppearanceAtStartup.theme==='dark'&&report.capsuleAppearanceAtStartup.background==='dusk'&&report.capsuleAppearanceAtStartup.color==='rgba(18, 20, 31, 0.41)'&&report.capsuleAppearanceAtStartup.blur.includes('blur(7px)')&&report.capsuleAppearanceAtStartup.layer!=='none';
+ report.capsuleSavedAppearanceOnStartup=report.capsuleAppearanceAtStartup.theme==='dark'&&report.capsuleAppearanceAtStartup.background==='dusk'&&report.capsuleAppearanceAtStartup.color==='rgba(18, 20, 31, 0.74)'&&report.capsuleAppearanceAtStartup.blur.includes('blur(7px)')&&report.capsuleAppearanceAtStartup.layer!=='none';
  await writeEvidence(join(evidenceDirectory,'capsule-frame-native.json'),JSON.stringify({at:new Date().toISOString(),attributes:report.capsuleNativeFrameAttributes,outerFrameRemoved:report.capsuleNativeOuterFrameRemoved,cssOuterShadowRemoved:report.capsuleNoCssOuterShadow}));
  report.capsuleSize=cap.getBounds().width===820&&cap.getBounds().height===68;
  const headerLayout=()=>js(cap,`(()=>{
   const header=document.querySelector('.capsule-single-row'),rect=e=>e.getBoundingClientRect(),h=rect(header);
   const blocks=[...header.querySelectorAll(':scope>[data-capsule-block]')].map(rect);
   const buttons=[...header.querySelectorAll('.capsule-launcher button,.capsule-actions>button,.capsule-move button')].map(rect);
-  return blocks.length===4&&buttons.length===12&&blocks.every((r,i)=>r.width>0&&r.left>=h.left&&r.right<=h.right+.5&&r.top>=h.top&&r.bottom<=h.bottom+.5&&(!i||blocks[i-1].right<=r.left+.5))&&
+  return blocks.length===4&&buttons.length===13&&blocks.every((r,i)=>r.width>0&&r.left>=h.left&&r.right<=h.right+.5&&r.top>=h.top&&r.bottom<=h.bottom+.5&&(!i||blocks[i-1].right<=r.left+.5))&&
    buttons.every(r=>r.width>0&&r.height>0&&r.left>=0&&r.right<=innerWidth+.5&&r.top>=0&&r.bottom<=h.bottom+.5)&&header.scrollWidth<=header.clientWidth;
  })()`);
  report.capsuleSingleRowWithoutOverlap=await headerLayout();
@@ -88,6 +88,8 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  })()`;
  const foldedRail=await js(cap,railStyle);
  await nav('home');
+ await wait(()=>js(cap,"[...document.querySelectorAll('.home-panel button')].some(b=>b.textContent==='Crear apunte')"));
+ report.homeShowsRealEmptyStates=await js(cap,"document.querySelector('#home-title').textContent==='ZEN Workspace'&&!!document.querySelector('[data-home-card=notes]')&&document.querySelector('.home-panel').textContent.includes('Todavía no tienes apuntes.')");
  report.capsuleRailStableWhenExpanded=await js(cap,railStyle)===foldedRail;
  const homeBounds=cap.getBounds();
  await js(cap,"document.querySelector('.capsule-move [data-alignment=right]').click()");
@@ -112,13 +114,13 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const expandedBounds=cap.getBounds();
  report.extensionAnchored=same(expandedBounds,{...compactBounds,y:workArea.y,height:workArea.height});
  report.extensionFullHeight=expandedBounds.y===workArea.y&&expandedBounds.height===workArea.height;
- report.extensionStaysCapsule=!cap.isResizable()&&!cap.isMovable()&&!cap.isMaximizable()&&cap.isAlwaysOnTop()&&await headerLayout();
+ report.extensionStaysCapsule=!cap.isResizable()&&!cap.isMovable()&&!cap.isMaximizable()&&await headerLayout();
  report.extensionHeaderHeight=await js(cap,"document.querySelector('.companion-bar').getBoundingClientRect().height===66&&!('windowAction' in window.companion)");
  report.extensionHasNoNativeFrame=await nativeCapsuleFrame();
  report.singleCapsuleWindow=BrowserWindow.getAllWindows().length===1;
  report.launcherNoPrivateAccess=await js(cap,"window.companion.mediaList().then(r=>!r.ok)");
  report.fourHeaderIconsAndNotices=await js(cap,"document.querySelectorAll('.companion-bar .capsule-launcher button').length===4&&!!document.querySelector('.capsule-launcher [data-page=notes]')&&!!document.querySelector('.capsule-actions [data-page=notices]')");
- report.cleanCapsuleControls=await js(cap,"document.querySelectorAll('.companion-bar nav[aria-label=\"Controles de la cápsula\"]>button').length===5");
+ report.cleanCapsuleControls=await js(cap,"document.querySelectorAll('.companion-bar nav[aria-label=\"Controles de la cápsula\"]>button').length===6");
  await shot(cap,'capsule-integrations');
  await js(cap,"document.querySelector('[aria-label=Opciones]').click()");await wait(()=>js(cap,"!!document.querySelector('.capsule-inline-menu')"));report.inlineOptions=await js(cap,"document.body.textContent.includes('Presentación')&&document.body.textContent.includes('Preferencias')")&&BrowserWindow.getAllWindows().length===1;
  await js(cap,"document.querySelector('.companion-bar [data-page=spotify]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))");await wait(()=>js(cap,"!!document.querySelector('.workspace-content[data-page=shortcuts]')"));report.inlineContextMenu=await js(cap,"document.body.textContent.includes('Ver en cápsula')")&&BrowserWindow.getAllWindows().length===1;
@@ -145,15 +147,31 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
    resolve(true);
   });
  });
+ const setPin=async(enabled:boolean)=>{
+  await js(cap,"document.querySelector('.capsule-pin').click()");
+  await wait(async()=>cap.isAlwaysOnTop()===enabled&&await js(cap,`document.querySelector('.capsule-pin').getAttribute('aria-pressed')==='${enabled}'`));
+  const saved=JSON.parse(readFileSync(join(profile,'companion-settings.json'),'utf8'));
+  if(saved.keepOnTop!==enabled)throw Error('No se guardó el estado del candado.');
+ };
+ report.capsulePinStartsUnlocked=!cap.isAlwaysOnTop()&&await js(cap,"document.querySelector('.capsule-pin').getAttribute('aria-pressed')==='false'");
  for(const page of [null,'home']){
   if(page)await nav(page);
   const before=cap.getBounds();
+  await setPin(true);
   dismissOnOutsideClick();
+  if(!cap.isVisible()||cap.isMinimized()||!cap.isAlwaysOnTop()||!same(before,cap.getBounds()))throw Error('Un clic fuera ocultó la ventana fijada.');
+  await js(cap,"document.querySelector('.capsule-hide').click()");
   await wait(async()=>cap.isMinimized()&&!cap.isAlwaysOnTop());
   cap.restore();
   await wait(async()=>cap.isVisible()&&!cap.isMinimized()&&cap.isAlwaysOnTop()&&same(before,cap.getBounds()));
+  await setPin(false);
+  dismissOnOutsideClick();
+  await wait(async()=>cap.isMinimized()&&!cap.isAlwaysOnTop());
+  cap.restore();
+  await wait(async()=>cap.isVisible()&&!cap.isMinimized()&&!cap.isAlwaysOnTop()&&same(before,cap.getBounds()));
   await wait(()=>js(cap,page?"!!document.querySelector('.workspace-content[data-page=home]')":"!document.querySelector('.workspace-content')"));
  }
+ report.capsulePinWorksInBothModes=true;
  await js(cap,"window.companion.launcher(false)");
  await wait(()=>js(cap,"!document.querySelector('.workspace-content')"));
  report.outsideClickDismissesBothModes=same(compactBounds,cap.getBounds());
@@ -267,6 +285,15 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const quick=queuedRequests.slice(quickQueueStart);
  report.quickRequestsQueueReadOnlyInFixedChat=quick.length===2&&quick.every(r=>r.thread==='native-test'&&r.text.includes('solo consultas de lectura'))&&quick[0].text.includes('conector de Gmail de Codex')&&quick[1].text.includes('conector de Google Calendar de Codex')&&openedTargets.length===beforeRequestOpen&&copiedRequests.length===beforeRequestCopy;
  report.quickRequestsPreserveDraft=await js(cap,"document.querySelector('#codex-request').value==='Borrador propio'");
+ report.homeComposerExpandsWithinLimit=await js(cap,`(()=>{
+  const field=document.querySelector('#codex-request'),before=field.clientHeight;
+  const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set;
+  set.call(field,Array.from({length:24},(_,i)=>'Línea '+i).join('\\n'));
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+  return new Promise(resolve=>requestAnimationFrame(()=>resolve(
+   field.clientHeight>before&&field.getBoundingClientRect().height<=196&&field.scrollHeight>field.clientHeight
+  )));
+ })()`);
  const fillNoteField=(id:string,value:string)=>js(cap,`(()=>{
   const input=document.getElementById(${JSON.stringify(id)});
   Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input),'value').set.call(input,${JSON.stringify(value)});
@@ -281,6 +308,10 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   ]});
  writeFileSync(join(profile,'companion-notes.json'),legacyNotebook);
  report.notesReadDeniedOutsideNotes=await js(cap,"window.companion.notesRead().then(r=>!r.ok)");
+ report.homeRecentLegacyMetadataOnly=await js(cap,`window.companion.notesRecent().then(r=>r.ok&&
+  r.value.map(n=>n.title).join('|')==='Nota de AI ENGINER|Apunte anterior'&&
+  r.value.every(n=>Object.keys(n).sort().join(',')==='favorite,folder,id,title,updatedAt')
+ )`)&&!existsSync(join(profile,'knowledge-hub.sqlite'));
  await js(cap,"document.querySelector('.capsule-launcher [data-page=notes]').click()");
  await wait(()=>js(cap,"document.querySelector('.hub-cards')?.children.length===3"));
  report.hubSimplifiedNavigation=await js(cap,`[...document.querySelectorAll('.hub-sidebar nav button')].map(b=>b.textContent.trim()).join('|')===
@@ -293,7 +324,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   const glass=getComputedStyle(hub);
   return getComputedStyle(hub.querySelector('#notes-title')).color==='rgb(32, 35, 52)'&&
    glass.backgroundColor.startsWith('rgba(244, 246, 253, ')&&
-   Math.abs(parseFloat(glass.backgroundColor.split(', ').at(-1))-.73)<.01&&glass.backdropFilter.includes('blur(7px)')&&
+   Math.abs(parseFloat(glass.backgroundColor.split(', ').at(-1))-.89)<.01&&glass.backdropFilter.includes('blur(7px)')&&
    getComputedStyle(card).backgroundColor.startsWith('rgba(244, 246, 253, ')&&
    getComputedStyle(hub.querySelector('.hub-brand span')).backgroundColor==='rgb(178, 153, 255)';
  })()`);
@@ -385,37 +416,63 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   result.value.data.entries.some(entry=>entry.kind==='prompt'&&entry.title==='Resumir un proyecto'&&entry.code==='Resume el proyecto {{PROJECT_NAME}}'&&entry.description===''))`);
  await js(cap,"[...document.querySelectorAll('.notes-editor-heading button')].find(button=>button.textContent.includes('Editar')).click()");
  await wait(()=>js(cap,"!!document.querySelector('#notes-code')"));
- report.hubPromptEditorUsesAvailableHeight=await js(cap,`(()=>{
+ report.hubPromptEditorDimensions=await js(cap,`(()=>{
   const editor=document.querySelector('.hub-edit'),area=editor.querySelector('#notes-code');
-  return area.clientHeight>editor.clientHeight*.65&&
-   document.querySelector('.hub-save').getBoundingClientRect().bottom<=document.querySelector('.hub-reader').getBoundingClientRect().bottom;
+  const otherFields=[...editor.children].filter(child=>child!==area&&child.getBoundingClientRect().height>0);
+  const usedHeight=otherFields.reduce((sum,child)=>sum+child.getBoundingClientRect().height,0)+
+   otherFields.length*parseFloat(getComputedStyle(editor).rowGap);
+  return {textarea:area.getBoundingClientRect().height, available:editor.clientHeight-usedHeight,
+   saveBottom:document.querySelector('.hub-save').getBoundingClientRect().bottom,
+   readerBottom:document.querySelector('.hub-reader').getBoundingClientRect().bottom};
  })()`);
+ const {textarea,available,saveBottom,readerBottom}=report.hubPromptEditorDimensions;
+ report.hubPromptEditorUsesAvailableHeight=textarea>0&&Math.abs(textarea-available)<=2&&saveBottom<=readerBottom+1;
+ await shot(cap,'workspace-prompt-editor');
  const longPrompt=Array.from({length:48},(_,i)=>'Paso '+(i+1)+': Revisa el material del proyecto y registra las decisiones y las tareas que deben completarse antes de la entrega.').join('\n\n');
  await fillNoteField('notes-code',longPrompt);
  await wait(()=>js(cap,"document.querySelector('.hub-save [role=status]')?.textContent==='Guardado'"));
  await js(cap,"[...document.querySelectorAll('.notes-editor-heading button')].find(button=>button.textContent.includes('Vista previa')).click()");
- await wait(()=>js(cap,"!!document.querySelector('.notes-code-preview')"));
+ await wait(()=>js(cap,"!!document.querySelector('.hub-prompt-markdown p')"));
  report.hubLongPromptUsesReaderScroll=await js(cap,`(()=>{
-  const body=document.querySelector('.hub-document'), code=body.querySelector('.notes-code-preview');
-  const heading=body.querySelector('.notes-code-heading'), header=document.querySelector('.notes-editor-heading');
-  const headerTop=header.getBoundingClientRect().top;
+  const body=document.querySelector('.hub-document'), code=body.querySelector('.hub-prompt-markdown');
+  const heading=document.querySelector('.notes-editor > .notes-code-heading');
+  const headingTop=heading.getBoundingClientRect().top;
   body.scrollTop=body.scrollHeight;
   const ok=code.scrollWidth<=code.clientWidth+1&&code.scrollHeight<=code.clientHeight+1&&body.scrollTop>0&&
    Math.abs(body.scrollHeight-body.scrollTop-body.clientHeight)<1&&
-   heading.getBoundingClientRect().top>=body.getBoundingClientRect().top&&header.getBoundingClientRect().top===headerTop;
+   heading.getBoundingClientRect().bottom<=body.getBoundingClientRect().top&&
+   heading.getBoundingClientRect().top===headingTop;
   body.scrollTop=0;
   return ok;
  })()`);
+ await js(cap,"[...document.querySelectorAll('[aria-label=\"Vista del prompt\"] button')].find(button=>button.textContent==='Texto').click()");
+ await wait(()=>js(cap,`document.querySelector('.notes-code-preview')?.textContent===${JSON.stringify(longPrompt)}`));
+ report.hubPromptCanReadSource=await js(cap,"!document.querySelector('.hub-prompt-markdown')&&document.querySelector('[aria-label=\"Vista del prompt\"] [aria-pressed=true]').textContent==='Texto'");
  await shot(cap,'workspace-long-prompt');
  await js(cap,"[...document.querySelectorAll('.notes-editor-heading button')].find(button=>button.textContent.includes('Editar')).click()");
  await wait(()=>js(cap,"!!document.querySelector('#notes-code')"));
- await fillNoteField('notes-code','Resume el proyecto {{PROJECT_NAME}}\nDevuelve tres puntos.');
+ const promptSections='Objetivo:\n• Resume el proyecto {{PROJECT_NAME}}';
+ const promptDetails='\n\n| Campo | Valor |\n| --- | --- |\n| Puntos | 3 |\n\n```json\n{"list": []}\n```';
+ const organizedPrompt='## Objetivo\n\n- Resume el proyecto {{PROJECT_NAME}}'+promptDetails;
+ await fillNoteField('notes-code',promptSections+promptDetails);
  await wait(()=>js(cap,"document.querySelector('.hub-save [role=status]')?.textContent==='Guardado'"));
- await js(cap,"[...document.querySelectorAll('.notes-editor-heading button')].find(button=>button.textContent.includes('Vista previa')).click()");
+ await js(cap,"document.querySelector('.notes-format').click()");
+ await wait(()=>js(cap,`document.querySelector('.hub-prompt-markdown h2')?.textContent==='Objetivo'&&
+  !!document.querySelector('.hub-prompt-markdown li')&&!!document.querySelector('.hub-prompt-markdown table')&&
+  !!document.querySelector('.hub-prompt-markdown pre code')`));
+ await js(cap,"document.querySelector('.notes-code-heading .hub-undo').click()");
+ await wait(()=>js(cap,`document.querySelector('#notes-code')?.value===${JSON.stringify(promptSections+promptDetails)}`));
+ await js(cap,"document.querySelector('.notes-format').click()");
+ await wait(()=>js(cap,"!!document.querySelector('.hub-prompt-markdown h2')&&!document.querySelector('.hub-save button').disabled"));
+ await js(cap,"document.querySelector('.hub-save button').click()");
+ await wait(()=>js(cap,"!document.querySelector('.hub-save')&&!!document.querySelector('.hub-prompt-markdown h2')"));
+ report.hubPromptMarkdownFormatsAndSaves=await js(cap,`window.companion.notesRead().then(result=>result.ok&&
+  result.value.data.entries.some(entry=>entry.kind==='prompt'&&entry.code===${JSON.stringify(organizedPrompt)}))`);
+ await shot(cap,'workspace-prompt-markdown');
  await wait(()=>js(cap,"!!document.querySelector('.hub-document .hub-fields input')"));
  await js(cap,"(()=>{const input=document.querySelector('.hub-document .hub-fields input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'ZEN');input.dispatchEvent(new Event('input',{bubbles:true}));})()");
- await js(cap,"document.querySelector('.notes-code-heading button').click()");
- await wait(async()=>copiedText.at(-1)==='Resume el proyecto ZEN\nDevuelve tres puntos.');
+ await js(cap,"document.querySelector('.notes-code-heading button[aria-label=Copiar]').click()");
+ await wait(async()=>copiedText.at(-1)===organizedPrompt.replace('{{PROJECT_NAME}}','ZEN'));
  report.hubAutosavePromptAndVariables=await js(cap,"document.querySelector('#notes-title')?.textContent==='Biblioteca de prompts'");
  const olderProject={type:'save',fields:{...newFields('project'),title:'Proyecto de prueba',related:[createdNote.id]}};
  await js(cap,`window.companion.notesChange(${JSON.stringify(olderProject)})`);
@@ -458,7 +515,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await wait(()=>js(cap,"[...document.querySelectorAll('.hub-panel button')].some(button=>button.textContent==='Oscuro')"));
  await js(cap,"[...document.querySelectorAll('.hub-panel button')].find(button=>button.textContent==='Oscuro').click()");
  await wait(()=>js(cap,"!!document.querySelector('.knowledge-hub[data-hub-theme=dark]')"));
- report.hubDarkTheme=await js(cap,`getComputedStyle(document.querySelector('#notes-title')).color==='rgb(243, 244, 255)'&&
+ report.hubDarkTheme=await js(cap,`getComputedStyle(document.querySelector('#notes-title')).color==='rgb(248, 249, 255)'&&
   getComputedStyle(document.querySelector('.knowledge-hub')).backgroundColor.startsWith('rgba(18, 20, 31, ')&&
   window.companion.notesRead().then(r=>r.ok&&r.value.data.theme==='dark')`);
  await js(cap,"window.companion.presentation(true)");
@@ -495,7 +552,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await nav('home');await wait(()=>js(cap,"document.querySelector('.home-work-state')?.textContent==='Necesita tu permiso'"));report.homePermissionStateObserved=await js(cap,"!document.body.textContent.includes('PRIVATE REVIEW')");
  await js(cap,"document.querySelector('.companion-state').click()");await wait(()=>js(cap,"!!document.querySelector('.approval-card pre')"));
  report.capsuleStateOpensPermission=await js(cap,"document.querySelector('.workspace-content').dataset.page==='permissions'");
- await nav('home');await js(cap,"document.querySelector('[data-home-card=work] .home-status-action').click()");await wait(()=>js(cap,"!!document.querySelector('.approval-card pre')"));report.permissionReview=await js(cap,"document.querySelector('.approval-card pre').textContent.includes('PRIVATE REVIEW')");
+ await nav('home');await js(cap,"document.querySelector('[data-home-card=work]').click()");await wait(()=>js(cap,"!!document.querySelector('.approval-card pre')"));report.permissionReview=await js(cap,"document.querySelector('.approval-card pre').textContent.includes('PRIVATE REVIEW')");
  cap.minimize();
  await wait(async()=>cap.isMinimized());
  report.minimizedPermissionPreview=await js(cap,"window.companion.status().then(r=>r.ok&&!JSON.stringify(r.value).includes('PRIVATE REVIEW'))");
@@ -523,18 +580,39 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await wait(()=>js(cap,"document.querySelector('.home-song-title')?.textContent==='Contenido multimedia automático'"));
  report.homeShowsMusicAndWork=await js(cap,"document.querySelector('.home-work-state')?.textContent==='Turno terminado'");
  report.homeShowsNotices=await js(cap,"Number(document.querySelector('.home-notice-count')?.textContent)>0");
+ await wait(()=>js(cap,"!!document.querySelector('.home-item[data-note-id]')"));
+ const beforeHomeNotes=cap.getBounds();
+ report.homeRecentNotesAreCurrent=await js(cap,`window.companion.notesRecent().then(r=>r.ok&&r.value.length<=4&&
+  r.value.every((n,i)=>n.title!=='Resumir un proyecto'&&(!i||r.value[i-1].updatedAt>=n.updatedAt))&&
+  r.value.map(n=>n.id).join()===Array.from(document.querySelectorAll('.home-item[data-note-id]'),el=>el.dataset.noteId).join()
+ )`);
+ const noteTitle=await js(cap,"document.querySelector('.home-item[data-note-id] strong').textContent");
+ await js(cap,"document.querySelector('.home-item[data-note-id]').click()");
+ await wait(()=>js(cap,"!!document.querySelector('.hub-document[data-kind=note]')"));
+ report.homeOpensExactNoteAtSameSize=same(beforeHomeNotes,cap.getBounds())&&await js(cap,`document.querySelector('.notes-editor-heading h2')?.textContent===${JSON.stringify(noteTitle)}`);
+ report.recentNotesBlockedInOtherModules=await js(cap,"window.companion.notesRecent().then(r=>!r.ok)");
+ await nav('home');
+ await js(cap,"document.querySelector('.home-item[title=\"Ver resumen\"]').click()");
+ await wait(()=>js(cap,"document.querySelector('.codex-last-response-text strong')?.textContent==='Respuesta final de prueba en España'"));
+ report.homeActivityOpensObservedResult=same(beforeHomeNotes,cap.getBounds());
+ await nav('home');
  await js(cap,"window.companion.presentation(true)");
- await wait(()=>js(cap,"!document.querySelector('.codex-request-form,[data-quick-request]')&&!document.querySelector('.home-notice-count')"));
- report.homePrivacyHidesDetails=await js(cap,"window.companion.openRequest('Petición oculta').then(r=>!r.ok)");
+ await wait(()=>js(cap,"!document.querySelector('.codex-request-form,[data-quick-request],.home-continue,.home-notice-count')"));
+ report.homePrivacyHidesDetails=await js(cap,"Promise.all([window.companion.openRequest('Petición oculta'),window.companion.notesRecent()]).then(results=>results.every(r=>!r.ok))");
  await js(cap,"window.companion.presentation(false)");
  await wait(()=>js(cap,"!!document.querySelector('.codex-request-form')"));
  await shot(cap,'workspace-home');
- await js(cap,"document.querySelector('[data-home-card=music] .home-status-action').click()");
+ await js(cap,"document.querySelector('[data-home-card=music]').click()");
  await wait(()=>js(cap,"!!document.querySelector('.workspace-content[data-page=spotify]')"));
  report.requestBlockedOutsideHome=await js(cap,"window.companion.openRequest('Desde Spotify').then(r=>!r.ok)");
- await nav('home');await js(cap,"document.querySelector('[data-home-card=work] .home-status-action').click()");
+ await nav('home');await js(cap,"document.querySelector('[data-home-card=work]').click()");
  await wait(()=>js(cap,"!!document.querySelector('.workspace-content[data-page=codex]')"));
  await nav('home');report.homeCardsNavigateWithoutClosing=true;
+ await js(cap,"document.querySelector('.home-notices .quiet-control button').click()");
+ await wait(()=>js(cap,"document.querySelector('.home-notices .quiet-control button').getAttribute('aria-pressed')==='true'"));
+ report.homeSilenceControlsExistingTimer=await js(cap,"window.companion.status().then(r=>r.ok&&r.value.settings.silencedUntil-Date.now()>29*60000&&r.value.settings.silencedUntil-Date.now()<=30*60000)");
+ await js(cap,"document.querySelector('.home-notices .quiet-control button').click()");
+ await wait(()=>js(cap,"document.querySelector('.home-notices .quiet-control button').getAttribute('aria-pressed')==='false'"));
  const beforeNotices=cap.getBounds();await js(cap,"document.querySelector('[data-home-card=notices] .home-status-action').click()");await wait(()=>js(cap,"!!document.querySelector('.notice-card')"));report.noticesInCapsule=BrowserWindow.getAllWindows().length===1&&same(beforeNotices,cap.getBounds());report.homeNoticeCounterMarksRead=await js(cap,"window.companion.status().then(r=>r.ok&&r.value.notices.every(n=>n.read))");
  report.noticesCannotControlMedia=await js(cap,"window.companion.mediaList().then(r=>!r.ok)");
  await shot(cap,'capsule-notices');
@@ -604,27 +682,58 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const followupReply='Respuesta de seguimiento para probar el lector de texto.\n\n- **España** y Dublín.';
  hookResult('visual-request-followup',followupReply);
  await nav('home');await resizeForFixture(820,Math.min(680,area.height));
+ const glassContrast=()=>js(cap,`(()=>{
+  const root=document.querySelector('.companion-capsule');
+  const wallpaper=root.dataset.theme==='light'?0:255;
+  const read=(selector,property)=>getComputedStyle(document.querySelector(selector))[property].match(/[0-9.]+/g).map(Number);
+  const linear=value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
+  const luminance=rgb=>rgb.slice(0,3).reduce((sum,value,i)=>sum+linear(value/255)*[.2126,.7152,.0722][i],0);
+  return [
+   ['.capsule-single-row','.companion-state small'],
+   ['.workspace-content','.home-current-state'],
+  ].map(([surface,detail])=>{
+   const background=read(surface,'backgroundColor');
+   const alpha=background[3]??1;
+   const base=luminance(background.slice(0,3).map(channel=>channel*alpha+wallpaper*(1-alpha)));
+   const text=luminance(read(detail,'color'));
+   return (Math.max(base,text)+.05)/(Math.min(base,text)+.05);
+  });
+ })()`);
+ report.darkGlassContrast=await glassContrast();
+ report.darkGlassTextReadable=report.darkGlassContrast.every((ratio:number)=>ratio>=4.5);
  await shot(cap,'glass-home');
  await nav('codex');await js(cap,"document.getElementById('codex-tab-summary').click()");await shot(cap,'glass-codex');
  await nav('home');report.appearanceOnlyInSettings=await js(cap,"window.companion.appearanceSave({}).then(r=>!r.ok)");
  await nav('settings');await wait(()=>js(cap,"!!document.querySelector('.appearance-settings')"));
- await js(cap,"(()=>{const e=document.querySelector('[aria-label=\"Opacidad del cristal\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'55');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
- await wait(()=>js(cap,"document.querySelector('.companion-capsule').style.getPropertyValue('--glass-opacity')==='0.55'"));report.glassOpacityPreviews=true;
+ const changeGlassOpacity=(percent:number)=>js(cap,`(()=>{
+  const input=document.querySelector('[aria-label="Opacidad del cristal"]');
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,String(${percent}));
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+ })()`);
+ await changeGlassOpacity(100);
+ await wait(()=>js(cap,"document.querySelector('.companion-capsule').style.getPropertyValue('--glass-opacity')==='1'"));
+ report.glassMaximumOpaque=await js(cap,"getComputedStyle(document.querySelector('.capsule-single-row')).backgroundColor==='rgb(18, 20, 31)'&&getComputedStyle(document.querySelector('.workspace-content')).backgroundColor==='rgb(18, 20, 31)'");
+ await changeGlassOpacity(74);
+ await wait(()=>js(cap,"document.querySelector('.companion-capsule').style.getPropertyValue('--glass-opacity')==='0.74'"));report.glassOpacityPreviews=true;
  await js(cap,"[...document.querySelectorAll('.appearance-theme button')].find(b=>b.textContent==='Claro').click()");await wait(()=>js(cap,"document.querySelector('.companion-capsule').dataset.theme==='light'"));
  await js(cap,"[...document.querySelectorAll('.appearance-save button')].find(b=>b.textContent==='Guardar apariencia').click()");await wait(()=>js(cap,"document.querySelector('.appearance-save .primary').textContent==='Guardado'"));
- const appearanceSaved=JSON.parse(readFileSync(join(profile,'companion-appearance.json'),'utf8'));report.glassSettingsPersist=appearanceSaved.options.theme==='light'&&appearanceSaved.options.opacity===.55;await shot(cap,'glass-settings-light');
+ const appearanceSaved=JSON.parse(readFileSync(join(profile,'companion-appearance.json'),'utf8'));report.glassSettingsPersist=appearanceSaved.options.theme==='light'&&appearanceSaved.options.opacity===.74;await shot(cap,'glass-settings-light');
  await js(cap,"document.querySelector('.appearance-file button').click()");await wait(()=>js(cap,"document.querySelector('.companion-capsule').dataset.background==='image'"));
  const wallpaper=await js(cap,"window.companion.status().then(r=>r.value.appearance.imageUrl)");
  report.wallpaperOwnedAndVisible=typeof wallpaper==='string'&&/^zen-theme:\/\/background\/[a-f0-9-]{36}$/.test(wallpaper)&&await js(cap,`new Promise(resolve=>{const i=new Image();i.onload=()=>resolve(i.naturalWidth===1);i.onerror=()=>resolve(false);i.src=${JSON.stringify(wallpaper)};})`);
- await js(cap,"window.companion.launcher(false)");await wait(()=>js(cap,"!!document.querySelector('.companion-capsule.collapsed[data-background=image]')"));report.capsuleWallpaperPreferenceVisible=await js(cap,`getComputedStyle(document.querySelector('.companion-capsule'),'::before').backgroundImage.includes(${JSON.stringify(wallpaper)})`);report.capsuleOpacityPreferenceVisible=await js(cap,"getComputedStyle(document.querySelector('.capsule-single-row')).backgroundColor==='rgba(244, 246, 253, 0.55)'");report.capsuleAppearanceKeepsNativeFrameRemoved=await nativeCapsuleFrame();
- await shot(cap,'capsule-saved-appearance');await js(cap,"window.companion.navigate('settings')");await wait(()=>js(cap,"!!document.querySelector('.appearance-settings')"));
+ await js(cap,"window.companion.launcher(false)");await wait(()=>js(cap,"!!document.querySelector('.companion-capsule.collapsed[data-background=image]')"));report.capsuleWallpaperPreferenceVisible=await js(cap,`getComputedStyle(document.querySelector('.companion-capsule'),'::before').backgroundImage.includes(${JSON.stringify(wallpaper)})`);report.capsuleOpacityPreferenceVisible=await js(cap,"getComputedStyle(document.querySelector('.capsule-single-row')).backgroundColor==='rgba(244, 246, 253, 0.74)'");report.capsuleAppearanceKeepsNativeFrameRemoved=await nativeCapsuleFrame();
+ await shot(cap,'capsule-saved-appearance');
+ await nav('home');
+ report.lightGlassContrast=await glassContrast();
+ report.lightGlassTextReadable=report.lightGlassContrast.every((ratio:number)=>ratio>=4.5);
+ await nav('settings');await wait(()=>js(cap,"!!document.querySelector('.appearance-settings')"));
  report.wallpaperArbitraryPathsRejected=await js(cap,"new Promise(resolve=>{const i=new Image();i.onload=()=>resolve(false);i.onerror=()=>resolve(true);i.src='zen-theme://background/../../gmail-oauth.bin';})");
  await js(cap,"window.companion.presentation(true)");await wait(()=>js(cap,"document.querySelector('.companion-capsule').dataset.background!=='image'&&!document.querySelector('.appearance-file')"));
  report.wallpaperPresentationRedacts=await js(cap,"Promise.all([window.companion.appearanceChoose(),window.companion.appearanceSave({})]).then(r=>r.every(v=>!v.ok))");
- await js(cap,"window.companion.presentation(false)");await wait(()=>js(cap,"!!document.querySelector('.appearance-settings')"));await js(cap,"window.companion.appearanceSave({theme:'dark',accent:'violet',background:'aurora',opacity:.68,blur:24})");
+ await js(cap,"window.companion.presentation(false)");await wait(()=>js(cap,"!!document.querySelector('.appearance-settings')"));await js(cap,"window.companion.appearanceSave({theme:'dark',accent:'violet',background:'aurora',opacity:.82,blur:24})");
  // Local view tools operate only on already visible, supplied data.
  await nav('settings');report.polishOpaqueWorkspace=await js(cap,"Number(getComputedStyle(document.querySelector('.workspace-content')).backgroundColor.match(/[\\d.]+/g).at(-1))>=.84");
- await nav('home');report.polishHomeCompact=await js(cap,"(()=>{const home=document.querySelector('.home-status'),cards=[...home.querySelectorAll('.home-status-card')].map(card=>card.getBoundingClientRect()),hero=home.querySelector('.codex-request-form');return cards.length===3&&cards.every(card=>card.height<235)&&!!hero&&(home.clientWidth<=600||cards.every(card=>Math.abs(card.top-cards[0].top)<1));})()");await shot(cap,'polish-home');
+ await nav('home');report.polishHomeCompact=await js(cap,"(()=>{const home=document.querySelector('.home-status'),cards=[...home.querySelectorAll('.home-module')].map(card=>card.getBoundingClientRect()),hero=home.querySelector('.codex-request-form');return cards.length===3&&cards.every(card=>card.height<=100)&&!!hero&&(home.clientWidth<=525||cards.every(card=>Math.abs(card.top-cards[0].top)<1));})()");await shot(cap,'polish-home');
  await nav('codex');await js(cap,"document.getElementById('codex-tab-activity').click()");await wait(()=>js(cap,"!!document.querySelector('.activity-tools')"));
  const actionTotal=await js(cap,"document.querySelectorAll('.event-list details').length"),commandTotal=await js(cap,"[...document.querySelectorAll('.event-list summary')].filter(e=>e.textContent.includes('Comando')).length");
  await js(cap,"(()=>{const i=document.querySelector('[aria-label=\"Buscar actividad\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'no-match-local-7832');i.dispatchEvent(new Event('input',{bubbles:true}));})()");await wait(()=>js(cap,"document.querySelectorAll('.event-list details').length===0"));report.polishActivitySearch=await js(cap,"!!document.querySelector('.view-empty')");
@@ -637,7 +746,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  for(const width of [320,760,820]){await resizeForFixture(width,Math.min(680,area.height));for(const page of ['home','codex','spotify','notices','settings'] as const){await nav(page);await pause(80);if(!await js(cap,"document.body.scrollWidth<=innerWidth&&document.querySelector('.workspace-content').scrollWidth<=document.querySelector('.workspace-content').clientWidth+1"))throw Error('Polished tools overflow: '+page+' '+width);}}report.polishAllViewsResponsive=true;
  await nav('codex');await js(cap,"document.getElementById('codex-tab-summary').click()");await wait(()=>js(cap,"window.companion.status().then(r=>r.value.sessions.some(s=>!!s.lastReply))"));
  await js(cap,"window.companion.launcher(false)");
- await wait(async()=>same(compactBounds,cap.getBounds())&&!cap.isResizable()&&cap.isAlwaysOnTop());
+ await wait(async()=>same(compactBounds,cap.getBounds())&&!cap.isResizable()&&!cap.isAlwaysOnTop());
  report.extensionCollectsToAnchor=await nativeCapsuleFrame();
  await js(cap,"window.companion.launcher(true)");
  await wait(()=>js(cap,"!!document.querySelector('.workspace-content')"));
@@ -656,7 +765,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await js(cap,"document.querySelector('.appearance-save .primary').click()");
  await wait(()=>js(cap,"document.querySelector('.appearance-save .primary').textContent==='Guardado'"));
  const monochromeSaved=JSON.parse(readFileSync(join(profile,'companion-appearance.json'),'utf8'));
- report.monochromePersists=monochromeSaved.options.theme==='monochrome'&&monochromeSaved.options.opacity===.68&&monochromeSaved.options.blur===24&&monochromeSaved.image?.id===wallpaper.split('/').at(-1);
+ report.monochromePersists=monochromeSaved.options.theme==='monochrome'&&monochromeSaved.options.opacity===.82&&monochromeSaved.options.blur===24&&monochromeSaved.image?.id===wallpaper.split('/').at(-1);
  await nav('notes');
  await wait(()=>js(cap,"!!document.querySelector('[data-theme=monochrome] .knowledge-hub[data-hub-theme=dark] .hub-card')"));
  const notesMonochromeGlass=`(()=>{
@@ -694,7 +803,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await shot(cap,'monochrome-codex');
  await js(cap,"window.companion.launcher(false)");
  await wait(()=>js(cap,"!!document.querySelector('.companion-capsule.collapsed[data-theme=monochrome]')"));
- report.monochromeGlassCapsule=await js(cap,"(()=>{const style=getComputedStyle(document.querySelector('.capsule-single-row'));return style.backgroundColor==='rgba(28, 28, 29, 0.68)'&&style.backdropFilter.includes('blur(24px)');})()")&&await nativeCapsuleFrame();
+ report.monochromeGlassCapsule=await js(cap,"(()=>{const style=getComputedStyle(document.querySelector('.capsule-single-row'));return style.backgroundColor==='rgba(28, 28, 29, 0.82)'&&style.backdropFilter.includes('blur(24px)');})()")&&await nativeCapsuleFrame();
  report.onlyExplicitCodexHandoffs=queuedRequests.length===6&&queuedRequests.every(item=>item.thread==='native-test')&&copiedRequests.length===0&&queuedRequests[3].text===expectedContextPrompt&&queuedRequests[4].text===expectedPagePrompt&&queuedRequests[5].text===visualPrompt;report.noExtraWindows=BrowserWindow.getAllWindows().length===1;
  integration.close();report.closedAppDoesNotBlock=await launch('PermissionRequest',{tool_name:'Bash',tool_input:{command:'must not run'}}).done==='{}';
  report.passed=Object.entries(report).filter(([k,v])=>typeof v==='boolean'&&!['apiCalled','physicalInputTested'].includes(k)).every(([,v])=>v===true);

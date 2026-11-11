@@ -44,7 +44,7 @@ describe('presentation is enforced before IPC and decisions',()=>{
   const f=fixture();f.event('Stop');const s=f.hub.status().sessions[0];f.hub.setSummary(s.id,s.runKey!,{state:'ready',files:[{path:'private.txt',change:'added'}],omitted:0,endedAt:1000});
   const raw=f.hub.status();raw.settings.presentation=true;expect(displayStatus(raw,2,true).sessions[0].summary).toBeUndefined();expect(raw.sessions[0].summary?.files[0].path).toBe('private.txt');
  });
- it('migrates preferences without changing existing shortcuts, silence or account configuration',()=>{expect(CompanionSettingsSchema.parse({sounds:false,silencedUntil:1000})).toMatchObject({presentation:false,followPointerDisplay:true,respectFullscreen:true,sounds:false,silencedUntil:1000});});
+ it('migrates preferences without changing existing shortcuts, silence or account configuration',()=>{expect(CompanionSettingsSchema.parse({sounds:false,silencedUntil:1000})).toMatchObject({presentation:false,followPointerDisplay:true,respectFullscreen:true,keepOnTop:false,sounds:false,silencedUntil:1000});});
 });
 describe('bounded observed completion',()=>{
  it('compares metadata only and reports omissions without inventing test success',()=>{
@@ -84,7 +84,19 @@ describe('bounded observed completion',()=>{
 });
 describe('monitor placement and nonintrusive visibility',()=>{
  it('does not confuse adjacent monitors or touch-only borders with overlap',()=>{expect(overlaps({x:-100,y:0,width:100,height:100},{x:0,y:0,width:100,height:100})).toBe(false);expect(overlaps({x:-100,y:0,width:101,height:100},{x:0,y:0,width:100,height:100})).toBe(true);});
- it('suspends for fullscreen until explicitly invoked and never restores a user-hidden capsule',()=>{const v=new CapsuleVisibility();expect(v.visible(true,'game')).toBe(false);v.invoke('game');expect(v.visible(true,'game')).toBe(true);expect(v.visible(false,'work')).toBe(true);expect(v.visible(true,'game')).toBe(false);v.hide();expect(v.visible(false,'work')).toBe(false);v.invoke();expect(v.visible(false,'work')).toBe(true);});
+ it('respects the pin and explicit invocation in fullscreen and keeps a user-hidden capsule hidden',()=>{
+  const visibility=new CapsuleVisibility();
+  expect(visibility.visible(true,'game')).toBe(false);
+  expect(visibility.visible(true,'game',true)).toBe(true);
+  visibility.invoke('game');
+  expect(visibility.visible(true,'game')).toBe(true);
+  expect(visibility.visible(false,'work')).toBe(true);
+  expect(visibility.visible(true,'game')).toBe(false);
+  visibility.hide();
+  expect(visibility.visible(false,'work',true)).toBe(false);
+  visibility.invoke();
+  expect(visibility.visible(false,'work')).toBe(true);
+ });
  it('validates native observations without window titles, input or lossy process timestamps',()=>{
   const value={previous:{handle:'100',pid:123,started:'638968241234567890'},name:'chrome',foreground:'200',fullscreen:{x:-3840,y:0,width:3840,height:2160}};
   expect(DesktopObservation.parse(value).previous?.started).toBe(value.previous.started);expect(DesktopObservation.safeParse({...value,title:'private'}).success).toBe(false);expect(DesktopObservation.safeParse({...value,previous:{...value.previous,started:638968241234567890}}).success).toBe(false);

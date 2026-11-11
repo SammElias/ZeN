@@ -16,6 +16,7 @@ import {CompanionMiniMusic, CompanionMusic, CompanionNowPlaying, useNowPlaying} 
 import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
 import {OrbitalMark} from './OrbitalMark';
+import type {HubDestination} from './NotesWorkspace';
 
 const NotesWorkspace = lazy(() => import('./NotesWorkspace').then(module => ({default:module.NotesWorkspace})));
 
@@ -85,6 +86,11 @@ export function CodexCompanion(){
  const {track:nowPlaying}=useNowPlaying(status);
  const expanded=status.workspace?.expanded??false,page=status.workspace?.page??'home';
  const [themePreview,setThemePreview]=useState<AppearanceState>();
+ const [notesDestination,setNotesDestination]=useState<HubDestination>();
+ const notesVisible=expanded&&page==='notes'&&!status.settings.presentation&&!status.settings.paused;
+ useEffect(()=>{
+  if(notesVisible)return()=>setNotesDestination(undefined);
+ },[notesVisible]);
  const savedAppearance = status.appearance ?? defaultAppearance;
  const appearance: AppearanceState = status.settings.presentation
   ? {...savedAppearance, background: 'aurora', imageUrl: undefined, imageName: undefined}
@@ -96,6 +102,12 @@ export function CodexCompanion(){
  const stateDetail=(status.settings.presentation&&error?'Revisa Codex':error)||status.desktop?.error||status.targetError||(status.settings.presentation?'Presentación · detalles ocultos':status.workspace?.compact==='codex'?(active?.steps.at(-1)?.preview?.split('\n')[0]?.slice(0,180)||active?.steps.at(-1)?.label||'Sin acciones recibidas'):status.target?'Fijado · '+status.target.title:active?.label)||'Tu escritorio, a mano';
  const toggle=()=>void window.companion.launcher(!expanded);
  const navigate=(v:WorkspacePage)=>void window.companion.navigate(v).then(r=>{if(!r.ok)setError(r.error);});
+ const navigateNotes=(destination:HubDestination)=>{
+  setNotesDestination(destination);
+  void window.companion.navigate('notes').then(result=>{
+   if(!result.ok){setNotesDestination(undefined);setError(result.error);}
+  });
+ };
  const context=(v:LauncherPage)=>void window.companion.launcherContext(v).then(r=>{if(!r.ok)setError(r.error);});
 
  async function openStatus() {
@@ -136,17 +148,23 @@ export function CodexCompanion(){
     <button className="integration-launch-toggle" aria-label="Integraciones" title={expanded?'Volver a la cápsula':'Abrir panel'} aria-expanded={expanded} onClick={toggle}>
      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
     </button>
+    <button className="capsule-pin" type="button" aria-label="Mantener ZEN encima"
+     title={status.settings.keepOnTop?'Desfijar ZEN':'Fijar ZEN encima'}
+     aria-pressed={status.settings.keepOnTop} disabled={!ready}
+     onClick={()=>void window.companion.pinWindow(!status.settings.keepOnTop).then(result=>{if(!result.ok)setError(result.error);})}>
+     <CompanionIcon name={status.settings.keepOnTop?'lock':'lockOpen'}/>
+    </button>
     <CapsuleMove onError={setError}/>
     <button className="capsule-hide" aria-label="Ocultar ZEN" title="Ocultar ZEN" onClick={()=>void window.companion.hide()}><CompanionIcon name="close"/></button>
    </nav>
   </header>
   {expanded&&<>
    <section id="capsule-content" className="workspace-content" data-page={page}>
-    {page==='home'?<CompanionHome status={status} nowPlaying={nowPlaying} onNavigate={navigate}/>:
+    {page==='home'?<CompanionHome status={status} ready={ready} nowPlaying={nowPlaying} onNavigate={navigate} onOpenNotes={navigateNotes}/>:
     page==='spotify'?<CompanionMusic status={status}/>:
     page==='notes'?(status.settings.presentation || status.settings.paused
       ? <div className="companion-empty"><h2>Apuntes ocultos</h2><p role="status">Desactiva la pausa o Presentación para abrir el cuaderno.</p></div>
-      : <Suspense fallback={<p role="status">Abriendo Apuntes…</p>}><NotesWorkspace appearance={appearance}/></Suspense>):
+      : <Suspense fallback={<p role="status">Abriendo Apuntes…</p>}><NotesWorkspace appearance={appearance} destination={notesDestination}/></Suspense>):
     page==='notices'?<><div className="workspace-section-heading"><h1>Avisos</h1></div><CompanionNotices status={status}/></>:
     page==='options'||page==='shortcuts'?<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>:
     page==='settings'?<><div className="workspace-section-heading"><h1>Preferencias</h1><button onClick={()=>navigate('home')}>Volver a Home</button></div>{!status.settings.presentation&&<AppearanceSettings value={status.appearance} onPreview={setThemePreview}/>}<CompanionSettings status={status}/></>:

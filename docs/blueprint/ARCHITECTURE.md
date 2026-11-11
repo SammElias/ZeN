@@ -2,7 +2,7 @@
 
 ## Sistema y patrón
 
-ZEN es una aplicación local Electron con un proceso principal que coordina módulos y auxiliares .NET de operaciones fijas. Un renderer React dibuja la cápsula recogida y su panel desplegable en el mismo `BrowserWindow`. Un preload aislado expone el contrato de ZEN. Apuntes usa SQLite en el perfil de Windows. Codex conserva identidad, chats y ejecución. Windows conserva las sesiones multimedia.
+ZEN es una aplicación local Electron con un proceso principal que coordina módulos y auxiliares .NET de operaciones fijas. Un renderer React dibuja la cápsula recogida y su panel desplegable en el mismo `BrowserWindow`. Un preload aislado expone el contrato de ZEN. Knowledge Hub guarda la biblioteca en SQLite local. Codex conserva la identidad, los chats y la ejecución. Windows conserva las sesiones multimedia.
 
 ## Componentes y tecnología
 
@@ -13,6 +13,8 @@ ZEN es una aplicación local Electron con un proceso principal que coordina mód
 | Proceso principal | Ventana, política de visibilidad, estado, efectos y preferencias | [companion-main.ts](../../src/main/companion-main.ts) |
 | Conexión con Codex | Cola del chat fijado, hooks por pipe y lectura acotada del historial | [petición](../../src/main/companion-request.ts) · [puente](../../src/main/companion-integration.ts) · [lector](../../src/main/companion-codex-reader.ts) |
 | Windows | `Zen.Media` consume sesiones WinRT y `Zen.CompanionDesktop` ayuda a volver a la ventana anterior | [multimedia](../../native/Zen.Media/Program.cs) · [escritorio](../../native/Zen.CompanionDesktop/Program.cs) |
+
+Inicio combina el estado observado de Codex, la reproducción automática de Windows y los avisos recibidos. Para Apuntes, consulta los cuatro registros más recientes de Knowledge Hub por fecha de modificación y abre el lector con el identificador de la nota. La consulta usa la misma biblioteca SQLite y reconoce el formato anterior antes de migrarlo. La migración y la edición siguen ocurriendo en Knowledge Hub.
 
 ## Flujos de datos
 

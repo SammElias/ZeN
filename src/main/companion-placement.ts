@@ -13,5 +13,8 @@ export class CapsuleVisibility{
  hidden=false;private override?:string;
  hide(){this.hidden=true;this.override=undefined;}
  invoke(foreground?:string){this.hidden=false;this.override=foreground;}
- visible(fullscreen:boolean,foreground?:string){if(this.override!==foreground)this.override=undefined;return!this.hidden&&(!fullscreen||!!foreground&&this.override===foreground);}
+ visible(fullscreen:boolean,foreground?:string,keepOnTop=false){
+  if(this.override!==foreground)this.override=undefined;
+  return !this.hidden&&(keepOnTop||!fullscreen||!!foreground&&this.override===foreground);
+ }
 }

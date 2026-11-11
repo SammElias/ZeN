@@ -14,8 +14,8 @@ export const MarkdownText=memo(function MarkdownText({text, className, open, ren
   // React elements only: no raw HTML plugin, remote media loading or executable links.
   const allowed=(url:string)=>/^https?:\/\//i.test(url)?url:'';
   return <div className={className+' markdown-text'}><Markdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={allowed} components={{
-    a:({href,children})=>href&&open?<button className="message-link" title={href} onClick={()=>open(href)}>{children}</button>:<span title={href||undefined}>{children}</span>,
-    img:({src,alt})=>src&&open?<button className="message-link" title={src} onClick={()=>open(src)}>Ver imagen: {alt||'imagen enlazada'}</button>:<span>{alt}</span>,
+    a:({href,children})=>href&&open?<button type="button" className="message-link" title={href} onClick={()=>open(href)}>{children}</button>:<span title={href||undefined}>{children}</span>,
+    img:({src,alt})=>src&&open?<button type="button" className="message-link" title={src} onClick={()=>open(src)}>Ver imagen: {alt||'imagen enlazada'}</button>:<span>{alt}</span>,
     table:({children})=><div className="markdown-table" role="region" tabIndex={0} aria-label="Tabla desplazable"><table>{children}</table></div>,
     pre:({children})=><pre tabIndex={0}>{children}</pre>,
     code:({className,children})=>renderCode&&className?.startsWith('language-')

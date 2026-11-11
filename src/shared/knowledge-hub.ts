@@ -55,6 +55,7 @@ export type HubFields = z.infer<typeof HubFields>;
 
 export const HubEntry = HubFields.extend({id, createdAt: date, updatedAt: date, copiedAt: date.optional()}).strict();
 export type HubEntry = z.infer<typeof HubEntry>;
+export type RecentHubNote = Pick<HubEntry, 'id' | 'title' | 'updatedAt' | 'favorite'> & {folder: string | null};
 export const HubData = z.object({
   version: z.literal(2),
   theme: z.enum(['light', 'dark']),

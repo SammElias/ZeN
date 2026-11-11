@@ -6,7 +6,7 @@
   --zen-panel-scene: var(--mono-scene);
   --zen-header-scene: radial-gradient(ellipse at 25% 0%, #8888, transparent 75%), #242426;
   --zen-scene-filter: grayscale(1);
-  --mono-light-glass: rgb(255 255 255 / calc(.76 + .23 * var(--glass-opacity)));
+  --mono-light-glass: rgb(255 255 255 / calc(.76 + .24 * var(--glass-opacity)));
   --mono-rim: inset 0 1px 0 #ffffffe0, 0 3px 12px #00000012;
   --line: #dcdedf;
   --control-shadow: none;
@@ -40,7 +40,7 @@
 
 .companion-capsule[data-theme=monochrome] > .capsule-single-row {
   --glass-text: #fafafa;
-  --glass-secondary: #bdbdbf;
+  --glass-secondary: #d2d2d4;
   --glass-accent-rgb: 245 245 245;
   --accent: #f5f5f5;
   --line: #414143;
@@ -129,7 +129,7 @@
   margin: 0;
   padding: 13px 6px 8px;
   border-radius: 13px;
-  background: rgb(237 237 239 / calc(.66 + .3 * var(--glass-opacity)));
+  background: rgb(237 237 239 / var(--glass-panel-opacity));
   backdrop-filter: blur(var(--glass-blur));
 }
 

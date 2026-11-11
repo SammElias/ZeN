@@ -70,7 +70,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
   const display=()=>screen.getAllDisplays().find(d=>d.id===position.displayId)??screen.getPrimaryDisplay();
   const bounds=()=>{const area=display().workArea,base=overlayBounds(area,{mode:'capsule',height:CAPSULE_HEIGHT},position.horizontalRatio,position.edge,position.verticalRatio);return expanded?capsuleExtensionBounds(area,base):base;};
-  const cap=new BrowserWindow({...bounds(),title:'ZEN · Cápsula',frame:false,thickFrame:false,roundedCorners:false,transparent:false,backgroundColor:'#101116',hasShadow:false,maximizable:false,show:false,skipTaskbar:true,alwaysOnTop:true,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
+  const cap=new BrowserWindow({...bounds(),title:'ZEN · Cápsula',frame:false,thickFrame:false,roundedCorners:false,transparent:false,backgroundColor:'#101116',hasShadow:false,maximizable:false,show:false,skipTaskbar:true,alwaysOnTop:settings.keepOnTop,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
   if(process.platform==='win32'){
    cap.setAccentColor(false);
    try{cap.setBackgroundMaterial('none');}catch{/* Windows versions without the backdrop attribute use the solid backing. */}
@@ -189,7 +189,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   cap.on('resize',updateShape);
   const setTopmost=(next:boolean)=>{if(cap.isAlwaysOnTop()!==next)cap.setAlwaysOnTop(next);};
   const fullscreenHere=()=>{const r=desktop?.observation?.fullscreen;return !!(settings.respectFullscreen&&r&&overlaps(screen.screenToDipRect(null,r),display().bounds));};
-  const syncVisibility=()=>{if(!surfaceReady||cap.isDestroyed()||visibility.hidden)return;if(expanded||visibility.visible(fullscreenHere(),desktop?.observation?.foreground)){if(!cap.isMinimized()&&!cap.isVisible())cap.showInactive();setTopmost(true);}else if(cap.isVisible())cap.hide();};
+  const syncVisibility=()=>{
+   if(!surfaceReady||cap.isDestroyed()||visibility.hidden)return;
+   setTopmost(settings.keepOnTop);
+   if(expanded||visibility.visible(fullscreenHere(),desktop?.observation?.foreground,settings.keepOnTop)){
+    if(!cap.isMinimized()&&!cap.isVisible())cap.showInactive();
+   }else if(cap.isVisible())cap.hide();
+  };
   const secure=(w:BrowserWindow,url:string)=>{w.setMenu(null);w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',(e,next)=>{if(next!==url)e.preventDefault();});w.webContents.on('will-frame-navigate',e=>{if(!e.isMainFrame)e.preventDefault();});w.webContents.on('did-finish-load',broadcast);w.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));};
   secure(cap,rendererUrl);
   cap.webContents.session.protocol.handle('zen-theme',request=>{try{const u=new URL(request.url);if(request.method!=='GET'||u.hostname!=='background'||u.search||u.hash||settings.presentation)throw Error();const bytes=appearance.image(u.pathname.slice(1));return new Response(bytes,{headers:{'Content-Type':'image/png','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});}catch{return new Response(null,{status:404});}});
@@ -215,13 +221,30 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    // A Windows restore can apply its previous z-order after the mode change.
    setTimeout(syncVisibility,150).unref();
   };
-  const showCapsule=(explicit=true)=>{if(cap.isDestroyed())return;if(!expanded&&explicit&&settings.followPointerDisplay&&!smoke){const d=screen.getDisplayNearestPoint(screen.getCursorScreenPoint());if(d.id!==position.displayId){remember();position=placements.forDisplay(position,d.id);positionSurface();remember();}}visibility.invoke(explicit&&fullscreenHere()?desktop?.observation?.foreground:undefined);cap.setSkipTaskbar(true);if(cap.isMinimized())cap.restore();syncVisibility();broadcast();};
+  const showCapsule=(explicit=true)=>{
+   if(cap.isDestroyed())return;
+   if(!expanded&&explicit&&settings.followPointerDisplay&&!smoke){
+    const d=screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    if(d.id!==position.displayId){
+     remember();
+     position=placements.forDisplay(position,d.id);
+     positionSurface();
+     remember();
+    }
+   }
+   visibility.invoke(explicit&&fullscreenHere()?desktop?.observation?.foreground:undefined);
+   cap.setSkipTaskbar(true);
+   if(cap.isMinimized())cap.restore();
+   syncVisibility();
+   if(!settings.keepOnTop&&surfaceVisible())cap.moveTop();
+   broadcast();
+  };
   reveal=()=>showCapsule();
   const endDrag=()=>{clearInterval(dragTimer);clearTimeout(dragLimit);dragTimer=undefined;if(moved){moved=false;remember();}};
   const drag=()=>{if(!surfaceVisible())return;endDrag();const p=screen.getCursorScreenPoint(),b=cap.getBounds(),gx=(p.x-b.x)/b.width,gy=(p.y-b.y)/CAPSULE_HEIGHT;dragTimer=setInterval(()=>{const q=screen.getCursorScreenPoint();if(!moved&&Math.hypot(q.x-p.x,q.y-p.y)<4)return;moved=true;const d=screen.getDisplayNearestPoint(q);const edge=nearestEdge(d.workArea,q,position.edge);position={displayId:d.id,edge,horizontalRatio:edge==='top'?draggedRatio(d.workArea,{mode:'capsule',height:CAPSULE_HEIGHT},q.x,gx):position.horizontalRatio,verticalRatio:edge==='top'?position.verticalRatio:draggedVerticalRatio(d.workArea,q.y,gy)};positionSurface();},30);dragLimit=setTimeout(endDrag,30000);};
   const hide=()=>{endDrag();media.close();visibility.hide();setTopmost(false);cap.setSkipTaskbar(false);cap.minimize();};
   const dismissOnOutsideClick=()=>{
-   if(surfaceReady&&!quitting&&!visibility.hidden&&!openDialogs&&!dragTimer&&surfaceVisible())hide();
+   if(!settings.keepOnTop&&surfaceReady&&!quitting&&!visibility.hidden&&!openDialogs&&!dragTimer&&surfaceVisible())hide();
   };
   desktop=new CompanionDesktop(nativeHelper(__dirname,'desktop'),()=>{syncVisibility();broadcast();},{
    windowHandle:cap.getNativeWindowHandle().readBigUInt64LE().toString(),
@@ -286,6 +309,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('mediaNowPlaying',none,()=>mediaObservationAllowed()?mediaObserver.read():null);
   handle('mediaObservationClose',none,()=>{mediaObserver.close();return true;});
   handle('navigate',WorkspacePage,page=>{openWorkspace(page);return true;});
+  handle('notesRecent', none, () => {
+   requireWorkspace('home');
+   if (!privateEffectsAllowed()) throw Error('Desactiva la pausa o Presentación para ver apuntes.');
+   try {return notes.recentNotes();}
+   catch {throw Error('No se pudieron cargar los apuntes recientes.');}
+  });
   const requireNotes = () => {
    requireWorkspace('notes');
    if (!privateEffectsAllowed()) throw Error('Desactiva la pausa o Presentación para abrir Apuntes.');
@@ -383,7 +412,11 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),value=>{requireWorkspace('permissions');hub.decide(value.id,value.decision);return true;});
   handle('install',none,async()=>{requireWorkspace('settings');await integration.install();if(!smoke)void check();return true;});
   const persist=(v:CompanionSettings)=>{if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');const changed=v.shortcut!==settings.shortcut||v.returnShortcut!==settings.returnShortcut;if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}settings=v;if(v.paused)summaries.clear();if(changed){shortcutIssue=undefined;hub.error=undefined;}hub.update(v);if(v.presentation||v.paused){context?.clear();replyEpoch++;media?.close();mediaObserver?.close();}syncVisibility();return true;};
-  handle('save',CompanionSettingsSchema,value=>{requireWorkspace('settings');return persist(value);});
+  handle('save',CompanionSettingsSchema,value=>{requireWorkspace('settings');return persist({...value,keepOnTop:settings.keepOnTop});});
+  handle('pinWindow',z.boolean(),enabled=>{
+   if(!surfaceVisible())throw Error('Muestra ZEN para cambiar el candado.');
+   return enabled===settings.keepOnTop||persist({...settings,keepOnTop:enabled});
+  });
   handle('sound',z.boolean(),enabled=>persist({...settings,sounds:enabled}));
   handle('presentation',z.boolean(),enabled=>persist({...settings,presentation:enabled}));
   handle('silence',z.union([z.literal(0),z.literal(30)]),minutes=>persist({...settings,silencedUntil:minutes?Date.now()+minutes*60000:0}));

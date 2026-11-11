@@ -9,6 +9,7 @@ El renderer llama a `window.companion`. Preload traduce cada método a `companio
 | `status`, `onStatus` | Sin argumentos de negocio | Instantánea con revisión y visibilidad aplicada. |
 | `navigate`, `codexTab` | Sección permitida, o `activity` / `summary` | Cambia la vista. Una vista ajena no recibe la última respuesta. |
 | `openRequest` | Texto no vacío, máximo 8.000 caracteres | `queued`, `draft` o `clipboard`. Requiere Home visible sin Pausa/Presentación. El borrador indica si Codex se abrió. |
+| `notesRecent` | Sin argumentos | Hasta cuatro apuntes con ID, título, carpeta, fecha de modificación y favorito. Solo en Inicio visible, sin Pausa ni Presentación. |
 | `contextChoose`, `contextPrepare`, `contextHandoff` | Diálogo nativo; entrada validada; UUID de revisión | Prepara una revisión y la consume una vez, con chat y archivo revalidados. |
 | `contextResult`, `contextSource` | Estado o referencia seleccionada | Resultado correlacionado y acceso acotado a fuente en Resumen. |
 | `decide` | UUID y `allow`, `deny` o `pass` | Decide un permiso pendiente desde su propia vista. |

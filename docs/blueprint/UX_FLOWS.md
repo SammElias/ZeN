@@ -3,10 +3,14 @@
 ## Consultar y navegar
 
 1. Mostrar ZEN desde la bandeja o con `Ctrl+Alt+Z` si el atajo conserva su valor inicial.
-2. Leer el estado de Codex y la reproducción en la cápsula. Abrir Home, Codex o Sonido por su icono.
+2. Leer el estado de Codex y la reproducción en la cápsula. Abrir Inicio, Codex, Apuntes o Sonido por su icono.
 3. Cambiar de icono navega en la app; pulsar de nuevo la sección activa recoge la ventana. La X la oculta; Salir está en la bandeja.
 
 Arrastra el agarre de seis puntos a la derecha para mover la cápsula. Las tres flechas junto al agarre la colocan directamente a la izquierda, en el centro o a la derecha del borde superior del monitor actual. Los controles siguen visibles cuando abres una sección. `Ctrl+Alt+C` vuelve al chat observado o fijado si conservas el atajo inicial.
+
+En **ZEN Workspace**, el bloque **Continúa donde lo dejaste** abre los apuntes modificados recientemente en su ficha. Si Knowledge Hub recupera un borrador, pide confirmación antes de descartarlo. **Actividad de Codex** muestra las señales recientes disponibles. El turno terminado del chat fijado abre Resumen, donde aparece la última respuesta cuando está disponible. ZEN conserva las señales que recibe, con el alcance de Actividad y del chat fijado.
+
+En **Avisos**, Inicio destaca primero los permisos y errores pendientes. **Ver avisos** abre el centro de avisos. **Silenciar avisos 30 min** muestra el tiempo restante y permite reactivarlos antes.
 
 ## Enviar una petición
 

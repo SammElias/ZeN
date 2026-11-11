@@ -27,6 +27,7 @@ const bridge: CompanionBridge = {
   contextResult: () => call('contextResult'),
   contextSource: selection => call('contextSource', selection),
   navigate: page => call('navigate', page),
+  notesRecent: () => call('notesRecent'),
   notesRead: () => call('notesRead'),
   notesChange: change => call('notesChange', change),
   notesDraft: draft => call('notesDraft', draft),
@@ -60,6 +61,7 @@ const bridge: CompanionBridge = {
   returnApp: () => call('returnApp'),
   locate: (session, path) => call('locate', {session, path}),
   hide: () => call('hide'),
+  pinWindow: enabled => call('pinWindow', enabled),
   drag: action => call('drag', action),
   moveCapsule: alignment => call('moveCapsule', alignment),
 };

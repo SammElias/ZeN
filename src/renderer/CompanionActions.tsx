@@ -15,6 +15,8 @@ const iconPaths = {
   settings: 'M4 7h16M4 17h16M8 4v6M16 14v6',
   arrow: 'M5 12h14m-6-6 6 6-6 6',
   close: 'm6 6 12 12M6 18 18 6',
+  lock: 'M5 11h14v10H5zM8 11V7a4 4 0 1 1 8 0v4m-4 4v2',
+  lockOpen: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 7.9-1m-3.9 9v2',
   check: 'm5 12 4 4 10-10',
   sound: 'M11 4 6 8H3v8h3l5 4V4m4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',
   mute: 'M11 4 6 8H3v8h3l5 4V4m5 5 6 6m-6 0 6-6',

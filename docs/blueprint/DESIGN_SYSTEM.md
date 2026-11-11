@@ -14,13 +14,14 @@ ZEN usa superficies de cristal oscuro o claro con degradado, contraste suficient
 | Tipografía | `system-ui`, Segoe UI; códigos en Cascadia Mono/Consolas. Base: botones 12 px, texto 13 px, detalle 11 px, h2 17 px. Home usa su escala de cabecera. |
 | Radios y capas | Control base 10 px, pestaña agrupada 12 px. La cápsula usa su contorno redondeado y no lleva sombra exterior. |
 
-Tomar separaciones de los componentes vecinos: controles agrupados con 4–8 px y más aire entre secciones. Reutilizar variables CSS de cristal (`--glass-*`) en vez de fijar un color oscuro que falle en tema claro. Opacidad 28–96 %, valor inicial 86 %; desenfoque 0–40 px. El fondo puede ser Aurora, Atardecer o una imagen local.
+Tomar separaciones de los componentes vecinos: controles agrupados con 4–8 px y más aire entre secciones. Reutilizar variables CSS de cristal (`--glass-*`) para respetar el tema. La opacidad se ajusta del 74 al 100 % y empieza en el 90 %. Las preferencias antiguas con menos del 74 % se muestran al 74 %. El desenfoque admite de 0 a 40 px. El fondo puede ser Aurora, Atardecer o una imagen local.
 
 ## Componentes y estados
 
 - **Botón:** primario para enviar o abrir el destino; secundario para copiar, cambiar vista o navegar. Un permiso o efecto requiere nombre explícito. Mantener foco visible y desactivar mientras corresponde.
 - **Entrada:** etiqueta visible, límites y error cercanos; el placeholder solo ilustra. No perder el borrador ante un fallo.
 - **Tarjeta:** un estado principal, detalle breve y acceso a la vista que lo amplía. Las listas de datos largos se leen en el modo app.
+- **Inicio:** el editor de Codex crece hasta su límite y luego desplaza el texto internamente. Los tres módulos usan tarjetas de la misma altura. Apuntes y Actividad se muestran en dos columnas cuando hay espacio. Avisos conserva una sola fila de controles en tamaños amplios. Las superficies usan los colores y la opacidad del tema, con una capa más sólida para el editor.
 - **Cápsula:** una fila con Codex, navegación, multimedia y controles. Al abrir una sección, su contenido aparece debajo de la misma cabecera. Mantener una sola campana y una sola ventana.
 - **Estado:** distinguir carga, vacío, no disponible, permiso y error con texto o icono accesible; no usar solo color. El silencio de Codex no se presenta como progreso.
 - **Icono:** SVG de línea de la familia ZEN; controles de icono con nombre accesible. El tamaño base del glifo es 17 px.

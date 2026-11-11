@@ -3,8 +3,12 @@ import {openSync,closeSync,fstatSync,readSync,readFileSync,writeFileSync,renameS
 import {basename,join} from 'node:path';
 import {z} from 'zod';
 import {imageSize} from 'image-size';
-import {AppearanceOptions,defaultAppearance,type AppearanceState} from '../shared/companion-appearance';
-const Saved=z.object({options:AppearanceOptions,image:z.object({id:z.string().uuid(),name:z.string().max(200)}).strict().optional()}).strict();
+import {AppearanceOptions,defaultAppearance,glassOpacity,type AppearanceState} from '../shared/companion-appearance';
+const SavedOptions=AppearanceOptions.extend({
+ opacity:z.number().min(.28).max(glassOpacity.maximum)
+  .transform(value=>Math.max(value,glassOpacity.minimum)).default(glassOpacity.initial),
+});
+const Saved=z.object({options:SavedOptions,image:z.object({id:z.string().uuid(),name:z.string().max(200)}).strict().optional()}).strict();
 const MAX_BYTES=12*1024*1024;
 function readStableImage(path:string){
  const fd=openSync(path,'r');

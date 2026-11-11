@@ -27,7 +27,9 @@ function validDraft(draft: HubDraft | undefined) {
   return true;
 }
 
-export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
+export type HubDestination = 'all' | 'new' | {noteId: string};
+
+export function NotesWorkspace({appearance, destination}: {appearance: AppearanceState; destination?: HubDestination}) {
   const [data,setData] = useState<HubData>();
   const [location,setLocation] = useState<HubLocation>({section:'dashboard'});
   const [draft,setDraft] = useState<HubDraft>();
@@ -50,6 +52,7 @@ export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
   const lock = useRef(false);
   const draftWrite = useRef(0);
   const confirmRef = useRef<HTMLDialogElement>(null);
+  const initialDestination = useRef(destination);
 
   useEffect(() => {
     let active=true;
@@ -57,6 +60,8 @@ export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
       if (!active) return;
       if (!result.ok) {setFeedback({text:result.error,error:true});return;}
       setData(result.value.data);
+      const target = initialDestination.current;
+      initialDestination.current = undefined;
       const recovered=result.value.draft;
       if (recovered) {
         setDraft(recovered);
@@ -69,6 +74,9 @@ export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
           section:'all', folderId:recovered.fields.kind==='note'?recovered.fields.folderId ?? undefined:undefined,
         });
         setFeedback({text:'Borrador recuperado.'});
+        if (target) confirmDiscard(()=>openDestination(target,result.value.data));
+      } else if (target) {
+        openDestination(target,result.value.data);
       }
     }).catch(()=>{if(active)setFeedback({text:'No se pudo abrir la biblioteca.',error:true});});
     return ()=>{active=false;};
@@ -104,6 +112,9 @@ export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
   function guard(run: () => void) {
     if (lock.current) return;
     if (!dirty) {run();return;}
+    confirmDiscard(run);
+  }
+  function confirmDiscard(run: () => void) {
     setConfirmation({text:'Hay cambios sin guardar en este elemento.',label:'Descartar borrador',run:()=>{
       lock.current=true;setBusy(true);
       void storeDraft(null).then(ok=>{
@@ -133,6 +144,19 @@ export function NotesWorkspace({appearance}: {appearance: AppearanceState}) {
     setFolderForm(undefined);
   }
   function goto(next: HubLocation) {guard(()=>showLocation(next));}
+
+  function openDestination(target: HubDestination, library: HubData) {
+    setFeedback(undefined);
+    showLocation({section:'all'});
+    if (target==='all') return;
+    if (target==='new') {
+      create('note');
+      return;
+    }
+    const entry=library.entries.find(item=>item.id===target.noteId && item.kind==='note');
+    if (entry) openEditor(editing(entry),'read');
+    else error('El apunte ya no está disponible.');
+  }
 
   function choose(entry: HubEntry, fromSearch=false) {
     if (fromSearch) setShowSearch(false);

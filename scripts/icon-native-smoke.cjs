@@ -6,9 +6,19 @@ app.whenReady().then(async()=>{
   const sizes=[16,20,24,32,40,48,64,128,256],checks=[];
   for(const name of ['zen','tray'])for(const size of sizes){
     const icon=nativeImage.createFromPath(resolve(`public/icons/${name}-${size}.png`));
-    const bitmap=icon.toBitmap();let visible=0;const colors=new Set();
-    for(let i=0;i<bitmap.length;i+=4)if(bitmap[i+3]>128){visible++;colors.add(bitmap.subarray(i,i+3).toString('hex'));}
-    checks.push({name,size,passed:!icon.isEmpty()&&icon.getSize().width===size&&visible>size*size*.25&&colors.size>8});
+    const bitmap=icon.toBitmap();let visible=0,transparent=0,white=0;
+    for(let i=0;i<bitmap.length;i+=4){
+      const alpha=bitmap[i+3];
+      if(alpha===0)transparent++;
+      if(alpha<128)continue;
+      visible++;
+      if(Math.min(bitmap[i],bitmap[i+1],bitmap[i+2])>=alpha*.88)white++;
+    }
+    const corners=[0,size-1,size*(size-1),size*size-1];
+    const passed=!icon.isEmpty()&&icon.getSize().width===size&&icon.getSize().height===size&&
+      visible>size*size*.12&&white>=visible*.95&&transparent>size*size*.25&&
+      corners.every(pixel=>bitmap[pixel*4+3]===0);
+    checks.push({name,size,passed});
   }
   const icoLoads=['zen','tray'].every(name=>!nativeImage.createFromPath(resolve(`public/icons/${name}.ico`)).isEmpty());
   const legacy=nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAFUlEQVQ4T2Nk+P//PwMlgImBQjDwHAAA2n4DHd9rF1gAAAAASUVORK5CYII=');
