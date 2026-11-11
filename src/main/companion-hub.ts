@@ -1,5 +1,7 @@
 import {CompanionEventSchema,CompanionLastReplySchema,type CompanionLastReply,type CompanionEvent,type CompanionStatus,type CompanionSettings,type CompanionApproval,type CompanionSession,type CompanionNotice,type CompanionConnection,type CompanionTarget,type CompanionSummary} from '../shared/codex-companion';
-import {toolActivity,matchesTarget,isSilenced} from '../shared/companion-presentation';
+import {toolActivity,isSilenced} from '../shared/companion-presentation';
+import {matchesTarget} from '../shared/companion-target';
+import {preferCompanionReply} from './companion-reply';
 type Decision='allow'|'deny'|'pass';
 /** Local observer. Only the pinned chat's latest confirmed answer is retained in RAM. */
 export class CompanionHub{
@@ -11,14 +13,20 @@ export class CompanionHub{
  private ignoredEvents=0;targetError?:string;
  account:CompanionStatus['account']='unchecked';checking=false;installed=false;error?:string;
  connection:CompanionConnection={state:'unchecked',total:0,trusted:0,enabled:0};
- constructor(public settings:CompanionSettings,private changed:()=>void,private notify:(notice:CompanionStatus['notices'][number])=>void,private now=()=>Date.now(),private target?:CompanionTarget,private observed?:(event:CompanionEvent,session:CompanionSession)=>void){}
+ constructor(public settings:CompanionSettings,private changed:()=>void,private notify:(notice:CompanionStatus['notices'][number])=>void,private now=()=>Date.now(),private target?:CompanionTarget,private observed?:(event:CompanionEvent,session:CompanionSession,reply?:CompanionLastReply)=>void){}
  setSummary(id:string,runKey:string,summary:CompanionSummary){const s=this.sessions.get(id);if(!s||s.runKey!==runKey||s.state!=='finished')return;s.summary=summary;this.changed();}
+ private canReadReply(session:string,cwd:string){return !this.targetError&&!!this.target&&matchesTarget(this.target,session,cwd)&&!this.settings.paused&&!this.settings.presentation;}
+ lastReply(selected:CompanionTarget){
+  if(!this.canReadReply(selected.session,selected.cwd))return undefined;
+  const reply=this.sessions.get(selected.session)?.lastReply;
+  return reply?{...reply}:undefined;
+ }
  /** Restore a confirmed local answer without inventing activity, a Stop or a notice. */
  setLastReply(session:string,cwd:string,reply:CompanionLastReply):boolean{
   const parsed=CompanionLastReplySchema.safeParse(reply);
-  if(!parsed.success||parsed.data.source!=='local'||!parsed.data.text.trim()||this.targetError||!this.target||!matchesTarget(this.target,session,cwd)||this.settings.paused||this.settings.presentation)return false;
+  if(!parsed.success||parsed.data.source!=='local'||!parsed.data.text.trim()||!this.target||!this.canReadReply(session,cwd))return false;
   const prior=this.sessions.get(session),last=prior?.lastReply,next=parsed.data;
-  if(last&&(last.at>next.at||last.text===next.text&&last.turn===next.turn&&last.truncated===next.truncated||last.at===next.at&&last.source==='hook'))return false;
+  if(last&&(preferCompanionReply(last,next)===last||last.text===next.text&&last.turn===next.turn&&last.truncated===next.truncated))return false;
   const value=prior??{id:session,label:this.target.title,title:this.target.title,cwd:this.target.cwd,state:'idle' as const,at:0,steps:[]};
   value.lastReply={...next};this.sessions.set(session,value);this.changed();return true;
  }
@@ -43,10 +51,18 @@ export class CompanionHub{
   if(e.event==='Stop'&&observation.endedAt===undefined)observation.endedAt=this.now();
   const fresh=e.event==='UserPromptSubmit'||e.event==='SessionStart';
   const session:CompanionSession={id:e.session,turn:e.turn??prior?.turn,runKey:fresh?e.id:prior?.runKey??e.id,summary:fresh?undefined:prior?.summary,lastReply:prior?.lastReply,label:label||'Codex',title,cwd:e.cwd,state:prior?.state??'idle',tool:e.tool,at:this.now(),observation,steps:e.event==='UserPromptSubmit'?[]:prior?.steps??[]};
-  // Answer text is data only; it is never a permission preview or an executable action.
-  if(e.event==='Stop'&&!e.failed&&e.lastAssistantMessage?.trim()&&this.target&&!this.settings.presentation&&!(prior?.state==='finished'&&prior.turn===session.turn))session.lastReply={text:e.lastAssistantMessage,at:this.now(),source:'hook',turn:e.turn,truncated:e.lastAssistantMessageTruncated};
+  const duplicateStop=e.event==='Stop'&&prior?.state==='finished'&&prior.turn===session.turn;
+  let acceptedReply:CompanionLastReply|undefined;
+  if(e.event==='Stop'&&!duplicateStop&&!e.failed&&e.lastAssistantMessage?.trim()&&this.canReadReply(e.session,e.cwd)){
+   acceptedReply={text:e.lastAssistantMessage,at:this.now(),source:'hook',turn:e.turn,truncated:e.lastAssistantMessageTruncated};
+   session.lastReply=acceptedReply;
+  }
   const labels:Record<CompanionEvent['event'],string>={SessionStart:'Sesión abierta',UserPromptSubmit:'Pensando',PreToolUse:'Ejecutando',PermissionRequest:'Necesita permiso',PostToolUse:e.failed?'Herramienta con error':'Acción terminada',Stop:'Turno terminado',SubagentStart:'Agente iniciado',SubagentStop:'Agente terminado',Interrupt:'Interrumpido',SessionEnd:'Sesión cerrada'};
-  if(!(e.event==='Stop'&&prior?.state==='finished'&&prior.turn===session.turn))session.steps=[...session.steps,{id:e.id,label:labels[e.event]+(e.tool?' · '+toolActivity(e.tool):''),preview:e.preview,at:this.now()}].slice(-20);
+  if(!duplicateStop){
+   const activity=e.tool?toolActivity(e.tool):undefined;
+   const label=activity?`${labels[e.event]} · ${activity.label}`:labels[e.event];
+   session.steps=[...session.steps,{id:e.id,label,kind:activity?.kind,preview:e.preview,at:this.now()}].slice(-20);
+  }
   if(e.event==='UserPromptSubmit')session.state='thinking';
   else if(e.event==='PreToolUse')session.state='working';
   else if(e.event==='PostToolUse')session.state=e.failed?'error':'thinking';
@@ -54,7 +70,7 @@ export class CompanionHub{
   else if(e.event==='Interrupt')session.state='interrupted';
   else if(['SessionStart','SessionEnd'].includes(e.event))session.state='idle';
   this.sessions.set(e.session,session);if(this.sessions.size>40){const oldest=[...this.sessions.keys()].find(id=>id!==e.session&&![...this.pending.values()].some(p=>p.view.session===id));if(oldest)this.sessions.delete(oldest);}
-  try{this.observed?.(e,session);}catch{/* Optional local summaries cannot delay or break hook replies. */}
+  try{this.observed?.(e,session,acceptedReply?{...acceptedReply}:undefined);}catch{/* Optional observers cannot delay or break hook replies. */}
   if(e.event==='PermissionRequest'){
    if(e.turn&&e.preview&&!e.truncated&&e.preview.length<=64000){session.state='approval';const view={id:e.id,session:e.session,turn:e.turn,label,tool:e.tool??'Acción',preview:e.preview,expiresAt:this.now()+105000};const timer=setTimeout(()=>this.decide(e.id,'pass'),105000);this.pending.set(e.id,{view,reply,timer});this.notice(e.id,e.session,'Codex necesita tu permiso','permission');this.changed();return()=>this.abandon(e.id);}
    session.state='unknown';this.notice(e.id,e.session,'Revisa el permiso completo en Codex','permission');

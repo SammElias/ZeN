@@ -1,23 +1,11 @@
 import {execFile} from 'node:child_process';
 import {lstat,realpath} from 'node:fs/promises';
-import {resolve,relative,isAbsolute,dirname,join} from 'node:path';
 import type {CompanionEvent,CompanionSession,CompanionSummary,CompanionTarget} from '../shared/codex-companion';
-import {matchesTarget} from '../shared/companion-presentation';
+import {matchesTarget} from '../shared/companion-target';
+import {projectFile} from './companion-project-path';
 
 type Snapshot={at:number;files:Map<string,string>};
 const MAX_FILES=2000;
-export async function projectFile(root:string,name:string,allowMissing=false){
- if(!name||/[\0\r\n]/.test(name)||isAbsolute(name))throw Error('Ubicación no válida.');
- const base=await realpath(root),full=resolve(base,name),part=relative(base,full);
- if(!part||part==='..'||part.startsWith('..'+(process.platform==='win32'?'\\':'/'))||isAbsolute(part))throw Error('Ubicación fuera del proyecto.');
- let current=base;const segments=part.split(/[\\/]/);
- for(let i=0;i<segments.length;i++){
-  current=join(current,segments[i]);
-  try{const s=await lstat(current);if(s.isSymbolicLink()||i<segments.length-1&&!s.isDirectory())throw Error('Ubicación enlazada no permitida.');}
-  catch(e){if(allowMissing&&(e as NodeJS.ErrnoException).code==='ENOENT')return{file:full,folder:dirname(current),missing:true};throw e;}
- }
- return{file:full,folder:dirname(full),missing:false};
-}
 export async function projectSnapshot(root:string):Promise<Snapshot>{
  const base=await realpath(root);
  const listed=await new Promise<string>((ok,fail)=>execFile('git',['--no-optional-locks','-c','core.fsmonitor=false','ls-files','--cached','--others','--exclude-standard','-z'],{cwd:base,windowsHide:true,timeout:3000,maxBuffer:1024*1024,encoding:'utf8',env:{...process.env,GIT_OPTIONAL_LOCKS:'0'}},(e,out)=>e?fail(e):ok(out)));

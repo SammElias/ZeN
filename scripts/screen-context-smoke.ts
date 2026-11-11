@@ -2,7 +2,8 @@ import { app, BrowserWindow, nativeImage } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { native, WindowSchema } from '../src/tools/windows/native';
+import { native } from '../src/tools/windows/native';
+import { WindowSchema } from '../src/shared/windows-observation';
 import { ScreenContext } from '../src/main/screen-context';
 void app.whenReady().then(async()=>{
   const fixture=new BrowserWindow({width:760,height:460,show:false,backgroundColor:'#ffffff',webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});

@@ -9,9 +9,10 @@ if(args.Length==1&&args[0]=="--self-test"){NowPlayingSelection.VerifyFixtures();
 var json=new JsonSerializerOptions { PropertyNamingPolicy=JsonNamingPolicy.CamelCase };
 GlobalSystemMediaTransportControlsSessionManager? manager=null;
 var sessions=new Dictionary<string,GlobalSystemMediaTransportControlsSession>();
-GlobalSystemMediaTransportControlsSession? selected=null;string? selectedId=null,artKey=null,art=null;
-GlobalSystemMediaTransportControlsSession? observed=null;string? observedArtKey=null,observedArt=null;
-int generation=0,selectedGeneration=-1;bool subscribed=false;
+GlobalSystemMediaTransportControlsSession? selected=null;string? selectedId=null,art=null;
+GlobalSystemMediaTransportControlsSession? observed=null;string? observedArt=null;
+(string Title,string Artist,string Album)? artKey=null,observedArtKey=null;
+int generation=0,selectedGeneration=-1;bool subscribed=false,manual=false;
 string Clean(string? value)=>new((value??"").Where(c=>!char.IsControl(c)).Take(500).ToArray());
 string Source(string id){
  var key=id.ToLowerInvariant();var known=key switch{
@@ -28,10 +29,25 @@ string Source(string id){
  var label=Clean(id.Replace('\\','/').Split('/').Last()).Trim();if(label.EndsWith(".exe",StringComparison.OrdinalIgnoreCase))label=label[..^4];
  return label.Length==0?"Reproductor de Windows":new string(label.Take(120).ToArray());
 }
-bool Browser(string id)=>Source(id) is "Google Chrome" or "Microsoft Edge" or "Firefox" or "Brave" or "Opera" or "Vivaldi";
+bool Browser(string source)=>source is "Google Chrome" or "Microsoft Edge" or "Firefox" or "Brave" or "Opera" or "Vivaldi";
+(string Title,string Artist,string Album) TrackText(GlobalSystemMediaTransportControlsSessionMediaProperties props)
+ =>(Clean(props.Title),Clean(props.Artist),Clean(props.AlbumTitle));
 bool Playing(GlobalSystemMediaTransportControlsSession s){try{return s.GetPlaybackInfo().PlaybackStatus==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;}catch{return false;}}
 bool Live()=>selected is not null&&selectedGeneration==Volatile.Read(ref generation)&&manager!.GetSessions().Any(s=>s.Equals(selected));
-void Clear(){selected=null;selectedId=null;selectedGeneration=-1;artKey=null;art=null;}
+void Clear(){selected=null;selectedId=null;selectedGeneration=-1;artKey=null;art=null;manual=false;}
+void Select(string token,GlobalSystemMediaTransportControlsSession session,int epoch,bool pinned){
+ if(token!=selectedId){artKey=null;art=null;}
+ selected=session;selectedId=token;selectedGeneration=epoch;manual=pinned;
+}
+object[] ListSessions()=>sessions.Select(pair=>{
+ var name=Source(pair.Value.SourceAppUserModelId);
+ return (object)new{id=pair.Key,name,browser=Browser(name)};
+}).ToArray();
+GlobalSystemMediaTransportControlsSession[] RefreshSessions(){
+ var available=manager!.GetSessions().Take(16).ToArray();
+ sessions=available.ToDictionary(session=>sessions.FirstOrDefault(pair=>pair.Value.Equals(session)).Key??Guid.NewGuid().ToString(),session=>session);
+ return available;
+}
 async Task<string?> Artwork(GlobalSystemMediaTransportControlsSessionMediaProperties props){
  try{
   if(props.Thumbnail is null)return null;using var input=await props.Thumbnail.OpenReadAsync();if(input.Size>2097152)return null;
@@ -44,9 +60,10 @@ async Task<string?> Artwork(GlobalSystemMediaTransportControlsSessionMediaProper
 async Task<object> Read(){
  if(!Live()){Clear();throw new InvalidOperationException("stale");}
  var identity=selectedId;var epoch=selectedGeneration;var info=selected!.GetPlaybackInfo();var c=info.Controls;var props=await selected.TryGetMediaPropertiesAsync();var timeline=selected.GetTimelineProperties();
- var key=Clean(props.Title)+"|"+Clean(props.Artist)+"|"+Clean(props.AlbumTitle);if(key!=artKey){artKey=key;art=await Artwork(props);}
+ var text=TrackText(props);if(text!=artKey){artKey=text;art=await Artwork(props);}
  if(!Live()||identity!=selectedId||epoch!=selectedGeneration)throw new InvalidOperationException("stale");
- return new { session=selectedId,source=Source(selected.SourceAppUserModelId),browser=Browser(selected.SourceAppUserModelId),title=Clean(props.Title),artist=Clean(props.Artist),album=Clean(props.AlbumTitle),artwork=art,playing=info.PlaybackStatus==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,shuffle=info.IsShuffleActive,repeat=info.AutoRepeatMode?.ToString().ToLowerInvariant(),positionMs=Math.Max(0,(timeline.Position-timeline.StartTime).TotalMilliseconds),durationMs=Math.Max(0,timeline.EndTime.TotalMilliseconds-timeline.StartTime.TotalMilliseconds),controls=new { play=c.IsPlayEnabled||c.IsPlayPauseToggleEnabled,pause=c.IsPauseEnabled||c.IsPlayPauseToggleEnabled,previous=c.IsPreviousEnabled,next=c.IsNextEnabled,shuffle=c.IsShuffleEnabled,repeat=c.IsRepeatEnabled } };
+ var source=Source(selected.SourceAppUserModelId);
+ return new { session=selectedId,source,browser=Browser(source),title=text.Title,artist=text.Artist,album=text.Album,artwork=art,playing=info.PlaybackStatus==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,shuffle=info.IsShuffleActive,repeat=info.AutoRepeatMode?.ToString().ToLowerInvariant(),positionMs=Math.Max(0,(timeline.Position-timeline.StartTime).TotalMilliseconds),durationMs=Math.Max(0,timeline.EndTime.TotalMilliseconds-timeline.StartTime.TotalMilliseconds),controls=new { play=c.IsPlayEnabled||c.IsPlayPauseToggleEnabled,pause=c.IsPauseEnabled||c.IsPlayPauseToggleEnabled,previous=c.IsPreviousEnabled,next=c.IsNextEnabled,shuffle=c.IsShuffleEnabled,repeat=c.IsRepeatEnabled } };
 }
 async Task<object> NowPlaying(){
  var available=manager!.GetSessions().ToArray();
@@ -55,12 +72,26 @@ async Task<object> NowPlaying(){
  if(!candidate.Equals(observed)){observed=candidate;observedArtKey=null;observedArt=null;}
  // This read path never writes selected/selectedId/sessions or invokes playback controls.
  var props=await candidate.TryGetMediaPropertiesAsync();
- var key=Clean(props.Title)+"|"+Clean(props.Artist)+"|"+Clean(props.AlbumTitle);
- if(key!=observedArtKey){observedArtKey=key;observedArt=await Artwork(props);}
+ var text=TrackText(props);
+ if(text!=observedArtKey){observedArtKey=text;observedArt=await Artwork(props);}
  if(!manager.GetSessions().Any(s=>s.Equals(candidate))||!Playing(candidate)){
   observed=null;observedArtKey=null;observedArt=null;return new{track=(object?)null};
  }
- return new{track=(object)new{source=Source(candidate.SourceAppUserModelId),browser=Browser(candidate.SourceAppUserModelId),title=Clean(props.Title),artist=Clean(props.Artist),album=Clean(props.AlbumTitle),artwork=observedArt,playing=true}};
+ var source=Source(candidate.SourceAppUserModelId);
+ return new{track=(object)new{source,browser=Browser(source),title=text.Title,artist=text.Artist,album=text.Album,artwork=observedArt,playing=true}};
+}
+async Task<object> Snapshot(bool followSystem){
+ var epoch=Volatile.Read(ref generation);
+ var available=RefreshSessions();
+ var retained=selectedId is not null&&sessions.TryGetValue(selectedId,out var existing)?existing:null;
+ var pinned=manual&&!followSystem&&retained is not null;
+ var current=manager!.GetCurrentSession();
+ var candidate=pinned?retained:NowPlayingSelection.Pick(available,retained,current,Playing,s=>s.SourceAppUserModelId)
+  ?? retained ?? (current is not null&&available.Contains(current)?current:null);
+ if(candidate is null){Clear();return new{sessions=ListSessions(),track=(object?)null,manual};}
+ var token=sessions.First(pair=>pair.Value.Equals(candidate)).Key;
+ Select(token,candidate,epoch,pinned);
+ return new{sessions=ListSessions(),track=await Read(),manual};
 }
 while(await Console.In.ReadLineAsync() is string line){
  int id=0;
@@ -70,11 +101,13 @@ while(await Console.In.ReadLineAsync() is string line){
   if(!subscribed){manager.SessionsChanged+=(_,__)=>Interlocked.Increment(ref generation);subscribed=true;}
   object result;
   if(method=="list"){
-   Clear();sessions.Clear();var items=new List<object>();foreach(var s in manager.GetSessions().Take(32)){var name=Source(s.SourceAppUserModelId);var token=Guid.NewGuid().ToString();sessions[token]=s;items.Add(new{id=token,name,browser=Browser(s.SourceAppUserModelId)});if(items.Count==16)break;}result=new{sessions=items};
+   Clear();sessions.Clear();RefreshSessions();result=new{sessions=ListSessions()};
+  }else if(method=="snapshot"){
+   result=await Snapshot(req.TryGetProperty("followSystem",out var follow)&&follow.ValueKind==JsonValueKind.True);
   }else if(method=="nowPlaying"){
    result=await NowPlaying();
   }else if(method=="select"){
-   var token=req.GetProperty("session").GetString()!;if(!sessions.TryGetValue(token,out var s))throw new InvalidOperationException("stale");selected=s;selectedId=token;selectedGeneration=Volatile.Read(ref generation);artKey=null;result=await Read();
+   var token=req.GetProperty("session").GetString()!;if(!sessions.TryGetValue(token,out var s))throw new InvalidOperationException("stale");Select(token,s,Volatile.Read(ref generation),true);result=await Read();
   }else if(method=="read"||method=="action"){
    if(req.GetProperty("session").GetString()!=selectedId||!Live())throw new InvalidOperationException("stale");
    if(method=="read")result=await Read();else{

@@ -1,6 +1,5 @@
 import {LocalLibrary} from './library';
 import {localFileRequest} from '../shared/local-files';
-export {localFileRequest} from '../shared/local-files';
 export function localFileOperation(text:string,library:LocalLibrary,maxChars=4000) {
   const request=localFileRequest(text);if(!request)return;
   return async(signal:AbortSignal)=>{

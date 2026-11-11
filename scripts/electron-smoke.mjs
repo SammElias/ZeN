@@ -1,9 +1,21 @@
 import { spawn } from 'node:child_process';
 import electron from 'electron';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 const environment = { ...process.env }; delete environment.ELECTRON_RUN_AS_NODE; delete environment.OPENAI_API_KEY;
 const objective = process.argv.includes('--objective');
-const child = spawn(electron, ['.', objective ? '--zen-objective-smoke' : '--zen-smoke'], { env: environment, windowsHide: true });
+const flag = objective ? '--zen-objective-smoke' : '--zen-smoke';
+const historicalOption = process.argv.indexOf('--historical');
+const bundleArgument = historicalOption >= 0 && process.argv[historicalOption + 1];
+if (!bundleArgument || bundleArgument.startsWith('--')) {
+  throw Error('Indica una compilación histórica con --historical <carpeta>. Para ZeN actual usa npm run test:electron.');
+}
+const bundle = resolve(bundleArgument);
+const main = await readFile(join(bundle, 'dist', 'main.cjs'), 'utf8');
+if (!main.includes(`"${flag}"`) && !main.includes(`'${flag}'`)) {
+  throw Error('La compilación indicada no incluye la prueba histórica solicitada.');
+}
+const child = spawn(electron, [bundle, flag], { env: environment, windowsHide: true });
 let output = ''; let errors = '';
 child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => errors += chunk);
 const timer = setTimeout(() => { child.kill(); }, 30000);

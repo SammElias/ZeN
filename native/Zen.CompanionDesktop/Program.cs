@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-// Window identity and geometry only. No titles, pixels, URLs, keyboard or cursor polling.
+// Window identity and geometry, and an optional coordinate-free outside-click signal.
 if(args is ["--verify-history"]){Console.WriteLine(JsonSerializer.Serialize(WindowHistory.Verify()));return;}
 if(!OperatingSystem.IsWindows())return;
 Native.SetProcessDpiAwarenessContext((nint)(-4));
@@ -17,14 +17,13 @@ if(args is ["--restore"]){
  }catch{Console.WriteLine("{\"ok\":false,\"error\":\"stale\"}");}
  return;
 }
-if(args.Length!=2||args[0]!="--watch"||!int.TryParse(args[1],out var owner))return;
+if(args.Length is <2 or >3||args[0]!="--watch"||!int.TryParse(args[1],out var owner))return;
 uint thread=Native.GetCurrentThreadId();Native.PeekMessage(out _,0,0,0,0);
 WindowId? previous=null;string? previousName=null,last=null;
 void Publish(){
  try{
   var foreground=Native.GetForegroundWindow();var identity=Native.Identity(foreground);
-  if(identity is not null&&Native.Eligible(foreground,identity,owner)){
-   using var p=Process.GetProcessById(identity.pid);var name=p.ProcessName;
+  if(identity is not null&&Native.WorkWindowName(foreground,identity,owner) is string name){
    (previous,previousName)=WindowHistory.Observe((previous,previousName),identity,name);
   }
   if(previous is not null&&(!Native.IsWindow((nint)long.Parse(previous.handle))||Native.Identity((nint)long.Parse(previous.handle))!=previous)){previous=null;previousName=null;}
@@ -37,29 +36,43 @@ Native.WinEvent callback=(_h,ev,hwnd,obj,_child,_thread,_time)=>{
 };
 var hooks=new[]{Native.SetWinEventHook(3,3,0,callback,0,0,0),Native.SetWinEventHook(0x8001,0x8001,0,callback,0,0,0),Native.SetWinEventHook(0x800B,0x800B,0,callback,0,0,0)};
 if(hooks.Any(h=>h==0)){foreach(var h in hooks)if(h!=0)Native.UnhookWinEvent(h);return;}
+using var outsideClick=args.Length==3&&nint.TryParse(args[2],out var capsule)?new OutsideClickObserver(capsule,owner,thread):null;
 _ = Task.Run(async()=>{while(await Console.In.ReadLineAsync() is not null){}Native.PostThreadMessage(thread,0x12,0,0);});
-Publish();while(Native.GetMessage(out var message,0,0,0)>0){Native.TranslateMessage(ref message);Native.DispatchMessage(ref message);}
+Publish();
+if(outsideClick?.Installed==true)Console.WriteLine("{\"event\":\"outside-click-ready\"}");
+while(Native.GetMessage(out var message,0,0,0)>0){
+ if(message.hwnd==0&&message.message==OutsideClickObserver.Message){
+  Console.WriteLine("{\"event\":\"outside-click\"}");
+  Console.Out.Flush();
+  continue;
+ }
+ Native.TranslateMessage(ref message);Native.DispatchMessage(ref message);
+}
 foreach(var h in hooks)Native.UnhookWinEvent(h);GC.KeepAlive(callback);
 
 record WindowId(string handle,int pid,string started);
 record Rectangle(int x,int y,int width,int height);
 static class Native{
+ static readonly HashSet<string> ExcludedProcesses = new(StringComparer.OrdinalIgnoreCase) {
+  "ZEN", "Zen.CompanionDesktop", "electron", "StartMenuExperienceHost", "ShellExperienceHost", "SearchHost"
+ };
  public delegate void WinEvent(nint hook,uint ev,nint hwnd,int obj,int child,uint thread,uint time);
  [StructLayout(LayoutKind.Sequential)]public struct RECT{public int left,top,right,bottom;}
  [StructLayout(LayoutKind.Sequential)]public struct MONITORINFO{public uint size;public RECT monitor,work;public uint flags;}
  [StructLayout(LayoutKind.Sequential)]public struct MSG{public nint hwnd;public uint message;public nuint wParam;public nint lParam;public uint time;public int x,y;public uint extra;}
  public static WindowId? Identity(nint hwnd){try{if(hwnd==0||!IsWindow(hwnd))return null;GetWindowThreadProcessId(hwnd,out var pid);using var p=Process.GetProcessById((int)pid);return new(hwnd.ToString(),(int)pid,p.StartTime.ToUniversalTime().Ticks.ToString());}catch{return null;}}
- public static bool Eligible(nint hwnd,WindowId id,int owner){
-  if(id.pid==owner||!IsWindowVisible(hwnd)||GetAncestor(hwnd,2)!=hwnd||(GetWindowLongPtrW(hwnd,-20).ToInt64()&0x80)!=0)return false;
-  using var p=Process.GetProcessById(id.pid);var name=p.ProcessName;
-  if(name.Equals("ZEN",StringComparison.OrdinalIgnoreCase)||name.Equals("Zen.CompanionDesktop",StringComparison.OrdinalIgnoreCase)||name.Equals("electron",StringComparison.OrdinalIgnoreCase)||name.Equals("StartMenuExperienceHost",StringComparison.OrdinalIgnoreCase)||name.Equals("ShellExperienceHost",StringComparison.OrdinalIgnoreCase)||name.Equals("SearchHost",StringComparison.OrdinalIgnoreCase))return false;
-  var c=new System.Text.StringBuilder(100);GetClassNameW(hwnd,c,c.Capacity);
-  return c.ToString() is not "Progman" and not "WorkerW" and not "Shell_TrayWnd" and not "Shell_SecondaryTrayWnd";
+ static bool IsShellWindow(nint hwnd){
+  var className=new System.Text.StringBuilder(100);GetClassNameW(hwnd,className,className.Capacity);
+  return className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
+ }
+ public static string? WorkWindowName(nint hwnd,WindowId id,int owner){
+  if(id.pid==owner||!IsWindowVisible(hwnd)||GetAncestor(hwnd,2)!=hwnd||(GetWindowLongPtrW(hwnd,-20).ToInt64()&0x80)!=0||IsShellWindow(hwnd))return null;
+  using var process=Process.GetProcessById(id.pid);
+  var name=process.ProcessName;
+  return ExcludedProcesses.Contains(name)?null:name;
  }
  public static Rectangle? Fullscreen(nint hwnd){
-  if(hwnd==0||IsIconic(hwnd)||!IsWindowVisible(hwnd))return null;
-  var className=new System.Text.StringBuilder(100);GetClassNameW(hwnd,className,className.Capacity);
-  if(className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd")return null;
+  if(hwnd==0||IsIconic(hwnd)||!IsWindowVisible(hwnd)||IsShellWindow(hwnd))return null;
   var info=new MONITORINFO{size=(uint)Marshal.SizeOf<MONITORINFO>()};if(!GetMonitorInfoW(MonitorFromWindow(hwnd,2),ref info))return null;
   if(DwmGetWindowAttribute(hwnd,9,out RECT r,Marshal.SizeOf<RECT>())!=0&&!GetWindowRect(hwnd,out r))return null;
   var m=info.monitor;if(Math.Abs(r.left-m.left)>2||Math.Abs(r.top-m.top)>2||Math.Abs(r.right-m.right)>2||Math.Abs(r.bottom-m.bottom)>2)return null;

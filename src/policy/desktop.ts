@@ -1,13 +1,12 @@
-import { directOperation, type DirectOperation, type PauseOperation } from './direct';
-import { commandClauses, humanCommand } from './command';
+import { directOperation, requestsNotepad, type DirectOperation, type PauseOperation } from '../shared/direct-operation';
+import { commandClauses, humanCommand } from '../shared/human-command';
 import { DesktopCallSchema, type DesktopCall } from '../shared/desktop';
 import { ZenError } from '../shared/errors';
-import { authorizesNotepad } from './policy';
 function requestedOperations(text: string): DirectOperation[] {
   const clauses = commandClauses(text);
-  if (/["«»“”]/.test(text) || !directOperation(clauses[0]) && !authorizesNotepad(clauses[0])) return [];
+  if (/["«»“”]/.test(text) || !directOperation(clauses[0]) && !requestsNotepad(clauses[0])) return [];
   const operations = clauses.map(clause => directOperation(clause)).filter((row): row is DirectOperation => !!row);
-  for (const clause of clauses) if (authorizesNotepad(clause)) operations.push({ kind: 'app', target: 'notepad.exe' });
+  for (const clause of clauses) if (requestsNotepad(clause)) operations.push({ kind: 'app', target: 'notepad.exe' });
   return operations;
 }
 export function requestedPauses(text: string): PauseOperation[] {

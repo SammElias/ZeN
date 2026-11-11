@@ -1,140 +1,251 @@
-import {randomUUID} from 'node:crypto';
-import {CompanionAppearance} from './companion-appearance';
+import {CompanionAppearance,wallpaperBytes} from './companion-appearance';
 import {AppearanceOptions} from '../shared/companion-appearance';
-import {CompanionAppWindow} from './companion-app-window';
-import {CompanionCalendar} from './companion-calendar';
-import {CalendarQuery} from '../shared/companion-calendar';
+import {openCodexRequest,queueCodexRequest} from './companion-request';
+import {CodexRequest} from '../shared/companion-request';
 import {CompanionContext} from './companion-context';
 import {contextFile} from './companion-context-file';
 import {ContextInput} from '../shared/companion-context';
-import {app,BrowserWindow,ipcMain,Tray,Menu,Notification,screen,globalShortcut,shell,safeStorage,clipboard,session,dialog,protocol,nativeImage} from 'electron';
-import {join} from 'node:path';
+import {CodexReferenceSelection} from '../shared/codex-result-document';
+import {app,BrowserWindow,Tray,Menu,Notification,screen,globalShortcut,shell,clipboard,dialog,protocol,nativeImage} from 'electron';
+import {basename,dirname,join} from 'node:path';
+import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync,openSync,fstatSync,readSync,closeSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync,rmSync} from 'node:fs';
 import {z} from 'zod';
 import {CompanionSettingsSchema,CompanionTargetSchema,type CompanionSettings,type CompanionNotice,type CompanionTarget} from '../shared/codex-companion';
 import {CompanionHub} from './companion-hub';
 import {CompanionIntegration} from './companion-integration';
 import {CodexRpc} from './codex-rpc';
-import {Store} from '../storage/store';
+import {CompanionPlacements} from '../storage/overlay-position';
+import {CapsuleAlignment} from '../shared/overlay-position';
 import {overlayBounds,capsuleShape,nearestEdge,draggedRatio,draggedVerticalRatio} from './overlay';
 import {CAPSULE_HEIGHT} from '../shared/island';
 import {codexChatUrl,noticeChatUrl,isSilenced} from '../shared/companion-presentation';
-import {inspectCodexCompanion,readCodexLastReply} from './companion-codex-reader';
+import {CodexReplyReader} from './companion-codex-reader';
+import {inspectCodexCompanion} from './companion-codex-inspection';
+import {preferCompanionReply} from './companion-reply';
 import {registerCompanionShortcuts} from './companion-shortcuts';
 import {displayStatus} from '../shared/companion-privacy';
-import {CompanionSummaries,projectFile} from './companion-summary';
+import {CompanionSummaries} from './companion-summary';
+import {projectFile} from './companion-project-path';
 import {CompanionDesktop} from './companion-desktop';
-import {CompanionConnections} from './companion-connections';
 import {CompanionMedia,CompanionMediaObserver,NativeMediaRpc} from './companion-media';
-import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab} from '../shared/companion-workspace';
+import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,isLauncherPageSelected} from '../shared/companion-workspace';
 import {CompanionLauncher} from './companion-launcher';
-import {prepareMailHtml} from './companion-mail-html';
-import {mailDocument} from './companion-mail-document';
-import {CompanionGmail} from './companion-gmail';
-import {CompanionMailAnalysis} from './companion-mail-analysis';
-import {MailAnalysisPrepare} from '../shared/companion-mail-analysis';
-import {googleNetworkFetch} from './companion-google-network';
-import {GmailClientId,GmailQuery} from '../shared/companion-gmail';
+import {KnowledgeHub, readHubFile} from './knowledge-hub';
+import {HubAction, HubDraft, HubFileAction, type HubFileResult} from '../shared/knowledge-hub';
+import {entryMarkdown, fileStem} from '../shared/knowledge-markdown';
 import {MediaCommand} from '../shared/companion-media';
-import {IntegrationTabSchema,IntegrationProviderSchema,IntegrationPrepareSchema,integrationActions} from '../shared/companion-integrations';
-import {capsuleExtensionBounds,mergeShape,overlaps,CapsuleVisibility,type Placement} from './companion-placement';
-protocol.registerSchemesAsPrivileged([{scheme:'zen-mail',privileges:{standard:true,secure:true,supportFetchAPI:true}},{scheme:'zen-theme',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
+import {capsuleExtensionBounds,mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
+import {companionIpc} from './companion-ipc';
+import {companionChannel} from '../shared/companion-ipc';
+import {nativeHelper} from './native-helper';
+protocol.registerSchemesAsPrivileged([{scheme:'zen-theme',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 app.setName('ZEN');app.setAppUserModelId('com.zen.desktop');
 const smoke=process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+process.pid);mkdirSync(p,{recursive:true});app.setPath('userData',p);}
-const copiedRequests:string[]=[];const copiedText:string[]=[];const openedTargets:string[]=[];const openExternal=(url:string)=>smoke?(openedTargets.push(url),Promise.resolve()):shell.openExternal(url);
+const copiedRequests:string[]=[];const queuedRequests:{thread:string;text:string}[]=[];const copiedText:string[]=[];const openedTargets:string[]=[];const openExternal=(url:string)=>smoke?(openedTargets.push(url),Promise.resolve()):shell.openExternal(url);
 let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
  app.on('second-instance',()=>reveal());app.on('window-all-closed',()=>{});
  void app.whenReady().then(async()=>{
-  const profile=app.getPath('userData'),legacy=new Store(profile,safeStorage),file=join(profile,'companion-settings.json');let settings:CompanionSettings;
+  const profile=app.getPath('userData'),file=join(profile,'companion-settings.json');let settings:CompanionSettings;
   try{settings=CompanionSettingsSchema.parse(JSON.parse(readFileSync(file,'utf8')));}catch{settings=CompanionSettingsSchema.parse({});}
   const targetFile=join(profile,'companion-target.json');let target:CompanionTarget|undefined,targetError:string|undefined;
   if(smoke)target=CompanionTargetSchema.parse({session:'native-test',cwd:'C:\\fixture',title:'Revisar formulario en navegador'});
   else if(existsSync(targetFile))try{target=CompanionTargetSchema.parse(JSON.parse(readFileSync(targetFile,'utf8')));}catch{targetError='No se pudo leer el chat fijado. Revisa la configuración local de ZEN.';}
-  const placementFile=join(profile,'companion-placement.json'),placements=new Map<number,Placement>();
-  const placementSchema=z.object({displayId:z.number().int(),edge:z.enum(['top','left','right']),horizontalRatio:z.number().min(0).max(1),verticalRatio:z.number().min(0).max(1)}).strict();
-  let position:Placement=legacy.overlayPosition()??{displayId:screen.getPrimaryDisplay().id,edge:'top',horizontalRatio:.5,verticalRatio:.5};
-  try{for(const p of z.array(placementSchema).max(30).parse(JSON.parse(readFileSync(placementFile,'utf8'))))placements.set(p.displayId,p);}catch{/* Existing placement remains the migration fallback. */}
-  position=placements.get(position.displayId)??position;
-  const remember=()=>{placements.set(position.displayId,{...position});legacy.saveOverlayPosition(position);try{writeFileSync(placementFile+'.tmp',JSON.stringify([...placements.values()].slice(-30)));renameSync(placementFile+'.tmp',placementFile);}catch{/* Movement remains usable if preferences cannot be written. */}};
+  const placements=new CompanionPlacements(profile);
+  let position=placements.initial(screen.getPrimaryDisplay().id);
+  const remember=()=>placements.save(position);
   const launcherPreferences=new CompanionLauncher(join(profile,'companion-launcher.json'));
-  const appWindow=new CompanionAppWindow(join(profile,'companion-desktop-window.json'));
+  const notes = new KnowledgeHub(join(profile, 'knowledge-hub.sqlite'), join(profile, 'companion-notes.json'));
   // An older saved preference file is reloaded by the same constructor in the isolated packaged fixture.
-  if(smoke)writeFileSync(join(profile,'companion-appearance.json'),JSON.stringify({options:{theme:'dark',accent:'violet',background:'dusk',opacity:.41,blur:7}}));
+  if(smoke){
+   writeFileSync(join(profile,'companion-appearance.json'),JSON.stringify({options:{theme:'dark',accent:'violet',background:'dusk',opacity:.41,blur:7}}));
+   writeFileSync(join(profile,'companion-desktop-window.json'),'{"version":1,"mode":"app","bounds":{"x":5,"y":5,"width":1100,"height":900},"maximized":true}');
+  }
   const appearance=new CompanionAppearance(profile,bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error();const size=image.getSize(),ratio=Math.min(1,2560/Math.max(size.width,size.height));if(ratio<1)image=image.resize({width:Math.max(1,Math.round(size.width*ratio)),height:Math.max(1,Math.round(size.height*ratio)),quality:'best'});return image.toPNG();});
-  let codexTab:CodexTab='activity';let contextPage:LauncherPage|undefined;const shownMenus:{kind:string;labels:string[]}[]=[];let gmailIndicator:{unread:number;checkedAt:number}|undefined;
-  let menu=appWindow.mode==='app',compactView:CapsuleView='status',workspacePage:WorkspacePage=launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,saveWindowTimer:ReturnType<typeof setTimeout>|undefined,moved=false;
+  let codexTab:CodexTab='activity';let contextPage:LauncherPage|undefined;
+  let expanded=false,compactView:CapsuleView='status',workspacePage:WorkspacePage=launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
   const renderer=join(__dirname,'renderer','index.html'),preload=join(__dirname,'preload.cjs'),icon=join(__dirname,'renderer','icons','zen.ico');
+  const rendererQuery={view:'capsule'};
+  const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
   const display=()=>screen.getAllDisplays().find(d=>d.id===position.displayId)??screen.getPrimaryDisplay();
-  const bounds=()=>{const area=display().workArea,base=overlayBounds(area,{mode:'capsule',height:CAPSULE_HEIGHT},position.horizontalRatio,position.edge,position.verticalRatio);return menu?appWindow.fit(screen.getAllDisplays().map(d=>d.workArea),area):base;};
-  const cap=new BrowserWindow({...bounds(),title:'ZEN · Cápsula',frame:false,thickFrame:false,roundedCorners:false,transparent:false,backgroundColor:'#101116',maximizable:false,show:false,skipTaskbar:true,alwaysOnTop:true,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
-  const panels=new Map<string,BrowserWindow>();const windows=()=>[cap,...panels.values()].filter(w=>!w.isDestroyed());
-  let calendar:CompanionCalendar|undefined,calendarLease:string|undefined;let connections:CompanionConnections|undefined,media:CompanionMedia|undefined,mediaObserver:CompanionMediaObserver|undefined;let desktop:CompanionDesktop|undefined,revision=0,surfaceReady=false,replyEpoch=0;const visibility=new CapsuleVisibility();
-  const snapshot=(w?:BrowserWindow)=>{const raw=hub.status();if(w!==cap||!cap.isVisible()||cap.isMinimized())for(const session of raw.sessions)delete session.lastReply;if(w!==cap||!menu||workspacePage!=='permissions'){const pendingIds=new Set(raw.approvals.map(a=>a.id));raw.approvals=raw.approvals.map(a=>({...a,preview:''}));raw.sessions=raw.sessions.map(s=>({...s,steps:s.steps.map(step=>pendingIds.has(step.id)?{...step,preview:undefined}:step)}));}return displayStatus({...raw,appearance:settings.presentation?{...appearance.status(),background:'aurora',imageUrl:undefined,imageName:undefined}:appearance.status(),workspace:{mode:menu?'app':'capsule',maximized:cap.isMaximized(),expanded:menu,launcher:menu,page:workspacePage,codexTab,context:contextPage,...launcherPreferences.status(),compact:compactView,gmail:w===cap&&cap.isVisible()&&!cap.isMinimized()?gmailIndicator:undefined},desktop:desktop?.status(),integrations:connections?.status(w===cap&&menu&&workspacePage==='gmail')},++revision);};
-  const broadcast=()=>{for(const w of windows())w.webContents.send('companion:status',snapshot(w));};
+  const bounds=()=>{const area=display().workArea,base=overlayBounds(area,{mode:'capsule',height:CAPSULE_HEIGHT},position.horizontalRatio,position.edge,position.verticalRatio);return expanded?capsuleExtensionBounds(area,base):base;};
+  const cap=new BrowserWindow({...bounds(),title:'ZEN · Cápsula',frame:false,thickFrame:false,roundedCorners:false,transparent:false,backgroundColor:'#101116',hasShadow:false,maximizable:false,show:false,skipTaskbar:true,alwaysOnTop:true,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
+  if(process.platform==='win32'){
+   cap.setAccentColor(false);
+   try{cap.setBackgroundMaterial('none');}catch{/* Windows versions without the backdrop attribute use the solid backing. */}
+  }
+  let desktop:CompanionDesktop|undefined,revision=0,surfaceReady=false,replyEpoch=0;
+  const visibility=new CapsuleVisibility();
+  const surfaceVisible=()=>!cap.isDestroyed()&&cap.isVisible()&&!cap.isMinimized();
+  let openDialogs=0;
+  const withWindowDialog=async <T,>(show:()=>Promise<T>)=>{
+   openDialogs++;
+   try{return await show();}
+   finally{openDialogs--;}
+  };
+  const workspaceVisible=(page?:WorkspacePage)=>surfaceVisible()&&expanded&&(page===undefined||workspacePage===page);
+  const summaryVisible=()=>workspaceVisible('codex')&&codexTab==='summary';
+  const privateEffectsAllowed=()=>!settings.presentation&&!settings.paused;
+  const snapshot=()=>displayStatus({
+   ...hub.status(),
+   appearance:appearance.status(),
+   workspace:{
+    expanded,page:workspacePage,
+    codexTab,context:contextPage,...launcherPreferences.status(),compact:compactView,
+   },
+   desktop:desktop?.status(),
+  },++revision,surfaceVisible());
+  const broadcast=()=>{if(!cap.isDestroyed())cap.webContents.send(companionChannel('status'),snapshot());};
   const activateNotice=async(n:CompanionNotice)=>{if(n.id==='test'){reveal();return;}await openExternal(noticeChatUrl(hub.status(),n));};
   const notify=(n:CompanionNotice)=>{if(smoke||settings.presentation||isSilenced(settings)||!Notification.isSupported())return;const toast=new Notification({title:'ZEN · '+n.title,body:n.id==='test'?'Aviso de prueba de ZEN.':'Pulsa para volver a este chat en Codex.',silent:n.id==='test'||!settings.sounds||(cap.isVisible()&&!cap.isMinimized()),icon});toast.on('click',()=>{void activateNotice(n).catch(()=>{});});toast.show();};
   const summaries=new CompanionSummaries(smoke?undefined:target,(id,key,value)=>hub.setSummary(id,key,value));
-  const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(e,s)=>{summaries.observe(e,s);if(e.event==='Stop'&&!e.failed&&s.lastReply?.source==='hook'&&s.lastReply.text===e.lastAssistantMessage&&!settings.presentation&&!settings.paused){mailAnalysis?.observeReply(s.id,s.cwd,s.lastReply);context?.observeReply(s.id,s.cwd,s.lastReply);}});hub.targetError=targetError;
-  connections=new CompanionConnections({changed:broadcast,policy:()=>({target, targetError,presentation:settings.presentation,paused:settings.paused}),copy:text=>{if(smoke)copiedRequests.push(text);else clipboard.writeText(text);},openChat:async id=>{await openExternal(codexChatUrl(hub.status(),id));},rpc:async()=>{if(smoke)return{request:async(method:string)=>{if(method!=='mcpServerStatus/list')throw Error('Only fixture metadata');return{data:[{name:'codex_apps',tools:Object.fromEntries(Object.values(integrationActions).flatMap(a=>a.tools.flat()).map(name=>[name,{}]))}]};},close:()=>{}};const rpc=new CodexRpc(10000);try{await rpc.initialize(true);return rpc;}catch(e){rpc.close();throw e;}}});
+  const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(event,session,reply)=>{
+   summaries.observe(event,session);
+   if(reply)context.observeReply(session.id,session.cwd,reply);
+  });hub.targetError=targetError;
   const codexHome=smoke?join(profile,'codex-fixture'):process.env.CODEX_HOME??join(app.getPath('home'),'.codex');
-  const integration=new CompanionIntegration(profile,codexHome,join(__dirname,'hook'),hub);
-  const mediaAllowed=()=>!settings.presentation&&!settings.paused&&(menu&&workspacePage==='spotify'||!menu&&compactView==='spotify'&&hub.status().approvals.length===0)&&cap.isVisible()&&!cap.isMinimized();
-  const mediaObservationAllowed=()=>surfaceReady&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  const observationFixture={playing:false,source:'Spotify',reads:0};
-  mediaObserver=new CompanionMediaObserver(()=>!smoke?new NativeMediaRpc(join(__dirname,'media','Zen.Media.exe')):{close:()=>{},request:async(method)=>{if(method!=='nowPlaying')throw Error('Read-only observation fixture');observationFixture.reads++;return{track:observationFixture.playing?{source:observationFixture.source,browser:observationFixture.source==='Google Chrome',title:'Contenido multimedia automático',artist:'ZEN · observación aislada',album:'Sin acciones de reproducción',artwork:null,playing:true}:null};}},mediaObservationAllowed);
-  media=new CompanionMedia(()=>{if(!smoke)return new NativeMediaRpc(join(__dirname,'media','Zen.Media.exe'));let playing=true;const id='11111111-1111-4111-8111-111111111111';return{close:()=>{},request:async(method,params)=>{if(method==='list')return{sessions:[{id,name:'Spotify',browser:false}]};if(method==='action'){playing=params?.action==='play'?true:params?.action==='pause'?false:playing;return{accepted:true};}return{session:id,source:'Spotify',browser:false,title:'Música de prueba local',artist:'ZEN · fixture aislada',album:'Sin consultas a Spotify',artwork:null,playing,shuffle:null,repeat:null,positionMs:48000,durationMs:210000,controls:{play:true,pause:true,previous:true,next:true,shuffle:false,repeat:false}};}};},mediaAllowed);
-  const calendarAllowed=()=>menu&&workspacePage==='calendar'&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  const clearCalendar=()=>{calendarLease=undefined;calendar?.suspendReads();};
-  let finishCalendar=()=>{};let calendarFixtureReads=0;
-  const gmailAllowed=()=>menu&&workspacePage==='gmail'&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  const homeSummaryAllowed=()=>menu&&workspacePage==='home'&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  let mailAnalysis:CompanionMailAnalysis|undefined;let context:CompanionContext|undefined;
-  let gmail:Pick<CompanionGmail,'snapshotForAnalysis'|'closeMessage'|'status'|'summary'|'document'|'images'|'cancelImages'|'openLink'|'prepareTrash'|'trash'|'cancelTrash'|'configure'|'importClientJson'|'connect'|'cancelAuth'|'suspend'|'suspendReads'|'disconnect'|'list'|'message'|'close'>;
-  const mailReplyFixture:{reply?:import('../shared/codex-companion').CompanionLastReply}={};
-  let finishGmail=()=>{},expireGmail=()=>{};
-  if(smoke){let analysisVersion=0,analysisSource:import('../shared/companion-gmail').GmailMessage|undefined;const clearAnalysis=()=>{analysisVersion++;analysisSource=undefined;mailAnalysis?.invalidate();};let connected=false,authorizing=false,canTrash=false,pendingModify=false,trashed=false,expired=false,reviewToken='';expireGmail=()=>{expired=true;};finishGmail=()=>{connected=true;expired=false;canTrash=pendingModify;authorizing=false;};const state=()=>({configured:true,connected,authorizing,canTrash,clientCredentialsReady:true,...(!connected&&expired?{needsReconnect:true,error:'Vuelve a conectar con la configuración guardada. [invalid_grant]'}:{}),readerKey:connected?'fixture-mail-account':undefined}),item={id:'fixture-mail-1',subject:'Correo de prueba aislado',from:'Alex Rivera <alex@example.test>',date:'2026-10-24',snippet:'Última respuesta sintética, sin conexión real a Google.',unread:true,messageCount:2};const fixtureRich=prepareMailHtml({mimeType:'text/html',body:{data:Buffer.from('<table width="600" style="background-color:#f4f5f7"><tr><td style="padding:24px"><h1 style="color:#1769d1">Tu oportunidad de prueba</h1><p>Última respuesta completa de prueba.</p><blockquote><p>Texto citado oculto de prueba.</p></blockquote><a style="background-color:#1769d1;color:#ffffff;padding:12px" href="https://example.org/jobs">Ver oportunidad</a><p><img src="https://example.org/banner.png" alt="Imagen de prueba" width="120" height="40"></p><img src="file:///private" onerror="globalThis.mailAttack=true"><script>globalThis.mailAttack=true</script></td></tr></table>').toString('base64url')}})!;const fixtureFirst=prepareMailHtml({mimeType:'multipart/alternative',parts:[{mimeType:'text/plain',body:{data:Buffer.from('Primera intervención de prueba.').toString('base64url')}},{mimeType:'text/html',body:{data:Buffer.from('<style>p.MsoNormal{color:#8a2e6d;font-size:12pt;font-weight:bold}</style><p class="MsoNormal">Primera intervención de prueba.</p><blockquote>Contenido original del hilo.</blockquote>').toString('base64url')}}]})!;const fixtureViews=[fixtureRich,fixtureFirst];gmail={closeMessage:clearAnalysis,snapshotForAnalysis:id=>{if(!analysisSource||analysisSource.id!==id)throw Error('Abre el correo.');return{version:String(analysisVersion),context:'fixture-mail-account',thread:structuredClone(analysisSource)};},status:state,cancelImages:()=>{},document:id=>{const selected=fixtureViews.find(v=>v.rich.view===id);if(!selected)throw Error('Vista no válida');return mailDocument(selected.rich);},images:async(id,external)=>{if(!fixtureViews.some(v=>v.rich.view===id))throw Error('Vista no válida');return{images:(external?{i0:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7Z0AAAAASUVORK5CYII='}:{}) as Record<string,string>,failed:0,remaining:external?0:1};},openLink:async(view,id)=>{const selected=fixtureViews.find(v=>v.rich.view===view);if(!selected)throw Error('Vista no válida');const url=selected.links.get(id);if(!url)throw Error('Enlace no válido');await openExternal(url);return true;},prepareTrash:id=>{if(!canTrash||trashed||id!==item.id)throw Error('Sin permiso o conversación desconocida.');reviewToken='a'.repeat(48);return{token:reviewToken,threadId:id,subject:item.subject,messageCount:2,expiresAt:Date.now()+60000};},cancelTrash:()=>{reviewToken='';},trash:async token=>{if(!canTrash||!reviewToken||token!==reviewToken)throw Error('Revisión inválida.');reviewToken='';trashed=true;return{threadId:item.id};},summary:async()=>({configured:true,connected,...(connected?{unread:7,checkedAt:Date.now()}:{})}),configure:()=>state(),importClientJson:()=>state(),connect:async(enable=false)=>{pendingModify=enable;authorizing=true;return state();},cancelAuth:()=>{authorizing=false;},suspend:()=>{clearAnalysis();authorizing=false;reviewToken='';},suspendReads:()=>{clearAnalysis();reviewToken='';},disconnect:()=>{clearAnalysis();connected=false;return state();},list:async q=>{clearAnalysis();if(expired){connected=false;throw Error('Vuelve a conectar con la configuración guardada. [invalid_grant]');}return{messages:trashed?[]:GmailQuery.parse(q).query==='navigation'?(GmailQuery.parse(q).page?[{...item,id:'fixture-mail-3',subject:'Tercer correo de prueba'}]:[item,{...item,id:'fixture-mail-2',subject:'Segundo correo de prueba',unread:false}]):[item],unread:trashed?6:7,next:GmailQuery.parse(q).query==='navigation'?(GmailQuery.parse(q).page?undefined:'fixture-third'):'fixture-next'};},message:async id=>{clearAnalysis();if(!['fixture-mail-1','fixture-mail-2','fixture-mail-3'].includes(id))throw Error('Correo desconocido');analysisSource={...item,id,subject:id==='fixture-mail-2'?'Segundo correo de prueba':id==='fixture-mail-3'?'Tercer correo de prueba':item.subject,messages:[{...item,id:'fixture-message-1',to:'ZEN fixture',text:'Primera intervención de prueba.',truncated:false,rich:fixtureFirst.rich},{...item,id:'fixture-message-2',from:'Nora Silva <nora@example.test>',to:'ZEN fixture',text:'Última respuesta completa de prueba.\n\n'+('Línea de lectura de prueba.\n'.repeat(24))+'\n> Texto citado oculto de prueba.',truncated:false,rich:fixtureRich.rich}],truncated:false,omittedMessages:0};return structuredClone(analysisSource);},close:()=>{clearAnalysis();}};}else gmail=new CompanionGmail({invalidateAnalysis:()=>mailAnalysis?.invalidate(),profile,cipher:safeStorage,allowed:gmailAllowed,summaryAllowed:homeSummaryAllowed,authAllowed:()=>!settings.presentation&&!settings.paused,open:openExternal,fetch:googleNetworkFetch(session.fromPartition('zen-gmail-api',{cache:false}))});
-  mailAnalysis=new CompanionMailAnalysis({source:id=>gmail.snapshotForAnalysis(id),readReply:async selected=>{if(!gmailAllowed())throw Error('Abre Gmail.');const observed=hub.status().sessions.find(s=>s.id===selected.session&&s.cwd.toLowerCase()===selected.cwd.toLowerCase())?.lastReply;if(smoke)return mailReplyFixture.reply;const local=await readCodexLastReply(codexHome,selected);return local&&(!observed||local.at>=observed.at)?local:observed;},policy:()=>({visible:gmailAllowed(),presentation:settings.presentation,paused:settings.paused,target,targetError}),copy:text=>{if(smoke)copiedRequests.push(text);else clipboard.writeText(text);},openChat:async id=>{await openExternal(codexChatUrl(hub.status(),id));}});
-  if(smoke){let connected=false,authorizing=false,listed=false;const known=new Map<string,import('../shared/companion-calendar').CalendarEvent>();const first='22222222-2222-4222-8222-222222222222',second='33333333-3333-4333-8333-333333333333';finishCalendar=()=>{connected=true;authorizing=false;};const state=()=>({configured:true,credentialsReady:true,connected,authorizing});calendar={status:state,suspendReads:()=>{listed=false;known.clear();},suspend:()=>{listed=false;known.clear();authorizing=false;},connect:async()=>{authorizing=true;return state();},cancel:()=>{authorizing=false;return state();},disconnect:()=>{connected=false;known.clear();return state();},list:async()=>{calendarFixtureReads++;listed=true;known.clear();return{calendars:[{key:first,name:'Mi calendario de prueba',color:'#b4a0ec',primary:true,zone:'Europe/Madrid'},{key:second,name:'Equipo de prueba',color:'#68d5ae',primary:false,zone:'Europe/Madrid'}],limited:false};},range:async(raw:unknown)=>{calendarFixtureReads++;const q=CalendarQuery.parse(raw);if(!listed||![first,second].includes(q.calendar))throw Error('Calendario desconocido');known.clear();const now=new Date(),day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-'),end=new Date(now);end.setDate(end.getDate()+1);const nextDay=[end.getFullYear(),String(end.getMonth()+1).padStart(2,'0'),String(end.getDate()).padStart(2,'0')].join('-');const events:import('../shared/companion-calendar').CalendarEvent[]=[{key:'44444444-4444-4444-8444-444444444444',title:q.calendar===first?'Reunión de prueba ZEN':'Evento del equipo de prueba',start:day+'T10:00:00+01:00',end:day+'T10:30:00+01:00',allDay:false,recurring:true,location:'Sala de prueba'},{key:'55555555-5555-4555-8555-555555555555',title:'Recordatorio de todo el día',start:day,end:nextDay,allDay:true,recurring:false,location:''}].filter(e=>Date.parse(e.end)>Date.parse(q.from)&&Date.parse(e.start)<Date.parse(q.to));for(const e of events)known.set(e.key,e);return{events,limited:false,zone:'Europe/Madrid',checkedAt:Date.now()};},detail:async(key:string)=>{calendarFixtureReads++;const event=known.get(key);if(!event)throw Error('Evento desconocido');return{...event,description:'Descripción local de prueba. <script>window.calendarAttack=true</script>',descriptionTruncated:false,organizer:'Organizador de prueba',attendees:[{name:'Alex de prueba',response:'accepted',self:true}],attendeesOmitted:0,canOpen:true};},openEvent:async(key:string)=>{if(!known.has(key))throw Error('Evento desconocido');await openExternal('https://www.google.com/calendar/event?eid=fixture');return true;},close:()=>{known.clear();authorizing=false;}} as unknown as CompanionCalendar;}else calendar=new CompanionCalendar({profile,cipher:safeStorage,allowed:calendarAllowed,authAllowed:()=>!settings.presentation&&!settings.paused,open:openExternal,fetch:session.fromPartition('zen-calendar-api',{cache:false}).fetch.bind(session.fromPartition('zen-calendar-api',{cache:false})) as import('./companion-google-network').GoogleFetch});
-  const contextAllowed=()=>menu&&workspacePage==='codex'&&codexTab==='summary'&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  context=new CompanionContext({policy:()=>({visible:contextAllowed(),presentation:settings.presentation,paused:settings.paused,target,targetError}),pick:async()=>{if(!contextAllowed())throw Error('Abre Codex en ZEN.');let path:string|undefined;if(smoke){path=join(profile,'selected-context.txt');writeFileSync(path,'Contenido local sintético de la prueba de integración.');}else{const selected=await dialog.showOpenDialog(cap,{title:'Analizar archivo en Codex',properties:['openFile']});if(!selected.canceled&&selected.filePaths.length===1)path=selected.filePaths[0];}if(!contextAllowed())throw Error('La vista cambió.');return path?contextFile(path):undefined;},signature:async path=>(await contextFile(path)).signature,copy:text=>{if(smoke)copiedRequests.push(text);else clipboard.writeText(text);},open:async id=>{await openExternal(codexChatUrl(hub.status(),id));},read:async selected=>{if(!contextAllowed())throw Error('Abre Codex en ZEN.');if(smoke)return mailReplyFixture.reply;const observed=hub.status().sessions.find(s=>s.id===selected.session&&s.cwd.toLowerCase()===selected.cwd.toLowerCase())?.lastReply,local=await readCodexLastReply(codexHome,selected);return local&&(!observed||local.at>=observed.at)?local:observed;}});
-  let shapeSize='',nativeMode:'capsule'|'app'|undefined,changingWindow=false;
-  const updateShape=()=>{const b=cap.getBounds(),key=menu?'app':b.width+'x'+b.height;if(key!==shapeSize){cap.setShape(menu?[]:mergeShape(capsuleShape(b)));shapeSize=key;}};
-  const positionSurface=(force=false)=>{
-   const mode=menu?'app':'capsule';if(nativeMode===mode&&menu&&!force){updateShape();return;}
-   changingWindow=true;const changed=nativeMode!==mode;
-   if(changed){if(cap.isMaximized())cap.unmaximize();cap.setHasShadow(menu);if(process.platform==='win32'){cap.setAccentColor(menu?null:false);try{cap.setBackgroundMaterial(menu?'acrylic':'none');cap.setBackgroundColor(menu?'#00000000':'#101116');}catch{cap.setBackgroundColor('#101116');}}cap.setResizable(menu);cap.setMovable(menu);cap.setMaximizable(menu);cap.setMinimumSize(menu?320:0,menu?420:0);cap.setSkipTaskbar(!menu);cap.setTitle(menu?'ZEN':'ZEN · Cápsula');setTopmost(!menu);}
-   const next=bounds(),current=cap.getBounds();if(['x','y','width','height'].some(k=>next[k as keyof typeof next]!==current[k as keyof typeof current]))cap.setBounds(next);
-   nativeMode=mode;updateShape();if(menu&&changed&&appWindow.maximized)cap.maximize();changingWindow=false;
+  const replyReader=new CodexReplyReader(codexHome);
+  const integration=new CompanionIntegration(profile,codexHome,dirname(nativeHelper(__dirname,'hook')),hub);
+  const mediaAllowed=()=>privateEffectsAllowed()&&surfaceVisible()&&
+   (expanded?workspacePage==='spotify':compactView==='spotify'&&hub.status().approvals.length===0);
+  const mediaObservationAllowed=()=>surfaceReady&&privateEffectsAllowed()&&surfaceVisible();
+  const observationFixture={playing:false,source:'Spotify',reads:0,playerAvailable:false,playerSource:'Spotify'};
+  const mediaHelper=nativeHelper(__dirname,'media');
+  const mediaObserver=new CompanionMediaObserver(()=>!smoke?new NativeMediaRpc(mediaHelper):{close:()=>{},request:async(method)=>{if(method!=='nowPlaying')throw Error('Read-only observation fixture');observationFixture.reads++;return{track:observationFixture.playing?{source:observationFixture.source,browser:observationFixture.source==='Google Chrome',title:'Contenido multimedia automático',artist:'ZEN · observación aislada',album:'Sin acciones de reproducción',artwork:null,playing:true}:null};}},mediaObservationAllowed);
+  const media=new CompanionMedia(()=>{
+   if(!smoke)return new NativeMediaRpc(mediaHelper);
+   const sessions=[
+    {id:'11111111-1111-4111-8111-111111111111',name:'Spotify',browser:false},
+    {id:'22222222-2222-4222-8222-222222222222',name:'Google Chrome',browser:true},
+   ];
+   let selected=sessions[0],playing=true,manual=false;
+   const select=(session:typeof selected)=>{if(session!==selected){selected=session;playing=true;}};
+   const track=()=>({session:selected.id,source:selected.name,browser:selected.browser,title:selected.browser?'Vídeo de prueba local':'Música de prueba local',artist:'ZEN · fixture aislada',album:'Multimedia simulada',artwork:null,playing,shuffle:null,repeat:null,positionMs:48000,durationMs:210000,controls:{play:true,pause:true,previous:true,next:true,shuffle:false,repeat:false}});
+   return {close:()=>{},request:async(method,params)=>{
+    if(method==='list')return {sessions:observationFixture.playerAvailable?sessions:[]};
+    if(method==='snapshot'){
+     if(!observationFixture.playerAvailable){manual=false;return {sessions:[],track:null,manual};}
+     if(params?.followSystem)manual=false;
+     if(!manual)select(sessions.find(item=>item.name===observationFixture.playerSource)??sessions[0]);
+     return {sessions,track:track(),manual};
+    }
+    if(method==='select'){
+     const session=sessions.find(item=>item.id===params?.session);
+     if(!session||!observationFixture.playerAvailable)throw Error('Invalid player fixture selection');
+     select(session);manual=true;
+    }
+    if(method==='action'){playing=params?.action==='play'?true:params?.action==='pause'?false:playing;return {accepted:true};}
+    return track();
+   }};
+  },mediaAllowed);
+  let requestInFlight = false;
+  const withRequest = async <T,>(send: () => Promise<T>) => {
+   if (requestInFlight) throw Error('Ya hay una petición en curso.');
+   requestInFlight = true;
+   try { return await send(); }
+   finally { requestInFlight = false; }
   };
-  const rememberWindows=()=>{clearTimeout(saveWindowTimer);if(menu){appWindow.save('app',cap.getNormalBounds(),cap.isMaximized());}else{appWindow.save('capsule');remember();}};
-  const scheduleAppBounds=()=>{if(!menu||changingWindow)return;clearTimeout(saveWindowTimer);saveWindowTimer=setTimeout(()=>{if(menu&&!cap.isMinimized())rememberWindows();},350);};
-  cap.on('resize',()=>{updateShape();scheduleAppBounds();});cap.on('move',scheduleAppBounds);cap.on('maximize',()=>{scheduleAppBounds();broadcast();});cap.on('unmaximize',()=>{scheduleAppBounds();broadcast();});
-  let topmost=true;const setTopmost=(next:boolean)=>{if(next!==topmost){topmost=next;cap.setAlwaysOnTop(next);}};
+  const submitRequest = async (thread: string, text: string, verify: () => void | Promise<void>) => {
+   if (!smoke) return queueCodexRequest(thread,text,codexHome,verify);
+   await verify();
+   queuedRequests.push({thread,text});
+  };
+  const context=new CompanionContext({
+   policy:()=>({visible:summaryVisible(),presentation:settings.presentation,paused:settings.paused,target,targetError}),
+   pick:async verify=>{
+    let path:string|undefined;
+    if(smoke){
+     path=join(profile,'selected-context.txt');
+     writeFileSync(path,'Contenido local sintético de la prueba de integración.');
+    }else{
+     const selected=await withWindowDialog(()=>dialog.showOpenDialog(cap,{title:'Analizar archivo en Codex',properties:['openFile']}));
+     if(!selected.canceled&&selected.filePaths.length===1)path=selected.filePaths[0];
+    }
+    verify();
+    return path?contextFile(path):undefined;
+   },
+   signature:async path=>(await contextFile(path)).signature,
+   queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),
+   read:async selected=>{
+    if(smoke)return undefined;
+    const local=await replyReader.read(selected);
+    return preferCompanionReply(hub.lastReply(selected),local);
+   },
+  });
+  let shapeSize='';
+  const updateShape=()=>{
+   const {width,height}=cap.getBounds(),key=width+'x'+height;
+   if(key===shapeSize)return;
+   const header=Math.min(height,CAPSULE_HEIGHT);
+   const rows=capsuleShape({width,height:header});
+   if(height>header)rows.push(...capsuleShape({width,height:height-header}).map(row=>({...row,y:row.y+header})));
+   cap.setShape(mergeShape(rows));shapeSize=key;
+  };
+  const positionSurface=()=>{
+   const next=bounds(),current=cap.getBounds();if(['x','y','width','height'].some(k=>next[k as keyof typeof next]!==current[k as keyof typeof current]))cap.setBounds(next);
+   updateShape();
+  };
+  cap.on('resize',updateShape);
+  const setTopmost=(next:boolean)=>{if(cap.isAlwaysOnTop()!==next)cap.setAlwaysOnTop(next);};
   const fullscreenHere=()=>{const r=desktop?.observation?.fullscreen;return !!(settings.respectFullscreen&&r&&overlaps(screen.screenToDipRect(null,r),display().bounds));};
-  const syncVisibility=()=>{if(!surfaceReady||cap.isDestroyed())return;if(menu){setTopmost(false);if(!visibility.hidden&&!cap.isMinimized()&&!cap.isVisible())cap.showInactive();return;}if(visibility.visible(fullscreenHere(),desktop?.observation?.foreground)){setTopmost(true);if(!cap.isVisible())cap.showInactive();}else if(!visibility.hidden&&cap.isVisible())cap.hide();};
-  desktop=new CompanionDesktop(join(__dirname,'desktop','Zen.CompanionDesktop.exe'),()=>{syncVisibility();broadcast();});
-  const secure=(w:BrowserWindow,url:string)=>{w.setMenu(null);w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',(e,next)=>{if(next!==url)e.preventDefault();});w.webContents.on('will-frame-navigate',e=>{if(!e.isMainFrame&&!/^zen-mail:\/\/message\/[a-f0-9]{32}$/.test(e.url))e.preventDefault();});w.webContents.on('did-finish-load',broadcast);w.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));};
-  secure(cap,pathToFileURL(renderer).href+'?view=capsule');
+  const syncVisibility=()=>{if(!surfaceReady||cap.isDestroyed()||visibility.hidden)return;if(expanded||visibility.visible(fullscreenHere(),desktop?.observation?.foreground)){if(!cap.isMinimized()&&!cap.isVisible())cap.showInactive();setTopmost(true);}else if(cap.isVisible())cap.hide();};
+  const secure=(w:BrowserWindow,url:string)=>{w.setMenu(null);w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',(e,next)=>{if(next!==url)e.preventDefault();});w.webContents.on('will-frame-navigate',e=>{if(!e.isMainFrame)e.preventDefault();});w.webContents.on('did-finish-load',broadcast);w.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));};
+  secure(cap,rendererUrl);
   cap.webContents.session.protocol.handle('zen-theme',request=>{try{const u=new URL(request.url);if(request.method!=='GET'||u.hostname!=='background'||u.search||u.hash||settings.presentation)throw Error();const bytes=appearance.image(u.pathname.slice(1));return new Response(bytes,{headers:{'Content-Type':'image/png','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});}catch{return new Response(null,{status:404});}});
-  cap.webContents.session.protocol.handle('zen-mail',request=>{try{const u=new URL(request.url);if(request.method!=='GET'||u.hostname!=='message'||u.search||u.hash||!/^\/[a-f0-9]{32}$/.test(u.pathname)||!gmailAllowed())throw Error();const document=gmail.document(u.pathname.slice(1));return new Response(document.html,{headers:{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':document.csp,'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'}});}catch{return new Response('Contenido de correo no disponible.',{status:403,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});}});
-  const openWorkspace=(page:WorkspacePage)=>{endDrag();launcherPreferences.visit(page);if(!(page==='spotify'&&(menu&&workspacePage==='spotify'||!menu&&compactView==='spotify')))media?.close();if(workspacePage!==page){clearCalendar();context?.invalidate();replyEpoch++;gmail.suspendReads();connections?.cancel();}compactView='status';workspacePage=page;menu=true;appWindow.save('app');if(page==='notices')hub.markNoticesRead();visibility.invoke();positionSurface();broadcast();if(cap.isMinimized())cap.restore();syncVisibility();if(!cap.isVisible())cap.show();if(!cap.isFocused())cap.focus();if(page==='codex')void refreshLastReply();};
-  const collapse=(view:CapsuleView='status')=>{clearCalendar();context?.invalidate();endDrag();replyEpoch++;if(view!=='status'){launcherPreferences.visit(view);workspacePage=view;}rememberWindows();if(view!=='spotify')media?.close();compactView=view;gmail.suspendReads();connections?.cancel();menu=false;appWindow.save('capsule');contextPage=undefined;positionSurface();broadcast();syncVisibility();};
-  const panel=async(view:string)=>{openWorkspace(view==='settings'?'settings':view==='approvals'?'permissions':view==='notices'?'notices':'codex');if(!smoke&&(view==='settings'||view==='activity'))void check();};
-  const showCapsule=(explicit=true)=>{if(cap.isDestroyed())return;if(!menu&&explicit&&settings.followPointerDisplay&&!smoke){const d=screen.getDisplayNearestPoint(screen.getCursorScreenPoint());if(d.id!==position.displayId){remember();position=placements.get(d.id)??{...position,displayId:d.id};positionSurface();remember();}}visibility.invoke(explicit&&fullscreenHere()?desktop?.observation?.foreground:undefined);cap.setSkipTaskbar(!menu);if(cap.isMinimized())cap.restore();syncVisibility();broadcast();};
+  const invalidateContext=()=>{context.invalidate();replyEpoch++;};
+  const openWorkspace=(page:WorkspacePage)=>{
+   endDrag();
+   launcherPreferences.visit(page);
+   if(page!=='spotify'||(expanded?workspacePage:compactView)!=='spotify')media.close();
+   if(workspacePage!==page)invalidateContext();
+   compactView='status';
+   workspacePage=page;
+   if(page==='notices')hub.markNoticesRead();
+   visibility.invoke();
+   if(!expanded){expanded=true;positionSurface();}
+   if(cap.isMinimized()){cap.setSkipTaskbar(true);cap.restore();}
+   syncVisibility();
+   if(!cap.isVisible())cap.show();
+   if(!cap.isFocused())cap.focus();
+   broadcast();
+   if(page==='codex')void refreshLastReply();
+  };
+  const collapse=(view:CapsuleView='status')=>{invalidateContext();endDrag();if(view!=='status'){launcherPreferences.visit(view);workspacePage=view;}if(view!=='spotify')media.close();compactView=view;expanded=false;contextPage=undefined;positionSurface();broadcast();syncVisibility();
+   // A Windows restore can apply its previous z-order after the mode change.
+   setTimeout(syncVisibility,150).unref();
+  };
+  const showCapsule=(explicit=true)=>{if(cap.isDestroyed())return;if(!expanded&&explicit&&settings.followPointerDisplay&&!smoke){const d=screen.getDisplayNearestPoint(screen.getCursorScreenPoint());if(d.id!==position.displayId){remember();position=placements.forDisplay(position,d.id);positionSurface();remember();}}visibility.invoke(explicit&&fullscreenHere()?desktop?.observation?.foreground:undefined);cap.setSkipTaskbar(true);if(cap.isMinimized())cap.restore();syncVisibility();broadcast();};
   reveal=()=>showCapsule();
-  const endDrag=()=>{clearInterval(dragTimer);clearTimeout(dragLimit);dragTimer=undefined;if(moved){moved=false;if(menu)rememberWindows();else remember();}};
-  const drag=()=>{if(menu)return;endDrag();const p=screen.getCursorScreenPoint(),b=cap.getBounds(),gx=(p.x-b.x)/b.width,gy=(p.y-b.y)/CAPSULE_HEIGHT;dragTimer=setInterval(()=>{const q=screen.getCursorScreenPoint();if(!moved&&Math.hypot(q.x-p.x,q.y-p.y)<4)return;moved=true;const d=screen.getDisplayNearestPoint(q);const edge=nearestEdge(d.workArea,q,position.edge);position={displayId:d.id,edge,horizontalRatio:edge==='top'?draggedRatio(d.workArea,{mode:'capsule',height:CAPSULE_HEIGHT},q.x,gx):position.horizontalRatio,verticalRatio:edge==='top'?position.verticalRatio:draggedVerticalRatio(d.workArea,q.y,gy)};positionSurface();},30);dragLimit=setTimeout(endDrag,30000);};
-  const hide=()=>{endDrag();replyEpoch++;rememberWindows();media?.close();mediaObserver?.close();gmail.suspendReads();visibility.hide();setTopmost(false);cap.setSkipTaskbar(false);cap.minimize();};
+  const endDrag=()=>{clearInterval(dragTimer);clearTimeout(dragLimit);dragTimer=undefined;if(moved){moved=false;remember();}};
+  const drag=()=>{if(!surfaceVisible())return;endDrag();const p=screen.getCursorScreenPoint(),b=cap.getBounds(),gx=(p.x-b.x)/b.width,gy=(p.y-b.y)/CAPSULE_HEIGHT;dragTimer=setInterval(()=>{const q=screen.getCursorScreenPoint();if(!moved&&Math.hypot(q.x-p.x,q.y-p.y)<4)return;moved=true;const d=screen.getDisplayNearestPoint(q);const edge=nearestEdge(d.workArea,q,position.edge);position={displayId:d.id,edge,horizontalRatio:edge==='top'?draggedRatio(d.workArea,{mode:'capsule',height:CAPSULE_HEIGHT},q.x,gx):position.horizontalRatio,verticalRatio:edge==='top'?position.verticalRatio:draggedVerticalRatio(d.workArea,q.y,gy)};positionSurface();},30);dragLimit=setTimeout(endDrag,30000);};
+  const hide=()=>{endDrag();media.close();visibility.hide();setTopmost(false);cap.setSkipTaskbar(false);cap.minimize();};
+  const dismissOnOutsideClick=()=>{
+   if(surfaceReady&&!quitting&&!visibility.hidden&&!openDialogs&&!dragTimer&&surfaceVisible())hide();
+  };
+  desktop=new CompanionDesktop(nativeHelper(__dirname,'desktop'),()=>{syncVisibility();broadcast();},{
+   windowHandle:cap.getNativeWindowHandle().readBigUInt64LE().toString(),
+   dismiss:dismissOnOutsideClick,
+  });
   cap.on('close',e=>{if(!quitting){e.preventDefault();hide();}});cap.on('blur',endDrag);cap.on('restore',reveal);
-  const hidePrivateContent=()=>{clearCalendar();context?.invalidate();replyEpoch++;mediaObserver?.close();gmail.suspendReads();broadcast();};cap.on('hide',hidePrivateContent);cap.on('minimize',hidePrivateContent);
-  const reposition=()=>{endDrag();const d=display();if(d.id!==position.displayId)position=placements.get(d.id)??{...position,displayId:d.id};positionSurface(true);syncVisibility();};screen.on('display-added',reposition);screen.on('display-removed',reposition);screen.on('display-metrics-changed',reposition);
+  const hidePrivateContent=()=>{invalidateContext();mediaObserver.close();broadcast();};cap.on('hide',hidePrivateContent);cap.on('minimize',hidePrivateContent);
+  const reposition=()=>{endDrag();const d=display();if(d.id!==position.displayId)position=placements.forDisplay(position,d.id);positionSurface();syncVisibility();};screen.on('display-added',reposition);screen.on('display-removed',reposition);screen.on('display-metrics-changed',reposition);
   const openCurrent=async()=>{await openExternal(codexChatUrl(hub.status()));};
-  const tray=new Tray(join(__dirname,'renderer','icons','tray.ico'));tray.setToolTip('ZEN · Codex');tray.setContextMenu(Menu.buildFromTemplate([{label:'Abrir ZEN',click:()=>openWorkspace(launcherPreferences.status().last)},{label:'Mostrar cápsula',click:()=>{if(menu)collapse();reveal();}},{label:'Volver al chat de Codex',click:()=>void openCurrent()},{label:'Volver a mi aplicación',click:()=>void desktop?.restore().catch(()=>{})},{type:'separator'},{label:'Salir',click:()=>app.quit()}]));tray.on('click',reveal);
+  const tray=new Tray(join(__dirname,'renderer','icons','tray.ico'));tray.setToolTip('ZEN · Codex');tray.setContextMenu(Menu.buildFromTemplate([{label:'Abrir ZEN',click:()=>openWorkspace(launcherPreferences.status().last)},{label:'Mostrar cápsula',click:()=>{if(expanded)collapse();reveal();}},{label:'Volver al chat de Codex',click:()=>void openCurrent()},{label:'Volver a mi aplicación',click:()=>void desktop?.restore().catch(()=>{})},{type:'separator'},{label:'Salir',click:()=>app.quit()}]));tray.on('click',reveal);
   let shortcutIssue:string|undefined,checking:Promise<boolean>|undefined;
   let replyRead:Promise<void>|undefined;
-  const replyVisible=()=>!smoke&&!!target&&!targetError&&menu&&workspacePage==='codex'&&codexTab==='summary'&&!settings.presentation&&!settings.paused&&cap.isVisible()&&!cap.isMinimized();
-  const refreshLastReply=()=>{if(!replyVisible()||replyRead||!target)return replyRead;const epoch=replyEpoch,selected=target;return replyRead=(async()=>{try{const reply=await readCodexLastReply(codexHome,selected);if(reply&&epoch===replyEpoch&&replyVisible())hub.setLastReply(selected.session,selected.cwd,reply);}catch{/* Keep an observed reply without exposing file or parser errors. */}finally{replyRead=undefined;}})();};
+  const replyVisible=()=>!smoke&&!targetError&&summaryVisible()&&privateEffectsAllowed();
+  const refreshLastReply=()=>{
+   const selected=target;
+   if(!selected||!replyVisible()||replyRead)return replyRead;
+   const epoch=replyEpoch;
+   replyRead=replyReader.read(selected).then(reply=>{
+    if(reply&&epoch===replyEpoch&&replyVisible())hub.setLastReply(selected.session,selected.cwd,reply);
+   }).catch(()=>{
+    // Preserve the last observed answer if local recovery fails.
+   }).finally(()=>{replyRead=undefined;});
+   return replyRead;
+  };
   const replyTicker=setInterval(()=>{void refreshLastReply();},4000);
   const check=()=>checking??=(async()=>{
    hub.checking=true;hub.error=shortcutIssue;broadcast();let rpc:CodexRpc|undefined;
@@ -142,93 +253,155 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    catch{hub.connection={...hub.connection,state:'unavailable',checkedAt:Date.now()};hub.error='No se pudo comprobar Codex. Ábrelo y vuelve a comprobar la conexión.';return false;}
    finally{rpc?.close();hub.checking=false;checking=undefined;broadcast();}
   })();
-  const handle=(name:string,schema:z.ZodType,fn:(v:any,source:BrowserWindow)=>unknown)=>ipcMain.handle('companion:'+name,async(e,input)=>{try{const w=BrowserWindow.fromWebContents(e.sender);if(!w||!windows().includes(w)||e.senderFrame!==e.sender.mainFrame||e.senderFrame.url!==pathToFileURL(renderer).href+'?view='+(w===cap?'capsule':[...panels].find(([,win])=>win===w)?.[0]))throw Error('Origen no autorizado.');return{ok:true,value:await fn(schema.parse(input),w)};}catch(e){return{ok:false,error:e instanceof z.ZodError?'Petición no válida.':settings.presentation?'Acción no disponible. Revisa Codex o desactiva Presentación.':(e as Error).message};}});
-  const none=z.undefined();handle('status',none,(_v,w)=>snapshot(w));handle('check',none,()=>check());handle('open',z.string().max(160).optional(),async id=>{await openExternal(codexChatUrl(hub.status(),id));return true;});
+  const handle=companionIpc(cap,rendererUrl,()=>settings.presentation);
+  const none=z.undefined();
+  const requireWorkspace=(page?:WorkspacePage)=>{
+   if(!workspaceVisible(page))throw Error('Abre la sección correspondiente en ZEN.');
+  };
+  handle('status',none,snapshot);
+  handle('check',none,()=>smoke?true:check());
+  handle('openCodex',z.string().max(160).optional(),async id=>{await openExternal(codexChatUrl(hub.status(),id));return true;});
   handle('returnApp',none,()=>{if(!desktop)throw Error('Control de ventanas no disponible.');return desktop.restore();});
-  const workspaceWindow=(w:BrowserWindow,page?:WorkspacePage)=>{if(w!==cap||!menu||page&&workspacePage!==page)throw Error('Abre la sección correspondiente en ZEN.');};
-  handle('windowAction',z.enum(['maximize','minimize']),(action,w)=>{workspaceWindow(w);if(!cap.isVisible()||cap.isMinimized())throw Error('Vuelve a abrir ZEN.');if(action==='minimize')cap.minimize();else if(cap.isMaximized())cap.unmaximize();else cap.maximize();broadcast();return true;});
-  const appearanceWindow=(w:BrowserWindow)=>{workspaceWindow(w,'settings');if(!cap.isVisible()||cap.isMinimized()||settings.presentation)throw Error('Abre Apariencia y desactiva Presentación.');};
-  handle('appearanceSave',AppearanceOptions,(value,w)=>{appearanceWindow(w);const result=appearance.save(value);broadcast();return result;});
-  handle('appearanceChoose',none,async(_v,w)=>{appearanceWindow(w);if(smoke){const path=join(profile,'appearance-fixture.png');writeFileSync(path,nativeImage.createFromBitmap(Buffer.from([180,120,70,255]),{width:1,height:1}).toPNG());const result=appearance.import(path);broadcast();return result;}const picked=await dialog.showOpenDialog(cap,{title:'Imagen de fondo de ZEN',properties:['openFile'],filters:[{name:'Imagen de fondo',extensions:['png','jpg','jpeg','webp']}]});appearanceWindow(w);if(picked.canceled||picked.filePaths.length!==1)return appearance.status();const result=appearance.import(picked.filePaths[0]);broadcast();return result;});
-  const integrationWindow=(w:BrowserWindow)=>workspaceWindow(w,'gmail');
-  const musicWindow=(w:BrowserWindow)=>{if(w!==cap||!mediaAllowed())throw Error('Abre Spotify o su modo compacto para usar el reproductor.');};
-  handle('mediaNowPlaying',none,(_v,w)=>{if(w!==cap)throw Error('Origen no autorizado.');if(!mediaObservationAllowed())return null;return mediaObserver!.read();});
-  handle('mediaObservationClose',none,(_v,w)=>{if(w!==cap)throw Error('Origen no autorizado.');mediaObserver!.close();return true;});
-  handle('navigate',WorkspacePage,async page=>{openWorkspace(page);return true;});
-  handle('codexTab',CodexTab,(tab,w)=>{if(w!==cap)throw Error('Origen no autorizado.');if(codexTab!==tab){context?.invalidate();replyEpoch++;codexTab=tab;}openWorkspace('codex');return true;});
-  handle('togglePage',LauncherPage,(page,w)=>{if(w!==cap)throw Error('Origen no autorizado.');const selected=workspacePage===page||page==='codex'&&workspacePage==='permissions'||page==='home'&&workspacePage==='settings';menu&&selected?collapse():openWorkspace(page);return true;});
-  handle('launcher',z.boolean(),(open,w)=>{if(w!==cap)throw Error('Origen no autorizado.');open?openWorkspace(launcherPreferences.status().last):collapse();return true;});
-  handle('compact',CapsuleView,(view,w)=>{if(w!==cap)throw Error('Origen no autorizado.');collapse(view);visibility.invoke();syncVisibility();broadcast();return true;});
-  handle('launcherOrder',LauncherOrder,(order,w)=>{if(w!==cap)throw Error('Origen no autorizado.');launcherPreferences.reorder(order);broadcast();return true;});
-  handle('options',none,(_v,w)=>{if(w!==cap)throw Error('Origen no autorizado.');openWorkspace('options');return true;});
-  handle('launcherContext',LauncherPage,(page:LauncherPage,w)=>{if(w!==cap)throw Error('Origen no autorizado.');contextPage=page;openWorkspace('shortcuts');return true;});
-  handle('integrations',IntegrationTabSchema,async tab=>{connections!.select(tab);openWorkspace(tab==='connections'?'home':tab);return true;});
-  handle('mediaCurrent',none,(_v,w)=>{musicWindow(w);return media!.current();});
-  handle('mediaList',none,(_v,w)=>{musicWindow(w);return media!.list();});
-  handle('mediaSelect',z.string().uuid(),(id,w)=>{musicWindow(w);return media!.select(id);});
-  handle('mediaRead',z.string().uuid(),(id,w)=>{musicWindow(w);return media!.read(id);});
-  handle('mediaCommand',MediaCommand,(v,w)=>{musicWindow(w);return media!.command(v);});
-  handle('mediaClose',z.enum(['workspace','compact']).optional(),(scope,w)=>{if(w!==cap)throw Error('Origen no autorizado.');if((scope??'workspace')===(menu?'workspace':'compact'))media!.close();return true;});
-  const contextWindow=(w:BrowserWindow)=>{workspaceWindow(w,'codex');if(!contextAllowed())throw Error('Abre Codex en ZEN.');};
-  handle('contextStatus',none,(_v,w)=>{contextWindow(w);return context!.status();});
-  handle('contextChoose',none,async(_v,w)=>{contextWindow(w);const r=await context!.choose();contextWindow(w);return r;});
-  handle('contextPrepare',ContextInput,async(v,w)=>{contextWindow(w);const r=await context!.prepare(v);contextWindow(w);return r;});
-  handle('contextCancel',z.string().uuid(),(id,w)=>{contextWindow(w);context!.cancel(id);return true;});
-  handle('contextHandoff',z.string().uuid(),async(id,w)=>{contextWindow(w);return context!.handoff(id);});
-  handle('contextResult',none,async(_v,w)=>{contextWindow(w);const r=await context!.result();contextWindow(w);return r;});
-  const calendarWindow=(w:BrowserWindow,view?:string)=>{workspaceWindow(w,'calendar');if(!calendarAllowed()||view!==undefined&&view!==calendarLease)throw Error('Vuelve a abrir Calendario para continuar.');};
-  handle('calendarStatus',none,(_v,w)=>{calendarWindow(w);calendarLease??=randomUUID();return{...calendar!.status(),view:calendarLease};});
-  handle('calendarList',z.string().uuid(),async(view,w)=>{calendarWindow(w,view);const result=await calendar!.list();calendarWindow(w,view);return result;});
-  handle('calendarRange',z.object({view:z.string().uuid(),query:CalendarQuery}).strict(),async(v,w)=>{calendarWindow(w,v.view);const result=await calendar!.range(v.query);calendarWindow(w,v.view);return result;});
-  handle('calendarEvent',z.object({view:z.string().uuid(),key:z.string().uuid()}).strict(),async(v,w)=>{calendarWindow(w,v.view);const result=await calendar!.detail(v.key);calendarWindow(w,v.view);return result;});
-  for(const action of ['Connect','Cancel','Disconnect'] as const)handle('calendar'+action,z.string().uuid(),async(view,w)=>{calendarWindow(w,view);const result=await(action==='Connect'?calendar!.connect():action==='Cancel'?calendar!.cancel():calendar!.disconnect());calendarWindow(w,view);return{...result,view};});
-  handle('calendarClose',z.string().uuid(),(view,w)=>{if(w!==cap)throw Error('Origen no autorizado.');if(calendarLease!==view)return false;clearCalendar();return true;});
-  handle('calendarOpen',z.object({view:z.string().uuid(),key:z.string().uuid()}).strict(),(v,w)=>{calendarWindow(w,v.view);return calendar!.openEvent(v.key);});
-  handle('calendarWeb',z.string().uuid(),async(view,w)=>{calendarWindow(w,view);await openExternal('https://calendar.google.com/calendar/u/0/r');return true;});
-  handle('calendarCloud',z.string().uuid(),async(view,w)=>{calendarWindow(w,view);await openExternal('https://console.cloud.google.com/apis/library/calendar-json.googleapis.com');return true;});
-  const gmailWindow=(w:BrowserWindow)=>{workspaceWindow(w,'gmail');if(!gmailAllowed())throw Error('Gmail no está disponible en esta vista.');};
-  handle('gmailImagesCancel',z.string().regex(/^[a-f0-9]{32}$/),(view,w)=>{gmailWindow(w);gmail.cancelImages(view);return true;});
-  handle('gmailImages',z.object({view:z.string().regex(/^[a-f0-9]{32}$/),external:z.boolean()}).strict(),async(v,w)=>{gmailWindow(w);const result=await gmail.images(v.view,v.external);gmailWindow(w);return result;});
-  handle('gmailOpenLink',z.object({view:z.string().regex(/^[a-f0-9]{32}$/),id:z.string().regex(/^l\d{1,3}$/)}).strict(),(v,w)=>{gmailWindow(w);return gmail.openLink(v.view,v.id);});
-  handle('gmailStatus',none,(_v,w)=>{gmailWindow(w);return gmail.status();});
-  handle('gmailSummary',none,async(_v,w)=>{if(w!==cap||!homeSummaryAllowed())throw Error('Abre Home y desactiva Presentación o pausa para consultar el contador.');const r=await gmail.summary();if(!homeSummaryAllowed())throw Error('El resumen de correo ya no está visible.');gmailIndicator=typeof r.unread==='number'&&typeof r.checkedAt==='number'?{unread:r.unread,checkedAt:r.checkedAt}:undefined;broadcast();return r;});
-  handle('gmailConfigure',GmailClientId,(id,w)=>{gmailWindow(w);gmailIndicator=undefined;const r=gmail.configure(id);clearCalendar();calendar?.suspend();broadcast();return r;});
-  handle('gmailImportClient',none,async(_v,w)=>{gmailWindow(w);if(smoke)return gmail.status();const choice=await dialog.showOpenDialog(w,{title:'Importar credenciales de Google Desktop',properties:['openFile'],filters:[{name:'Credenciales JSON de Google',extensions:['json']}]});gmailWindow(w);if(choice.canceled||choice.filePaths.length!==1)return gmail.status();let fd:number|undefined;try{fd=openSync(choice.filePaths[0],'r');const stat=fstatSync(fd);if(!stat.isFile()||stat.size>16384)throw Error();const bytes=Buffer.alloc(16385),length=readSync(fd,bytes,0,bytes.length,0);if(length>16384)throw Error();gmailWindow(w);const r=gmail.importClientJson(bytes.subarray(0,length).toString('utf8'));clearCalendar();calendar?.suspend();gmailIndicator=undefined;broadcast();return r;}catch{throw Error('No se pudieron importar las credenciales. Selecciona el JSON de una aplicación de escritorio de Google, de hasta 16 KB.');}finally{if(fd!==undefined)closeSync(fd);}});
-  handle('gmailConnect',none,(_v,w)=>{gmailWindow(w);return gmail.connect();});
-  handle('gmailEnableTrash',none,(_v,w)=>{gmailWindow(w);return gmail.connect(true);});
-  handle('gmailPrepareTrash',z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),(id,w)=>{gmailWindow(w);return gmail.prepareTrash(id);});
-  handle('gmailTrashCancel',none,(_v,w)=>{gmailWindow(w);gmail.cancelTrash();return true;});
-  handle('gmailTrash',z.string().regex(/^[a-f0-9]{48}$/),async(token,w)=>{gmailWindow(w);gmailIndicator=undefined;broadcast();const result=await gmail.trash(token);gmailWindow(w);return result;});
-  handle('gmailCancel',none,(_v,w)=>{workspaceWindow(w,'gmail');gmail.suspend();return gmail.status();});
-  handle('gmailDisconnect',none,(_v,w)=>{gmailWindow(w);gmailIndicator=undefined;const r=gmail.disconnect();broadcast();return r;});
-  handle('gmailList',GmailQuery,async(q,w)=>{gmailWindow(w);const r=await gmail.list(q);gmailWindow(w);if(typeof r.unread==='number'){gmailIndicator={unread:r.unread,checkedAt:Date.now()};broadcast();}return r;});
-  handle('gmailResult',z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),async(id,w)=>{gmailWindow(w);const r=await mailAnalysis!.result(id);gmailWindow(w);return r;});
-  handle('gmailReply',z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),async(id,w)=>{gmailWindow(w);const r=await mailAnalysis!.reply(id);gmailWindow(w);return r;});
-  handle('gmailAnalysisPrepare',MailAnalysisPrepare,(v,w)=>{gmailWindow(w);return mailAnalysis!.prepare(v);});
-  handle('gmailAnalysisCancel',z.string().uuid(),(id,w)=>{gmailWindow(w);mailAnalysis!.cancel(id);return true;});
-  handle('gmailAnalysisHandoff',z.string().uuid(),(id,w)=>{gmailWindow(w);return mailAnalysis!.handoff(id);});
-  handle('gmailMessageClose',none,(_v,w)=>{gmailWindow(w);gmail.closeMessage();return true;});
-  handle('gmailMessage',z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),(id,w)=>{gmailWindow(w);return gmail.message(id);});
-  handle('integrationCheck',none,(_v,w)=>{integrationWindow(w);return connections!.check(true);});
-  handle('integrationPrepare',IntegrationPrepareSchema,(v,w)=>{integrationWindow(w);return connections!.prepare(v);});
-  handle('integrationCancel',none,(_v,w)=>{integrationWindow(w);connections!.cancel();return true;});
-  handle('integrationHandoff',z.string().uuid(),(id,w)=>{integrationWindow(w);return connections!.handoff(id);});
-  handle('integrationWeb',IntegrationProviderSchema,async provider=>{if(settings.presentation)throw Error('Desactiva Presentación para abrir la integración.');await openExternal(provider==='gmail'?'https://mail.google.com/':'https://open.spotify.com/');return true;});
+  handle('openRequest', CodexRequest, text => {
+   const verify = () => {
+    if (!workspaceVisible('home') || !privateEffectsAllowed()) throw Error('Abre Home y desactiva la pausa o Presentación.');
+   };
+   verify();
+   if (targetError) throw Error(targetError);
+   const fixedChat = target;
+   return withRequest(() => openCodexRequest(text, {
+    queue: fixedChat && (value => submitRequest(fixedChat.session,value,verify)),
+    copy: value => {if (smoke) copiedRequests.push(value); else clipboard.writeText(value);},
+    open: openExternal,
+   }));
+  });
+  handle('openSpotify', none, async () => {
+   if (settings.presentation) throw Error('Desactiva Presentación para abrir Spotify.');
+   await openExternal('https://open.spotify.com/');
+   return true;
+  });
+  const appearanceWindow=()=>{if(!workspaceVisible('settings')||settings.presentation)throw Error('Abre Apariencia y desactiva Presentación.');};
+  handle('appearanceSave',AppearanceOptions,value=>{appearanceWindow();const result=appearance.save(value);broadcast();return result;});
+  handle('appearanceChoose',none,async()=>{appearanceWindow();if(smoke){const path=join(profile,'appearance-fixture.png');writeFileSync(path,nativeImage.createFromBitmap(Buffer.from([180,120,70,255]),{width:1,height:1}).toPNG());const result=appearance.import(path);broadcast();return result;}const picked=await withWindowDialog(()=>dialog.showOpenDialog(cap,{title:'Imagen de fondo de ZEN',properties:['openFile'],filters:[{name:'Imagen de fondo',extensions:['png','jpg','jpeg','webp']}]}));appearanceWindow();if(picked.canceled||picked.filePaths.length!==1)return appearance.status();const result=appearance.import(picked.filePaths[0]);broadcast();return result;});
+  handle('mediaNowPlaying',none,()=>mediaObservationAllowed()?mediaObserver.read():null);
+  handle('mediaObservationClose',none,()=>{mediaObserver.close();return true;});
+  handle('navigate',WorkspacePage,page=>{openWorkspace(page);return true;});
+  const requireNotes = () => {
+   requireWorkspace('notes');
+   if (!privateEffectsAllowed()) throw Error('Desactiva la pausa o Presentación para abrir Apuntes.');
+  };
+  handle('notesRead', none, () => {
+   requireNotes();
+   return notes.read();
+  });
+  handle('notesChange', HubAction, change => {
+   requireNotes();
+   return notes.change(change, text => { if (smoke) copiedText.push(text); else clipboard.writeText(text); });
+  });
+  handle('notesDraft', HubDraft.nullable(), draft => {
+   requireNotes();
+   return notes.draft(draft);
+  });
+  handle('notesFile', HubFileAction, async (action): Promise<HubFileResult> => {
+   requireNotes();
+   if (action.type === 'url') {
+    await openExternal(action.url);
+    return {type:'done'};
+   }
+   if (action.type === 'image' || action.type === 'import') {
+    const image = action.type === 'image';
+    const picked = await withWindowDialog(()=>dialog.showOpenDialog(cap, {
+     title: image ? 'Adjuntar imagen' : 'Restaurar respaldo de Knowledge Hub', properties:['openFile'],
+     filters: image ? [{name:'Imagen',extensions:['png','jpg','jpeg','webp']}] : [{name:'Respaldo JSON',extensions:['json']}],
+    }));
+    requireNotes();
+    const path = picked.filePaths[0];
+    if (picked.canceled || !path) return {type:'cancelled'};
+    if (!image) {
+     let raw: unknown;
+     try { raw = JSON.parse(readHubFile(path).toString('utf8').replace(/^\uFEFF/, '')); }
+     catch { throw Error('No se pudo leer el respaldo JSON.'); }
+     return {type:'import', data:notes.restore(raw)};
+    }
+    let decoded = nativeImage.createFromBuffer(wallpaperBytes(path));
+    if (decoded.isEmpty()) throw Error('No se pudo abrir la imagen.');
+    let bytes: Buffer;
+    for (const size of [1440, 1100, 800, 560, 400]) {
+     const {width, height} = decoded.getSize();
+     const scale = Math.min(1, size / Math.max(width, height));
+     if (scale < 1) decoded = decoded.resize({width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale)),quality:'best'});
+     bytes = decoded.toPNG();
+     if (bytes.length <= 540_000) return {
+      type:'image',image:{id:randomUUID(),name:basename(path).slice(0,160),data:'data:image/png;base64,'+bytes.toString('base64')},
+     };
+    }
+    throw Error('La imagen es demasiado grande. Prueba con una más pequeña.');
+   }
+   const {data} = notes.read();
+   const entry = action.type === 'markdown' ? data.entries.find(item => item.id === action.id) : undefined;
+   if (action.type === 'markdown' && !entry) throw Error('Guarda el elemento antes de exportarlo.');
+   const extension = entry ? 'md' : 'json';
+   const destination = await withWindowDialog(()=>dialog.showSaveDialog(cap, {
+    title:'Exportar Knowledge Hub',defaultPath:entry ? fileStem(entry.title)+'.md' : 'zen-knowledge-hub.json',
+    filters:[{name:entry ? 'Markdown' : 'Respaldo JSON',extensions:[extension]}],
+   }));
+   requireNotes();
+   if (destination.canceled || !destination.filePath) return {type:'cancelled'};
+   const path = destination.filePath;
+   if ([join(profile,'knowledge-hub.sqlite'),join(profile,'companion-notes.json')].some(file => file.toLowerCase()===path.toLowerCase())) {
+    throw Error('Elige otro destino para la exportación.');
+   }
+   const temporary = path+'.'+randomUUID()+'.tmp';
+   try {
+    writeFileSync(temporary,entry?entryMarkdown(entry):JSON.stringify(data),{encoding:'utf8',flag:'wx'});
+    renameSync(temporary,path);
+   } finally {rmSync(temporary,{force:true});}
+   return {type:'done'};
+  });
+  handle('codexTab',CodexTab,tab=>{if(codexTab!==tab){invalidateContext();codexTab=tab;}openWorkspace('codex');return true;});
+  handle('togglePage',LauncherPage,page=>{if(expanded&&isLauncherPageSelected(workspacePage,page))collapse();else openWorkspace(page);return true;});
+  handle('launcher',z.boolean(),open=>{if(open)openWorkspace(launcherPreferences.status().last);else collapse();return true;});
+  handle('compact',CapsuleView,view=>{collapse(view);visibility.invoke();syncVisibility();broadcast();return true;});
+  handle('launcherOrder',LauncherOrder,order=>{launcherPreferences.reorder(order);broadcast();return true;});
+  handle('options',none,()=>{openWorkspace('options');return true;});
+  handle('launcherContext',LauncherPage,page=>{contextPage=page;openWorkspace('shortcuts');return true;});
+  handle('mediaCurrent',none,()=>media.current());
+  handle('mediaSnapshot',z.literal(true).optional(),followSystem=>media.snapshot(followSystem));
+  handle('mediaList',none,()=>media.list());
+  handle('mediaSelect',z.uuid(),id=>media.select(id));
+  handle('mediaRead',z.uuid(),id=>media.read(id));
+  handle('mediaCommand',MediaCommand,value=>media.command(value));
+  handle('mediaClose',z.enum(['workspace','compact']).optional(),scope=>{if((scope??'workspace')===(expanded?'workspace':'compact'))media.close();return true;});
+  handle('contextStatus',none,()=>context.status());
+  handle('contextChoose',none,()=>context.choose());
+  handle('contextPrepare',ContextInput,input=>context.prepare(input));
+  handle('contextCancel',z.uuid(),id=>{context.cancel(id);return true;});
+  handle('contextHandoff',z.uuid(),id=>context.handoff(id));
+  handle('contextResult',none,()=>context.result());
+  handle('contextSource',CodexReferenceSelection,selection=>context.source(selection));
   handle('locate',z.object({session:z.string().max(160),path:z.string().max(4096)}).strict(),async v=>{if(settings.presentation)throw Error('Desactiva Presentación para ver ubicaciones.');const s=hub.status().sessions.find(s=>s.id===v.session);if(!s||s.state!=='finished'||!s.summary?.files.some(f=>f.path===v.path))throw Error('Este archivo no pertenece al resumen actual.');try{const p=await projectFile(s.cwd,v.path,true);if(p.missing)await shell.openPath(p.folder);else shell.showItemInFolder(p.file);return true;}catch{throw Error('La ubicación ya no está disponible dentro del proyecto.');}});
-  handle('menu',z.boolean(),open=>{open?openWorkspace(launcherPreferences.status().last):collapse();return true;});handle('panel',z.enum(['activity','approvals','notices']),async v=>{await panel(v);return true;});handle('settings',none,async()=>{await panel('settings');return true;});
-  handle('decide',z.object({id:z.string().uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),(v,w)=>{workspaceWindow(w,'permissions');hub.decide(v.id,v.decision);return true;});
-  handle('install',none,async(_v,w)=>{workspaceWindow(w,'settings');await integration.install();if(!smoke)void check();return true;});
-  const persist=(v:CompanionSettings)=>{if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');const changed=v.shortcut!==settings.shortcut||v.returnShortcut!==settings.returnShortcut;if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}settings=v;if(v.paused)summaries.clear();if(changed){shortcutIssue=undefined;hub.error=undefined;}hub.update(v);if(v.presentation||v.paused){clearCalendar();calendar?.suspend();context?.clear();mailAnalysis?.clearReplies();replyEpoch++;connections?.cancel();media?.close();mediaObserver?.close();gmail.suspend();}syncVisibility();return true;};
-  handle('save',CompanionSettingsSchema,(v,w)=>{workspaceWindow(w,'settings');return persist(v);});
+  handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),value=>{requireWorkspace('permissions');hub.decide(value.id,value.decision);return true;});
+  handle('install',none,async()=>{requireWorkspace('settings');await integration.install();if(!smoke)void check();return true;});
+  const persist=(v:CompanionSettings)=>{if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');const changed=v.shortcut!==settings.shortcut||v.returnShortcut!==settings.returnShortcut;if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}settings=v;if(v.paused)summaries.clear();if(changed){shortcutIssue=undefined;hub.error=undefined;}hub.update(v);if(v.presentation||v.paused){context?.clear();replyEpoch++;media?.close();mediaObserver?.close();}syncVisibility();return true;};
+  handle('save',CompanionSettingsSchema,value=>{requireWorkspace('settings');return persist(value);});
   handle('sound',z.boolean(),enabled=>persist({...settings,sounds:enabled}));
   handle('presentation',z.boolean(),enabled=>persist({...settings,presentation:enabled}));
   handle('silence',z.union([z.literal(0),z.literal(30)]),minutes=>persist({...settings,silencedUntil:minutes?Date.now()+minutes*60000:0}));
-  handle('testNotice',none,(_v,w)=>{workspaceWindow(w,'settings');if(settings.presentation)throw Error('Desactiva Presentación para probar avisos.');if(isSilenced(settings))throw Error('Los avisos están silenciados temporalmente. Reactívalos para probar.');if(!settings.notifications)throw Error('Activa las notificaciones para probar el aviso.');notify({id:'test',session:'',title:'Aviso de prueba',kind:'finished',read:false,at:Date.now()});return true;});
-  handle('clear',none,()=>{hub.clearNotices();return true;});handle('hide',none,()=>{hide();return true;});handle('drag',z.enum(['start','end']),a=>{a==='start'?drag():endDrag();return true;});handle('cursor',none,()=>null);
+  handle('testNotice',none,()=>{requireWorkspace('settings');if(settings.presentation)throw Error('Desactiva Presentación para probar avisos.');if(isSilenced(settings))throw Error('Los avisos están silenciados temporalmente. Reactívalos para probar.');if(!settings.notifications)throw Error('Activa las notificaciones para probar el aviso.');notify({id:'test',session:'',title:'Aviso de prueba',kind:'finished',read:false,at:Date.now()});return true;});
+  handle('clearNotices',none,()=>{hub.clearNotices();return true;});handle('hide',none,()=>{hide();return true;});handle('drag',z.enum(['start','end']),a=>{a==='start'?drag():endDrag();return true;});
+  handle('moveCapsule',CapsuleAlignment,alignment=>{
+   if(!surfaceVisible())throw Error('Muestra ZEN para mover la cápsula.');
+   endDrag();
+   const {id:displayId}=screen.getDisplayMatching(cap.getBounds());
+   position={...position,displayId,edge:'top',horizontalRatio:alignment==='left'?0:alignment==='right'?1:.5};
+   positionSurface();
+   remember();
+   return true;
+  });
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');if(smoke)copiedText.push(value);else clipboard.writeText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
-  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{rememberWindows();quitting=true;surfaceReady=false;clearTimeout(saveWindowTimer);clearInterval(ticker);clearInterval(replyTicker);replyEpoch++;endDrag();summaries.clear();connections?.close();media?.close();mediaObserver?.close();calendar?.close();context?.close();mailAnalysis?.close();gmail.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
-  await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:{view:'capsule'}});positionSurface();surfaceReady=true;showCapsule(false);if(!smoke)void check();
-  if(smoke){app.once('quit',(_event,code)=>process.exit(code));try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,panels,panel,hub,integration,profile,openedTargets,activateNotice,copiedRequests,copiedText,mailReplyFixture,shownMenus,media:media!,finishGmail,expireGmail,finishCalendar,calendarReads:()=>calendarFixtureReads,observationFixture});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(String(e));app.exit(1);}}
+  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearInterval(ticker);clearInterval(replyTicker);replyEpoch++;endDrag();summaries.clear();media?.close();mediaObserver?.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
+  await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});positionSurface();surfaceReady=true;showCapsule(false);if(!smoke)void check();
+  if(smoke){app.once('quit',(_event,code)=>process.exit(code));try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(String(e));app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});
 }

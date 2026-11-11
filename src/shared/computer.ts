@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {humanCommand} from '../policy/command';
+import {humanCommand} from './human-command';
 import {ZenError} from './errors';
 const point={x:z.number().int().nonnegative(),y:z.number().int().nonnegative()};
 const modifiers=z.array(z.enum(['CTRL','ALT','SHIFT'])).max(3).nullish();

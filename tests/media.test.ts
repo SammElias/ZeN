@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { selectMedia } from '../src/policy/media';
 import { requestedPauses } from '../src/policy/desktop';
-import type { MediaInfo } from '../src/tools/windows/native';
+import type { MediaInfo } from '../src/shared/windows-observation';
 const player = (id: string, extra: Partial<MediaInfo> = {}): MediaInfo => ({ id, title: 'Canción', state: 'Playing', canPause: true, ...extra });
 describe('Selección multimedia vinculada a la petición humana', () => {
   it('elige el único reproductor apto para una pausa genérica, también si ya está pausado', () => {

@@ -1,14 +1,11 @@
-import type {CompanionStatus,CompanionSession,CompanionConnection,CompanionSettings,CompanionTarget,CompanionNotice} from './codex-companion';
+import type {CompanionStatus,CompanionSession,CompanionSettings,CompanionNotice} from './codex-companion';
+import {matchesTarget} from './companion-target';
 
 export const phaseNames={idle:'Disponible',thinking:'Pensando',working:'Usando herramientas',approval:'Necesita tu permiso',finished:'Turno terminado',error:'Revisar error',interrupted:'Interrumpido',unknown:'Revisa Codex'} as const;
 export function activeSession(status:Pick<CompanionStatus,'sessions'|'approvals'|'target'>):CompanionSession|undefined{
  if(status.target)return status.sessions.find(s=>matchesTarget(status.target!,s.id,s.cwd));
  const requested=status.approvals[0]?.session;
  return status.sessions.find(s=>s.id===requested)??status.sessions.find(s=>['thinking','working'].includes(s.state))??status.sessions.find(s=>s.state==='error')??status.sessions[0];
-}
-export function matchesTarget(target:CompanionTarget,session:string,cwd:string){
- const normalize=(v:string)=>v.replace(/\//g,'\\').replace(/\\+$/,'').toLowerCase();
- return target.session===session&&normalize(target.cwd)===normalize(cwd);
 }
 export function currentChat(status:Pick<CompanionStatus,'sessions'|'approvals'|'target'|'targetError'>){return status.targetError?undefined:status.target?.session??activeSession(status)?.id;}
 export function codexChatUrl(status:Pick<CompanionStatus,'sessions'|'approvals'|'target'|'targetError'>,requested?:string){
@@ -34,13 +31,15 @@ export function completionDetail(session:CompanionSession){
  const duration=seconds<60?seconds+' s':Math.floor(seconds/60)+' min '+seconds%60+' s';
  return count+' · '+duration+' desde el inicio recibido';
 }
-export function toolActivity(tool?:string){
- if(!tool)return 'Codex';
- if(/cua_repl|computer_use/i.test(tool))return 'Control visual';
- if(/browser|chrome|playwright/i.test(tool))return 'Navegador';
- if(/apply_patch|^edit$|^write$/i.test(tool))return 'Edición de archivos';
- if(/^bash$|exec_command/i.test(tool))return 'Comando';
- return tool.length>55?tool.slice(0,52)+'…':tool;
+export function toolActivity(tool?:string):{label:string;kind?:'command'|'file'}{
+ if(!tool)return {label:'Codex'};
+ if(/cua_repl|computer_use/i.test(tool))return {label:'Control visual'};
+ if(/browser|chrome|playwright/i.test(tool))return {label:'Navegador'};
+ if(/apply_patch|^edit$|^write$/i.test(tool))return {label:'Edición de archivos',kind:'file'};
+ if(/^bash$|exec_command/i.test(tool))return {label:'Comando',kind:'command'};
+ const label=tool.length>55?tool.slice(0,52)+'…':tool;
+ const kind=/comando/i.test(label)?'command':/archivos/i.test(label)?'file':undefined;
+ return {label,kind};
 }
 export function connectionLabel(status:Pick<CompanionStatus,'settings'|'connection'|'lastEventAt'>,now=Date.now()){
  if(status.settings.paused)return 'Avisos en pausa';
@@ -53,14 +52,4 @@ export function connectionLabel(status:Pick<CompanionStatus,'settings'|'connecti
  if(state==='ready')return 'Esperando eventos de Codex';
  if(status.lastEventAt)return 'Sin actividad reciente';
  return 'Comprobar conexión';
-}
-/** Only exact command definitions reported by Codex; never infer trust from a file. */
-export function hookConnection(result:unknown,command:string,expected:number,now=Date.now()):CompanionConnection{
- const rows=(result as {data?:unknown[]})?.data;
- if(!Array.isArray(rows))throw Error('Respuesta de hooks no reconocida.');
- const own=new Map<string,any>();
- for(const row of rows){const hooks=(row as any)?.hooks;if(!Array.isArray(hooks))continue;for(const h of hooks)if(h?.handlerType==='command'&&h.command===command)own.set(h.key??h.eventName,h);}
- const hooks=[...own.values()],total=hooks.length,trusted=hooks.filter(h=>h.trustStatus==='trusted'||h.trustStatus==='managed').length,enabled=hooks.filter(h=>h.enabled===true).length;
- const state=total<expected?'missing':trusted<total?'review':enabled<total?'disabled':'ready';
- return{state,total,trusted,enabled,checkedAt:now};
 }

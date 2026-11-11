@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdtemp,mkdir,writeFile,appendFile,open,rm,symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {readCodexLastReply} from '../src/main/companion-codex-reader';
+import {CodexReplyReader} from '../src/main/companion-codex-reader';
 import {CompanionHub} from '../src/main/companion-hub';
 import {displayStatus} from '../src/shared/companion-privacy';
 import {CompanionEventSchema,CompanionSettingsSchema,COMPANION_REPLY_LIMIT,type CompanionTarget,type CompanionLastReply} from '../src/shared/codex-companion';
@@ -23,13 +23,14 @@ async function local(content=header()+context()+final()+complete(),row:any={}){
  await mkdir(join(home,'sessions'));const file=join(home,'sessions','rollout-2026-10-25-'+target.session+'.jsonl');await writeFile(file,content);
  const db=new DatabaseSync(join(home,'state_5.sqlite'));db.exec('CREATE TABLE threads(id TEXT PRIMARY KEY,rollout_path TEXT,cwd TEXT,agent_path TEXT)');
  db.prepare('INSERT INTO threads(id,rollout_path,cwd,agent_path) VALUES(?,?,?,?)').run(target.session,row.path??file,row.cwd??target.cwd,row.agent??null);db.close();
- return{home,file,read:()=>readCodexLastReply(home,target)};
+ const reader=new CodexReplyReader(home);
+ return{home,file,read:(selected=target)=>reader.read(selected)};
 }
 function fixture(pinned:CompanionTarget|null=target){
- let now=1000;const changed=vi.fn(),hub=new CompanionHub(CompanionSettingsSchema.parse({}),changed,()=>{},()=>now,pinned??undefined);disposals.push(()=>hub.dispose());
+ let now=1000;const changed=vi.fn(),observed=vi.fn(),hub=new CompanionHub(CompanionSettingsSchema.parse({}),changed,()=>{},()=>now,pinned??undefined,observed);disposals.push(()=>hub.dispose());
  const event=(event:string,extra:any={})=>{const reply=vi.fn();hub.accept({id:randomUUID(),event,session:target.session,cwd:target.cwd,turn:'t1',...extra},reply);return reply;};
  const restored:CompanionLastReply={text:'Previous confirmed answer',at:900,source:'local',turn:'previous',truncated:false};
- return{hub,event,changed,restored,advance:()=>now+=1000};
+ return{hub,event,changed,observed,restored,advance:()=>now+=1000};
 }
 
 describe('latest confirmed answer stays independent from activity and permissions',()=>{
@@ -44,6 +45,14 @@ describe('latest confirmed answer stays independent from activity and permission
   f.event('Stop',{lastAssistantMessage:'Duplicate cannot replace'});expect(f.hub.status().sessions[0].lastReply!.text).toBe('New real answer');
   expect(f.hub.status().sessions[0].steps.every(s=>s.preview===undefined)).toBe(true);expect(f.hub.status().approvals).toEqual([]);
  });
+ it('only emits newly accepted hook replies and resolves the exact pinned folder',()=>{
+  const f=fixture(),lastAssistantMessage='Respuesta final';
+  f.event('Stop',{cwd:'c:/work/zen/',lastAssistantMessage});
+  f.advance();f.event('Stop',{lastAssistantMessage});
+  expect(f.observed.mock.calls.map(([, ,reply])=>reply?.at)).toEqual([1000,undefined]);
+  expect(f.hub.lastReply(target)?.text).toBe(lastAssistantMessage);
+  expect(f.hub.lastReply({...target,cwd:target.cwd+'-other'})).toBeUndefined();
+ });
  it('does not accept foreign, unpinned, stale, failed, commentary or subagent answers',()=>{
   const f=fixture();f.hub.setLastReply(target.session,target.cwd,f.restored);f.event('UserPromptSubmit',{turn:'t2'});
   f.event('Stop',{session:'other',lastAssistantMessage:'Foreign'});f.event('Stop',{cwd:target.cwd+'-other',lastAssistantMessage:'Wrong folder'});f.event('Stop',{lastAssistantMessage:'Stale'});f.event('Stop',{turn:'t2',failed:true,lastAssistantMessage:'Failed'});
@@ -57,20 +66,37 @@ describe('latest confirmed answer stays independent from activity and permission
   const f=fixture();f.event('Stop',{lastAssistantMessage:'Confirmed',lastAssistantMessageTruncated:true});
   expect(f.hub.setLastReply(target.session,target.cwd,f.restored)).toBe(false);expect(f.hub.status().sessions[0].lastReply!.truncated).toBe(true);
  });
+ it('replaces damaged relay text with the verified original for the same turn',()=>{
+  const f=fixture();f.event('Stop',{lastAssistantMessage:'Espa├▒a'});
+  const original:CompanionLastReply={text:'España',at:900,source:'local',turn:'t1',truncated:false};
+  expect(f.hub.setLastReply(target.session,target.cwd,original)).toBe(true);
+  expect(f.hub.status().sessions[0].lastReply).toEqual(original);
+ });
  it('blocks private capture while paused or presenting and strips every hidden IPC reply',()=>{
-  const f=fixture();f.hub.setLastReply(target.session,target.cwd,f.restored);const visible={expanded:true,launcher:true,page:'codex' as const,codexTab:'summary' as const};
-  expect(displayStatus({...f.hub.status(),workspace:visible},1).sessions[0].lastReply).toEqual(f.restored);
-  for(const workspace of [undefined,{...visible,expanded:false},{...visible,page:'home' as const},{...visible,codexTab:'activity' as const},{...visible,codexTab:undefined}])expect(displayStatus({...f.hub.status(),workspace},2).sessions[0].lastReply).toBeUndefined();
+  const f=fixture();f.hub.setLastReply(target.session,target.cwd,f.restored);const visible={expanded:true,page:'codex' as const,codexTab:'summary' as const};
+  expect(displayStatus({...f.hub.status(),workspace:visible},1,true).sessions[0].lastReply).toEqual(f.restored);
+  expect(displayStatus({...f.hub.status(),workspace:visible},1,false).sessions[0].lastReply).toBeUndefined();
+  for(const workspace of [undefined,{...visible,expanded:false},{...visible,page:'home' as const},{...visible,codexTab:'activity' as const},{...visible,codexTab:undefined}])expect(displayStatus({...f.hub.status(),workspace},2,true).sessions[0].lastReply).toBeUndefined();
   f.hub.update({...f.hub.settings,presentation:true});f.event('Stop',{lastAssistantMessage:'Hidden new answer'});expect(f.hub.setLastReply(target.session,target.cwd,{...f.restored,text:'Local hidden'})).toBe(false);expect(f.hub.status().sessions[0].lastReply).toEqual(f.restored);
-  expect(JSON.stringify(displayStatus({...f.hub.status(),workspace:visible},3))).not.toContain(f.restored.text);
-  f.hub.update({...f.hub.settings,presentation:false,paused:true});expect(displayStatus({...f.hub.status(),workspace:visible},4).sessions[0].lastReply).toBeUndefined();expect(f.hub.setLastReply(target.session,target.cwd,f.restored)).toBe(false);
+  expect(JSON.stringify(displayStatus({...f.hub.status(),workspace:visible},3,true))).not.toContain(f.restored.text);
+  f.hub.update({...f.hub.settings,presentation:false,paused:true});expect(displayStatus({...f.hub.status(),workspace:visible},4,true).sessions[0].lastReply).toBeUndefined();expect(f.hub.setLastReply(target.session,target.cwd,f.restored)).toBe(false);
  });
 });
 
 describe('bounded read-only local answer recovery',()=>{
  it('reads the exact indexed chat and requires a completed assistant final with a matching cwd',async()=>{
   const f=await local();const value=await f.read();expect(value).toEqual({text:'Real final',at:Date.parse('2026-10-25T10:00:00Z'),source:'local',turn:'t1',truncated:false});
-  expect(await readCodexLastReply(f.home,{...target,session:'other-chat'})).toBeUndefined();
+  expect(await f.read({...target,session:'other-chat'})).toBeUndefined();
+ });
+ it('recovers the visible Markdown when Codex appends memory citations only to the stored final',async()=>{
+  const text='**España**\n\n| Día |\n|---|\n| Miércoles |';
+  const footer='\n\n<oai-mem-citation>\n<citation_entries>\nMEMORY.md:1-2\n</citation_entries>\n<rollout_ids>\n</rollout_ids>\n</oai-mem-citation>';
+  const f=await local(header()+context()+final(text+footer)+complete(text));
+  expect((await f.read())?.text).toBe(text);
+  const includesSpacing=await local(header()+context()+final(text+footer)+complete(text+'\n\n'));
+  expect((await includesSpacing.read())?.text).toBe(text+'\n\n');
+  const mismatched=await local(header()+context()+final(text+'\nAñadido'+footer)+complete(text));
+  expect(await mismatched.read()).toBeUndefined();
  });
  it('accepts equivalent native extended Windows paths without matching nested folders',async()=>{
   const f=await local(header({cwd:'\\\\?\\C:\\Work\\ZeN'})+context({cwd:'c:/work/zen/'})+final()+complete(),{cwd:'\\\\?\\C:\\Work\\ZeN'});expect((await f.read())?.text).toBe('Real final');

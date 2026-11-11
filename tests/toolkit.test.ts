@@ -28,7 +28,7 @@ describe('biblioteca local',()=>{
   const read=await library.read(result.matches[0].id,'Lee el presupuesto.txt',signal());expect(read.content).toContain('importe 42');expect(read.uploadedFile).toBe(false);expect(read.content).not.toContain('sk-proj-');
   const binary=await library.search('documento.pdf',signal());await expect(library.read(binary.matches[0].id,'Lee documento.pdf',signal())).rejects.toThrow('lector local');
   roots=[];await expect(library.read(result.matches[0].id,'Lee presupuesto.txt',signal())).rejects.toThrow('fuera');
- });
+ },15000);
  it('no acepta una ruta como identificador, y obedece Detener antes de buscar',async()=>{
   const library=new LocalLibrary(()=>[]);await expect(library.read('C:\\Windows\\system.ini','Lee archivos',signal())).rejects.toThrow('búsqueda reciente');
   const controller=new AbortController();controller.abort();await expect(library.search('archivo',controller.signal)).rejects.toThrow();

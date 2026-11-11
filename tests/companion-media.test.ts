@@ -3,7 +3,7 @@ import {CompanionMedia,CompanionMediaObserver} from '../src/main/companion-media
 import {MediaCommand,MediaNowPlaying,MediaSource} from '../src/shared/companion-media';
 const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
 const track={session:id,source:'Spotify',browser:false,title:'Private title',artist:'Artist',album:'Album',artwork:null,playing:true,shuffle:null,repeat:null,positionMs:1000,durationMs:200000,controls:{play:true,pause:true,previous:true,next:true,shuffle:false,repeat:false}};
-function fixture(){let allowed=true;const request=vi.fn(async(method:string)=>method==='list'?{sessions:[{id,name:'Spotify',browser:false}]}:method==='action'?{accepted:true}:structuredClone(track)),close=vi.fn(),factory=vi.fn(()=>({request,close})),media=new CompanionMedia(factory,()=>allowed);return{media,request,close,factory,block:()=>{allowed=false;}};}
+function fixture(){let allowed=true;const request=vi.fn(async(method:string):Promise<unknown>=>method==='list'?{sessions:[{id,name:'Spotify',browser:false}]}:method==='action'?{accepted:true}:structuredClone(track)),close=vi.fn(),factory=vi.fn(()=>({request,close})),media=new CompanionMedia(factory,()=>allowed);return{media,request,close,factory,block:()=>{allowed=false;}};}
 async function selected(){const f=fixture();await f.media.list();await f.media.select(id);return f;}
 describe('direct media session authority',()=>{
  it('discovers sources without reading titles or sending playback actions',async()=>{const f=fixture();expect(await f.media.list()).toHaveLength(1);expect(f.request.mock.calls).toEqual([['list',{}]]);});
@@ -16,6 +16,34 @@ describe('direct media session authority',()=>{
  it('shares only the explicitly selected session across views and revokes cached reads under policy',async()=>{const f=fixture();expect(f.media.current()).toBe(null);await f.media.list();await f.media.select(id);const shown=f.media.current()!;shown.title='Changed in renderer';expect(f.media.current()!.title).toBe('Private title');f.block();expect(()=>f.media.current()).toThrow('Presentación');f.media.close();});
  it('does not retry a timed out playback effect',async()=>{const f=await selected();f.request.mockRejectedValueOnce(Error('timeout'));await expect(f.media.command({id:other,session:id,action:'next'})).rejects.toThrow('timeout');expect(f.request.mock.calls.filter(c=>c[0]==='action')).toHaveLength(1);expect(f.close).toHaveBeenCalled();});
  it('serializes read and command instead of racing native requests',async()=>{const f=await selected();let resolve!:(v:any)=>void;f.request.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));const read=f.media.read(id);await Promise.resolve();const action=f.media.command({id:other,session:id,action:'pause'});expect(f.request.mock.calls.filter(c=>c[0]==='action')).toHaveLength(0);resolve(track);await read;await action;expect(f.request.mock.calls.at(-1)?.[0]).toBe('action');});
+ it('does not send a queued command to a source replaced by an earlier selection',async()=>{
+  const f=fixture();
+  f.request.mockResolvedValueOnce({sessions:[{id,name:'Spotify',browser:false},{id:other,name:'VLC',browser:false}]});
+  await f.media.list();
+  await f.media.select(id);
+  f.request.mockResolvedValueOnce({...track,session:other,source:'VLC'});
+  const selection=f.media.select(other);
+  const command=f.media.command({id:other,session:id,action:'pause'});
+  await expect(command).rejects.toThrow('destino');
+  expect(await selection).toMatchObject({session:other});
+  expect(f.media.current()?.session).toBe(other);
+  expect(f.request.mock.calls.map(([method])=>method)).toEqual(['list','select','select']);
+ });
+ it('follows Windows without controlling playback and rejects a click for the previous source',async()=>{
+  const f=fixture();
+  f.request.mockResolvedValueOnce({sessions:[{id,name:'Spotify',browser:false}],track,manual:false});
+  expect((await f.media.snapshot()).track?.session).toBe(id);
+  f.request.mockResolvedValueOnce({
+   sessions:[{id:other,name:'Google Chrome',browser:true}],
+   track:{...track,session:other,source:'Google Chrome',browser:true},
+   manual:false,
+  });
+  const update=f.media.snapshot();
+  const click=f.media.command({id:other,session:id,action:'pause'});
+  await expect(update).resolves.toMatchObject({track:{session:other}});
+  await expect(click).rejects.toThrow('destino');
+  expect(f.request.mock.calls.map(([method])=>method)).toEqual(['snapshot','snapshot']);
+ });
  it('rejects arbitrary commands, programs, URLs and mismatched values',()=>{for(const v of [{id,session:id,action:'shell',value:'cmd.exe'},{id,session:id,action:'pause',value:'on'},{id,session:id,action:'shuffle',value:'all'},{id,session:id,action:'repeat',value:'https://foreign.test'}])expect(MediaCommand.safeParse(v).success).toBe(false);});
 });
 

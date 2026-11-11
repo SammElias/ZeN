@@ -9,12 +9,13 @@ import type {ProjectContexts,ProjectReference} from './project-context';
 import type {Activity} from './activity';
 import { z } from 'zod';
 import type { Profile, ResponseMode } from './personal';
-import type { WindowInfo, MediaInfo } from '../tools/windows/native';
+import type { WindowInfo, MediaInfo } from './windows-observation';
 import type { Approval, Prepare } from './approval';
 import type { PublicMcpConnection } from './mcp';
-import type { ScreenContextStatus, ScreenSnapshot } from '../main/screen-context';
+import type { ScreenContextStatus, ScreenSnapshot } from './screen-context';
 import type { WorkContext, ProjectDraft, ProjectBundle } from './project';
-import type {FolderAttachment} from '../main/folder-context';
+import type {FolderAttachment} from './folders';
+import type { DockEdge } from './overlay-position';
 export const SettingsSchema = z.object({
   reasoningModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-6.1-sol'),
   voiceModel: z.string().regex(/^gpt-[a-z0-9.-]+$/).default('gpt-live-1'),
@@ -70,10 +71,7 @@ export type SpendingSummary = { month: string; estimatedMonthEur: number; commit
 export type PublicSettings = { spending?: SpendingSummary; settings: Settings; hasKey: boolean; shortcutRegistered: boolean; protectedStorage: boolean; regionShortcutRegistered?:boolean; selectionShortcutRegistered?:boolean };
 export const OverlayLayoutSchema = z.object({ mode: z.enum(['capsule', 'card', 'panel','pet','quick','fullscreen']), height: z.number().int().min(40).max(1000), reducedMotion: z.boolean().default(false) }).strict();
 export type OverlayLayout = z.infer<typeof OverlayLayoutSchema>;
-export const DockEdgeSchema = z.enum(['top', 'left', 'right']);
-export type DockEdge = z.infer<typeof DockEdgeSchema>;
-export const OverlayPositionSchema = z.object({ displayId: z.number().int(), horizontalRatio: z.number().min(0).max(1), edge: DockEdgeSchema.default('top'), verticalRatio: z.number().min(0).max(1).default(.5) }).strict();
-export type OverlayPosition = z.infer<typeof OverlayPositionSchema>;
+export type { DockEdge } from './overlay-position';
 export const OverlayDragSchema = z.enum(['start', 'end']);
 export interface ZenBridge {
   codexStatus():Promise<Result<import('./codex').CodexStatus>>;

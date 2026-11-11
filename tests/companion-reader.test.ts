@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {inspectCodexCompanion} from '../src/main/companion-codex-reader';
+import {inspectCodexCompanion} from '../src/main/companion-codex-inspection';
 const s=(id:string)=>({id,cwd:'C:\\test',label:id,state:'idle' as const,at:1,steps:[]});
 it('uses only read-only account, hook and metadata requests and discards conversation previews',async()=>{
  const calls:{method:string;params:any}[]=[];

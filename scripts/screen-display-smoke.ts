@@ -2,7 +2,8 @@ import {app,BrowserWindow,nativeImage,screen} from 'electron';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {z} from 'zod';
-import {native,WindowSchema,BoundsSchema} from '../src/tools/windows/native';
+import { native } from '../src/tools/windows/native';
+import { WindowSchema,BoundsSchema } from '../src/shared/windows-observation';
 import {ScreenContext} from '../src/main/screen-context';
 import {CaptureExclusion} from '../src/main/capture-exclusion';
 void app.whenReady().then(async()=>{

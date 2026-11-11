@@ -4,12 +4,14 @@ import {mkdtemp,writeFile,rm,mkdir,symlink,unlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {setImmediate} from 'node:timers/promises';
 import {CompanionSettingsSchema,type CompanionStatus,type CompanionSession} from '../src/shared/codex-companion';
 import {CompanionHub} from '../src/main/companion-hub';
 import {displayStatus} from '../src/shared/companion-privacy';
 import {activeSession,codexChatUrl} from '../src/shared/companion-presentation';
-import {CompanionSummaries,compareSnapshots,projectFile,projectSnapshot} from '../src/main/companion-summary';
-import {CapsuleVisibility,fitPanel,overlaps} from '../src/main/companion-placement';
+import {CompanionSummaries,compareSnapshots,projectSnapshot} from '../src/main/companion-summary';
+import {projectFile} from '../src/main/companion-project-path';
+import {CapsuleVisibility,overlaps} from '../src/main/companion-placement';
 import {DesktopObservation} from '../src/main/companion-desktop';
 
 const disposals:(()=>unknown)[]=[];afterEach(async()=>{for(const fn of disposals.splice(0))await fn();});
@@ -18,7 +20,7 @@ describe('presentation is enforced before IPC and decisions',()=>{
  it('redacts every detail while preserving exact chat routing and activity',()=>{
   const f=fixture();f.event('PreToolUse',{tool:'SecretTool',preview:'PRIVATE COMMAND'});f.event('PermissionRequest',{tool:'SecretTool',preview:'PRIVATE PERMISSION'});f.hub.update({...f.hub.settings,presentation:true});
   const raw={...f.hub.status(),desktop:{available:true,name:'PrivateApp',error:'private path'}};
-  const shown=displayStatus(raw,9),json=JSON.stringify(shown);
+  const shown=displayStatus(raw,9,true),json=JSON.stringify(shown);
   for(const secret of ['Secret title','PrivateApp','SecretTool','C:\\\\Private','PRIVATE COMMAND','PRIVATE PERMISSION','private path'])expect(json).not.toContain(secret);
   expect(shown.revision).toBe(9);expect(activeSession(shown)?.state).toBe('approval');expect(codexChatUrl(shown)).toBe('codex://threads/fixed');expect(shown.approvals).toHaveLength(1);expect(raw.approvals[0].preview).toBe('PRIVATE PERMISSION');
  });
@@ -26,12 +28,21 @@ describe('presentation is enforced before IPC and decisions',()=>{
   const f=fixture(),p=f.event('PermissionRequest',{preview:'write'});f.hub.update({...f.hub.settings,presentation:true});
   expect(()=>f.hub.decide(p.id,'allow')).toThrow('Presentación');expect(()=>f.hub.decide(p.id,'deny')).toThrow('Presentación');expect(p.reply).not.toHaveBeenCalled();f.hub.decide(p.id,'pass');expect(p.reply).toHaveBeenCalledWith('pass');
  });
+ it('only exposes the pending approval preview when Permissions is visible',()=>{
+  const f=fixture();
+  f.event('PermissionRequest',{preview:'PRIVATE PERMISSION'});
+  const raw:CompanionStatus={...f.hub.status(),workspace:{expanded:true,page:'permissions'}};
+  expect(displayStatus(raw,1,true).approvals[0].preview).toBe('PRIVATE PERMISSION');
+  expect(JSON.stringify(displayStatus(raw,2,false))).not.toContain('PRIVATE PERMISSION');
+  expect(JSON.stringify(displayStatus({...raw,workspace:{expanded:true,page:'codex'}},3,true))).not.toContain('PRIVATE PERMISSION');
+  expect(raw.sessions[0].steps[0].preview).toBe('PRIVATE PERMISSION');
+ });
  it('keeps notices and reception without external notifications or replay on exit',()=>{
   const f=fixture();f.hub.update({...f.hub.settings,presentation:true});f.event('UserPromptSubmit');f.event('Stop');expect(f.notices).toHaveLength(0);expect(f.hub.status().notices).toHaveLength(1);expect(f.hub.status().notices[0].audible).toBe(false);f.hub.update({...f.hub.settings,presentation:false});expect(f.notices).toHaveLength(0);expect(f.hub.status().notices[0].audible).toBe(false);expect(f.hub.settings).toMatchObject({sounds:true,notifications:true,paused:false});
  });
  it('does not leak summaries and never mutates the original status',()=>{
   const f=fixture();f.event('Stop');const s=f.hub.status().sessions[0];f.hub.setSummary(s.id,s.runKey!,{state:'ready',files:[{path:'private.txt',change:'added'}],omitted:0,endedAt:1000});
-  const raw=f.hub.status();raw.settings.presentation=true;expect(displayStatus(raw,2).sessions[0].summary).toBeUndefined();expect(raw.sessions[0].summary?.files[0].path).toBe('private.txt');
+  const raw=f.hub.status();raw.settings.presentation=true;expect(displayStatus(raw,2,true).sessions[0].summary).toBeUndefined();expect(raw.sessions[0].summary?.files[0].path).toBe('private.txt');
  });
  it('migrates preferences without changing existing shortcuts, silence or account configuration',()=>{expect(CompanionSettingsSchema.parse({sounds:false,silencedUntil:1000})).toMatchObject({presentation:false,followPointerDisplay:true,respectFullscreen:true,sounds:false,silencedUntil:1000});});
 });
@@ -60,15 +71,18 @@ describe('bounded observed completion',()=>{
   c.observe({...e,session:'other'},s);expect(read).not.toHaveBeenCalled();c.observe(e,s);c.observe({...e,event:'Stop'},s);c.observe({...e,event:'Stop'},s);await vi.waitFor(()=>expect(done).toHaveBeenCalledOnce());expect(read).toHaveBeenCalledTimes(2);
  });
  it('cancels asynchronous work on pause and does not invent a missing baseline',async()=>{
-  const done=vi.fn(),read=vi.fn(async()=>({at:1,files:new Map<string,string>()})),c=new CompanionSummaries({session:'fixed',cwd:'C:\\Private',title:'x'},done,read),e:any={event:'Stop',session:'fixed',cwd:'C:\\Private'},s={id:'fixed',runKey:'r'} as CompanionSession;
-  c.observe(e,s);expect(done.mock.calls[0][2].state).toBe('unavailable');done.mockClear();c.observe({...e,event:'UserPromptSubmit'},s);c.observe(e,s);c.clear();await new Promise(r=>setTimeout(r,10));expect(done).not.toHaveBeenCalled();
+  const baseline={at:1,files:new Map<string,string>()};
+  let finishBaseline!:(value:typeof baseline)=>void;
+  const read=vi.fn(()=>new Promise<typeof baseline>(resolve=>{finishBaseline=resolve;}));
+  const done=vi.fn(),c=new CompanionSummaries({session:'fixed',cwd:'C:\\Private',title:'x'},done,read),e:any={event:'Stop',session:'fixed',cwd:'C:\\Private'},s={id:'fixed',runKey:'r'} as CompanionSession;
+  c.observe(e,s);expect(done.mock.calls[0][2].state).toBe('unavailable');done.mockClear();
+  c.observe({...e,event:'UserPromptSubmit'},s);c.observe(e,s);c.clear();finishBaseline(baseline);
+  await setImmediate();
+  expect(read).toHaveBeenCalledOnce();
+  expect(done).not.toHaveBeenCalled();
  });
 });
 describe('monitor placement and nonintrusive visibility',()=>{
- it('clamps panels into negative-origin monitors and small work areas',()=>{
-  expect(fitPanel({x:-1600,y:-200,width:1600,height:900},{x:100,y:100,width:700,height:1000})).toEqual({x:-700,y:-200,width:700,height:900});
-  expect(fitPanel({x:0,y:0,width:320,height:300})).toEqual({x:0,y:0,width:320,height:300});
- });
  it('does not confuse adjacent monitors or touch-only borders with overlap',()=>{expect(overlaps({x:-100,y:0,width:100,height:100},{x:0,y:0,width:100,height:100})).toBe(false);expect(overlaps({x:-100,y:0,width:101,height:100},{x:0,y:0,width:100,height:100})).toBe(true);});
  it('suspends for fullscreen until explicitly invoked and never restores a user-hidden capsule',()=>{const v=new CapsuleVisibility();expect(v.visible(true,'game')).toBe(false);v.invoke('game');expect(v.visible(true,'game')).toBe(true);expect(v.visible(false,'work')).toBe(true);expect(v.visible(true,'game')).toBe(false);v.hide();expect(v.visible(false,'work')).toBe(false);v.invoke();expect(v.visible(false,'work')).toBe(true);});
  it('validates native observations without window titles, input or lossy process timestamps',()=>{

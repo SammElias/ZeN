@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {compactContext} from '../agent/economy';
+import {compactContext} from './compact-context';
 
 export const ProjectReferenceSchema=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),content:z.string().max(12000),enabled:z.boolean(),importedAt:z.string().datetime()}).strict();
 export const ProjectContextSchema=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(50),preferences:z.string().trim().max(2000),documents:z.array(ProjectReferenceSchema).max(8)}).strict();

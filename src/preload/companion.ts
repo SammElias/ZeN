@@ -1,6 +1,67 @@
-import {contextBridge,ipcRenderer} from 'electron';
-import type {CompanionBridge,CompanionStatus} from '../shared/codex-companion';
-const call=(name:string,...args:unknown[])=>ipcRenderer.invoke('companion:'+name,...args);
-const on=<T>(name:string,cb:(v:T)=>void)=>{const listener=(_e:Electron.IpcRendererEvent,v:T)=>cb(v);ipcRenderer.on('companion:'+name,listener);return()=>ipcRenderer.removeListener('companion:'+name,listener);};
-const bridge:CompanionBridge={appearanceSave:options=>call('appearanceSave',options),appearanceChoose:()=>call('appearanceChoose'),windowAction:action=>call('windowAction',action),calendarStatus:()=>call('calendarStatus'),calendarList:view=>call('calendarList',view),calendarRange:(view,query)=>call('calendarRange',{view,query}),calendarEvent:(view,key)=>call('calendarEvent',{view,key}),calendarConnect:view=>call('calendarConnect',view),calendarCancel:view=>call('calendarCancel',view),calendarDisconnect:view=>call('calendarDisconnect',view),calendarClose:view=>call('calendarClose',view),calendarOpen:(view,key)=>call('calendarOpen',{view,key}),calendarWeb:view=>call('calendarWeb',view),calendarCloud:view=>call('calendarCloud',view),codexTab:tab=>call('codexTab',tab),contextStatus:()=>call('contextStatus'),contextChoose:()=>call('contextChoose'),contextPrepare:input=>call('contextPrepare',input),contextCancel:id=>call('contextCancel',id),contextHandoff:id=>call('contextHandoff',id),contextResult:()=>call('contextResult'),gmailResult:thread=>call('gmailResult',thread),gmailReply:thread=>call('gmailReply',thread),gmailAnalysisPrepare:input=>call('gmailAnalysisPrepare',input),gmailAnalysisCancel:id=>call('gmailAnalysisCancel',id),gmailAnalysisHandoff:id=>call('gmailAnalysisHandoff',id),gmailMessageClose:()=>call('gmailMessageClose'),gmailImagesCancel:view=>call('gmailImagesCancel',view),gmailImages:(view,external)=>call('gmailImages',{view,external}),gmailOpenLink:(view,id)=>call('gmailOpenLink',{view,id}),gmailEnableTrash:()=>call('gmailEnableTrash'),gmailPrepareTrash:id=>call('gmailPrepareTrash',id),gmailTrash:token=>call('gmailTrash',token),gmailTrashCancel:()=>call('gmailTrashCancel'),gmailSummary:()=>call('gmailSummary'),gmailStatus:()=>call('gmailStatus'),gmailConfigure:id=>call('gmailConfigure',id),gmailConnect:()=>call('gmailConnect'),gmailCancel:()=>call('gmailCancel'),gmailDisconnect:()=>call('gmailDisconnect'),gmailList:(query,page,folder)=>call('gmailList',{query,...(page?{page}:{}),...(folder?{folder}:{})}),gmailMessage:id=>call('gmailMessage',id),navigate:page=>call('navigate',page),togglePage:page=>call('togglePage',page),gmailImportClient:()=>call('gmailImportClient'),launcher:open=>call('launcher',open),launcherOrder:order=>call('launcherOrder',order),launcherContext:page=>call('launcherContext',page),options:()=>call('options'),compact:view=>call('compact',view),mediaNowPlaying:()=>call('mediaNowPlaying'),mediaObservationClose:()=>call('mediaObservationClose'),mediaCurrent:()=>call('mediaCurrent'),mediaList:()=>call('mediaList'),mediaSelect:(id:string)=>call('mediaSelect',id),mediaRead:(id:string)=>call('mediaRead',id),mediaCommand:(value:unknown)=>call('mediaCommand',value),mediaClose:surface=>call('mediaClose',surface),status:()=>call('status'),onStatus:cb=>on<CompanionStatus>('status',cb),openCodex:id=>call('open',id),check:()=>call('check'),settings:()=>call('settings'),install:()=>call('install'),save:v=>call('save',v),menu:v=>call('menu',v),panel:v=>call('panel',v),decide:(id,decision)=>call('decide',{id,decision}),clearNotices:()=>call('clear'),copy:text=>call('copy',text),sound:enabled=>call('sound',enabled),silence:minutes=>call('silence',minutes),testNotice:()=>call('testNotice'),presentation:enabled=>call('presentation',enabled),returnApp:()=>call('returnApp'),locate:(session,path)=>call('locate',{session,path}),hide:()=>call('hide'),drag:a=>call('drag',a),cursor:()=>call('cursor'),onCursor:cb=>on('cursor',cb),integrations:tab=>call('integrations',tab),checkIntegrations:()=>call('integrationCheck'),prepareIntegration:input=>call('integrationPrepare',input),cancelIntegration:()=>call('integrationCancel'),handoffIntegration:id=>call('integrationHandoff',id),openIntegrationWeb:provider=>call('integrationWeb',provider)};
-contextBridge.exposeInMainWorld('companion',Object.freeze(bridge));
+import {contextBridge, ipcRenderer, type IpcRendererEvent} from 'electron';
+import type {CompanionBridge, CompanionStatus} from '../shared/codex-companion';
+import {companionChannel, type CompanionCommand} from '../shared/companion-ipc';
+
+function call<Command extends CompanionCommand>(name: Command, input?: unknown): ReturnType<CompanionBridge[Command]> {
+  return ipcRenderer.invoke(companionChannel(name), input) as ReturnType<CompanionBridge[Command]>;
+}
+
+const bridge: CompanionBridge = {
+  status: () => call('status'),
+  onStatus: callback => {
+    const channel = companionChannel('status');
+    const listener = (_event: IpcRendererEvent, status: CompanionStatus) => callback(status);
+    ipcRenderer.on(channel, listener);
+    return () => { ipcRenderer.removeListener(channel, listener); };
+  },
+  openRequest: text => call('openRequest', text),
+  openSpotify: () => call('openSpotify'),
+  appearanceSave: options => call('appearanceSave', options),
+  appearanceChoose: () => call('appearanceChoose'),
+  codexTab: tab => call('codexTab', tab),
+  contextStatus: () => call('contextStatus'),
+  contextChoose: () => call('contextChoose'),
+  contextPrepare: input => call('contextPrepare', input),
+  contextCancel: id => call('contextCancel', id),
+  contextHandoff: id => call('contextHandoff', id),
+  contextResult: () => call('contextResult'),
+  contextSource: selection => call('contextSource', selection),
+  navigate: page => call('navigate', page),
+  notesRead: () => call('notesRead'),
+  notesChange: change => call('notesChange', change),
+  notesDraft: draft => call('notesDraft', draft),
+  notesFile: action => call('notesFile', action),
+  togglePage: page => call('togglePage', page),
+  launcher: open => call('launcher', open),
+  launcherOrder: order => call('launcherOrder', order),
+  launcherContext: page => call('launcherContext', page),
+  options: () => call('options'),
+  compact: view => call('compact', view),
+  mediaNowPlaying: () => call('mediaNowPlaying'),
+  mediaObservationClose: () => call('mediaObservationClose'),
+  mediaCurrent: () => call('mediaCurrent'),
+  mediaSnapshot: followSystem => call('mediaSnapshot', followSystem),
+  mediaList: () => call('mediaList'),
+  mediaSelect: id => call('mediaSelect', id),
+  mediaRead: id => call('mediaRead', id),
+  mediaCommand: input => call('mediaCommand', input),
+  mediaClose: surface => call('mediaClose', surface),
+  openCodex: id => call('openCodex', id),
+  check: () => call('check'),
+  install: () => call('install'),
+  save: settings => call('save', settings),
+  decide: (id, decision) => call('decide', {id, decision}),
+  clearNotices: () => call('clearNotices'),
+  copy: text => call('copy', text),
+  sound: enabled => call('sound', enabled),
+  silence: minutes => call('silence', minutes),
+  testNotice: () => call('testNotice'),
+  presentation: enabled => call('presentation', enabled),
+  returnApp: () => call('returnApp'),
+  locate: (session, path) => call('locate', {session, path}),
+  hide: () => call('hide'),
+  drag: action => call('drag', action),
+  moveCapsule: alignment => call('moveCapsule', alignment),
+};
+
+contextBridge.exposeInMainWorld('companion', Object.freeze(bridge));

@@ -1,9 +1,8 @@
 import type { DockEdge } from '../shared/contracts';
 import { randomUUID } from 'node:crypto';
-import type { WindowInfo } from '../tools/windows/native';
+import type { WindowInfo } from '../shared/windows-observation';
+import type { ScreenContextStatus, ScreenSnapshot } from '../shared/screen-context';
 
-export type ScreenSnapshot = { id:string; image:string; capturedAt:number; sourceTitle?:string;scope?:'display'|'window' };
-export type ScreenContextStatus = { state:'capturing'|'ready'|'queued'|'unavailable'|'expired'|'idle'|'removed'; capturedAt?:number;sourceTitle?:string;scope?:'display'|'window';snapshotId?:string };
 export function underlyingPoint(bounds:{x:number;y:number;width:number;height:number},edge:DockEdge){ return edge==='left'?{x:bounds.x+bounds.width+1,y:bounds.y+bounds.height/2}:edge==='right'?{x:bounds.x-1,y:bounds.y+bounds.height/2}:{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height+1}; }
 
 type Deps = {

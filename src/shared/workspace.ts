@@ -2,8 +2,7 @@ import {z} from 'zod';
 import {localFileRequest} from './local-files';
 import {controlIntent} from './personal';
 import {folderAnalysisRequest} from './folders';
-import {directOperation} from '../policy/direct';
-import {authorizesNotepad} from '../policy/policy';
+import {directOperation,requestsNotepad} from './direct-operation';
 import type {TaskEvent} from './contracts';
 import {isExternalCodexTask} from './project';
 export function taskStatus(task:TaskEvent){
@@ -19,5 +18,5 @@ export type SelectionContext={observationId:string;text:string;source:string};
 export function requestRoute(text:string,folder=false):'local'|'codex'|'api'{
   if(folder||folderAnalysisRequest(text))return 'codex';
   try{if(localFileRequest(text))return 'local';}catch{return 'local';}
-  return controlIntent(text)||directOperation(text)||authorizesNotepad(text)?'local':'api';
+  return controlIntent(text)||directOperation(text)||requestsNotepad(text)?'local':'api';
 }

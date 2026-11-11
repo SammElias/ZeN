@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import type {ComputerFrame,ComputerSurface} from '../agent/computer';
 import {actionReview,computerActions,computerEffect,type ComputerAction} from '../shared/computer';
-import type {WindowInfo} from '../tools/windows/native';
+import type {WindowInfo} from '../shared/windows-observation';
 import {ZenError} from '../shared/errors';
 import {underlyingPoint} from './screen-context';
 import type {DockEdge} from '../shared/contracts';

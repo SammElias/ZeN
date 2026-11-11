@@ -1,0 +1,198 @@
+.companion-capsule[data-theme=monochrome] {
+  --mono-paper: #fff;
+  --mono-inset: #f6f6f7;
+  --mono-selected: #e0e1e2;
+  --mono-scene: radial-gradient(ellipse at 18% 4%, #fffc, transparent 65%), linear-gradient(135deg, #e6e6e8a6, #9090958c);
+  --zen-panel-scene: var(--mono-scene);
+  --zen-header-scene: radial-gradient(ellipse at 25% 0%, #8888, transparent 75%), #242426;
+  --zen-scene-filter: grayscale(1);
+  --mono-light-glass: rgb(255 255 255 / calc(.76 + .23 * var(--glass-opacity)));
+  --mono-rim: inset 0 1px 0 #ffffffe0, 0 3px 12px #00000012;
+  --line: #dcdedf;
+  --control-shadow: none;
+  --raised: none;
+  color-scheme: light;
+  background: transparent;
+  border-color: #343435;
+  box-shadow: none;
+}
+
+[data-theme=monochrome][data-background=dusk] {
+  --mono-scene: radial-gradient(ellipse at 86% 6%, #e5e5e7b3, transparent 62%), linear-gradient(135deg, #5d5d638c, #8c8c91a6);
+}
+
+[data-theme=monochrome][data-background=image] {
+  --mono-scene: linear-gradient(#7773, #7773), var(--zen-wallpaper) center / cover no-repeat;
+}
+
+.companion-capsule[data-theme=monochrome] .appearance-preview {
+  background: var(--mono-scene);
+  filter: grayscale(1);
+}
+
+.companion-capsule[data-theme=monochrome][data-background=dusk] {
+  --zen-header-scene: radial-gradient(ellipse at 85% 90%, #7676789c, transparent 70%), #1e1e20;
+}
+
+.companion-capsule[data-theme=monochrome][data-background=image] {
+  --zen-header-scene: linear-gradient(#0009, #0009), var(--zen-wallpaper) center / cover no-repeat;
+}
+
+.companion-capsule[data-theme=monochrome] > .capsule-single-row {
+  --glass-text: #fafafa;
+  --glass-secondary: #bdbdbf;
+  --glass-accent-rgb: 245 245 245;
+  --accent: #f5f5f5;
+  --line: #414143;
+  background: rgb(28 28 29 / var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: inset 0 1px 0 #ffffff26;
+}
+
+[data-theme=monochrome] .orbital-geometry { filter: grayscale(1); }
+[data-theme=monochrome] .orbital-trace i { background: currentColor; }
+
+.companion-capsule[data-theme=monochrome] .capsule-single-row :is(.mini-track, .capsule-music-empty) > svg {
+  color: var(--glass-secondary);
+  background: rgb(var(--glass-accent-rgb) / .1);
+}
+
+.companion-capsule[data-theme=monochrome] .capsule-single-row > .capsule-actions > .return-app {
+  color: var(--glass-secondary);
+}
+
+.companion-capsule[data-theme=monochrome].expanded .workspace-content {
+  padding: 14px clamp(10px, 2vw, 22px);
+  border: 1px solid #ffffffb3;
+  border-radius: 13px;
+  background: var(--mono-light-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--mono-rim);
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-section-heading {
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-section-heading h1 {
+  font-size: 20px;
+  letter-spacing: -.35px;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-content :is(.companion-card, .music-player, .settings-connection) {
+  background: var(--mono-inset);
+  border-color: var(--line);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-content .primary,
+.companion-capsule[data-theme=monochrome] .music-controls .music-play {
+  background: var(--mono-rail);
+  color: #fafafa;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-content .primary:hover:not(:disabled),
+.companion-capsule[data-theme=monochrome] .music-controls .music-play:hover:not(:disabled) {
+  background: #3e3e40;
+}
+
+[data-theme=monochrome] .home-status {
+  --home-rim: var(--line);
+  --home-reflection: transparent;
+  --home-card: var(--mono-inset);
+  --home-hero: var(--mono-inset);
+}
+
+[data-theme=monochrome] .home-status .home-status-heading h1 {
+  font-size: clamp(23px, 3vw, 34px);
+}
+
+.companion-capsule[data-theme=monochrome].expanded .workspace-content:is([data-page=codex], [data-page=permissions]) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme=monochrome] .codex-page {
+  display: grid;
+  grid-template-columns: minmax(126px, 21%) minmax(0, 1fr);
+  gap: 5px;
+  min-height: 100%;
+}
+
+.companion-capsule[data-theme=monochrome] .codex-page > .workspace-section-heading {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 13px 6px 8px;
+  border-radius: 13px;
+  background: rgb(237 237 239 / calc(.66 + .3 * var(--glass-opacity)));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.companion-capsule[data-theme=monochrome] .codex-page > .workspace-section-heading h1 {
+  padding: 0 8px 8px;
+  font-size: 16px;
+}
+
+.companion-capsule[data-theme=monochrome] .codex-subnav {
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-content .codex-subnav > button {
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+}
+
+.companion-capsule[data-theme=monochrome] .workspace-content .codex-subnav > button[aria-selected=true] {
+  border-color: #d5d6d7;
+  background: var(--mono-selected);
+  color: var(--glass-text);
+  font-weight: 600;
+}
+
+[data-theme=monochrome] .codex-subnav svg { width: 15px; height: 15px; flex: none; }
+[data-theme=monochrome] .codex-page > [role=tabpanel] {
+  padding: 13px clamp(10px, 2vw, 21px);
+  border: 1px solid #ffffffb3;
+  border-radius: 13px;
+  background: var(--mono-light-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--mono-rim);
+}
+
+[data-theme=monochrome] .codex-pane-title {
+  margin: 0 0 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  font-size: 19px;
+}
+
+[data-theme=monochrome] .codex-context { --codex-paper: var(--mono-paper); }
+[data-theme=monochrome] .codex-context :is(.context-analysis, .codex-output) { border-radius: 10px; }
+
+@media (max-width: 1030px) {
+  [data-theme=monochrome] .codex-context { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  [data-theme=monochrome] .codex-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .companion-capsule[data-theme=monochrome] .codex-page > .workspace-section-heading { padding: 5px 2px 2px; }
+  .companion-capsule[data-theme=monochrome] .codex-subnav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .companion-capsule[data-theme=monochrome] .appearance-heading { align-items: flex-start; gap: 8px; }
+}

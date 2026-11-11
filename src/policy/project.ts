@@ -1,4 +1,4 @@
-import { humanCommand } from './command';
+import { humanCommand } from '../shared/human-command';
 // Only original human text, never captions supplied by the model or screen content.
 export function projectCreationRequest(text:string){
   const command=humanCommand(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();

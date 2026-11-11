@@ -1,5 +1,5 @@
 import React,{useRef,useState} from 'react';
-import type { ScreenContextStatus } from '../main/screen-context';
+import type { ScreenContextStatus } from '../shared/screen-context';
 export function ScreenContextChip({ context={state:'idle'}, refresh, preview, remove, compact=false, disabledReason }: { context?: ScreenContextStatus; refresh: () => Promise<boolean>; preview: () => Promise<void>; remove:()=>Promise<void>;compact?:boolean;disabledReason?:string }) {
   const pending=useRef(false),[refreshing,setRefreshing]=useState(false);
   const ready = !disabledReason && (context.state === 'ready' || context.state === 'queued');

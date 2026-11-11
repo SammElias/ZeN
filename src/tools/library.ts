@@ -2,7 +2,7 @@ import { opendir, realpath, lstat, open } from 'node:fs/promises';
 import { isAbsolute, relative, sep, basename, extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ZenError } from '../shared/errors';
-import { compactContext } from '../agent/economy';
+import { compactContext } from '../shared/compact-context';
 import { documentTypes, extractDocument } from './document-reader';
 const readable=(path:string)=>textTypes.has(extname(path).toLowerCase())||documentTypes.has(extname(path).toLowerCase());
 

@@ -4,6 +4,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import {createServer,type Server} from 'node:net';
 import {hookEvents} from '../shared/codex-companion';
 import type {CompanionHub} from './companion-hub';
+import {hookArtifactNames,hookExecutableName} from './native-helper';
 export function mergeCompanionHooks(raw:any,command:string,previousCommands:string[]=[]){
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||raw.hooks&&(typeof raw.hooks!=='object'||Array.isArray(raw.hooks)))throw Error('hooks.json no tiene un formato válido.');
  const next=structuredClone(raw);next.hooks??={};
@@ -15,7 +16,7 @@ export function mergeCompanionHooks(raw:any,command:string,previousCommands:stri
 export class CompanionIntegration{
  readonly root:string;readonly pipe:string;private token='';private server?:Server;
  constructor(private profile:string,private codexHome:string,private binaryDirectory:string,private hub:CompanionHub){this.root=join(profile,'codex-companion');this.pipe='zen-codex-'+createHash('sha256').update(profile.toLowerCase()).digest('hex').slice(0,24);}
- get executable(){return join(this.root,'Zen.CodexHook.exe');}
+ get executable(){return join(this.root,hookExecutableName);}
  get command(){return companionHookCommand(this.executable);}
  async start(){await mkdir(this.root,{recursive:true});try{const p=JSON.parse(await readFile(join(this.root,'bridge.json'),'utf8'));if(typeof p.token==='string'&&/^[a-f0-9]{64}$/.test(p.token))this.token=p.token;}catch{}if(!this.token)this.token=randomBytes(32).toString('hex');await writeFile(join(this.root,'bridge.json'),JSON.stringify({pipe:this.pipe,token:this.token}),{mode:0o600});
   this.server=createServer(socket=>{let data='';let handled=false;let cleanup=()=>{};const timer=setTimeout(()=>socket.destroy(),2000);socket.setEncoding('utf8');socket.on('data',chunk=>{if(handled)return;data+=chunk;if(data.length>512000){socket.destroy();return;}if(!data.includes('\n'))return;handled=true;clearTimeout(timer);try{const message=JSON.parse(data.slice(0,data.indexOf('\n')));if(message.token!==this.token){socket.end('{}\n');return;}cleanup=this.hub.accept(message.event,decision=>{if(!socket.destroyed)socket.end(JSON.stringify({id:message.event.id,decision})+'\n');});}catch{socket.end('{}\n');}});socket.on('error',()=>{});socket.on('close',()=>{clearTimeout(timer);cleanup();});});
@@ -25,9 +26,9 @@ export class CompanionIntegration{
  async refresh(){try{const raw=JSON.parse(await readFile(join(this.codexHome,'hooks.json'),'utf8'));this.hub.installed=hookEvents.every(e=>raw.hooks?.[e]?.some((g:any)=>g.hooks?.some((h:any)=>h.command===this.command)));}catch{this.hub.installed=false;}this.hub.publish();}
  async install(){await mkdir(this.codexHome,{recursive:true});const path=join(this.codexHome,'hooks.json');let original='{}';try{if((await lstat(path)).isSymbolicLink())throw Error('Revisa el enlace hooks.json desde Codex.');original=await readFile(path,'utf8');}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
   const next=mergeCompanionHooks(JSON.parse(original),this.command,['"'+this.executable+'" --zen-companion']);await mkdir(this.root,{recursive:true});
-  for(const file of ['Zen.CodexHook.exe','Zen.CodexHook.dll','Zen.CodexHook.deps.json','Zen.CodexHook.runtimeconfig.json'])await copyFile(join(this.binaryDirectory,file),join(this.root,file));
+  for(const file of hookArtifactNames)await copyFile(join(this.binaryDirectory,file),join(this.root,file));
   await writeFile(join(this.root,'hooks-before-'+Date.now()+'.json'),original,{mode:0o600});
-  // Abort if another client edited the hooks while the fixed relay was copied.
+  // Codex or another editor can rewrite hooks.json while the relay is copied.
   let current='{}';try{current=await readFile(path,'utf8');}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}if(current!==original)throw Error('Los hooks cambiaron. Vuelve a preparar la integración.');
   await writeFile(path+'.zen.tmp',JSON.stringify(next,null,2),{mode:0o600});await rename(path+'.zen.tmp',path);await this.refresh();
  }

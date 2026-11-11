@@ -1,5 +1,5 @@
 import React,{useEffect,useLayoutEffect,useRef,useState} from 'react';
-import type {FolderAttachment} from '../main/folder-context';
+import type {FolderAttachment} from '../shared/folders';
 function AttachIcon({kind='clip'}:{kind?:'clip'|'screen'|'folder'}){const path={clip:'m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l8-8',screen:'M3 4h18v13H3zM8 21h8M12 17v4',folder:'M3 7V5h6l2 2h10v13H3z'}[kind];return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path}/></svg>;}
 export async function prepareInputImage(file:File){
   if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>12000000)throw new Error('Usa una imagen PNG, JPEG o WebP de hasta 12 MB.');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { WindowInfo, MediaInfo } from '../tools/windows/native';
+import type { WindowInfo, MediaInfo } from '../shared/windows-observation';
 export function DesktopPanel({ notify, attach, contextOnly = false }: { notify: (message: string) => void; attach: (id: string) => void; contextOnly?: boolean }) {
   const [windows, setWindows] = useState<WindowInfo[]>([]); const [selected, setSelected] = useState('');
   const [media, setMedia] = useState<MediaInfo[]>([]); const [observation, setObservation] = useState<{ observationId: string; text?: string; image?: string }>();

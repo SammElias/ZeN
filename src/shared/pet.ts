@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import type {TaskEvent} from './contracts';
-import type {Area} from '../main/overlay';
+import type {Area} from './overlay-position';
 export const PetPositionSchema=z.object({displayId:z.number().int(),xRatio:z.number().min(0).max(1),yRatio:z.number().min(0).max(1)}).strict();
 export type PetPosition=z.infer<typeof PetPositionSchema>;
 export type PetSurface='none'|'bubble'|'menu'|'fan';

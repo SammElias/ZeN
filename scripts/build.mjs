@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import './mail-html-licenses.mjs';
+import './companion-licenses.mjs';
 import { mkdir, copyFile, cp } from 'node:fs/promises';
 await mkdir('dist/tools', { recursive: true });
 await mkdir('dist/documents', { recursive: true });

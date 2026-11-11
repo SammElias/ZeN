@@ -1,17 +1,19 @@
 import type {ConversationProvider} from './conversation-provider';
 import type {Activity} from '../shared/activity';
-import { compactContext, extendedOutput } from './economy';
+import { extendedOutput } from './economy';
+import { compactContext } from '../shared/compact-context';
 import { randomUUID } from 'node:crypto';
 import type OpenAI from 'openai';
 import type { ResponseInput, ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses';
 import type { Settings, Evidence, TaskEvent, TaskResult } from '../shared/contracts';
-import { authorize, authorizesNotepad } from '../policy/policy';
+import { authorize } from '../policy/policy';
+import { requestsNotepad } from '../shared/direct-operation';
 import type { SavedAgent } from './saved';
 import type { DesktopHandler } from '../shared/desktop';
 import { diagnose, errorMetadata, ZenError } from '../shared/errors';
 import type { ProjectDraft, WorkContext } from '../shared/project';
 import {computerRequest} from '../shared/computer';
-import {localFileRequest} from '../tools/local-files';
+import {localFileRequest} from '../shared/local-files';
 import {progressActivity} from '../shared/activity';
 export const tool = { type: 'function' as const, name: 'open_application', description: 'Abre exclusivamente Bloc de notas cuando el usuario lo solicita directamente y verifica su ventana.', strict: true, parameters: { type: 'object', properties: { application: { type: 'string', enum: ['notepad'] } }, required: ['application'], additionalProperties: false } };
 type Client = Pick<OpenAI, 'responses'>;
@@ -90,7 +92,7 @@ export class Orchestrator {
       }
       if (this.deps.saved) {
         let message: string;
-        if (!this.deps.informational&&authorizesNotepad(text)) {
+        if (!this.deps.informational&&requestsNotepad(text)) {
           if (this.paused) throw new ZenError('Las acciones están en pausa.');
           authorize('open_application', { application: 'notepad' }, text, settings);
           emit('executing', 'Abriendo Bloc de notas y verificando su ventana…',undefined,'opening_app');

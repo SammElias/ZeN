@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {prepareInputImage} from './Composer';
 import type {ContextAttachment,WindowDropEvent} from '../shared/drop-context';
-import type {FolderAttachment} from '../main/folder-context';
+import type {FolderAttachment} from '../shared/folders';
 import './drop-context.css';
 
 export function useDropContext({notify,expand,folder,onFolder,onAttach}:{notify:(message:string)=>void;expand:()=>void;folder?:FolderAttachment;onFolder:(folder:FolderAttachment)=>void;onAttach:()=>void}){

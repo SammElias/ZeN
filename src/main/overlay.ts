@@ -1,6 +1,6 @@
-import type { OverlayLayout, DockEdge } from '../shared/contracts';
+import type { OverlayLayout } from '../shared/contracts';
+import type { Area, DockEdge } from '../shared/overlay-position';
 import { CAPSULE_WIDTH, CAPSULE_HEIGHT, CHAT_WIDTH } from '../shared/island';
-export type Area = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 /** Match the visible rounded capsule, including transparent corners, in local DIP. */
 export function capsuleShape({width,height}:Pick<Area,'width'|'height'>):Area[]{

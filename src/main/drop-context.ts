@@ -2,9 +2,10 @@ import {lstat,realpath,open} from 'node:fs/promises';
 import {basename,dirname,extname,isAbsolute} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {LocalLibrary} from '../tools/library';
-import {compactContext} from '../agent/economy';
+import {compactContext} from '../shared/compact-context';
 import {ZenError} from '../shared/errors';
 import type {ContextAttachment} from '../shared/drop-context';
+import type { StoredDrop } from '../storage/conversations';
 
 const images=new Map([['.png','image/png'],['.jpg','image/jpeg'],['.jpeg','image/jpeg'],['.webp','image/webp']]);
 const documents=new Set(['.pdf','.docx','.xlsx']);
@@ -12,12 +13,10 @@ const textTypes=new Set(['.txt','.md','.csv','.json','.ts','.tsx','.js','.jsx','
 export function validateDropPath(path:string){
   if(!isAbsolute(path)||/^(?:\\\\|\\\?)/.test(path)||path.slice(2).includes(':'))throw new ZenError('Arrastra un archivo local, sin rutas de dispositivo ni red.');
 }
-export type StoredDrop={item:ContextAttachment;at:number;path?:string;ino?:number;dev?:number;size?:number;mtime?:number;text?:string;image?:string;durable?:boolean};
-type Entry=StoredDrop;
 export class DropContext {
-  private entries=new Map<string,Entry>();
+  private entries=new Map<string,StoredDrop>();
   constructor(private image:(data:string)=>string){}
-  private keep(entry:Entry){for(const [id,row] of this.entries)if(!row.durable&&Date.now()-row.at>=1800000)this.entries.delete(id);if(this.entries.size>=24)throw new ZenError('Quita algún adjunto antes de añadir más.');this.entries.set(entry.item.id,entry);return entry.item;}
+  private keep(entry:StoredDrop){for(const [id,row] of this.entries)if(!row.durable&&Date.now()-row.at>=1800000)this.entries.delete(id);if(this.entries.size>=24)throw new ZenError('Quita algún adjunto antes de añadir más.');this.entries.set(entry.item.id,entry);return entry.item;}
   private entry(id:string){const value=this.entries.get(id);if(!value||!value.durable&&Date.now()-value.at>=1800000)throw new ZenError('El adjunto caducó. Vuelve a arrastrarlo.');return value;}
   snapshot(ids:string[]):StoredDrop[]{return ids.map(id=>({...this.entry(id),durable:true}));}
   restore(rows:StoredDrop[]){for(const row of rows){if(row.path)validateDropPath(row.path);this.entries.set(row.item.id,{...row,durable:true});}}
@@ -55,7 +54,7 @@ export class DropContext {
     if(new Set(ids).size!==ids.length||ids.length>8)throw new ZenError('Adjuntos duplicados o demasiados: máximo 8.');
     return this.resolveEntries(ids.map(id=>this.entry(id)),request,signal,maxChars,true);
   }
-  private async resolveEntries(entries:Entry[],request:string,signal:AbortSignal,maxChars:number,requireActive:boolean){
+  private async resolveEntries(entries:StoredDrop[],request:string,signal:AbortSignal,maxChars:number,requireActive:boolean){
     if(entries.filter(e=>e.image||e.item.kind==='image').length>1)throw new ZenError('Envía una imagen o ventana por petición; puedes acompañarla de documentos y texto.');
     const sections:string[]=[];let image:string|undefined;
     for(const e of entries){

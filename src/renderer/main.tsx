@@ -6,5 +6,5 @@ import './capsule-single-row.css';
 import './companion-clean.css';
 import './liquid-glass.css';
 import './workspace-polish.css';
-import './gmail-desk.css';
+import './monochrome.css';
 createRoot(document.getElementById('root')!).render(<CodexCompanion/>);

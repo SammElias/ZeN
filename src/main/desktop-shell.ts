@@ -5,7 +5,8 @@ import {allowedPortal,initialShellStatus,type ShellAction,type ShellStatus} from
 import {overlayBounds,capsuleShape,nearestEdge,draggedRatio,draggedVerticalRatio} from './overlay';
 import {CursorGaze} from './cursor-gaze';
 import {windowCursor} from '../shared/gaze';
-import type {OverlayPosition,OverlayLayout,Settings} from '../shared/contracts';
+import type {OverlayLayout,Settings} from '../shared/contracts';
+import type {OverlayPosition} from '../shared/overlay-position';
 import {petGeometry,petShape,petPositionAt,type PetPosition,type PetSurface} from '../shared/pet';
 
 /** The capsule is a read-only status/control surface. All task, draft and audio

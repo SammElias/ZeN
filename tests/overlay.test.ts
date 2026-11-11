@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { overlayBounds, draggedRatio, draggedVerticalRatio, nearestEdge, capsuleShape } from '../src/main/overlay';
+import { mergeShape } from '../src/main/companion-placement';
 import { SuccessTimer, canAutoHide, type HideConditions } from '../src/renderer/auto-hide';
 import { OverlayLayoutSchema, OverlayDragSchema, SettingsSchema } from '../src/shared/contracts';
 import {CAPSULE_HEIGHT,CAPSULE_WIDTH} from '../src/shared/island';
@@ -19,6 +20,19 @@ describe('overlay geometry in DIP', () => {
     expect(shape.some(r=>r.x===0&&r.y===0)).toBe(false);
     expect(shape.some(r=>r.x===0&&r.y===30&&r.width===CAPSULE_WIDTH)).toBe(true);
     expect(Math.max(...shape.map(r=>r.y+r.height))).toBe(CAPSULE_HEIGHT);
+  });
+  it('compresses the native region without changing a scan line or mutating inputs', () => {
+    const rows = capsuleShape({ width: CAPSULE_WIDTH, height: CAPSULE_HEIGHT });
+    const original = structuredClone(rows);
+    const merged = mergeShape(rows);
+    expect(rows).toEqual(original);
+    expect(merged.length).toBeLessThan(rows.length);
+    expect(rows).toHaveLength(CAPSULE_HEIGHT);
+    for (const row of rows) {
+      const cover = merged.find(rect => row.y >= rect.y && row.y < rect.y + rect.height);
+      expect(cover).toMatchObject({ x: row.x, width: row.width });
+    }
+    expect(merged.reduce((sum, rect) => sum + rect.height, 0)).toBe(CAPSULE_HEIGHT);
   });
   it('recovers every edge within a replacement monitor and returns to its capsule anchor',()=>{
     for(const edge of ['top','left','right'] as const)for(const ratio of [-1,0,.5,1,2]){

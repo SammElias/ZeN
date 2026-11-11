@@ -5,10 +5,12 @@ import {randomUUID} from 'node:crypto';
 import {ZenError} from '../shared/errors';
 import {emptyChatDraft,type ChatDraft,type ChatRow,type ChatMessage,type ChatRunState,type ChatTransfer,type ChatCheckpoint} from '../shared/conversations';
 import type {Artifact,TaskEvent,TaskResult,Utterance} from '../shared/contracts';
-import type {StoredDrop} from '../main/drop-context';
+import type { ContextAttachment } from '../shared/drop-context';
 import {automaticTone,validateAppearance,type MessageAppearance} from '../shared/mascot';
 
 type Row=Record<string,any>;
+export type StoredDrop={item:ContextAttachment;at:number;path?:string;ino?:number;dev?:number;size?:number;mtime?:number;text?:string;image?:string;durable?:boolean};
+
 export class ConversationStore {
  readonly db:DatabaseSync;
  constructor(directory:string){

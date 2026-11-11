@@ -1,17 +1,36 @@
 import {randomUUID} from 'node:crypto';
-import {openSync,closeSync,fstatSync,readSync,readFileSync,writeFileSync,renameSync,mkdirSync,existsSync} from 'node:fs';
+import {openSync,closeSync,fstatSync,readSync,readFileSync,writeFileSync,renameSync,mkdirSync,existsSync,unlinkSync} from 'node:fs';
 import {basename,join} from 'node:path';
 import {z} from 'zod';
 import {imageSize} from 'image-size';
 import {AppearanceOptions,defaultAppearance,type AppearanceState} from '../shared/companion-appearance';
 const Saved=z.object({options:AppearanceOptions,image:z.object({id:z.string().uuid(),name:z.string().max(200)}).strict().optional()}).strict();
 const MAX_BYTES=12*1024*1024;
-export function wallpaperBytes(path:string){let fd:number|undefined;try{
- fd=openSync(path,'r');const stat=fstatSync(fd);if(!stat.isFile()||stat.size<12||stat.size>MAX_BYTES)throw Error();
- const bytes=Buffer.alloc(stat.size);let count=0;while(count<bytes.length){const n=readSync(fd,bytes,count,bytes.length-count,count);if(!n)throw Error();count+=n;}
- const after=fstatSync(fd);if(after.size!==stat.size||after.mtimeMs!==stat.mtimeMs||after.ino!==stat.ino)throw Error();
- const d=imageSize(bytes);if(!['png','jpg','webp'].includes(d.type??'')||!d.width||!d.height||d.width>8192||d.height>8192||d.width*d.height>24000000)throw Error();return bytes;
- }catch{throw Error('Elige una imagen PNG, JPG o WebP de hasta 12 MB y 24 megapíxeles.');}finally{if(fd!==undefined)closeSync(fd);}}
+function readStableImage(path:string){
+ const fd=openSync(path,'r');
+ try{
+  const before=fstatSync(fd);
+  if(!before.isFile()||before.size<12||before.size>MAX_BYTES)throw Error();
+  const bytes=Buffer.alloc(before.size);
+  let offset=0;
+  while(offset<bytes.length){
+   const read=readSync(fd,bytes,offset,bytes.length-offset,offset);
+   if(!read)throw Error();
+   offset+=read;
+  }
+  const after=fstatSync(fd);
+  if(after.size!==before.size||after.mtimeMs!==before.mtimeMs||after.ino!==before.ino)throw Error();
+  return {bytes,format:imageSize(bytes)};
+ }finally{closeSync(fd);}
+}
+
+export function wallpaperBytes(path:string){
+ try{
+  const {bytes,format:{type,width,height}}=readStableImage(path);
+  if(!['png','jpg','webp'].includes(type??'')||!width||!height||width>8192||height>8192||width*height>24000000)throw Error();
+  return bytes;
+ }catch{throw Error('Elige una imagen PNG, JPG o WebP de hasta 12 MB y 24 megapíxeles.');}
+}
 /** Only the picker supplies a file path. The renderer receives an opaque local image URL. */
 export class CompanionAppearance{
  private saved:z.infer<typeof Saved>={options:defaultAppearance};private path:string;private folder:string;
@@ -20,8 +39,26 @@ export class CompanionAppearance{
  private persist(value:z.infer<typeof Saved>){writeFileSync(this.path+'.tmp',JSON.stringify(value));renameSync(this.path+'.tmp',this.path);this.saved=value;return this.status();}
  save(raw:unknown){const options=AppearanceOptions.parse(raw);if(options.background==='image'&&!this.status().imageUrl)throw Error('Elige primero una imagen de fondo.');return this.persist({...this.saved,options});}
  import(path:string){const bytes=wallpaperBytes(path);let normalized:Buffer;try{normalized=this.normalize(bytes);if(!normalized.length||normalized.length>MAX_BYTES||imageSize(normalized).type!=='png')throw Error();}catch{throw Error('No se pudo preparar esta imagen. Prueba con otra.');}
-  mkdirSync(this.folder,{recursive:true});const id=randomUUID(),target=join(this.folder,id+'.png');writeFileSync(target+'.tmp',normalized);renameSync(target+'.tmp',target);
-  return this.persist({options:{...this.saved.options,background:'image'},image:{id,name:basename(path).replace(/[\x00-\x1f]/g,'').slice(0,200)}});
+  mkdirSync(this.folder,{recursive:true});
+  const id=randomUUID(),target=join(this.folder,id+'.png');
+  const image={id,name:basename(path).replace(/[\x00-\x1f]/g,'').slice(0,200)};
+  try{
+   writeFileSync(target+'.tmp',normalized);
+   renameSync(target+'.tmp',target);
+   return this.persist({options:{...this.saved.options,background:'image'},image});
+  }catch(error){
+   for(const file of [target,target+'.tmp']){
+    try{unlinkSync(file);}catch{/* The original failure determines the result. */}
+   }
+   throw error;
+  }
  }
- image(id:string){if(!z.string().uuid().safeParse(id).success||id!==this.saved.image?.id)throw Error('Fondo no disponible.');const path=join(this.folder,id+'.png');const fd=openSync(path,'r');try{const stat=fstatSync(fd);if(!stat.isFile()||stat.size<12||stat.size>MAX_BYTES)throw Error();const bytes=Buffer.alloc(stat.size);let count=0;while(count<bytes.length){const n=readSync(fd,bytes,count,bytes.length-count,count);if(!n)throw Error();count+=n;}const after=fstatSync(fd);if(after.size!==stat.size||after.mtimeMs!==stat.mtimeMs||imageSize(bytes).type!=='png')throw Error('Fondo no disponible.');return bytes;}finally{closeSync(fd);}}
+ image(id:string){
+  try{
+   if(id!==this.saved.image?.id)throw Error();
+   const {bytes,format}=readStableImage(join(this.folder,id+'.png'));
+   if(format.type!=='png')throw Error();
+   return bytes;
+  }catch{throw Error('Fondo no disponible.');}
+ }
 }

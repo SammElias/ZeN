@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
-import { native, MediaSchema } from '../src/tools/windows/native';
+import { native } from '../src/tools/windows/native';
+import { MediaSchema } from '../src/shared/windows-observation';
 import { z } from 'zod';
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';

@@ -1,4 +1,4 @@
-import {humanCommand} from '../policy/command';
+import {humanCommand} from './human-command';
 import {ZenError} from './errors';
 export function localFileRequest(text:string) {
   const command=humanCommand(text);

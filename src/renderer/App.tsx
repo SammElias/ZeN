@@ -59,8 +59,8 @@ import { Composer } from './Composer';
 import {ActivityStore,taskActivity} from './activity-store';
 import {ActivityTimeline} from './ActivityTimeline';
 import {activityLabels} from '../shared/activity';
-import type { ScreenSnapshot } from '../main/screen-context';
-import type {FolderAttachment} from '../main/folder-context';
+import type { ScreenSnapshot } from '../shared/screen-context';
+import type {FolderAttachment} from '../shared/folders';
 declare global { interface Window { zen: ZenBridge; zenDemo?: boolean; demoState?: TaskEvent } }
 const labels: Record<TaskState, string> = { idle: '¿Qué hacemos?', queued: 'En cola', listening: 'Te escucho', thinking: 'Preparando…', awaiting_approval: 'Necesito tu permiso', awaiting_input: 'Necesito contexto', executing: 'En marcha', completed: 'Listo', failed: 'Algo no ha salido bien', cancelled: 'Tarea detenida' };
 export function App() {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { directOperation } from '../src/policy/direct';
+import { directOperation } from '../src/shared/direct-operation';
 describe('Operaciones directas del usuario', () => {
   it('resuelve destinos explícitos y pausa sin toggle', () => {
     expect(directOperation('Abre LinkedIn')).toEqual({ kind: 'page', target: 'https://www.linkedin.com/' });

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import saved from '../../config/saved-agent.json';
 import type { Artifact, Settings } from '../shared/contracts';
 import type { SpendingGuard } from '../storage/spending';
-import { humanCommand } from '../policy/command';
+import { humanCommand } from '../shared/human-command';
 import { ZenError } from '../shared/errors';
 import { LocalLibrary } from './library';
 import { Artifacts } from './artifacts';

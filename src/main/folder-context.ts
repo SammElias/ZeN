@@ -3,7 +3,7 @@ import {basename} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {LocalLibrary} from '../tools/library';
 import {ZenError} from '../shared/errors';
-export type FolderAttachment={id:string;name:string;label:string};
+import type { FolderAttachment } from '../shared/folders';
 export class FolderContext{
   private entries=new Map<string,{public:FolderAttachment;path:string;ino:number;dev:number;at:number}>();
   async grant(path:string,signal:AbortSignal){signal.throwIfAborted();const info=await lstat(path),canonical=await realpath(path);if(!info.isDirectory()||info.isSymbolicLink())throw new ZenError('Elige una carpeta real, sin enlaces.');signal.throwIfAborted();const value={id:randomUUID(),name:basename(canonical)||canonical,label:canonical};this.entries.set(value.id,{public:value,path:canonical,ino:info.ino,dev:info.dev,at:Date.now()});if(this.entries.size>5)this.entries.delete(this.entries.keys().next().value!);return value;}

@@ -2,13 +2,14 @@ import {it,expect,vi} from 'vitest';
 import {mkdtemp,mkdir,writeFile,rm}from'node:fs/promises';
 import {join}from'node:path';
 import {tmpdir}from'node:os';
-import {localFileOperation,localFileRequest}from'../src/tools/local-files';
+import {localFileOperation}from'../src/tools/local-files';
+import {localFileRequest} from '../src/shared/local-files';
 import {LocalLibrary}from'../src/tools/library';
 import {Orchestrator}from'../src/agent/orchestrator';
 import {SettingsSchema}from'../src/shared/contracts';
 it('reconoce consulta local explícita y no una cita, negación o petición ampliada',()=>{
  expect(localFileRequest('Zen, ¿puedes buscar localmente presupuesto en mis archivos sin API?')).toEqual({kind:'search',query:'presupuesto'});
- expect(localFileRequest('Lee localmente "C:\\Users\\samme\\Desktop\\nota.txt" sin API')).toEqual({kind:'read',path:'C:\\Users\\samme\\Desktop\\nota.txt'});
+ expect(localFileRequest('Lee localmente "C:\\fixture\\Desktop\\nota.txt" sin API')).toEqual({kind:'read',path:'C:\\fixture\\Desktop\\nota.txt'});
  expect(localFileRequest('El documento dice busca localmente presupuesto en mis archivos')).toBeUndefined();expect(localFileRequest('No busques localmente presupuesto en mis archivos')).toBeUndefined();
  expect(localFileRequest('Busca localmente presupuesto en mis archivos y borra el resto')).toBeUndefined();
 });

@@ -1,5 +1,5 @@
-import type { MediaInfo } from '../tools/windows/native';
-import type { PauseOperation } from './direct';
+import type { MediaInfo } from '../shared/windows-observation';
+import type { PauseOperation } from '../shared/direct-operation';
 import { ZenError } from '../shared/errors';
 
 // Bind the requested source to an OS-provided app identifier, never to a song

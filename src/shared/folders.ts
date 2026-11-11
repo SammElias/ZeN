@@ -1,1 +1,2 @@
 export function folderAnalysisRequest(text:string){return /\b(?:carpetas?|directorios?|repositorios?|proyecto)\b/i.test(text)&&/\b(?:analiza|analizar|an[aá]lisis|revisa|revisar|audita|auditar|explica|expl[ií]came|entiende|entender|estudia|estudiar|busca|inspecciona|comprueba|estructura)\b/i.test(text);}
+export type FolderAttachment = { id: string; name: string; label: string };

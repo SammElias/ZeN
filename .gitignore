@@ -31,4 +31,12 @@ guion_codex_zen.md
 gmail-client.json
 gmail-client-secret.bin
 gmail-oauth.bin
+google-desktop-client.bin
+google-desktop-client.bin.tmp
 companion-target.json
+companion-settings.json
+companion-launcher.json
+companion-placement.json
+companion-notes.json
+knowledge-hub.sqlite*
+codex-companion/bridge.json

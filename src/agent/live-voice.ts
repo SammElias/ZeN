@@ -9,7 +9,7 @@ import type { Settings, TaskEvent, TaskResult } from '../shared/contracts';
 import type { SpendingGuard } from '../storage/spending';
 import { ZenError, diagnose } from '../shared/errors';
 import { spokenSummary } from './economy';
-import type { ScreenSnapshot } from '../main/screen-context';
+import type { ScreenSnapshot } from '../shared/screen-context';
 // No additions, overrides or session.update: omitted fields stay server defaults.
 export const liveConfiguration: MediaSessionConfig = session as MediaSessionConfig;
 type CloseResult = { finalized:boolean;reason?:string };

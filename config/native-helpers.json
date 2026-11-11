@@ -1,0 +1,6 @@
+{
+  "windows": { "project": "Zen.Windows", "output": "native" },
+  "hook": { "project": "Zen.CodexHook", "output": "hook" },
+  "desktop": { "project": "Zen.CompanionDesktop", "output": "desktop" },
+  "media": { "project": "Zen.Media", "output": "media" }
+}

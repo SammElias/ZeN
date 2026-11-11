@@ -3,9 +3,10 @@ internal static class NowPlayingSelection
 {
     internal static T? Pick<T>(IReadOnlyList<T> sessions, T? retained, T? current, Func<T, bool> playing, Func<T, string> identity) where T : class
     {
-        // Retaining the same live session avoids jumping when multiple applications play at once.
-        if (retained is not null && sessions.Contains(retained) && playing(retained)) return retained;
+        // Prefer the session Windows considers current. Retain a playing session when
+        // the current one stops or is absent, so enumeration order does not cause jumps.
         if (current is not null && sessions.Contains(current) && playing(current)) return current;
+        if (retained is not null && sessions.Contains(retained) && playing(retained)) return retained;
         // Windows enumeration order breaks ties for two sessions from the same app.
         return sessions.Where(playing).OrderBy(identity, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
     }
@@ -19,7 +20,8 @@ internal static class NowPlayingSelection
         Fixture? Pick(Fixture? retained, Fixture? current) => Pick<Fixture>(all, retained, current, s => s.Playing, s => s.Identity);
         void Assert(bool condition) { if (!condition) throw new InvalidOperationException("Now playing fixture failed."); }
         Assert(Pick(null, spotify) == spotify);
-        Assert(Pick(chrome, spotify) == chrome);
+        Assert(Pick(chrome, spotify) == spotify);
+        Assert(Pick(chrome, player) == chrome);
         Assert(Pick(player, spotify) == spotify);
         Assert(Pick(null, player) == chrome);
         Assert(Pick(new Fixture("removed", true), spotify) == spotify);

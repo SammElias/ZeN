@@ -9,8 +9,10 @@ string stage="not-run",shape="none";string? eventName=null;
 try {
  if (!args.Contains("--zen-companion")) return;
  using var readBudget = new CancellationTokenSource(1500);
+ // Codex writes JSON as UTF-8 even when Windows uses a legacy console code page.
+ using var stdin = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false, true));
  var raw = new StringBuilder();var buffer = new char[4096];int count;
- while ((count = await Console.In.ReadAsync(buffer.AsMemory(), readBudget.Token)) > 0) {raw.Append(buffer,0,count);if(raw.Length>1_000_000){Console.WriteLine("{}");return;}}
+ while ((count = await stdin.ReadAsync(buffer.AsMemory(), readBudget.Token)) > 0) {raw.Append(buffer,0,count);if(raw.Length>1_000_000){Console.WriteLine("{}");return;}}
  var input=JsonNode.Parse(raw.ToString())!.AsObject();
  stage="parsed";shape=input["tool_input"] is JsonObject?"object":input["tool_input"] is JsonArray?"array":input["tool_input"] is JsonValue?"value":"none";
  string Str(string key)=>input[key]?.GetValue<string>()??"";
