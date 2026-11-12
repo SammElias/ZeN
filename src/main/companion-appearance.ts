@@ -4,6 +4,7 @@ import {basename,join} from 'node:path';
 import {z} from 'zod';
 import {imageSize} from 'image-size';
 import {AppearanceOptions,defaultAppearance,glassOpacity,type AppearanceState} from '../shared/companion-appearance';
+import type {PortableAppearance} from '../shared/companion-backup';
 const SavedOptions=AppearanceOptions.extend({
  opacity:z.number().min(.28).max(glassOpacity.maximum)
   .transform(value=>Math.max(value,glassOpacity.minimum)).default(glassOpacity.initial),
@@ -42,14 +43,39 @@ export class CompanionAppearance{
  status():AppearanceState{const image=this.saved.image,available=image&&existsSync(join(this.folder,image.id+'.png'));return{...this.saved.options,...(this.saved.options.background==='image'&&!available?{background:'aurora' as const}:{}),...(available?{imageUrl:'zen-theme://background/'+image.id,imageName:image.name}:{})};}
  private persist(value:z.infer<typeof Saved>){writeFileSync(this.path+'.tmp',JSON.stringify(value));renameSync(this.path+'.tmp',this.path);this.saved=value;return this.status();}
  save(raw:unknown){const options=AppearanceOptions.parse(raw);if(options.background==='image'&&!this.status().imageUrl)throw Error('Elige primero una imagen de fondo.');return this.persist({...this.saved,options});}
- import(path:string){const bytes=wallpaperBytes(path);let normalized:Buffer;try{normalized=this.normalize(bytes);if(!normalized.length||normalized.length>MAX_BYTES||imageSize(normalized).type!=='png')throw Error();}catch{throw Error('No se pudo preparar esta imagen. Prueba con otra.');}
+ import(path:string){
+  return this.storeImage({...this.saved.options,background:'image'},basename(path),wallpaperBytes(path));
+ }
+ backup():PortableAppearance{
+  const {imageName,imageUrl,...options}=this.status();
+  return {options,wallpaper:imageName&&imageUrl?{name:imageName,png:this.image(imageUrl.split('/').at(-1)!).toString('base64')}:undefined};
+ }
+ restoreBackup({options,wallpaper}:PortableAppearance):()=>void{
+  const previous=this.saved;
+  if(options.background==='image'&&!wallpaper)throw Error('El respaldo no incluye su imagen de fondo.');
+  if(wallpaper){
+   const bytes=Buffer.from(wallpaper.png,'base64');
+   const {width,height,type}=imageSize(bytes);
+   if(bytes.toString('base64')!==wallpaper.png||bytes.length>MAX_BYTES||
+      type!=='png'||!width||!height||width>2560||height>2560)throw Error('La imagen de fondo del respaldo no es válida.');
+   this.storeImage(options,wallpaper.name,bytes);
+  }else this.persist({options});
+  const restoredImage=this.saved.image;
+  return ()=>{
+   this.persist(previous);
+   if(restoredImage)unlinkSync(join(this.folder,restoredImage.id+'.png'));
+  };
+ }
+ private storeImage(options:AppearanceOptions,name:string,bytes:Buffer){
+  let normalized:Buffer;
+  try{normalized=this.normalize(bytes);if(!normalized.length||normalized.length>MAX_BYTES||imageSize(normalized).type!=='png')throw Error();}catch{throw Error('No se pudo preparar esta imagen. Prueba con otra.');}
   mkdirSync(this.folder,{recursive:true});
   const id=randomUUID(),target=join(this.folder,id+'.png');
-  const image={id,name:basename(path).replace(/[\x00-\x1f]/g,'').slice(0,200)};
+  const image={id,name:name.replace(/[\x00-\x1f]/g,'').slice(0,200)||'Fondo de ZEN'};
   try{
    writeFileSync(target+'.tmp',normalized);
    renameSync(target+'.tmp',target);
-   return this.persist({options:{...this.saved.options,background:'image'},image});
+   return this.persist({options,image});
   }catch(error){
    for(const file of [target,target+'.tmp']){
     try{unlinkSync(file);}catch{/* The original failure determines the result. */}

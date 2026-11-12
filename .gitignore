@@ -39,4 +39,5 @@ companion-launcher.json
 companion-placement.json
 companion-notes.json
 knowledge-hub.sqlite*
+*.zen-backup.json
 codex-companion/bridge.json

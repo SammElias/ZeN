@@ -1,5 +1,6 @@
 import {CompanionAppearance,wallpaperBytes} from './companion-appearance';
 import {AppearanceOptions} from '../shared/companion-appearance';
+import {backupName,backupSuffix,readBackup,restoreBackup,snapshotBackup,writeBackup} from './companion-backup';
 import {openCodexRequest,queueCodexRequest} from './companion-request';
 import {CodexRequest} from '../shared/companion-request';
 import {CompanionContext} from './companion-context';
@@ -413,6 +414,47 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('install',none,async()=>{requireWorkspace('settings');await integration.install();if(!smoke)void check();return true;});
   const persist=(v:CompanionSettings)=>{if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');const changed=v.shortcut!==settings.shortcut||v.returnShortcut!==settings.returnShortcut;if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}settings=v;if(v.paused)summaries.clear();if(changed){shortcutIssue=undefined;hub.error=undefined;}hub.update(v);if(v.presentation||v.paused){context?.clear();replyEpoch++;media?.close();mediaObserver?.close();}syncVisibility();return true;};
   handle('save',CompanionSettingsSchema,value=>{requireWorkspace('settings');return persist({...value,keepOnTop:settings.keepOnTop});});
+  const requireBackup=()=>{
+   requireWorkspace('settings');
+   if(!privateEffectsAllowed())throw Error('Desactiva Pausa o Presentación para gestionar copias.');
+  };
+  let backupBusy=false;
+  const backupFilters=[{name:'Copia de ZEN',extensions:['json']}];
+  handle('profileBackup',z.enum(['export','import']),async action=>{
+   requireBackup();
+   if(backupBusy)throw Error('Ya hay una operación de respaldo abierta.');
+   backupBusy=true;
+   try{
+    if(action==='export'){
+     const destination=await withWindowDialog(()=>dialog.showSaveDialog(cap,{
+      title:'Exportar datos y configuración de ZEN',defaultPath:backupName(),filters:backupFilters,
+     }));
+     requireBackup();
+     if(destination.canceled||!destination.filePath)return 'cancelled';
+     if(!destination.filePath.toLowerCase().endsWith(backupSuffix)){
+      throw Error('Guarda la copia con la extensión '+backupSuffix+'.');
+     }
+     writeBackup(destination.filePath,snapshotBackup({appearance,launcher:launcherPreferences,notes,settings}));
+     return 'exported';
+    }
+    const source=await withWindowDialog(()=>dialog.showOpenDialog(cap,{
+     title:'Importar datos y configuración de ZEN',properties:['openFile'],filters:backupFilters,
+    }));
+    requireBackup();
+    if(source.canceled||source.filePaths.length!==1)return 'cancelled';
+    const backup=readBackup(source.filePaths[0]);
+    const {response}=await withWindowDialog(()=>dialog.showMessageBox(cap,{
+     type:'warning',message:'¿Importar esta copia de ZEN?',
+     detail:`La copia contiene ${backup.library.entries.length} elementos de Apuntes. Sustituirá la biblioteca y las preferencias de este equipo. ZEN guardará una copia anterior en el perfil local.`,
+     buttons:['Cancelar','Importar copia'],defaultId:0,cancelId:0,noLink:true,
+    }));
+    requireBackup();
+    if(response!==1)return 'cancelled';
+    restoreBackup(profile,{appearance,launcher:launcherPreferences,notes,settings},backup,persist);
+    broadcast();
+    return 'imported';
+   }finally{backupBusy=false;}
+  });
   handle('pinWindow',z.boolean(),enabled=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para cambiar el candado.');
    return enabled===settings.keepOnTop||persist({...settings,keepOnTop:enabled});

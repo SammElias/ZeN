@@ -1,5 +1,6 @@
 import { cp, mkdir, writeFile, rename, readdir, readFile } from 'node:fs/promises';
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, dirname, extname } from 'node:path';
+import { createRequire } from 'node:module';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { applyWindowsIcon } from './windows-icon.mjs';
@@ -41,7 +42,8 @@ const destination = join(root, `ZEN-${stamp}`);
 if (!destination.startsWith(root + sep)) throw Error('Destino de paquete inválido.');
 await mkdir(root, { recursive: true });
 await mkdir('docs/evidence', { recursive: true });
-await cp('node_modules/electron/dist', destination, {
+const electronDist = dirname(createRequire(import.meta.url)('electron'));
+await cp(electronDist, destination, {
   recursive: true, force: false, errorOnExist: true, filter: path => !path.toLowerCase().endsWith('.log'),
 });
 const executable = join(destination, 'ZEN.exe');
@@ -51,9 +53,13 @@ await applyWindowsIcon(executable);
 const appDirectory = join(destination, 'resources/app');
 await mkdir(join(appDirectory, 'dist'), { recursive: true });
 const paths = ['main.cjs', 'preload.cjs', 'renderer', helpers.hook.output, helpers.desktop.output, helpers.media.output];
-for (const path of paths) await cp(join('dist', path), join(appDirectory, 'dist', path), { recursive: true });
+for (const path of paths) {
+  await cp(join('dist', path), join(appDirectory, 'dist', path), {
+    recursive: true, filter: source => extname(source).toLowerCase() !== '.pdb',
+  });
+}
 await writeFile(join(appDirectory, 'package.json'), JSON.stringify({ name: 'zen-desktop', version: '0.1.0', main: 'dist/main.cjs', private: true }, null, 2));
-await writeFile(join(destination, 'LEEME.txt'), 'ZEN compañero de Codex. Cápsula ZEN sin personaje, con actividad observada, código, permisos de un uso y avisos. Sin chat, proyectos, capturas, contexto ni llamadas al modelo. Prepara la integración en Preferencias y revisa sus hooks con /hooks en Codex CLI; no se concede confianza automáticamente. Si ZEN está cerrado o no respondes, el permiso vuelve a Codex. Historial previo conservado fuera de la interfaz. Auxiliar requiere .NET Runtime 10. Incluye código MIT adaptado de Coucou; iconos ZEN y tonos propios. Consulta docs/blueprint/README.md en el repositorio de ZEN.');
+await writeFile(join(destination, 'LEEME.txt'), 'ZEN es un compañero de Codex para Windows con actividad observada, permisos de un uso, avisos, Sonido y Apuntes. Los auxiliares requieren .NET Runtime 10. Para observar actividad, prepara la integración en Preferencias y revisa los hooks con /hooks en el CLI de Codex. Si ZEN está cerrado o no respondes, el permiso vuelve a Codex. Incluye código MIT adaptado de Coucou, iconos de ZEN y tonos propios. Consulta docs/DEPLOYMENT.md en el repositorio de ZEN.');
 
 const files = await fileHashes(appDirectory);
 let smoke;

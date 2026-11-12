@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -19,7 +20,7 @@ export function companionSmokePassed(result) {
 
 export async function runCompanionSmoke(executable, { timeout = 65000 } = {}) {
   const sourceMode = !executable;
-  const binary = sourceMode ? resolve('node_modules/electron/dist/electron.exe') : resolve(executable);
+  const binary = sourceMode ? createRequire(import.meta.url)('electron') : resolve(executable);
   const args = sourceMode ? ['.', '--zen-shell-smoke'] : ['--zen-shell-smoke'];
   const env = { ...process.env };
   delete env.OPENAI_API_KEY;

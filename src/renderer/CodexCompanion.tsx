@@ -15,6 +15,7 @@ import {CompanionHome} from './CompanionHome';
 import {CompanionMiniMusic, CompanionMusic, CompanionNowPlaying, useNowPlaying} from './CompanionMusic';
 import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
+import {BackupSettings} from './BackupSettings';
 import {OrbitalMark} from './OrbitalMark';
 import type {HubDestination} from './NotesWorkspace';
 
@@ -86,6 +87,7 @@ export function CodexCompanion(){
  const {track:nowPlaying}=useNowPlaying(status);
  const expanded=status.workspace?.expanded??false,page=status.workspace?.page??'home';
  const [themePreview,setThemePreview]=useState<AppearanceState>();
+ const [backupRevision,setBackupRevision]=useState(0);
  const [notesDestination,setNotesDestination]=useState<HubDestination>();
  const notesVisible=expanded&&page==='notes'&&!status.settings.presentation&&!status.settings.paused;
  useEffect(()=>{
@@ -167,7 +169,12 @@ export function CodexCompanion(){
       : <Suspense fallback={<p role="status">Abriendo Apuntes…</p>}><NotesWorkspace appearance={appearance} destination={notesDestination}/></Suspense>):
     page==='notices'?<><div className="workspace-section-heading"><h1>Avisos</h1></div><CompanionNotices status={status}/></>:
     page==='options'||page==='shortcuts'?<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>:
-    page==='settings'?<><div className="workspace-section-heading"><h1>Preferencias</h1><button onClick={()=>navigate('home')}>Volver a Home</button></div>{!status.settings.presentation&&<AppearanceSettings value={status.appearance} onPreview={setThemePreview}/>}<CompanionSettings status={status}/></>:
+    page==='settings'?<>
+     <div className="workspace-section-heading"><h1>Preferencias</h1><button onClick={()=>navigate('home')}>Volver a Home</button></div>
+     {!status.settings.presentation&&<AppearanceSettings key={backupRevision} value={status.appearance} onPreview={setThemePreview}/>}
+     <BackupSettings disabled={status.settings.presentation||status.settings.paused} onImported={()=>setBackupRevision(value=>value+1)}/>
+     <CompanionSettings status={status}/>
+    </>:
     <CodexWorkspace status={status} monochrome={appearance.theme==='monochrome'}/>}
    </section>
   </>}

@@ -2,7 +2,7 @@ import {screen,BrowserWindow,dialog,nativeImage} from 'electron';
 import type {CompanionHub} from './companion-hub';
 import type {CompanionIntegration} from './companion-integration';
 import {spawn} from 'node:child_process';
-import {mkdirSync,readFileSync,existsSync,writeFileSync} from 'node:fs';
+import {mkdirSync,readFileSync,existsSync,readdirSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {writeEvidence} from './evidence-file';
@@ -12,6 +12,7 @@ import {nativeHelper} from './native-helper';
 import type {CompanionMedia} from './companion-media';
 import {codexChatUrl} from '../shared/companion-presentation';
 import {newFields} from '../shared/knowledge-hub';
+import {readBackup,writeBackup} from './companion-backup';
 export async function companionSmoke({cap,hub,integration,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture,dismissOnOutsideClick}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;observationFixture:{playing:boolean;source:string;reads:number;playerAvailable:boolean;playerSource:string};dismissOnOutsideClick:()=>void}){
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
  mkdirSync(screenshots,{recursive:true});
@@ -804,6 +805,40 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await js(cap,"window.companion.launcher(false)");
  await wait(()=>js(cap,"!!document.querySelector('.companion-capsule.collapsed[data-theme=monochrome]')"));
  report.monochromeGlassCapsule=await js(cap,"(()=>{const style=getComputedStyle(document.querySelector('.capsule-single-row'));return style.backgroundColor==='rgba(28, 28, 29, 0.82)'&&style.backdropFilter.includes('blur(24px)');})()")&&await nativeCapsuleFrame();
+ report.profileBackupRequiresSettings=await js(cap,"window.companion.profileBackup('export').then(r=>!r.ok)");
+ await nav('settings');
+ const transferPath=join(profile,'zen-transfer-fixture.zen-backup.json');
+ const originalMessage=dialog.showMessageBox;
+ let decision=0;
+ try{
+  dialog.showSaveDialog=(async()=>({canceled:false,filePath:transferPath})) as typeof dialog.showSaveDialog;
+  dialog.showOpenDialog=(async()=>({canceled:false,filePaths:[transferPath]})) as typeof dialog.showOpenDialog;
+  dialog.showMessageBox=(async()=>({response:decision,checkboxChecked:false})) as typeof dialog.showMessageBox;
+  await js(cap,"document.querySelector('.settings-backup button').click()");
+  await wait(()=>js(cap,"document.querySelector('.settings-backup [role=status]')?.textContent.startsWith('Copia guardada')"));
+  const exported=readBackup(transferPath);
+  report.profileBackupExportsPortableData=!!exported.appearance.wallpaper&&
+   exported.library.entries.some(entry=>entry.title==='Filtros con Power Fx'&&entry.images.length===1)&&
+   !Object.hasOwn(exported.settings,'presentation')&&!Object.hasOwn(exported,'target');
+  const imported=structuredClone(exported);
+  imported.settings.sounds=!exported.settings.sounds;
+  imported.appearance.options.theme='light';
+  imported.library.entries[0].title='Nota restaurada en el equipo nuevo';
+  writeBackup(transferPath,imported);
+  report.profileBackupCancellation=await js(cap,"window.companion.profileBackup('import').then(r=>r.ok&&r.value==='cancelled')")&&!existsSync(join(profile,'backups'));
+  decision=1;
+  await js(cap,"document.querySelector('.settings-backup button:nth-child(2)').click()");
+  await wait(()=>js(cap,"document.querySelector('.settings-backup [role=status]')?.textContent.startsWith('Copia importada')"));
+  const recovery=readBackup(join(profile,'backups',readdirSync(join(profile,'backups'))[0]));
+  report.profileBackupCreatesRecovery=JSON.stringify(recovery)===JSON.stringify(exported);
+  report.profileBackupAppliesPreferences=await js(cap,`window.companion.status().then(r=>r.ok&&r.value.appearance.theme==='light'&&r.value.settings.sounds===${imported.settings.sounds}&&r.value.target.session==='native-test')`);
+  await nav('notes');
+  report.profileBackupRestoresLibrary=await js(cap,"window.companion.notesRead().then(r=>r.ok&&r.value.data.entries.some(entry=>entry.title==='Nota restaurada en el equipo nuevo'))");
+ }finally{
+  dialog.showSaveDialog=originalSave;
+  dialog.showOpenDialog=originalOpen;
+  dialog.showMessageBox=originalMessage;
+ }
  report.onlyExplicitCodexHandoffs=queuedRequests.length===6&&queuedRequests.every(item=>item.thread==='native-test')&&copiedRequests.length===0&&queuedRequests[3].text===expectedContextPrompt&&queuedRequests[4].text===expectedPagePrompt&&queuedRequests[5].text===visualPrompt;report.noExtraWindows=BrowserWindow.getAllWindows().length===1;
  integration.close();report.closedAppDoesNotBlock=await launch('PermissionRequest',{tool_name:'Bash',tool_input:{command:'must not run'}}).done==='{}';
  report.passed=Object.entries(report).filter(([k,v])=>typeof v==='boolean'&&!['apiCalled','physicalInputTested'].includes(k)).every(([,v])=>v===true);

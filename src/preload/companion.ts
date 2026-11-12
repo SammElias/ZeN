@@ -18,6 +18,7 @@ const bridge: CompanionBridge = {
   openSpotify: () => call('openSpotify'),
   appearanceSave: options => call('appearanceSave', options),
   appearanceChoose: () => call('appearanceChoose'),
+  profileBackup: action => call('profileBackup', action),
   codexTab: tab => call('codexTab', tab),
   contextStatus: () => call('contextStatus'),
   contextChoose: () => call('contextChoose'),

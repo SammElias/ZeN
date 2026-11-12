@@ -28,6 +28,7 @@ export type CompanionStatus={appearance?:AppearanceState;workspace?:WorkspaceSta
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;
+ profileBackup(action:'export'|'import'):Promise<CompanionResult<'exported'|'imported'|'cancelled'>>;
  openRequest(text:string):Promise<CompanionResult<CodexRequestReceipt>>;
  openSpotify():Promise<CompanionResult<boolean>>;
  codexTab(tab:CodexTab):Promise<CompanionResult<boolean>>;

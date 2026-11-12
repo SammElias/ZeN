@@ -41,8 +41,12 @@ function validateFields(fields: HubFields, data: HubData) {
   if (fields.related.some(id => !data.entries.some(entry => entry.id === id && allowed.includes(entry.kind)))) {
     throw Error('Algún elemento relacionado ya no está disponible.');
   }
-  if (new Set(fields.images.map(image => image.id)).size !== fields.images.length) throw Error('Hay imágenes duplicadas.');
-  for (const image of fields.images) {
+  validateImages(fields.images);
+}
+
+function validateImages(images: HubFields['images']) {
+  if (new Set(images.map(image => image.id)).size !== images.length) throw Error('Hay imágenes duplicadas.');
+  for (const image of images) {
     const [prefix, encoded] = image.data.split(',');
     const bytes = Buffer.from(encoded, 'base64');
     const {type, width, height} = imageSize(bytes);
@@ -174,10 +178,13 @@ export class KnowledgeHub {
     });
   }
 
-  restore(raw: unknown) {
+  restore(raw: unknown, draft?: HubDraft) {
     const data = validateHubBackup(raw);
+    const recovered = draft && HubDraft.parse(draft);
+    if (recovered) validateImages(recovered.fields.images);
     return this.transaction(db => {
       this.replace(db, data);
+      if (recovered) db.prepare("INSERT INTO hub_state VALUES ('draft', ?)").run(JSON.stringify(recovered));
       return data;
     });
   }
