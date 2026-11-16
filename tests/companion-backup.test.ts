@@ -3,7 +3,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {CompanionAppearance} from '../src/main/companion-appearance';
-import {readBackup, restoreBackup, snapshotBackup, writeBackup} from '../src/main/companion-backup';
+import {readBackup, readLibraryBackup, restoreBackup, snapshotBackup, writeBackup} from '../src/main/companion-backup';
 import {CompanionLauncher} from '../src/main/companion-launcher';
 import {KnowledgeHub} from '../src/main/knowledge-hub';
 import {CompanionSettingsSchema} from '../src/shared/codex-companion';
@@ -76,6 +76,24 @@ describe('portable ZEN backup',()=>{
       expect(readBackup(path).settings).toMatchObject({
         windowLocked:true,alwaysOnTop:false,dismissCapsuleOnOutsideClick:false,hideCapsuleFromTaskbar:false,
       });
+    } finally {
+      rmSync(root,{recursive:true,force:true});
+    }
+  });
+
+  it('reads both backup formats in Apuntes and rejects unsupported full copies',()=>{
+    const root=mkdtempSync(join(tmpdir(),'zen-backup-library-'));
+    try {
+      const source=profile(root);
+      source.notes.change({type:'save',fields:{...newFields('note'),title:'Ejemplo',description:'Mi apunte'}},()=>{});
+      const backup=snapshotBackup(source);
+      const path=join(root,'transfer.json');
+      writeBackup(path,backup);
+      expect(readLibraryBackup(path)).toEqual({library:backup.library,complete:true});
+      writeFileSync(path,'\uFEFF'+JSON.stringify(backup.library));
+      expect(readLibraryBackup(path)).toEqual({library:backup.library,complete:false});
+      writeFileSync(path,JSON.stringify({...backup,version:2}));
+      expect(()=>readLibraryBackup(path)).toThrow('El archivo no es una copia compatible de ZEN.');
     } finally {
       rmSync(root,{recursive:true,force:true});
     }

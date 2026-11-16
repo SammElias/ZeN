@@ -6,8 +6,9 @@ import {z} from 'zod';
 import {HubAction, HubDraft, HubFileAction, type HubFileResult, type HubImage} from '../shared/knowledge-hub';
 import {entryMarkdown, fileStem} from '../shared/knowledge-markdown';
 import {wallpaperBytes} from './companion-appearance';
+import {readLibraryBackup} from './companion-backup';
 import type {CompanionIpcHandler, CompanionWindowDialog} from './companion-ipc';
-import {type KnowledgeHub, readHubFile} from './knowledge-hub';
+import type {KnowledgeHub} from './knowledge-hub';
 
 type NotesIpcOptions = {
   notes: KnowledgeHub;
@@ -48,9 +49,36 @@ function readAttachment(path: string): HubImage {
 export function registerNotesIpc(handle: CompanionIpcHandler, {
   notes, window, requireWorkspace, privateEffectsAllowed, withWindowDialog, copy, openExternal,
 }: NotesIpcOptions) {
+  let restoring = false;
+
   function requireNotes() {
     requireWorkspace('notes');
     if (!privateEffectsAllowed()) throw Error('Desactiva la pausa o Presentación para abrir Apuntes.');
+  }
+
+  async function restoreLibrary(): Promise<HubFileResult> {
+    if (restoring) throw Error('Ya hay una restauración de Apuntes abierta.');
+    restoring = true;
+    try {
+      const picked = await withWindowDialog(() => dialog.showOpenDialog(window, {
+        title: 'Elegir copia para restaurar Apuntes', properties: ['openFile'],
+        filters: [{name: 'Copias de ZEN y de Apuntes', extensions: ['json']}],
+      }));
+      requireNotes();
+      if (picked.canceled || picked.filePaths.length !== 1) return {type: 'cancelled'};
+      const {library, complete} = readLibraryBackup(picked.filePaths[0]);
+      const {response} = await withWindowDialog(() => dialog.showMessageBox(window, {
+        type: 'warning', message: '¿Restaurar la biblioteca de Apuntes?',
+        detail: `La copia contiene ${library.entries.length} elementos. Sustituirá la biblioteca actual y su borrador guardado.` +
+          (complete ? '\n\nAquí se restaura solo la biblioteca. Para recuperar también el borrador y los ajustes, usa Ajustes → Datos y configuración → Importar copia.' : ''),
+        buttons: ['Cancelar', 'Restaurar biblioteca'], defaultId: 0, cancelId: 0, noLink: true,
+      }));
+      requireNotes();
+      if (response !== 1) return {type: 'cancelled'};
+      return {type: 'import', data: notes.restore(library)};
+    } finally {
+      restoring = false;
+    }
   }
 
   handle('notesRecent', z.undefined(), () => {
@@ -77,23 +105,16 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
       await openExternal(action.url);
       return {type: 'done'};
     }
-    if (action.type === 'image' || action.type === 'import') {
-      const image = action.type === 'image';
+    if (action.type === 'import') return restoreLibrary();
+    if (action.type === 'image') {
       const picked = await withWindowDialog(() => dialog.showOpenDialog(window, {
-        title: image ? 'Adjuntar imagen' : 'Restaurar respaldo de Knowledge Hub',
-        properties: ['openFile'],
-        filters: image ? [{name: 'Imagen', extensions: ['png', 'jpg', 'jpeg', 'webp']}]
-          : [{name: 'Respaldo JSON', extensions: ['json']}],
+        title: 'Adjuntar imagen', properties: ['openFile'],
+        filters: [{name: 'Imagen', extensions: ['png', 'jpg', 'jpeg', 'webp']}],
       }));
       requireNotes();
       const path = picked.filePaths[0];
       if (picked.canceled || !path) return {type: 'cancelled'};
-      if (image) return {type: 'image', image: readAttachment(path)};
-
-      let raw: unknown;
-      try { raw = JSON.parse(readHubFile(path).toString('utf8').replace(/^\uFEFF/, '')); }
-      catch { throw Error('No se pudo leer el respaldo JSON.'); }
-      return {type: 'import', data: notes.restore(raw)};
+      return {type: 'image', image: readAttachment(path)};
     }
 
     const {data} = notes.read();

@@ -1070,7 +1070,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  report.hubProjectRelations=true;
  const hubPath=join(profile,'hub-export-fixture.json'),hubMarkdown=join(profile,'hub-export-fixture.md'),hubImage=join(profile,'hub-image.png');
  writeFileSync(hubImage,nativeImage.createFromBitmap(Buffer.from([60,100,160,255]),{width:1,height:1}).toPNG());
- const originalSave=dialog.showSaveDialog,originalOpen=dialog.showOpenDialog;
+ const originalSave=dialog.showSaveDialog,originalOpen=dialog.showOpenDialog,originalHubMessage=dialog.showMessageBox;
  try {
   dialog.showSaveDialog=(async (_window:unknown,options:{defaultPath?:string})=>({
    canceled:false,filePath:options.defaultPath?.endsWith('.md')?hubMarkdown:hubPath,
@@ -1078,6 +1078,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   dialog.showOpenDialog=(async (_window:unknown,options:{title?:string})=>({
    canceled:false,filePaths:[options.title==='Adjuntar imagen'?hubImage:hubPath],
   })) as typeof dialog.showOpenDialog;
+  dialog.showMessageBox=(async()=>({response:1,checkboxChecked:false})) as typeof dialog.showMessageBox;
   report.hubNativeFiles=await js(cap,`(async()=>{
    const bridge=window.companion;
    const image=await bridge.notesFile({type:'image'});
@@ -1102,6 +1103,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  } finally {
   dialog.showSaveDialog=originalSave;
   dialog.showOpenDialog=originalOpen;
+  dialog.showMessageBox=originalHubMessage;
  }
  await js(cap,"[...document.querySelectorAll('.hub-sidebar nav button')].find(button=>button.textContent==='Configuración').click()");
  await wait(()=>js(cap,"[...document.querySelectorAll('.hub-panel button')].some(button=>button.textContent==='Oscuro')"));
@@ -1568,12 +1570,13 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await shot(cap,'preferences-data');
  const transferPath=join(profile,'zen-transfer-fixture.zen-backup.json');
  const originalMessage=dialog.showMessageBox;
- let decision=0,leaveSettingsOnConfirm=false;
+ let decision=0,leaveViewOnConfirm=false,notesImportDetail='';
  try{
   dialog.showSaveDialog=(async()=>({canceled:false,filePath:transferPath})) as typeof dialog.showSaveDialog;
   dialog.showOpenDialog=(async()=>({canceled:false,filePaths:[transferPath]})) as typeof dialog.showOpenDialog;
-  dialog.showMessageBox=(async()=>{
-   if(leaveSettingsOnConfirm)await nav('home');
+  dialog.showMessageBox=(async(_window:unknown,options:{detail?:string})=>{
+   notesImportDetail=options.detail??'';
+   if(leaveViewOnConfirm)await nav('home');
    return {response:decision,checkboxChecked:false};
   }) as typeof dialog.showMessageBox;
   await js(cap,"document.querySelector('.settings-backup button').click()");
@@ -1589,9 +1592,9 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   writeBackup(transferPath,imported);
   report.profileBackupCancellation=await js(cap,"window.companion.profileBackup('import').then(r=>r.ok&&r.value==='cancelled')")&&!existsSync(join(profile,'backups'));
   decision=1;
-  leaveSettingsOnConfirm=true;
+  leaveViewOnConfirm=true;
   report.profileBackupRevokedAfterConfirmation=await js(cap,"window.companion.profileBackup('import').then(r=>!r.ok)")&&!existsSync(join(profile,'backups'));
-  leaveSettingsOnConfirm=false;
+  leaveViewOnConfirm=false;
   await nav('settings');
   await js(cap,"document.querySelector('.settings-backup [data-backup=import]').click()");
   await wait(()=>js(cap,"document.querySelector('.settings-backup [role=status]')?.textContent.startsWith('Copia importada')"));
@@ -1600,6 +1603,24 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   report.profileBackupAppliesPreferences=await js(cap,`window.companion.status().then(r=>r.ok&&r.value.appearance.theme==='light'&&r.value.settings.sounds===${imported.settings.sounds}&&r.value.target.session==='native-test')`);
   await nav('notes');
   report.profileBackupRestoresLibrary=await js(cap,"window.companion.notesRead().then(r=>r.ok&&r.value.data.entries.some(entry=>entry.title==='Nota restaurada en el equipo nuevo'))");
+  const notesOnly=structuredClone(imported);
+  notesOnly.settings.sounds=exported.settings.sounds;
+  notesOnly.appearance.options.theme='dark';
+  notesOnly.library.entries[0].title='Nota restaurada desde Apuntes';
+  writeBackup(transferPath,notesOnly);
+  const noteWasReplaced=()=>js(cap,"window.companion.notesRead().then(r=>r.ok&&r.value.data.entries.some(entry=>entry.title==='Nota restaurada desde Apuntes'))");
+  const importInNotes="window.companion.notesFile({type:'import'})";
+  decision=0;
+  report.hubPortableBackupCancellation=await js(cap,importInNotes+".then(r=>r.ok&&r.value.type==='cancelled')")&&
+   notesImportDetail.includes('Ajustes → Datos y configuración')&&!await noteWasReplaced();
+  decision=1;
+  leaveViewOnConfirm=true;
+  report.hubPortableBackupRevokedAfterConfirmation=await js(cap,importInNotes+".then(r=>!r.ok)");
+  leaveViewOnConfirm=false;
+  await nav('notes');
+  report.hubPortableBackupRevokedAfterConfirmation&&=!await noteWasReplaced();
+  report.hubPortableBackupOnlyRestoresLibrary=await js(cap,importInNotes+".then(r=>r.ok&&r.value.type==='import')")&&await noteWasReplaced()&&
+   await js(cap,`window.companion.status().then(r=>r.ok&&r.value.appearance.theme==='light'&&r.value.settings.sounds===${imported.settings.sounds})`);
  }finally{
   dialog.showSaveDialog=originalSave;
   dialog.showOpenDialog=originalOpen;

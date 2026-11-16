@@ -47,7 +47,7 @@ Sin chat fijado, ZEN prepara un borrador para enviar desde Codex. Con chat fijad
 3. En el equipo de destino, abre la misma sección y elige **Importar copia**. Revisa la confirmación. ZEN guarda la copia anterior en `%APPDATA%\ZEN\backups` antes de sustituir biblioteca y preferencias.
 4. Comprueba tus atajos y configura Codex en el destino. Las sesiones, credenciales, hooks, chat fijado y posiciones de pantalla son propios de cada instalación.
 
-Las copias anteriores de la biblioteca se restauran en **Apuntes → Respaldo y exportación**. El respaldo completo es JSON sin cifrar. [Seguridad](SECURITY.md)
+En **Apuntes → Respaldo y exportación → Restaurar biblioteca** puedes abrir tanto un respaldo de Apuntes como una copia completa de ZEN. Esa acción recupera la biblioteca. Usa **Ajustes → Datos y configuración → Importar copia** para recuperar también el borrador y las preferencias. El respaldo completo es JSON sin cifrar. [Seguridad](SECURITY.md)
 
 ## 05 · Verificar, actualizar y revertir ![](assets/ambar.svg)
 

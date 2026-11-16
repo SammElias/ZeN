@@ -405,7 +405,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
       if (!result.ok) {error(result.error);return;}
       if (result.value.type==='import') {
         setData(result.value.data);setDraft(undefined);setDirty(false);setLocation({section:'dashboard'});
-        setFeedback({text:'Respaldo restaurado.'});
+        setFeedback({text:'Biblioteca restaurada.'});
       } else if (result.value.type==='image') image=result.value.image;
       else if (result.value.type==='done' && action.type!=='url') setFeedback({text:'Archivo exportado.'});
     } catch {error('No se pudo completar la operación de archivo.');}
@@ -543,13 +543,10 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
         </div>}
         {data && section==='backup' && <div className="hub-panel">
           <h2>Biblioteca local</h2>
-          <p>Exporta todos los elementos, carpetas e imágenes en un archivo JSON.</p>
+          <p>Exporta la biblioteca o restáurala desde un respaldo de Apuntes o una copia completa de ZEN.</p>
           <div className="hub-tools">
             <button type="button" disabled={busy} onClick={()=>void files({type:'export'})}><Download size={16}/>Exportar JSON</button>
-            <button type="button" disabled={busy} onClick={()=>setConfirmation({
-              text:'Restaurar el respaldo sustituirá la biblioteca actual. Puedes exportarla primero.',
-              label:'Elegir respaldo',run:()=>void files({type:'import'}),
-            })}><Upload size={16}/>Restaurar JSON</button>
+            <button type="button" disabled={busy} onClick={()=>void files({type:'import'})}><Upload size={16}/>Restaurar biblioteca</button>
           </div>
         </div>}
 

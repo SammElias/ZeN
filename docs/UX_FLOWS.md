@@ -27,7 +27,7 @@
 
 En **Apuntes**, elige una carpeta y crea una entrada con título y descripción. Añade comandos, Markdown o imágenes según el contenido. **Biblioteca de prompts** permite guardar y copiar prompts. Usa la vista Markdown para leer el contenido con formato y el editor para corregirlo. El formateador local y la preparación de una petición a Codex son acciones distintas.
 
-El respaldo de **Preferencias → Datos y configuración** traslada la biblioteca y la configuración portable. Al importar, ZEN muestra qué sustituirá y pide confirmación. El recorrido y la recuperación están en [Despliegue](DEPLOYMENT.md).
+El respaldo de **Ajustes → Datos y configuración** traslada la biblioteca y la configuración portable. **Apuntes → Respaldo y exportación → Restaurar biblioteca** admite los dos formatos y muestra qué recuperará antes de confirmar. El recorrido y la recuperación están en [Despliegue](DEPLOYMENT.md).
 
 ## 04 · Sonido, preferencias y estados ![](assets/turquesa.svg)
 

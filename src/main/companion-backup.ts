@@ -3,7 +3,7 @@ import {mkdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import type {CompanionAppearance} from './companion-appearance';
 import type {CompanionLauncher} from './companion-launcher';
-import {type KnowledgeHub, readHubFile, validateHubBackup} from './knowledge-hub';
+import {type KnowledgeHub, hubMaximumBytes, readHubFile, validateHubBackup} from './knowledge-hub';
 import {CompanionBackup, PortableSettings} from '../shared/companion-backup';
 import type {CompanionSettings} from '../shared/codex-companion';
 
@@ -33,14 +33,33 @@ export function snapshotBackup({appearance,launcher,notes,settings}:BackupSource
   });
 }
 
-export function readBackup(path:string):CompanionBackup {
-  let raw:unknown;
-  try {raw=JSON.parse(readHubFile(path,maximumBytes).toString('utf8').replace(/^\uFEFF/,''));}
+function readBackupJson(path:string) {
+  try {
+    const bytes=readHubFile(path,maximumBytes);
+    const raw:unknown=JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,''));
+    return {raw,size:bytes.length};
+  }
   catch {throw Error('No se pudo leer la copia de ZEN. Comprueba que sea un archivo JSON de hasta 52 MB.');}
+}
+
+function parseBackup(raw:unknown):CompanionBackup {
   const result=CompanionBackup.safeParse(raw);
   if(!result.success)throw Error('El archivo no es una copia compatible de ZEN.');
   validateHubBackup(result.data.library);
   return result.data;
+}
+
+export function readBackup(path:string):CompanionBackup {
+  return parseBackup(readBackupJson(path).raw);
+}
+
+export function readLibraryBackup(path:string) {
+  const {raw,size}=readBackupJson(path);
+  if(raw&&typeof raw==='object'&&'format' in raw&&raw.format==='zen-backup') {
+    return {library:parseBackup(raw).library,complete:true};
+  }
+  if(size>hubMaximumBytes)throw Error('La copia de la biblioteca supera el límite de 32 MB.');
+  return {library:validateHubBackup(raw),complete:false};
 }
 
 export function writeBackup(path:string,backup:CompanionBackup) {
