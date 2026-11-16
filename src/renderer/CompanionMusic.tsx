@@ -1,7 +1,7 @@
 import {CopyVisible} from './WorkspaceTools';
 import React,{useEffect,useRef,useState} from 'react';
 import type {CompanionStatus} from '../shared/codex-companion';
-import type {MediaSnapshot,MediaCommand,MediaNowPlaying} from '../shared/companion-media';
+import type {MediaSnapshot,MediaCommand,MediaNowPlaying,MediaTrack} from '../shared/companion-media';
 
 function MusicIcon({name}:{name:string}){const p:Record<string,string>={play:'m9 5 11 7-11 7z',pause:'M8 5v14M16 5v14',previous:'M5 5v14m14-14L8 12l11 7z',next:'M19 5v14M5 5l11 7L5 19z',shuffle:'M3 5h3c5 0 7 14 12 14h3m-4-4 4 4-4 4M3 19h3c2 0 4-3 5-6m2-4c2-3 3-4 5-4h3m-4-4 4 4-4 4',repeat:'m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3',music:'M9 18V5l12-2v13M9 9l12-2M9 18a3 3 0 1 1-3-3c2 0 3 1 3 3m12-2a3 3 0 1 1-3-3c2 0 3 1 3 3'};return <svg viewBox="0 0 24 24" fill={name==='play'?'currentColor':'none'} stroke="currentColor" strokeWidth={name==='pause'?4:1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={p[name]??p.music}/></svg>;}
 const time=(ms:number)=>{const n=Math.max(0,Math.floor(ms/1000));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
@@ -29,17 +29,35 @@ export function useNowPlaying(status:CompanionStatus){
  return{track:blocked?null:track};
 }
 
-/** No observed token or playback controls are exposed by the automatic header. */
-export function CompanionNowPlaying({track}:{track:MediaNowPlaying}){
- const title=track.title||'Multimedia en reproducción',detail=track.artist?track.artist+' · '+track.source:track.source;
- return <div className="capsule-mini-music capsule-now-playing" aria-label="Multimedia en reproducción" data-source={track.source}>
-  <button className="mini-track" title={title+' · '+detail} onClick={()=>void window.companion.navigate('spotify')}>
-   {track.artwork?<img src={track.artwork} alt=""/>:<MusicIcon name="music"/>}<span><strong>{title}</strong><small>{detail}</small></span>
-  </button>
+function CapsuleTrack({track}:{track:MediaNowPlaying}){
+ const title=track.title||'Sin título';
+ const playback=track.playing?'En reproducción':'En pausa';
+ const label=[title,track.artist,track.source,playback].filter(Boolean).join(' · ');
+ return <button className="mini-track" title={label+' · Abrir Sonido'} aria-label={'Abrir Sonido · '+label} onClick={()=>void window.companion.navigate('spotify')}>
+  {track.artwork?<img src={track.artwork} alt=""/>:<MusicIcon name="music"/>}
+  <span><strong>{title}</strong><small>{track.playing?track.artist||track.source:playback}</small></span>
+ </button>;
+}
+
+type Transport = Pick<ReturnType<typeof useMediaPlayer>,'busy'|'command'>;
+
+function CapsuleTransport({track,busy,command}:{track:MediaTrack}&Transport) {
+ const playback=track.playing?'pause':'play';
+ return <div className="mini-transport" role="group" aria-label="Controles de reproducción">
+  {track.controls.previous&&<button className="mini-skip" aria-label="Anterior" title="Anterior" disabled={busy} onClick={()=>void command('previous')}><MusicIcon name="previous"/></button>}
+  {track.controls[playback]&&<button className="mini-play" aria-label={track.playing?'Pausar':'Reproducir'} title={track.playing?'Pausar':'Reproducir'} disabled={busy} onClick={()=>void command(playback)}><MusicIcon name={playback}/></button>}
+  {track.controls.next&&<button className="mini-skip" aria-label="Siguiente" title="Siguiente" disabled={busy} onClick={()=>void command('next')}><MusicIcon name="next"/></button>}
  </div>;
 }
 
-function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact') {
+export function CompanionNowPlaying({track,player}:{track:MediaNowPlaying;player?:{track:MediaTrack}&Transport}){
+ return <div className="capsule-mini-music capsule-now-playing" aria-label={track.playing?'Multimedia en reproducción':'Multimedia en pausa'} data-source={track.source} data-playing={track.playing}>
+  <CapsuleTrack track={track}/>
+  {player&&<CapsuleTransport {...player}/>}
+ </div>;
+}
+
+export function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact', visible=true) {
  const [snapshot, setSnapshot] = useState<MediaSnapshot>();
  const [busy, setBusy] = useState(false);
  const [notice, setNotice] = useState('');
@@ -64,7 +82,7 @@ function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact
  }
 
  async function request(perform: (current: () => boolean) => Promise<void>) {
-  if (blocked || document.hidden || operation.current !== undefined) return;
+  if (!visible || blocked || document.hidden || operation.current !== undefined) return;
   const attempt = ++generation.current;
   operation.current = attempt;
   setBusy(true);
@@ -92,12 +110,18 @@ function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact
  }, [surface]);
 
  useEffect(() => {
+  if (!visible) {
+   setSnapshot(undefined);
+   setNotice('');
+   setBusy(false);
+   return;
+  }
   let active = true;
   let polling = false;
   let timer: ReturnType<typeof setInterval> | undefined;
 
   async function poll() {
-   if (!active || blocked || document.hidden || polling || operation.current !== undefined) return;
+   if (!visible || !active || blocked || document.hidden || polling || operation.current !== undefined) return;
    const attempt = generation.current;
    const current = () => active && isCurrent(attempt);
    polling = true;
@@ -114,12 +138,12 @@ function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact
    generation.current++;
    operation.current = undefined;
    clearInterval(timer);
-   setSnapshot(undefined);
-   setNotice('');
    setBusy(false);
    if (blocked || document.hidden) {
+    setSnapshot(undefined);
+    setNotice('');
     void window.companion.mediaClose(surface);
-   } else {
+   } else if(visible){
     void poll();
     timer = setInterval(() => void poll(), 2000);
    }
@@ -129,10 +153,12 @@ function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact
   document.addEventListener('visibilitychange', syncVisibility);
   return () => {
    active = false;
+   generation.current++;
+   operation.current = undefined;
    clearInterval(timer);
    document.removeEventListener('visibilitychange', syncVisibility);
   };
- }, [blocked, surface]);
+ }, [blocked, surface, visible]);
 
  async function select(id: string) {
   await request(async current => {
@@ -161,11 +187,11 @@ function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact
   });
  }
 
- return {sessions: snapshot?.sessions ?? [], track, manual: snapshot?.manual ?? false, busy, notice, blocked, select, followSystem, command, setNotice};
+ return {sessions: snapshot?.sessions ?? [], track:visible&&!blocked?track:undefined, manual: snapshot?.manual ?? false, busy, notice, blocked, select, followSystem, command, setNotice};
 }
 
-export function CompanionMusic({status}:{status:CompanionStatus}){
- const {sessions,track,manual,busy,notice,blocked,select,followSystem,command,setNotice}=useMediaPlayer(status,'workspace');
+export function CompanionMusic({status,player}:{status:CompanionStatus;player:ReturnType<typeof useMediaPlayer>}){
+ const {sessions,track,manual,busy,notice,blocked,select,followSystem,command,setNotice}=player;
  async function showMusic() {
   const result = await window.companion.presentation(false);
   if (!result.ok) setNotice(result.error);
@@ -184,16 +210,17 @@ export function CompanionMusic({status}:{status:CompanionStatus}){
    {track?<article className="music-player" data-source={track.source}>
     <div className="music-artwork">{track.artwork?<img src={track.artwork} alt="Carátula compartida por el reproductor"/>:<MusicIcon name="music"/>}</div>
     <div className="music-track"><span className="eyebrow">{track.playing?'REPRODUCIENDO':'EN ESPERA'} · {track.source}</span><h3 title={track.title}>{track.title||'Reproducción sin título'}</h3><p title={track.artist}>{track.artist||'Artista no informado'}</p>{track.album&&<small title={track.album}>{track.album}</small>}</div>
-    <div className="music-controls" role="group" aria-label="Controles del reproductor">
+    {track.durationMs>0&&<div className="music-timeline"><progress aria-label="Posición informada por el reproductor" value={Math.min(track.positionMs,track.durationMs)} max={track.durationMs}/><span>{time(track.positionMs)}</span><span>{time(track.durationMs)}</span></div>}
+    <div className="music-player-actions">
+     <div className="music-controls" role="group" aria-label="Controles del reproductor">
      <button aria-label="Aleatorio" aria-pressed={track.shuffle===true} title={track.controls.shuffle&&track.shuffle!==null?'Cambiar aleatorio':'El reproductor no expone aleatorio'} disabled={busy||!track.controls.shuffle||track.shuffle===null} onClick={()=>void command('shuffle',track.shuffle?'off':'on')}><MusicIcon name="shuffle"/></button>
      <button aria-label="Anterior" disabled={busy||!track.controls.previous} onClick={()=>void command('previous')}><MusicIcon name="previous"/></button>
      <button className="music-play" aria-label={track.playing?'Pausar':'Reproducir'} disabled={busy||!(track.playing?track.controls.pause:track.controls.play)} onClick={()=>void command(track.playing?'pause':'play')}><MusicIcon name={track.playing?'pause':'play'}/></button>
      <button aria-label="Siguiente" disabled={busy||!track.controls.next} onClick={()=>void command('next')}><MusicIcon name="next"/></button>
      <button aria-label="Repetir" aria-pressed={track.repeat==='list'||track.repeat==='track'} title={track.controls.repeat&&track.repeat!==null?'Cambiar repetición':'El reproductor no expone repetición'} disabled={busy||!track.controls.repeat||track.repeat===null} onClick={()=>void command('repeat',track.repeat==='none'?'all':track.repeat==='list'?'one':'off')}><MusicIcon name="repeat"/>{track.repeat==='track'&&<b>1</b>}</button>
+     </div>
+     <div className="music-copy"><CopyVisible text={[track.title,track.artist,track.album].filter(Boolean).join(' — ')} label="Copiar información"/></div>
     </div>
-    <div className="music-copy"><CopyVisible text={[track.title,track.artist,track.album].filter(Boolean).join(' — ')} label="Copiar información"/></div>
-    {track.durationMs>0&&<div className="music-timeline"><progress aria-label="Posición informada por el reproductor" value={Math.min(track.positionMs,track.durationMs)} max={track.durationMs}/><span>{time(track.positionMs)}</span><span>{time(track.durationMs)}</span></div>}
-
    </article>:<div className="music-empty"><MusicIcon name="music"/><h3>{busy?'Buscando reproducción…':sessions.length?'Elige un reproductor':'Sin reproducción'}</h3></div>}
 
   </>}
@@ -204,17 +231,10 @@ export function CompanionMusic({status}:{status:CompanionStatus}){
 
 export function CompanionMiniMusic({status}:{status:CompanionStatus}){
  const {sessions,track,busy,notice,blocked,select,command}=useMediaPlayer(status,'compact');
- const playbackLabel=track?.playing?'Pausar':'Reproducir';
  return <div className="capsule-mini-music" aria-label="Sonido en cápsula">
   {blocked?<span className="mini-music-empty">Sonido oculto</span>:track?<>
-   <button className="mini-track" title={[track.title,track.artist,track.source,'Abrir Sonido'].filter(Boolean).join(' · ')} onClick={()=>void window.companion.navigate('spotify')}>
-    {track.artwork?<img src={track.artwork} alt=""/>:<MusicIcon name="music"/>}<span><strong>{track.title||'Sin título'}</strong><small>{track.artist||track.source}</small></span>
-   </button>
-   <div className="mini-transport" role="group" aria-label="Controles del reproductor compacto">
-    <button className="mini-skip" aria-label="Anterior" title="Anterior" disabled={busy||!track.controls.previous} onClick={()=>void command('previous')}><MusicIcon name="previous"/></button>
-    <button className="mini-play" aria-label={playbackLabel} title={playbackLabel} disabled={busy||!(track.playing?track.controls.pause:track.controls.play)} onClick={()=>void command(track.playing?'pause':'play')}><MusicIcon name={track.playing?'pause':'play'}/></button>
-    <button className="mini-skip" aria-label="Siguiente" title="Siguiente" disabled={busy||!track.controls.next} onClick={()=>void command('next')}><MusicIcon name="next"/></button>
-   </div>
+   <CapsuleTrack track={track}/>
+   <CapsuleTransport track={track} busy={busy} command={command}/>
   </>:sessions.length>0?<select aria-label="Elegir reproductor compacto" value="" disabled={busy} onChange={e=>void select(e.target.value)}><option value="">Elige reproductor</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>:<span className="mini-music-empty">Sin reproducción</span>}
   {notice&&<span className="mini-music-notice" role="status" aria-label={notice} title={notice}>!</span>}<button className="mini-dismiss" aria-label="Volver al estado" title="Volver al estado de Codex" onClick={()=>void window.companion.compact('status')}>×</button>
  </div>;

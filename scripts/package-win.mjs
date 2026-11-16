@@ -64,7 +64,7 @@ await writeFile(join(destination, 'LEEME.txt'), 'ZEN es un compañero de Codex p
 const files = await fileHashes(appDirectory);
 let smoke;
 try {
-  smoke = await runCompanionSmoke(executable, { timeout: 90000 });
+  smoke = await runCompanionSmoke(executable);
 } catch (error) {
   await writeFile('docs/evidence/portable-attempt.json', JSON.stringify({
     at: new Date().toISOString(), passed: false, executable, exitCode: error.exitCode,

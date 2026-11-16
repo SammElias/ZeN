@@ -7,4 +7,7 @@ import './companion-clean.css';
 import './liquid-glass.css';
 import './workspace-polish.css';
 import './monochrome.css';
+import './dynamic-island.css';
+import './companion-motion.css';
+import './preferences.css';
 createRoot(document.getElementById('root')!).render(<CodexCompanion/>);

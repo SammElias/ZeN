@@ -1,6 +1,7 @@
 import {contextBridge, ipcRenderer, type IpcRendererEvent} from 'electron';
 import type {CompanionBridge, CompanionStatus} from '../shared/codex-companion';
-import {companionChannel, type CompanionCommand} from '../shared/companion-ipc';
+import {companionChannel, companionInterfaceEffectChannel, type CompanionCommand} from '../shared/companion-ipc';
+import type {InterfaceEffect} from '../shared/companion-interface-audio';
 
 function call<Command extends CompanionCommand>(name: Command, input?: unknown): ReturnType<CompanionBridge[Command]> {
   return ipcRenderer.invoke(companionChannel(name), input) as ReturnType<CompanionBridge[Command]>;
@@ -13,6 +14,11 @@ const bridge: CompanionBridge = {
     const listener = (_event: IpcRendererEvent, status: CompanionStatus) => callback(status);
     ipcRenderer.on(channel, listener);
     return () => { ipcRenderer.removeListener(channel, listener); };
+  },
+  onInterfaceEffect: callback => {
+    const listener = (_event: IpcRendererEvent, effect: InterfaceEffect) => callback(effect);
+    ipcRenderer.on(companionInterfaceEffectChannel, listener);
+    return () => { ipcRenderer.removeListener(companionInterfaceEffectChannel, listener); };
   },
   openRequest: text => call('openRequest', text),
   openSpotify: () => call('openSpotify'),
@@ -35,6 +41,9 @@ const bridge: CompanionBridge = {
   notesFile: action => call('notesFile', action),
   togglePage: page => call('togglePage', page),
   launcher: open => call('launcher', open),
+  island: compact => call('island', compact),
+  islandFocusGuard: blocked => call('islandFocusGuard', blocked),
+  keepExpanded: enabled => call('keepExpanded', enabled),
   launcherOrder: order => call('launcherOrder', order),
   launcherContext: page => call('launcherContext', page),
   options: () => call('options'),
@@ -65,6 +74,10 @@ const bridge: CompanionBridge = {
   pinWindow: enabled => call('pinWindow', enabled),
   drag: action => call('drag', action),
   moveCapsule: alignment => call('moveCapsule', alignment),
+  workspaceLayout: action => call('workspaceLayout', action),
+  workspaceLayoutPreferences: preferences => call('workspaceLayoutPreferences', preferences),
+  capsuleLocation: location => call('capsuleLocation',location),
+  capsuleLocationMenu: anchor => call('capsuleLocationMenu',anchor),
 };
 
 contextBridge.exposeInMainWorld('companion', Object.freeze(bridge));

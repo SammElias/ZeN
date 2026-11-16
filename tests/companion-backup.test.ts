@@ -65,4 +65,19 @@ describe('portable ZEN backup',()=>{
       rmSync(root,{recursive:true,force:true});
     }
   });
+
+  it('loads backups from before the candado and always-on-top were separate',()=>{
+    const root=mkdtempSync(join(tmpdir(),'zen-backup-window-'));
+    try {
+      const backup=snapshotBackup(profile(root));
+      const {windowLocked,alwaysOnTop,dismissCapsuleOnOutsideClick,hideCapsuleFromTaskbar,...legacy}=backup.settings;
+      const path=join(root,'legacy.zen-backup.json');
+      writeFileSync(path,JSON.stringify({...backup,settings:{...legacy,keepOnTop:true}}));
+      expect(readBackup(path).settings).toMatchObject({
+        windowLocked:true,alwaysOnTop:false,dismissCapsuleOnOutsideClick:false,hideCapsuleFromTaskbar:false,
+      });
+    } finally {
+      rmSync(root,{recursive:true,force:true});
+    }
+  });
 });

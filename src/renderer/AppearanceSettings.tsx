@@ -1,6 +1,10 @@
-import React,{useLayoutEffect,useRef,useState} from 'react';
+import React,{useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {defaultAppearance,AppearanceOptions,glassOpacity,type AppearanceState} from '../shared/companion-appearance';
+import {CompanionIcon} from './CompanionActions';
+import {PreferenceRow,PreferenceSave,type PreferenceFeedback} from './PreferencesControls';
+import {ZenEmblem} from './ZenEmblem';
 const themeNames = {monochrome:'Monocromo', dark:'Oscuro', light:'Claro'} as const;
+const accentNames={violet:'Violeta',amber:'Ámbar',mint:'Menta'} as const;
 
 export function appearanceVars(value:AppearanceState){
  const image=value.background==='image'&&/^zen-theme:\/\/background\/[a-f0-9-]{36}$/.test(value.imageUrl??'')?`url("${value.imageUrl}")`:'none';
@@ -12,46 +16,109 @@ export function appearanceVars(value:AppearanceState){
  const light=value.theme==='light',colors={violet:'178 153 255',amber:'255 177 101',mint:'108 220 193'};
  return{'--glass-opacity':value.opacity,'--glass-blur':value.blur+'px','--glass-rgb':light?'244 246 253':'18 20 31','--glass-text':light?'#202334':'#f8f9ff','--glass-secondary':light?'#39445a':'#cbd2e4','--glass-accent-rgb':colors[value.accent],'--zen-wallpaper':image} as React.CSSProperties;
 }
-export function AppearanceSettings({value,onPreview}:{value?:AppearanceState;onPreview:(v:AppearanceState|undefined)=>void}){
- const [draft,setDraft]=useState<AppearanceState>(value??defaultAppearance),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
- const active=useRef(false);
+export function AppearanceSettings({value,visible,reset,onPreview}:{value:AppearanceState;visible:boolean;reset:number;onPreview:(v:AppearanceState|undefined)=>void}) {
+ const [changes,setChanges]=useState<Partial<AppearanceOptions>>({});
+ const [busy,setBusy]=useState(false);
+ const [feedback,setFeedback]=useState<PreferenceFeedback>();
+ const previousReset=useRef(reset);
+ const draft=useMemo(()=>({...value,...changes}),[value,changes]);
+ const dirty=(Object.keys(changes) as (keyof AppearanceOptions)[]).some(key=>draft[key]!==value[key]);
+
  useLayoutEffect(()=>{
-  active.current=true;
-  return ()=>{active.current=false;onPreview(undefined);};
- },[onPreview]);
- const change=(update:Partial<AppearanceState>)=>{const next={...draft,...update};setDraft(next);setSaved(false);setError('');onPreview(next);};
- const choose=async()=>{
+  if(previousReset.current===reset)return;
+  previousReset.current=reset;
+  stage(defaultAppearance);
+ },[reset]);
+ useLayoutEffect(()=>{
+  onPreview(visible&&dirty?draft:undefined);
+  return ()=>onPreview(undefined);
+ },[visible,dirty,draft,onPreview]);
+
+ function stage(update:Partial<AppearanceOptions>) {
+  setChanges(previous=>{
+   const next={...previous,...update};
+   for(const key of Object.keys(next) as (keyof AppearanceOptions)[]){if(next[key]===value[key])delete next[key];}
+   return next;
+  });
+  setFeedback(undefined);
+ }
+
+ async function choose() {
   setBusy(true);
-  setError('');
+  setFeedback(undefined);
   try{
    const result=await window.companion.appearanceChoose();
-   if(!active.current)return;
-   if(!result.ok)setError(result.error);
-   else if(result.value.imageUrl!==draft.imageUrl){
-    change({background:'image',imageUrl:result.value.imageUrl,imageName:result.value.imageName});
+   if(!result.ok){setFeedback({text:result.error,error:true});return;}
+   if(result.value.imageUrl!==value.imageUrl){
+    setChanges(({background,...rest})=>rest);
+    setFeedback({text:'Imagen de fondo aplicada.'});
    }
-  }finally{if(active.current)setBusy(false);}
- };
- const save=async()=>{
+  }catch{setFeedback({text:'No se pudo cambiar la imagen.',error:true});}
+  finally{setBusy(false);}
+ }
+
+ async function save() {
   setBusy(true);
-  setError('');
+  setFeedback(undefined);
   try{
    const {theme,accent,background,opacity,blur}=draft;
    const result=await window.companion.appearanceSave(AppearanceOptions.parse({theme,accent,background,opacity,blur}));
-   if(!active.current)return;
-   if(result.ok){setDraft(result.value);onPreview(result.value);setSaved(true);}
-   else setError(result.error);
-  }finally{if(active.current)setBusy(false);}
- };
+   if(!result.ok){setFeedback({text:result.error,error:true});return;}
+   setChanges({});
+   setFeedback({text:'Apariencia guardada.'});
+  }catch{setFeedback({text:'No se pudo guardar la apariencia.',error:true});}
+  finally{setBusy(false);}
+ }
+
  const monochrome=draft.theme==='monochrome';
- const backgroundNames=monochrome?{aurora:'Niebla',dusk:'Grafito'}:{aurora:'Aurora',dusk:'Atardecer'};
- return <section className="appearance-settings companion-card" aria-label="Apariencia"><div className="appearance-heading"><h2>Apariencia</h2><div className="appearance-theme" role="group" aria-label="Tema">{(['monochrome','dark','light'] as const).map(theme=><button key={theme} aria-pressed={draft.theme===theme} onClick={()=>change({theme})}>{themeNames[theme]}</button>)}</div></div>
-  <div className="appearance-preview" data-preset={draft.background}><div/><div/><div/><span>ZEN</span></div>
-  {!monochrome&&<div className="appearance-row"><span>Acento</span><div className="appearance-accents" role="group" aria-label="Color de acento">{(['violet','amber','mint'] as const).map(accent=><button key={accent} data-accent={accent} title={{violet:'Violeta',amber:'Ámbar',mint:'Menta'}[accent]} aria-label={{violet:'Violeta',amber:'Ámbar',mint:'Menta'}[accent]} aria-pressed={draft.accent===accent} onClick={()=>change({accent})}/>)}</div></div>}
-  <label className="appearance-slider"><span>Opacidad del cristal <output>{Math.round(draft.opacity*100)} %</output></span><input aria-label="Opacidad del cristal" type="range" min={glassOpacity.minimum*100} max={glassOpacity.maximum*100} value={Math.round(draft.opacity*100)} onChange={e=>change({opacity:Number(e.target.value)/100})}/></label>
-  <label className="appearance-slider"><span>Desenfoque <output>{draft.blur} px</output></span><input aria-label="Desenfoque del cristal" type="range" min="0" max="40" value={draft.blur} onChange={e=>change({blur:Number(e.target.value)})}/></label>
-  <div className="appearance-row appearance-background"><span>Fondo</span><div role="group" aria-label="Fondo">{(['aurora','dusk'] as const).map(background=><button key={background} data-preset={background} aria-pressed={draft.background===background} onClick={()=>change({background})}>{backgroundNames[background]}</button>)}<button disabled={busy} aria-pressed={draft.background==='image'} onClick={()=>draft.imageUrl?change({background:'image'}):void choose()}>Imagen</button></div></div>
-  <div className="appearance-file"><button disabled={busy} onClick={()=>void choose()}>{draft.imageUrl?'Cambiar imagen':'Elegir imagen…'}</button>{draft.imageName&&<span title={draft.imageName}>{draft.imageName}</span>}</div>
-  <div className="appearance-save"><button className="primary" disabled={busy} onClick={()=>void save()}>{busy?'Guardando…':saved?'Guardado':'Guardar apariencia'}</button><button disabled={busy} onClick={()=>change({...defaultAppearance})}>Restablecer</button></div>{error&&<p role="alert">{error}</p>}
- </section>;
+ const backgroundNames=monochrome?{aurora:'Niebla',dusk:'Grafito',image:'Imagen'}:{aurora:'Aurora',dusk:'Atardecer',image:'Imagen'};
+ return <div className="appearance-settings">
+  <div className="appearance-preview" data-preset={draft.background} role="img" aria-label="Vista previa de la cápsula con los ajustes actuales">
+   <div className="appearance-preview-capsule" aria-hidden="true">
+    <ZenEmblem/><span>ZEN</span><i/><CompanionIcon name="code"/><CompanionIcon name="sound"/><CompanionIcon name="notebook"/>
+   </div>
+  </div>
+  <fieldset disabled={busy} className="preference-fieldset">
+   <h3>Estilo</h3>
+   <PreferenceRow title="Tema">
+    <div className="appearance-theme preference-choices" role="group" aria-label="Tema">
+     {(['monochrome','dark','light'] as const).map(theme=><button key={theme} type="button" data-preview-theme={theme} aria-pressed={draft.theme===theme} onClick={()=>stage({theme})}>
+      <span className="theme-miniature" aria-hidden="true"><i/><i/><i/></span>{themeNames[theme]}
+      {draft.theme===theme&&<CompanionIcon name="check"/>}
+     </button>)}
+    </div>
+   </PreferenceRow>
+   {!monochrome&&<PreferenceRow title="Acento">
+    <div className="appearance-accents" role="group" aria-label="Color de acento">
+     {(['violet','amber','mint'] as const).map(accent=><button key={accent} type="button" data-accent={accent} title={accentNames[accent]} aria-label={accentNames[accent]} aria-pressed={draft.accent===accent} onClick={()=>stage({accent})}>
+      {draft.accent===accent&&<CompanionIcon name="check"/>}
+     </button>)}
+    </div>
+   </PreferenceRow>}
+   <h3>Fondo y cristal</h3>
+   <PreferenceRow title="Fondo">
+    <div className="appearance-background preference-choices" role="group" aria-label="Fondo">
+     {(['aurora','dusk','image'] as const).map(background=><button key={background} type="button" data-preset={background} aria-pressed={draft.background===background}
+      onClick={()=>background==='image'&&!draft.imageUrl?void choose():stage({background})}>
+      <span className="background-miniature" aria-hidden="true">{background==='image'&&!draft.imageUrl&&<CompanionIcon name="plus"/>}</span>
+      {backgroundNames[background]}{draft.background===background&&<CompanionIcon name="check"/>}
+     </button>)}
+    </div>
+   </PreferenceRow>
+   <PreferenceRow title="Imagen personalizada" description="Se aplica al elegirla. Usa un fondo predefinido para retirarla de la vista.">
+    <div className="preference-actions appearance-file">
+     <button type="button" onClick={()=>void choose()}>{draft.imageUrl?'Cambiar imagen':'Elegir imagen…'}</button>
+     {draft.background==='image'&&<button type="button" onClick={()=>stage({background:'aurora'})}>Quitar de la vista</button>}
+    </div>
+   </PreferenceRow>
+   <PreferenceRow title="Opacidad del cristal" controlId="preference-opacity" description="Regula cuánto se ve el fondo de ZEN a través del cristal.">
+    <div className="preference-range"><input id="preference-opacity" aria-label="Opacidad del cristal" aria-valuetext={`${Math.round(draft.opacity*100)} %`} type="range" min={glassOpacity.minimum*100} max={glassOpacity.maximum*100} value={Math.round(draft.opacity*100)} onChange={e=>stage({opacity:e.currentTarget.valueAsNumber/100})}/><output htmlFor="preference-opacity">{Math.round(draft.opacity*100)} %</output></div>
+   </PreferenceRow>
+   <PreferenceRow title="Desenfoque" controlId="preference-blur" description="Suaviza el fondo interno bajo las superficies de cristal.">
+    <div className="preference-range"><input id="preference-blur" aria-label="Desenfoque del cristal" aria-valuetext={`${draft.blur} px`} type="range" min={0} max={40} value={draft.blur} onChange={e=>stage({blur:e.currentTarget.valueAsNumber})}/><output htmlFor="preference-blur">{draft.blur} px</output></div>
+   </PreferenceRow>
+  </fieldset>
+  <div className="appearance-save"><PreferenceSave name="Guardar apariencia" dirty={dirty} busy={busy} feedback={feedback} onSave={()=>void save()}
+   onDiscard={()=>{setChanges({});setFeedback(undefined);}}/></div>
+ </div>;
 }

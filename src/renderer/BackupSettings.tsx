@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {PreferenceRow} from './PreferencesControls';
 
 export function BackupSettings({disabled,onImported}:{disabled:boolean;onImported:()=>void}) {
   const [busy,setBusy]=useState(false);
@@ -22,13 +23,14 @@ export function BackupSettings({disabled,onImported}:{disabled:boolean;onImporte
     }
   }
 
-  return <section className="companion-card settings-backup" aria-labelledby="profile-backup-title">
-    <h2 id="profile-backup-title">Datos y configuración</h2>
-    <p>Transfiere tu biblioteca, tus atajos, la apariencia y el fondo a otro equipo.</p>
-    <div className="actions">
-      <button type="button" disabled={busy||disabled} onClick={()=>void run('export')}>Exportar copia</button>
-      <button type="button" disabled={busy||disabled} onClick={()=>void run('import')}>Importar copia</button>
-    </div>
+  return <section className="settings-backup" aria-labelledby="profile-backup-title">
+    <h3 id="profile-backup-title">Copias de seguridad</h3>
+    <PreferenceRow title="Exportar" description="Guarda tu biblioteca, los atajos, la apariencia y el fondo en un archivo portable.">
+      <button type="button" data-backup="export" disabled={busy||disabled} onClick={()=>void run('export')}>Exportar copia</button>
+    </PreferenceRow>
+    <PreferenceRow title="Importar" description="Sustituye esos datos con una copia de ZEN. Tras confirmar, ZEN guarda una copia de recuperación.">
+      <button type="button" data-backup="import" disabled={busy||disabled} onClick={()=>void run('import')}>Importar copia</button>
+    </PreferenceRow>
     {disabled?<p>Desactiva Pausa o Presentación para gestionar copias.</p>
       :feedback&&<p role={feedback.error?'alert':'status'}>{feedback.text}</p>}
   </section>;

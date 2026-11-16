@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {imageSize} from 'image-size';
 import {CompanionNotes} from './companion-notes';
 import {
-  collections, HubAction, HubData, HubDraft, HubEntry, HubFolder, newFields, variables,
+  collections, HubAction, HubData, HubDraft, HubEntry, HubFolder, hubContentError, newFields, variables,
   type HubFields, type HubResult, type HubSession, type RecentHubNote,
 } from '../shared/knowledge-hub';
 
@@ -33,9 +33,8 @@ const namesMatch = (a: string, b: string) => a.localeCompare(b, 'es', {sensitivi
 
 function validateFields(fields: HubFields, data: HubData) {
   if (fields.folderId && !data.folders.some(folder => folder.id === fields.folderId)) throw Error('La carpeta ya no existe.');
-  if (fields.kind === 'note' && !fields.description.trim()) throw Error('Escribe el contenido del apunte.');
-  if (['snippet', 'prompt'].includes(fields.kind) && !fields.code.trim()) throw Error('Escribe el código o el texto.');
-  if (fields.kind === 'resource' && !fields.url) throw Error('Introduce la URL del recurso.');
+  const contentError = hubContentError(fields);
+  if (contentError) throw Error(contentError);
   if (fields.related.length !== new Set(fields.related).size) throw Error('Hay relaciones duplicadas.');
   const allowed = fields.kind === 'project' ? ['note', 'snippet', 'resource'] : fields.kind === 'resource' ? ['note'] : [];
   if (fields.related.some(id => !data.entries.some(entry => entry.id === id && allowed.includes(entry.kind)))) {
@@ -75,6 +74,11 @@ export function validateHubBackup(raw: unknown) {
 
 export class KnowledgeHub {
   constructor(private readonly path: string, private readonly legacyPath: string) {}
+
+  isStoragePath(path: string) {
+    const destination = path.toLowerCase();
+    return this.path.toLowerCase() === destination || this.legacyPath.toLowerCase() === destination;
+  }
 
   private transaction<T>(run: (db: DatabaseSync) => T): T {
     const db = new DatabaseSync(this.path);

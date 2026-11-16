@@ -21,7 +21,7 @@ const port=server.address().port;await new Promise(resolve=>server.close(resolve
 const launchedAt=Date.now();
 const child=spawn(executable,[`--inspect-brk=127.0.0.1:${port}`,smokeFlag],{env,windowsHide:true});
 let output='',errors='';child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>errors+=chunk);
-const timer=setTimeout(()=>child.kill(),shellOnly?120000:90000);
+const timer=setTimeout(()=>child.kill(),shellOnly?160000:90000);
 let exited=false,socket,inspectedSmoke,extractedExecutable,fixtureTimer,finishTimer,lastWindows,fixtureProfile,fixturePid,checkingProof=false;
 const exitedPromise=new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',code=>{exited=true;resolve(code);});});
 try{

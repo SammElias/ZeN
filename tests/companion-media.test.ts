@@ -64,7 +64,7 @@ describe('automatic read-only Windows media observation',()=>{
   expect(f.request.mock.calls).toEqual([['nowPlaying']]);
   expect(f.observer.current()).not.toHaveProperty('session');expect(f.observer.current()).not.toHaveProperty('controls');
  });
- it('removes the old track immediately when no Windows session is playing',async()=>{
+ it('removes the old track when Windows has no playing or paused session',async()=>{
   const f=observationFixture();await f.observer.read();f.request.mockResolvedValueOnce({track:null});
   expect(await f.observer.read()).toBe(null);expect(f.observer.current()).toBe(null);
  });
@@ -91,8 +91,14 @@ describe('automatic read-only Windows media observation',()=>{
   f.request.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));const a=f.observer.read(),b=f.observer.read();
   expect(f.request).toHaveBeenCalledOnce();resolve({track:playing});expect(await a).toEqual(playing);expect(await b).toEqual(playing);
  });
- it('rejects stopped metadata and any response that includes a control token',async()=>{
-  for(const bad of [{...playing,playing:false},{...playing,session:id},{...playing,controls:track.controls}]){
+ it('reports paused metadata without granting control',async()=>{
+  const f=observationFixture(),paused={...playing,playing:false};
+  f.request.mockResolvedValueOnce({track:paused});
+  expect(await f.observer.read()).toEqual(paused);
+  expect(f.request.mock.calls).toEqual([['nowPlaying']]);
+ });
+ it('rejects a non-boolean playback status and any response that includes a control token',async()=>{
+  for(const bad of [{...playing,playing:'stopped'},{...playing,session:id},{...playing,controls:track.controls}]){
    expect(MediaNowPlaying.safeParse(bad).success).toBe(false);const f=observationFixture();f.request.mockResolvedValueOnce({track:bad});
    await expect(f.observer.read()).rejects.toThrow();expect(f.observer.current()).toBe(null);expect(f.close).toHaveBeenCalledOnce();
   }

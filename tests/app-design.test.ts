@@ -1,28 +1,9 @@
 import {describe,it,expect} from 'vitest';
 import {mkdtempSync,writeFileSync,readFileSync,rmSync,mkdirSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';import {tmpdir} from 'node:os';
-import {capsuleExtensionBounds} from '../src/main/companion-placement';
 import {CompanionAppearance,wallpaperBytes} from '../src/main/companion-appearance';
-const area={x:0,y:0,width:1920,height:1040},png=readFileSync('public/icons/zen-16.png');
+const png=readFileSync('public/icons/zen-16.png');
 function fixture(){const root=mkdtempSync(join(tmpdir(),'zen-design-'));return{root,dispose:()=>rmSync(root,{recursive:true,force:true})};}
-describe('extension of the anchored capsule',()=>{
- it('uses the full work area height on a normal display',()=>{
-  const capsule={x:550,y:0,width:820,height:68};
-  expect(capsuleExtensionBounds(area,capsule)).toEqual({...capsule,height:1040});
- });
- it('extends from the top of the work area at a side anchor',()=>{
-  const capsule={x:1100,y:500,width:820,height:68};
-  expect(capsuleExtensionBounds(area,capsule)).toEqual({...capsule,y:0,height:1040});
- });
- it('uses the work area origin on a secondary monitor',()=>{
-  const work={x:-1920,y:-100,width:1920,height:1040};
-  expect(capsuleExtensionBounds(work,{x:-1920,y:850,width:820,height:68})).toEqual({x:-1920,y:-100,width:820,height:1040});
- });
- it('fits a short monitor without changing the capsule width',()=>{
-  const work={x:0,y:0,width:390,height:310};
-  expect(capsuleExtensionBounds(work,{x:0,y:0,width:390,height:68})).toEqual(work);
- });
-});
 describe('local glass appearance and bounded wallpapers',()=>{
  it('loads older low opacity at the readable minimum and accepts a fully opaque setting',()=>{
   const f=fixture();

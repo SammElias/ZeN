@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {setImmediate} from 'node:timers/promises';
-import {CompanionSettingsSchema,type CompanionStatus,type CompanionSession} from '../src/shared/codex-companion';
+import {CompanionSettingsSchema,migrateWindowPreferences,type CompanionStatus,type CompanionSession} from '../src/shared/codex-companion';
 import {CompanionHub} from '../src/main/companion-hub';
 import {displayStatus} from '../src/shared/companion-privacy';
 import {activeSession,codexChatUrl} from '../src/shared/companion-presentation';
@@ -44,7 +44,15 @@ describe('presentation is enforced before IPC and decisions',()=>{
   const f=fixture();f.event('Stop');const s=f.hub.status().sessions[0];f.hub.setSummary(s.id,s.runKey!,{state:'ready',files:[{path:'private.txt',change:'added'}],omitted:0,endedAt:1000});
   const raw=f.hub.status();raw.settings.presentation=true;expect(displayStatus(raw,2,true).sessions[0].summary).toBeUndefined();expect(raw.sessions[0].summary?.files[0].path).toBe('private.txt');
  });
- it('migrates preferences without changing existing shortcuts, silence or account configuration',()=>{expect(CompanionSettingsSchema.parse({sounds:false,silencedUntil:1000})).toMatchObject({presentation:false,followPointerDisplay:true,respectFullscreen:true,keepOnTop:false,sounds:false,silencedUntil:1000});});
+ it('migrates the old candado independently of topmost, preserving the other settings',()=>{
+  const old={keepOnTop:true,sounds:false,silencedUntil:1000,shortcut:'Control+Alt+J'};
+  expect(CompanionSettingsSchema.parse(migrateWindowPreferences(old))).toMatchObject({
+   presentation:false,followPointerDisplay:true,respectFullscreen:true,windowLocked:true,
+   alwaysOnTop:false,dismissCapsuleOnOutsideClick:false,hideCapsuleFromTaskbar:false,sounds:false,silencedUntil:1000,shortcut:old.shortcut,
+  });
+  const saved=CompanionSettingsSchema.parse({windowLocked:false,alwaysOnTop:true,dismissCapsuleOnOutsideClick:true});
+  expect(CompanionSettingsSchema.parse(migrateWindowPreferences(JSON.parse(JSON.stringify(saved))))).toEqual(saved);
+ });
 });
 describe('bounded observed completion',()=>{
  it('compares metadata only and reports omissions without inventing test success',()=>{

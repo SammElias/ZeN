@@ -6,26 +6,18 @@
 .companion-brand{width:60px;height:58px;flex:none;padding:5px;background:transparent;border:0}.completion-details{padding:4px 0 14px}.completion-details>small{display:block;margin:7px 0}.changed-files{padding:0;list-style:none}.changed-files li{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding:10px 0;font-size:11px}.changed-files li>span{flex:1;min-width:0;overflow-wrap:anywhere}.changed-files b{display:block;color:#b4a0ec;font-size:9px;margin-bottom:4px}.changed-files button{flex:none;font-size:10px;padding:6px 8px}.companion-bar nav .return-app{color:#a5d5bb}.companion-bar nav button:disabled{opacity:.3}@media(max-width:470px){.companion-brand{width:44px;padding:4px}.zen-mark{width:35px;height:35px;font-size:22px}.companion-bar nav button{width:29px;padding:6px}}@media(max-width:360px){.companion-bar nav{gap:0}.companion-bar nav button{width:25px;padding:5px}.companion-state{padding:3px}.companion-state strong{font-size:10px}}
 .companion-bar nav .return-app{width:auto;max-width:135px;padding:6px 8px;font-size:10px}.return-app span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}@media(max-width:470px){.companion-bar nav .return-app{width:29px;padding:6px}.companion-bar .return-app span{display:none}}
 
-/* Original Figma orbital mark. Assets retain their exported native dimensions. */
-.zen-mark.orbital-mark{position:relative;display:block;width:48px;height:48px;flex:none;padding:0;border:0;border-radius:0;background:none;animation:none;letter-spacing:normal}
-.orbital-canvas{position:absolute;inset:0 auto auto 0;width:64px;height:64px;transform:scale(.75);transform-origin:0 0}
-.orbital-geometry{position:absolute;left:0;top:0;width:64px;height:64px;transform-origin:32px 32px}
-.orbital-canvas img{position:absolute;display:block;max-width:none;pointer-events:none;user-select:none}
-.orbital-front{left:5.61377px;top:8.21949px}
-.orbital-back{left:15.32404px;top:7.31948px}
-.orbital-core{position:absolute;left:24px;top:24px;width:16px;height:16px}
-.orbital-satellite{left:47.5px;top:10.5px}
-.orbital-trace{position:absolute;left:41px;top:56px;display:flex;gap:2px;width:19px;height:3px}
-.orbital-trace i{width:5px;height:3px;border-radius:1.5px;background:#70608e;opacity:.45}
-.orbital-trace i[data-received=true]{background:var(--accent);opacity:1}
-.companion-capsule[data-motion=true] .orbital-mark[data-visible=true] .orbital-working{animation:orbital-working 3.2s linear infinite}
-.companion-capsule[data-motion=true] .orbital-mark[data-visible=true] .orbital-core{animation:orbital-thinking 2.4s ease-in-out infinite}
-.companion-capsule[data-motion=true] .orbital-mark[data-visible=true][data-finish-flash=true] .orbital-finished{animation:orbital-finished .7s ease-out 1}
-@keyframes orbital-working{to{transform:rotate(360deg)}}
-@keyframes orbital-thinking{0%,100%{opacity:1}50%{opacity:.65}}
-@keyframes orbital-finished{0%{opacity:.65}35.714%{opacity:1}100%{opacity:1}}
-@media(max-width:470px){.zen-mark.orbital-mark{width:35px;height:35px}.orbital-canvas{transform:scale(.546875)}}
-@media(prefers-reduced-motion:reduce){.orbital-mark *{animation:none!important}}
+.zen-status-mark{position:relative;display:block;width:36px;aspect-ratio:1;flex:none}
+.zen-emblem{object-fit:contain;pointer-events:none;user-select:none}
+.zen-status-mark .zen-emblem{display:block;width:100%;height:100%}
+.companion-about .zen-emblem{width:20px;height:20px;margin:0 5px;vertical-align:middle}
+.companion-capsule[data-theme=light] .zen-emblem{filter:drop-shadow(0 .6px .65px rgb(32 35 52 / .72))}
+.zen-status-trace{position:absolute;right:0;bottom:0;display:flex;gap:2px}
+.zen-status-trace i{width:4px;height:2px;border-radius:1px;background:#70608e;opacity:.45}
+.zen-status-trace i[data-received=true]{background:var(--accent);opacity:1}
+.companion-capsule[data-motion=true] .companion-bar .zen-status-mark[data-visible=true][data-phase=thinking] .zen-emblem{animation:zen-mark-thinking 2.4s ease-in-out infinite}
+.companion-capsule[data-motion=true] .companion-bar .zen-status-mark[data-visible=true][data-finish-flash=true] .zen-emblem{animation:zen-mark-finished .7s ease-out 1}
+@keyframes zen-mark-thinking{0%,100%{opacity:1}50%{opacity:.65}}
+@keyframes zen-mark-finished{0%{opacity:.65}35.714%{opacity:1}100%{opacity:1}}
 
 /* Music is a local workspace: playback comes from the explicitly selected Windows session. */
 .music-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:4px 0 24px}.music-heading h2{font-size:28px;letter-spacing:-1px;font-weight:550;margin:10px 0 5px}.music-heading p{margin:0}.music-heading>button{flex:none;background:transparent}

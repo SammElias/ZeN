@@ -3,6 +3,7 @@ import type {CodexDocumentFormat} from '../shared/codex-result-document';
 import type {ContextFile, ContextInput, ContextPreview} from '../shared/companion-context';
 import {codexDocumentFormats} from './codex-document-formats';
 import {CodexResultPanel} from './CodexResultPanel';
+import {interfaceAudio} from './companion-interface-audio';
 import './CodexContext.css';
 
 const sourceTypes = [
@@ -12,19 +13,22 @@ const sourceTypes = [
 ] as const;
 
 type SourceKind = typeof sourceTypes[number]['id'];
+export type ContextDraft = {sourceOpen:boolean;kind:SourceKind;format:CodexDocumentFormat;url:string;text:string;instruction:string};
 
-export function CodexContext({disabled, targetTitle, children}: {
+export function CodexContext({disabled, visible, targetTitle, memory, children}: {
   disabled: boolean;
+  visible: boolean;
   targetTitle?: string;
+  memory: {current?:ContextDraft};
   children: React.ReactNode;
 }) {
-  const [sourceOpen, setSourceOpen] = useState(false);
-  const [kind, setKind] = useState<SourceKind>('file');
-  const [format, setFormat] = useState<CodexDocumentFormat>('report');
+  const [sourceOpen, setSourceOpen] = useState(memory.current?.sourceOpen??false);
+  const [kind, setKind] = useState<SourceKind>(memory.current?.kind??'file');
+  const [format, setFormat] = useState<CodexDocumentFormat>(memory.current?.format??'report');
   const [file, setFile] = useState<ContextFile | null>(null);
-  const [url, setUrl] = useState('');
-  const [text, setText] = useState('');
-  const [instruction, setInstruction] = useState('');
+  const [url, setUrl] = useState(memory.current?.url??'');
+  const [text, setText] = useState(memory.current?.text??'');
+  const [instruction, setInstruction] = useState(memory.current?.instruction??'');
   const [review, setReview] = useState<ContextPreview>();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -35,6 +39,9 @@ export function CodexContext({disabled, targetTitle, children}: {
   const sequence = useRef(0);
   const pending = useRef<ContextPreview | undefined>(undefined);
   const flight = useRef(false);
+  useEffect(()=>{
+    if(!disabled)memory.current={sourceOpen,kind,format,url,text,instruction};
+  },[disabled,memory,sourceOpen,kind,format,url,text,instruction]);
 
   const cancelReview = useCallback(() => {
     sequence.current++;
@@ -48,7 +55,7 @@ export function CodexContext({disabled, targetTitle, children}: {
     live.current = true;
     const refreshFile = () => {
       const attempt = sequence.current;
-      if (disabled || !targetTitle || document.hidden) return;
+      if (disabled || !visible || !targetTitle || document.hidden) return;
       void window.companion.contextStatus().then(response => {
         if (live.current && sequence.current === attempt && response.ok && !document.hidden) setFile(response.value);
       }).catch(() => {});
@@ -74,7 +81,7 @@ export function CodexContext({disabled, targetTitle, children}: {
       cancelReview();
       document.removeEventListener('visibilitychange', visibility);
     };
-  }, [cancelReview, disabled, targetTitle]);
+  }, [cancelReview, disabled, targetTitle, visible]);
 
   useEffect(() => {
     if (!review) return;
@@ -151,11 +158,13 @@ export function CodexContext({disabled, targetTitle, children}: {
     setNotice('Enviando a Codex…');
     void run(() => window.companion.contextHandoff(id), response => {
       if (!response.ok) {
+        interfaceAudio.play('error');
         setNotice('');
         setError(response.error);
         return;
       }
       setResultRevision(revision => revision + 1);
+      interfaceAudio.play('success');
       setNotice('En cola en el chat fijado de Codex.');
     });
   }
@@ -244,7 +253,7 @@ export function CodexContext({disabled, targetTitle, children}: {
       </div>
     </section>
     <div className="codex-response-column">
-      {targetTitle ? <CodexResultPanel revision={resultRevision} empty={children}/> : children}
+      {visible&&targetTitle ? <CodexResultPanel revision={resultRevision} empty={children}/> : children}
     </div>
   </div>;
 }

@@ -12,6 +12,9 @@ import './CompanionHome.css';
 type Props = {
   status: CompanionStatus;
   ready: boolean;
+  visible: boolean;
+  draft: string;
+  setDraft: (value:string)=>void;
   nowPlaying: MediaNowPlaying | null;
   onNavigate: (page: WorkspacePage) => void;
   onOpenNotes: (destination: HubDestination) => void;
@@ -21,12 +24,13 @@ const dates = new Intl.DateTimeFormat('es', {day:'numeric', month:'short'});
 const times = new Intl.DateTimeFormat('es', {hour:'2-digit', minute:'2-digit'});
 const noticePriority = {permission:0, error:1, finished:2};
 
-function RecentNotes({onOpen}: {onOpen: Props['onOpenNotes']}) {
+function RecentNotes({onOpen, visible}: {onOpen: Props['onOpenNotes']; visible:boolean}) {
   const [notes, setNotes] = useState<RecentHubNote[]>();
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    if(!visible)return;
     let generation = 0;
     const refresh = async () => {
       const attempt = ++generation;
@@ -48,7 +52,7 @@ function RecentNotes({onOpen}: {onOpen: Props['onOpenNotes']}) {
       generation++;
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [retry]);
+  }, [retry, visible]);
 
   return <article className="home-panel" aria-labelledby="home-notes-title">
     <header className="home-panel-heading">
@@ -123,7 +127,7 @@ function RecentCodex({status, session, open}: {
   </article>;
 }
 
-export function CompanionHome({status, ready, nowPlaying, onNavigate, onOpenNotes}: Props) {
+export function CompanionHome({status, ready, visible, draft, setDraft, nowPlaying, onNavigate, onOpenNotes}: Props) {
   const [navigationError, setNavigationError] = useState('');
   const hidden = status.settings.presentation || status.settings.paused;
   const track = hidden ? null : nowPlaying;
@@ -160,7 +164,7 @@ export function CompanionHome({status, ready, nowPlaying, onNavigate, onOpenNote
     {navigationError && !hidden && <p className="home-navigation-error" role="alert">{navigationError}</p>}
 
     {hidden ? <p className="home-status-privacy" role="status">{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</p>
-      : <CodexRequestForm fixedChat={status.target?.title}/>}
+      : <CodexRequestForm fixedChat={status.target?.title} draft={draft} setDraft={setDraft}/>}
 
     <nav className="home-status-grid" aria-label="Módulos">
       <button type="button" className="home-module home-status-action" data-home-card="work" onClick={()=>{
@@ -200,7 +204,7 @@ export function CompanionHome({status, ready, nowPlaying, onNavigate, onOpenNote
     {!hidden && <section className="home-continue" aria-labelledby="home-continue-title">
       <h2 id="home-continue-title">Continúa donde lo dejaste</h2>
       <div className="home-continue-grid">
-        <RecentNotes onOpen={onOpenNotes}/>
+        <RecentNotes onOpen={onOpenNotes} visible={visible}/>
         <RecentCodex status={status} session={session} open={open}/>
       </div>
     </section>}

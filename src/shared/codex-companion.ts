@@ -7,9 +7,28 @@ import {z} from 'zod';
 import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from './companion-media';
 import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab} from './companion-workspace';
 import type {CapsuleAlignment} from './overlay-position';
+import type {CapsuleLocation,WorkspaceLayoutAction, WorkspaceLayoutPreferences} from './workspace-layout';
 import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
-export const CompanionSettingsSchema=z.object({shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),paused:z.boolean().default(false),presentation:z.boolean().default(false),followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),keepOnTop:z.boolean().default(false),silencedUntil:z.number().int().nonnegative().max(8640000000000000).default(0)}).strict();
+import type {InterfaceEffect} from './companion-interface-audio';
+export const CompanionSettingsSchema=z.object({
+ shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),
+ returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),
+ motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),
+ interfaceSounds:z.boolean().optional(),interfaceVolume:z.number().int().min(0).max(100).default(18),
+ paused:z.boolean().default(false),presentation:z.boolean().default(false),
+ followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),
+ windowLocked:z.boolean().default(false),alwaysOnTop:z.boolean().default(false),
+ collapseOnBlur:z.boolean().default(false),keepExpanded:z.boolean().default(false),
+ dismissCapsuleOnOutsideClick:z.boolean().default(false),hideCapsuleFromTaskbar:z.boolean().default(false),
+ silencedUntil:z.number().int().nonnegative().max(8640000000000000).default(0),
+}).strict();
 export type CompanionSettings=z.infer<typeof CompanionSettingsSchema>;
+export function migrateWindowPreferences(input:unknown) {
+ if(!input||typeof input!=='object'||!('keepOnTop' in input)||typeof input.keepOnTop!=='boolean')return input;
+ const {keepOnTop,...settings}=input;
+ // The old setting was controlled by the lock. Only an explicit new setting can enable topmost.
+ return {windowLocked:keepOnTop,...settings};
+}
 export const CompanionTargetSchema=z.object({session:z.string().min(1).max(160).regex(/^[a-zA-Z0-9._:-]+$/),cwd:z.string().min(3).max(4096).regex(/^(?:[a-zA-Z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/).refine(v=>!/[\0\r\n]/.test(v)),title:z.string().trim().min(1).max(200)}).strict();
 export type CompanionTarget=z.infer<typeof CompanionTargetSchema>;
 export const hookEvents=['SessionStart','UserPromptSubmit','PreToolUse','PermissionRequest','PostToolUse','Stop','SubagentStart','SubagentStop','Interrupt','SessionEnd'] as const;
@@ -43,11 +62,17 @@ export interface CompanionBridge{
  notesFile(action:HubFileAction):Promise<CompanionResult<HubFileResult>>;
  togglePage(page:LauncherPage):Promise<CompanionResult<boolean>>;
  launcher(open:boolean):Promise<CompanionResult<boolean>>;
+ island(compact:boolean):Promise<CompanionResult<boolean>>;
+ capsuleLocation(location:CapsuleLocation):Promise<CompanionResult<boolean>>;
+ capsuleLocationMenu(anchor?:import('./workspace-layout').CapsuleMenuAnchor):Promise<CompanionResult<boolean>>;
+ islandFocusGuard(blocked:boolean):Promise<CompanionResult<boolean>>;
+ keepExpanded(enabled:boolean):Promise<CompanionResult<boolean>>;
  launcherOrder(order:LauncherPage[]):Promise<CompanionResult<boolean>>;launcherContext(page:LauncherPage):Promise<CompanionResult<boolean>>;options():Promise<CompanionResult<boolean>>;compact(view:CapsuleView):Promise<CompanionResult<boolean>>;
  mediaCurrent():Promise<CompanionResult<MediaTrack|null>>;
  mediaSnapshot(followSystem?:true):Promise<CompanionResult<MediaSnapshot>>;
  mediaList():Promise<CompanionResult<MediaSession[]>>;mediaSelect(id:string):Promise<CompanionResult<MediaTrack>>;mediaRead(id:string):Promise<CompanionResult<MediaTrack>>;mediaCommand(value:MediaCommand):Promise<CompanionResult<{accepted:boolean}>>;mediaClose(surface?:'workspace'|'compact'):Promise<CompanionResult<boolean>>;
  status():Promise<CompanionResult<CompanionStatus>>;onStatus(cb:(v:CompanionStatus)=>void):()=>void;
+ onInterfaceEffect(cb:(effect:InterfaceEffect)=>void):()=>void;
  openCodex(id?:string):Promise<CompanionResult<boolean>>;check():Promise<CompanionResult<boolean>>;
  install():Promise<CompanionResult<boolean>>;save(value:CompanionSettings):Promise<CompanionResult<boolean>>;
  decide(id:string,decision:'allow'|'deny'|'pass'):Promise<CompanionResult<boolean>>;clearNotices():Promise<CompanionResult<boolean>>;
@@ -57,5 +82,7 @@ export interface CompanionBridge{
  hide():Promise<CompanionResult<boolean>>;drag(action:'start'|'end'):Promise<CompanionResult<boolean>>;
  pinWindow(enabled:boolean):Promise<CompanionResult<boolean>>;
  moveCapsule(alignment:CapsuleAlignment):Promise<CompanionResult<boolean>>;
+ workspaceLayout(action:WorkspaceLayoutAction):Promise<CompanionResult<boolean>>;
+ workspaceLayoutPreferences(preferences:WorkspaceLayoutPreferences):Promise<CompanionResult<boolean>>;
 }
 declare global{interface Window{companion:CompanionBridge;}}

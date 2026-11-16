@@ -5,6 +5,7 @@ import {languages, singularLabels, technicalTemplate, variables, type HubData, t
 import {formatNoteMarkdown} from './note-markdown';
 import {KnowledgeCode} from './KnowledgeCode';
 import {MarkdownPreview} from './MarkdownPreview';
+import {positionNoteMenu} from './companion-motion';
 
 const dateLabel = new Intl.DateTimeFormat('es', {day:'numeric', month:'short', year:'numeric'});
 const statusLabels = {planned:'Planeado', active:'En curso', done:'Completado', paused:'En pausa'};
@@ -56,8 +57,8 @@ export function KnowledgeEditor(props: Props) {
     <div className="hub-tools">
       {isPrompt && <>
         <div className="hub-switch" role="group" aria-label="Vista del prompt">
-          <button type="button" aria-pressed={promptView==='markdown'} onClick={() => setPromptView('markdown')}>Markdown</button>
-          <button type="button" aria-pressed={promptView==='text'} onClick={() => setPromptView('text')}>Texto</button>
+          <button type="button" aria-pressed={promptView==='markdown'} data-ui-sound={promptView==='text'?'press':undefined} onClick={() => setPromptView('markdown')}>Markdown</button>
+          <button type="button" aria-pressed={promptView==='text'} data-ui-sound={promptView==='markdown'?'press':undefined} onClick={() => setPromptView('text')}>Texto</button>
         </div>
         {undoFormat}
       </>}
@@ -142,7 +143,7 @@ export function KnowledgeEditor(props: Props) {
         <button type="button" onClick={() => reading ? setMode('edit') : preview()} disabled={busy}>
           {reading?<Pencil size={15}/>:<Code2 size={15}/>} {reading?'Editar':isPrompt?'Vista previa':'Vista Markdown'}
         </button>
-        {saved && <details className="hub-menu">
+        {saved && <details className="hub-menu" onToggle={event=>positionNoteMenu(event.currentTarget)}>
           <summary aria-label="Acciones del elemento" title="Acciones del elemento">···</summary>
           <div>
             <button type="button" disabled={busy || dirty} onClick={props.duplicate}><Copy size={15}/>Duplicar</button>
@@ -195,7 +196,7 @@ export function KnowledgeEditor(props: Props) {
       {!isPrompt && undoFormat}
     </div> : <fieldset className="hub-edit" data-kind={kind} disabled={busy}>
       <div className="hub-fields">
-        <label htmlFor="notes-title-field">Título<input id="notes-title-field" required maxLength={noteLimits.title}
+        <label htmlFor="notes-title-field">Título<input id="notes-title-field" autoFocus={!saved && mode==='edit'} required maxLength={noteLimits.title}
           value={title} placeholder="Título del elemento" onChange={event => update({title:event.target.value})}/></label>
         {!isPrompt && folderField}
       </div>
@@ -275,9 +276,9 @@ export function KnowledgeEditor(props: Props) {
       </>}
     </fieldset>}
     {(mode!=='read' || dirty) && <footer className="hub-save">
-      <span role="status">{busy?'Guardando…':isPrompt&&!valid
+      <span role="status"><span className="hub-save-status" key={busy?'saving':dirty?'draft':saved?'saved':'new'}>{busy?'Guardando…':isPrompt&&!valid
         ?(!title.trim()?'Escribe un título.':'Escribe o pega el contenido del prompt.')
-        :dirty?(backup?'Borrador recuperable':'Cambios sin guardar'):saved?'Guardado':'Nuevo elemento'}</span>
+        :dirty?(backup?'Borrador recuperable':'Cambios sin guardar'):saved?'Guardado':'Nuevo elemento'}</span></span>
       <button type="submit" className="hub-primary" disabled={busy || !valid || !dirty}><Check size={15}/>Guardar {singularLabels[kind].toLowerCase()}</button>
     </footer>}
   </form>;

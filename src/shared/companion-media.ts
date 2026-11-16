@@ -22,7 +22,7 @@ export const MediaSnapshot=z.object({
  : !snapshot.manual);
 export type MediaSnapshot=z.infer<typeof MediaSnapshot>;
 // Automatic observation carries no session token or controls, so it cannot grant playback authority.
-export const MediaNowPlaying=z.object({...metadata,playing:z.literal(true)}).strict();
+export const MediaNowPlaying=z.object({...metadata,playing:z.boolean()}).strict();
 export type MediaNowPlaying=z.infer<typeof MediaNowPlaying>;
 export const MediaCommand=z.object({id:z.string().uuid(),session:z.string().uuid(),action:z.enum(['play','pause','previous','next','shuffle','repeat']),value:z.enum(['on','off','all','one']).optional()}).strict().refine(v=>v.action==='shuffle'?v.value==='on'||v.value==='off':v.action==='repeat'?['off','all','one'].includes(v.value??''):v.value===undefined);
 export type MediaCommand=z.infer<typeof MediaCommand>;

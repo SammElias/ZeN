@@ -383,7 +383,7 @@ ol.codex-document-list {
 
 .companion-capsule[data-motion=true] .codex-result-arrival,
 .companion-capsule[data-motion=true] .codex-reference[open] > :not(summary) {
-  animation: codex-detail-in 180ms ease-out both;
+  animation: codex-detail-in var(--motion-navigation, 160ms) var(--motion-enterEase, ease-out) both;
 }
 
 @keyframes codex-detail-in {

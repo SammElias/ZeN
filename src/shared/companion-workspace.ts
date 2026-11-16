@@ -1,5 +1,7 @@
 import {z} from 'zod';
 import {codexTabs, launcherPages, workspacePages} from './companion-navigation';
+import type {CapsuleLocation,WorkspaceLayoutPreferences} from './workspace-layout';
+import type {IslandSide} from './island';
 export {isLauncherPageSelected} from './companion-navigation';
 export const CodexTab=z.enum(codexTabs);
 export type CodexTab=z.infer<typeof CodexTab>;
@@ -10,4 +12,4 @@ export type LauncherPage=z.infer<typeof LauncherPage>;
 export const LauncherOrder=z.array(LauncherPage).length(launcherPages.length).refine(v=>new Set(v).size===launcherPages.length);
 export const CapsuleView=z.enum(['status','spotify','codex']);
 export type CapsuleView=z.infer<typeof CapsuleView>;
-export type WorkspaceState={expanded:boolean;page:WorkspacePage;codexTab?:CodexTab;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView};
+export type WorkspaceState={expanded:boolean;island?:boolean;islandSizing?:boolean;islandControls?:boolean;edge?:{side:IslandSide;railTop:number};location?:CapsuleLocation;page:WorkspacePage;codexTab?:CodexTab;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView;nativeCaption?:boolean;layout?:WorkspaceLayoutPreferences;canRestorePosition?:boolean};

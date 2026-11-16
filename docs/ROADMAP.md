@@ -4,7 +4,7 @@
 
 | Funcionalidad | Dependencias | Evidencia y alcance |
 | --- | --- | --- |
-| Cápsula, panel de altura completa, navegación, anclaje y apariencia | Electron y Windows | Recorrido Electron con perfil aislado. La comprobación física de foco y DPI es independiente. |
+| Cápsula, Workspace redimensionable, distribución inicial de media pantalla y navegación | Electron y Windows | Recorrido Electron con perfil aislado y comprobación Win32 de los bordes y el botón de maximizar. |
 | Peticiones y atajos de correo y agenda, Actividad, Resumen y avisos | CLI local, hooks y chat de Codex. Las consultas requieren sus conectores en Codex. | Destino, recibos, permisos y respuestas se verifican con fixtures. Las cuentas y conectores del usuario quedan fuera de ese recorrido. |
 | Sonido automático y controles por sesión | Sesiones publicadas por Windows | Observación, selección y comandos con sesiones simuladas. |
 | Knowledge Hub, Markdown y copia de datos y preferencias | SQLite, perfil local y selector de archivos | Se verificaron exportación, cancelación, recuperación e importación en el portable del 12 de noviembre de 2026. [Pruebas](TESTING.md) |

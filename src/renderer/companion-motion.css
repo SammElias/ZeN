@@ -1,0 +1,48 @@
+.companion-capsule { --zen-transition: var(--motion-hover) var(--motion-enterEase); }
+.companion-capsule[data-motion=true] :is(.workspace-content,.capsule-single-row) button {
+  transition: background-color var(--motion-hover) var(--motion-enterEase),
+    border-color var(--motion-hover) var(--motion-enterEase),
+    color var(--motion-hover) var(--motion-enterEase),
+    box-shadow var(--motion-press) var(--motion-exitEase);
+}
+.companion-capsule[data-motion=true] :is(.workspace-content,.capsule-single-row) button:active:not(:disabled) {
+  box-shadow: inset 0 0 0 2px rgb(171 145 239 / .26), inset 0 2px 5px #0004;
+}
+.companion-capsule .capsule-launcher { position: relative; }
+.companion-capsule .capsule-launcher button[aria-current=page]::after { opacity: 0; }
+.capsule-selection-marker {
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  border-radius: 4px;
+  background: #bca2ff;
+}
+.capsule-selection-marker[hidden] { display: none; }
+.notes-retained { display: contents; }
+.notes-retained[hidden] { display: none; }
+.companion-capsule[data-motion=true] > .capsule-single-row {
+  animation: zen-opacity-in var(--motion-navigation) var(--motion-enterEase);
+}
+.companion-capsule[data-orientation=vertical][data-sizing=true][data-island=false] > .capsule-single-row {
+  min-width: var(--edge-width);
+}
+.companion-capsule[data-motion=true] :is(.hub-menu[open] > div,.hub-sidebar[data-mobile-open=true],.workspace-layout-menu[open] > :nth-child(2)) {
+  animation: zen-menu-in var(--motion-navigation) var(--motion-enterEase);
+}
+.hub-menu[data-origin=above] { --menu-shift: 4px; }
+.hub-menu[data-origin=above] > div { top: auto; bottom: calc(100% + 4px); }
+.companion-capsule[data-motion=true] .hub-dialog[open],
+.companion-capsule[data-motion=true] .hub-dialog[open]::backdrop {
+  animation: zen-opacity-in var(--motion-panel) var(--motion-enterEase);
+}
+.companion-capsule[data-motion=true] .hub-save-status {
+  animation: zen-opacity-in var(--motion-hover) var(--motion-enterEase);
+}
+.companion-capsule[data-motion=true] .zen-island-trigger[data-flash=true] .zen-island-signal {
+  animation: zen-confirm var(--motion-panel) var(--motion-enterEase);
+}
+.companion-capsule[data-motion=false] :is(button, summary, input, select, textarea) { transition: none; }
+.companion-capsule[data-motion=false] .hub-skeleton i { animation: none; }
+@keyframes zen-opacity-in { from { opacity: .45; } to { opacity: 1; } }
+@keyframes zen-menu-in { from { opacity: .4; translate: 0 var(--menu-shift,-4px); } }
+@keyframes zen-confirm { 50% { scale: 1.18; } }

@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import type {CompanionStatus} from '../shared/codex-companion';
 import {connectionLabel, isSilenced, lastSignalLabel} from '../shared/companion-presentation';
+import {interfaceAudio} from './companion-interface-audio';
 
 function useClock(){
  const [now,setNow]=useState(Date.now());
@@ -15,6 +16,8 @@ const iconPaths = {
   settings: 'M4 7h16M4 17h16M8 4v6M16 14v6',
   arrow: 'M5 12h14m-6-6 6 6-6 6',
   close: 'm6 6 12 12M6 18 18 6',
+  collapse: 'm6 8 6 6 6-6',
+  pin: 'm14 3 7 7-3 1-4 4v4l-2 2-4-4-5 5m5-5-4-4 2-2h4l4-4z',
   lock: 'M5 11h14v10H5zM8 11V7a4 4 0 1 1 8 0v4m-4 4v2',
   lockOpen: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 7.9-1m-3.9 9v2',
   check: 'm5 12 4 4 10-10',
@@ -38,7 +41,7 @@ export function CompanionIcon({name}: {name: keyof typeof iconPaths}) {
 
 export function OpenCodex({id,children}:{id?:string;children?:React.ReactNode}){
  const [error,setError]=useState('');
- return <><button className="primary" onClick={async()=>{const r=await window.companion.openCodex(id);if(!r.ok)setError(r.error);}}>{children??(id?'Volver al chat':'Abrir Codex')}<CompanionIcon name="arrow"/></button>{error&&<small role="alert">{error}</small>}</>;
+ return <><button className="primary" onClick={async()=>{const r=await window.companion.openCodex(id);interfaceAudio.play(r.ok?'open':'error');if(!r.ok)setError(r.error);}}>{children??(id?'Volver al chat':'Abrir Codex')}<CompanionIcon name="arrow"/></button>{error&&<small role="alert">{error}</small>}</>;
 }
 export function Connection({status}:{status:CompanionStatus}){
  return <span className={'connection-status connection-'+(status.settings.paused?'paused':status.connection?.state??'unchecked')} title={status.connection?.checkedAt?'Comprobado a las '+new Date(status.connection.checkedAt).toLocaleTimeString('es'):undefined}><i/>{connectionLabel(status)}</span>;

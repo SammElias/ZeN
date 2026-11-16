@@ -1,10 +1,13 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, Grid2X2, HardDrive, List, Menu, Plus, Search, Settings2, Star, Upload, X} from 'lucide-react';
 import {noteLimits} from '../shared/companion-notes';
 import type {AppearanceState} from '../shared/companion-appearance';
-import {singularLabels, newFields, type HubAction, type HubData, type HubDraft, type HubEntry, type HubFields, type HubFileAction, type HubFolder} from '../shared/knowledge-hub';
+import {singularLabels, hubContentError, newFields, type HubAction, type HubData, type HubDraft, type HubEntry, type HubFields, type HubFileAction, type HubFolder} from '../shared/knowledge-hub';
 import {appearanceVars} from './AppearanceSettings';
 import {KnowledgeEditor} from './KnowledgeEditor';
+import {motion} from '../shared/companion-motion';
+import {canAnimate,positionNoteMenu,visibleRect} from './companion-motion';
+import {interfaceAudio} from './companion-interface-audio';
 import {aiFolderName, entryIcons, excerpt, findAiFolder, HubDashboard, HubSearch, matchText, sectionIcons, sectionLabels, type HubLocation} from './KnowledgeNavigation';
 import './NotesWorkspace.css';
 
@@ -19,17 +22,14 @@ function editing(entry: HubEntry): HubDraft {
 }
 
 function validDraft(draft: HubDraft | undefined) {
-  if (!draft?.fields.title.trim()) return false;
-  const {kind, description, code, url} = draft.fields;
-  if (kind==='note') return Boolean(description.trim());
-  if (kind==='snippet'||kind==='prompt') return Boolean(code.trim());
-  if (kind==='resource') return /^https?:\/\//i.test(url) && URL.canParse(url);
-  return true;
+  if (!draft?.fields.title.trim() || hubContentError(draft.fields)) return false;
+  const {kind, url} = draft.fields;
+  return kind !== 'resource' || /^https?:\/\//i.test(url) && URL.canParse(url);
 }
 
 export type HubDestination = 'all' | 'new' | {noteId: string};
 
-export function NotesWorkspace({appearance, destination}: {appearance: AppearanceState; destination?: HubDestination}) {
+export function NotesWorkspace({appearance, destination, visible, animate}: {appearance: AppearanceState; destination?: HubDestination; visible:boolean;animate:boolean}) {
   const [data,setData] = useState<HubData>();
   const [location,setLocation] = useState<HubLocation>({section:'dashboard'});
   const [draft,setDraft] = useState<HubDraft>();
@@ -52,18 +52,33 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
   const lock = useRef(false);
   const draftWrite = useRef(0);
   const confirmRef = useRef<HTMLDialogElement>(null);
-  const initialDestination = useRef(destination);
+  const library = useRef<HTMLDivElement>(null);
+  const listScroll = useRef(0);
+  const origin = useRef<{card:DOMRect;title?:DOMRect}|undefined>(undefined);
+  const returning = useRef<{id:string;title?:DOMRect}|undefined>(undefined);
+  const listChange = useRef<{rows:Map<string,DOMRect>;inserted?:string}|undefined>(undefined);
+  const noteEffects = useRef<Animation[]>([]);
+  const newEditor=useRef(-1);
+
+  function runMotion(element:Element, keyframes:Keyframe[],duration:number) {
+    noteEffects.current=noteEffects.current.filter(item=>item.playState==='running');
+    const animation=element.animate(keyframes,{duration,easing:motion.enterEase});
+    noteEffects.current.push(animation);
+    return animation;
+  }
+  const handledDestination = useRef<HubDestination|undefined>(undefined);
+  const stateAtRead=useRef({data,draft,dirty});
+  stateAtRead.current={data,draft,dirty};
 
   useEffect(() => {
+    if(!visible)return;
     let active=true;
     void window.companion.notesRead().then(result=>{
       if (!active) return;
       if (!result.ok) {setFeedback({text:result.error,error:true});return;}
       setData(result.value.data);
-      const target = initialDestination.current;
-      initialDestination.current = undefined;
       const recovered=result.value.draft;
-      if (recovered) {
+      if (recovered&&!stateAtRead.current.data&&!stateAtRead.current.draft&&!stateAtRead.current.dirty) {
         setDraft(recovered);
         setDirty(true);
         setDraftBackedUp(true);
@@ -74,19 +89,27 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
           section:'all', folderId:recovered.fields.kind==='note'?recovered.fields.folderId ?? undefined:undefined,
         });
         setFeedback({text:'Borrador recuperado.'});
-        if (target) confirmDiscard(()=>openDestination(target,result.value.data));
-      } else if (target) {
-        openDestination(target,result.value.data);
       }
     }).catch(()=>{if(active)setFeedback({text:'No se pudo abrir la biblioteca.',error:true});});
     return ()=>{active=false;};
-  },[retry]);
+  },[retry,visible]);
+
+  useEffect(()=>{
+    if(!destination){handledDestination.current=undefined;return;}
+    if(!data||!visible||handledDestination.current===destination)return;
+    handledDestination.current=destination;
+    guard(()=>openDestination(destination,data));
+  },[destination,data,visible]);
 
   useEffect(()=>{
     const dialog=confirmRef.current;
-    if (confirmation && dialog && !dialog.open) dialog.showModal();
-    return ()=>{if(dialog?.open)dialog.close();};
-  },[confirmation]);
+    const opener=document.activeElement;
+    if (confirmation && visible && dialog && !dialog.open) dialog.showModal();
+    return ()=>{
+      if(dialog?.open)dialog.close();
+      if(dialog&&opener instanceof HTMLElement&&opener.isConnected)opener.focus({preventScroll:true});
+    };
+  },[confirmation,visible]);
 
   function error(message: string) {setFeedback({text:message,error:true});}
   const saved=data?.entries.find(item=>item.id===draft?.id);
@@ -135,7 +158,97 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
     setReaderOpen(true);
   }
 
+  function rowRects() {
+    const root=library.current;
+    const rows=new Map<string,DOMRect>();
+    if(root&&canAnimate(root)){
+      root.querySelectorAll<HTMLElement>('[data-note-id]').forEach(row=>{
+        const rect=visibleRect(row);
+        if(rect)rows.set(row.dataset.noteId!,rect);
+      });
+    }
+    return rows;
+  }
+
+  function closeReader() {
+    if(draft?.id)returning.current={id:draft.id,title:visibleRect(library.current?.querySelector('.notes-editor-heading h2')??null)};
+    setReaderOpen(false);
+    if(readerOpen)interfaceAudio.play('close');
+  }
+
+  function fadeRemovedCard(id:string, rows:Map<string,DOMRect>) {
+    const root=library.current;
+    const card=root?.querySelector(`[data-note-id="${CSS.escape(id)}"]`);
+    const rect=rows.get(id);
+    if(!root||!card||!rect)return;
+    const ghost=card.cloneNode(true) as HTMLElement;
+    ghost.inert=true;
+    ghost.setAttribute('aria-hidden','true');
+    ghost.className='hub-removed-card';
+    Object.assign(ghost.style,{position:'fixed',left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,pointerEvents:'none',zIndex:'1',listStyle:'none'});
+    root.append(ghost);
+    void runMotion(ghost,[{opacity:.8},{opacity:0}],motion.exit).finished.then(()=>ghost.remove(),()=>ghost.remove());
+  }
+
+  useLayoutEffect(()=>{
+    const root=library.current;
+    if(!root||!visible)return;
+    const resume=returning.current,change=listChange.current;
+    returning.current=undefined;
+    listChange.current=undefined;
+    const opener=origin.current;
+    origin.current=undefined;
+    if(resume){
+      const list=root.querySelector('.notes-list');
+      if(list)list.scrollTop=listScroll.current;
+      const row=root.querySelector<HTMLButtonElement>(`[data-note-id="${CSS.escape(resume.id)}"] button`);
+      if(row&&visibleRect(row)){
+        row.focus({preventScroll:true});
+        if(canAnimate(root)){
+          const title=row.querySelector('strong'),target=visibleRect(title);
+          runMotion(row,[{backgroundColor:'var(--hub-soft)'},{backgroundColor:'transparent'}],motion.note);
+          if(title&&target&&resume.title)runMotion(title,[
+            {translate:`${Math.max(-28,Math.min(28,resume.title.x-target.x))}px ${Math.max(-15,Math.min(15,resume.title.y-target.y))}px`,opacity:.6},
+            {translate:'0 0',opacity:1}],motion.exit);
+        }
+      }
+    }
+    if(!canAnimate(root))return;
+    if(change){
+      for(const row of root.querySelectorAll<HTMLElement>('[data-note-id]')){
+        const before=change.rows.get(row.dataset.noteId!),after=visibleRect(row);
+        if(!after)continue;
+        if(before&&(before.y!==after.y||before.x!==after.x)){
+          runMotion(row,[{translate:`${before.x-after.x}px ${before.y-after.y}px`},{translate:'0 0'}],motion.navigation);
+        }else if(row.dataset.noteId===change.inserted){
+          runMotion(row,[{opacity:.25,translate:'0 8px'},{opacity:1,translate:'0 0'}],motion.navigation);
+        }
+      }
+    }
+    if(readerOpen&&(opener||newEditor.current!==editorKey)){
+      const reader=root.querySelector<HTMLElement>('.hub-reader');
+      const rect=visibleRect(reader??null);
+      if(reader&&rect){
+        const x=opener?Math.max(-36,Math.min(36,opener.card.x-rect.x)):motion.shift;
+        const y=opener?Math.max(-24,Math.min(24,opener.card.y-rect.y)):0;
+        reader.getAnimations().forEach(animation=>animation.cancel());
+        runMotion(reader,[{translate:`${x}px ${y}px`,opacity:.5},
+          {translate:'0 0',opacity:1}],motion.note);
+        const heading=reader.querySelector('.notes-editor-heading h2');
+        const title=visibleRect(heading);
+        if(heading&&title&&opener?.title){
+          runMotion(heading,[{translate:`${Math.max(-28,Math.min(28,opener.title.x-title.x-x))}px 0`,opacity:.65},{translate:'0 0',opacity:1}],motion.note);
+        }
+      }
+    }
+    newEditor.current=editorKey;
+  },[readerOpen,editorKey,data,visible]);
+  useEffect(()=>{
+    return ()=>{noteEffects.current.forEach(animation=>animation.cancel());noteEffects.current=[];};
+  },[visible,animate]);
+
   function showLocation(next: HubLocation) {
+    listScroll.current=0;
     setLocation(next);
     setDraft(undefined);
     setQuery('');
@@ -143,14 +256,26 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
     setReaderOpen(false);
     setFolderForm(undefined);
   }
-  function goto(next: HubLocation) {guard(()=>showLocation(next));}
+  function goto(next: HubLocation) {
+    guard(()=>{
+      const changed=location.section!==next.section||location.folderId!==next.folderId;
+      showLocation(next);
+      if(changed)interfaceAudio.play('navigate');
+    });
+  }
+
+  function toggleSearch(open: boolean) {
+    if(showSearch===open)return;
+    setShowSearch(open);
+    interfaceAudio.play(open?'open':'close');
+  }
 
   function openDestination(target: HubDestination, library: HubData) {
     setFeedback(undefined);
     showLocation({section:'all'});
     if (target==='all') return;
     if (target==='new') {
-      create('note');
+      create('note',false);
       return;
     }
     const entry=library.entries.find(item=>item.id===target.noteId && item.kind==='note');
@@ -158,25 +283,36 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
     else error('El apunte ya no está disponible.');
   }
 
-  function choose(entry: HubEntry, fromSearch=false) {
+  function choose(entry: HubEntry, fromSearch=false, card?:HTMLElement) {
     if (fromSearch) setShowSearch(false);
-    if (entry.id===draft?.id) {setReaderOpen(true);return;}
+    const markOrigin=()=>{
+      const rect=visibleRect(card??null);
+      origin.current=rect?{card:rect,title:visibleRect(card?.querySelector('strong')??null)}:undefined;
+    };
+    if (entry.id===draft?.id) {
+      if(!readerOpen){markOrigin();setReaderOpen(true);interfaceAudio.play('open');}
+      else if(fromSearch&&showSearch)interfaceAudio.play('close');
+      return;
+    }
     guard(()=>{
+      markOrigin();
       if (fromSearch || ['dashboard','backup','settings'].includes(section)) {
         setLocation({section:entry.kind==='prompt'?'prompt':'all'});
         setQuery('');
       }
       openEditor(editing(entry),'read');
+      interfaceAudio.play('open');
     });
   }
 
-  function create(kind: typeof creatable[number]) {
+  function create(kind: typeof creatable[number], audible=true) {
     guard(()=>{
       const folderId=kind==='note'?activeFolder?.id ?? null:null;
       if (!folderId) setLocation({section:kind==='note'?'all':'prompt'});
       setQuery('');
       setShowNav(false);
       openEditor({fields:newFields(kind,folderId)},'edit');
+      if(audible)interfaceAudio.play('open');
     });
   }
 
@@ -190,17 +326,22 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
     void storeDraft(next);
   }
 
-  async function mutate(action: HubAction, done?: (data:HubData,id?:string)=>void) {
+  async function mutate(action: HubAction, done?: (data:HubData,id?:string)=>void, audible=true) {
     if(lock.current) return;
     lock.current=true;
     setBusy(true);
     setFeedback(undefined);
     try {
       const result=await window.companion.notesChange(action);
-      if(!result.ok) {error(result.error);return;}
+      if(!result.ok) {if(audible)interfaceAudio.play('error');error(result.error);return;}
+      if(action.type==='remove'||action.type==='duplicate'||(action.type==='save'&&!action.id)){
+        listChange.current={rows:rowRects(),inserted:action.type==='remove'?undefined:result.value.id};
+        if(action.type==='remove')fadeRemovedCard(action.id,listChange.current.rows);
+      }
       setData(result.value.data);
       done?.(result.value.data,result.value.id);
-    } catch {error('No se pudo guardar el cambio.');}
+      if(audible)interfaceAudio.play('success');
+    } catch {if(audible)interfaceAudio.play('error');error('No se pudo guardar el cambio.');}
     finally {lock.current=false;setBusy(false);}
   }
 
@@ -217,32 +358,36 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
       setDraftBackedUp(false);
       setAutoBlocked(false);
       if (manual) setMode('read');
-    });
+    },manual);
     if (input && input.closest('.notes-editor')) requestAnimationFrame(()=>{
       if (input.isConnected && document.activeElement===document.body) input.focus();
     });
   }
 
   useEffect(()=>{
-    if (!dirty || !valid || mode!=='edit' || busy || autoBlocked || !draftBackedUp || confirmation) return;
+    if (!visible || !dirty || !valid || mode!=='edit' || busy || autoBlocked || !draftBackedUp || confirmation) return;
     const timer=setTimeout(()=>void save(false),1500);
     return ()=>clearTimeout(timer);
-  },[draft, dirty, valid, mode, busy, autoBlocked, draftBackedUp, confirmation]);
+  },[draft, dirty, valid, mode, busy, autoBlocked, draftBackedUp, confirmation, visible]);
 
   useEffect(()=>{
+    if(!visible)return;
     function shortcuts(event:KeyboardEvent) {
       const key=event.key.toLowerCase();
       if ((event.ctrlKey||event.metaKey) && key==='k' && data) {
-        event.preventDefault();setShowSearch(value=>!value);return;
+        event.preventDefault();toggleSearch(!showSearch);return;
       }
       if ((event.ctrlKey||event.metaKey) && key==='s' && draft && !showSearch && !confirmation) {
         event.preventDefault();void save(true);return;
       }
       if (key==='escape' && !showSearch && !confirmation) {
+        if(document.activeElement?.closest('.hub-menu[open]'))return;
         if(folderForm)setFolderForm(undefined);
         else if(showNav)setShowNav(false);
         else if(mode==='preview')setMode('edit');
-        else if(readerOpen&&mode==='read')setReaderOpen(false);
+        else if(readerOpen&&mode==='read')closeReader();
+        else return;
+        event.preventDefault();
       }
     }
     document.addEventListener('keydown',shortcuts);
@@ -304,14 +449,14 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
     style={appearanceVars({...appearance, theme:glassTheme})} aria-labelledby="notes-title">
     <div className="hub-shell">
       <aside className="hub-sidebar" data-mobile-open={showNav} aria-label="Navegación de Knowledge Hub">
-        <button type="button" className="hub-brand" onClick={()=>goto({section:'dashboard'})}>
+          <button type="button" className="hub-brand" onClick={()=>{if(section!=='dashboard')goto({section:'dashboard'});}}>
           <span><BookOpen size={18}/></span><strong>Knowledge Hub</strong>
         </button>
         <nav>
           <h2>Espacio de trabajo</h2>
           {workspace.map(key=>{
             const Icon=sectionIcons[key];
-            return <button type="button" key={key} aria-current={section===key?'page':undefined} onClick={()=>goto({section:key})}>
+            return <button type="button" key={key} aria-current={section===key?'page':undefined} onClick={()=>{if(section!==key||location.folderId)goto({section:key});}}>
               <Icon size={16}/><span>{sectionLabels[key]}</span>
             </button>;
           })}
@@ -323,11 +468,11 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
       <main className="hub-main">
         <header className="hub-top">
           <button type="button" className="hub-mobile-toggle" aria-label="Navegación" aria-expanded={showNav}
-            onClick={()=>setShowNav(value=>!value)}><Menu size={18}/></button>
-          <button type="button" className="hub-search-launch" disabled={!data} onClick={()=>setShowSearch(true)}>
+            onClick={()=>{setShowNav(!showNav);interfaceAudio.play(showNav?'close':'open');}}><Menu size={18}/></button>
+          <button type="button" className="hub-search-launch" disabled={!data} onClick={()=>toggleSearch(true)}>
             <Search size={17}/><span>Buscar en la biblioteca…</span><kbd>Ctrl K</kbd>
           </button>
-          <details className="hub-menu hub-create">
+            <details className="hub-menu hub-create" onToggle={event=>positionNoteMenu(event.currentTarget)}>
             <summary className="hub-primary"><Plus size={17}/>Nuevo</summary>
             <div>{creatable.map(kind=>{
               const Icon=entryIcons[kind];
@@ -335,7 +480,7 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
                 event.currentTarget.closest('details')?.removeAttribute('open');create(kind);
               }}><Icon size={16}/>{singularLabels[kind]}</button>;
             })}<button type="button" className="notes-new-folder" disabled={!data} onClick={event=>{
-              event.currentTarget.closest('details')?.removeAttribute('open');setFolderForm({name:'',group:'folder'});
+              event.currentTarget.closest('details')?.removeAttribute('open');setFolderForm({name:'',group:'folder'});interfaceAudio.play('open');
             }}><FolderPlus size={16}/>Carpeta</button></div>
           </details>
         </header>
@@ -415,7 +560,7 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
           </button>
         </div>}
         {data && showLibrary && (section!=='ai'||aiFolder) && <>
-          <div className="hub-library" data-reader-open={readerOpen && Boolean(draft)}>
+          <div ref={library} className="hub-library" data-reader-open={readerOpen && Boolean(draft)}>
             <aside className="hub-items" aria-label="Elementos de la sección">
               <div className="hub-toolbar">
                 <span>{items.length} {items.length===1?'elemento':'elementos'}</span>
@@ -433,10 +578,10 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
                   <option value="recent">Recientes</option><option value="name">A–Z</option>
                 </select>
               </div>
-              <ul className="notes-list">{items.map(entry=>{
+              <ul className="notes-list" onScroll={event=>{if(event.currentTarget.clientHeight)listScroll.current=event.currentTarget.scrollTop;}}>{items.map(entry=>{
                 const Icon=entryIcons[entry.kind];
-                return <li key={entry.id}><button type="button" className="notes-list-item" aria-current={draft?.id===entry.id?'true':undefined}
-                  disabled={busy} onClick={()=>choose(entry)}>
+                return <li key={entry.id} data-note-id={entry.id}><button type="button" className="notes-list-item" aria-current={draft?.id===entry.id?'true':undefined}
+                  disabled={busy} onClick={event=>choose(entry,false,event.currentTarget)}>
                   <Icon size={17}/><span><strong>{entry.title}</strong><small>{excerpt(entry.description||entry.code||entry.url)}</small></span>
                   {entry.favorite && <Star className="hub-item-star" size={13} fill="currentColor"/>}
                 </button></li>;
@@ -445,7 +590,7 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
             </aside>
             {draft && <div className="hub-reader">
               <KnowledgeEditor key={editorKey} data={data} draft={draft} saved={saved} mode={mode} busy={busy}
-                back={()=>setReaderOpen(false)}
+                back={closeReader}
                 dirty={dirty} valid={valid} backup={draftBackedUp} update={update} setMode={setMode} save={()=>void save(true)}
                 favorite={()=>saved&&void mutate({type:'favorite',id:saved.id},next=>{
                   const entry=next.entries.find(item=>item.id===saved.id);if(entry)setDraft(editing(entry));
@@ -466,8 +611,8 @@ export function NotesWorkspace({appearance, destination}: {appearance: Appearanc
         </>}
       </main>
     </div>
-    {data && showSearch && <HubSearch data={data} close={()=>setShowSearch(false)} choose={entry=>choose(entry,true)}/>}
-    {confirmation && <dialog ref={confirmRef} className="hub-dialog hub-confirm" aria-label="Confirmación"
+    {visible && data && showSearch && <HubSearch data={data} close={()=>toggleSearch(false)} choose={entry=>choose(entry,true)}/>}
+    {visible && confirmation && <dialog ref={confirmRef} className="hub-dialog hub-confirm" aria-label="Confirmación"
       onCancel={event=>{event.preventDefault();setConfirmation(undefined);}}>
       <p>{confirmation.text}</p>
       <div className="hub-tools"><button type="button" autoFocus onClick={()=>setConfirmation(undefined)}>Cancelar</button>

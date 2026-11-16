@@ -22,6 +22,8 @@ npm run package:single -- $paquete.destination
 
 El portable se genera en `release/single-file/ZEN.exe`. Para trabajar en el repositorio, ejecuta `npm run build:native` y `npm run dev`. Para arrancar un bundle ya compilado, usa `npm start`. `npm run build` verifica tipos y genera los bundles de producción.
 
+Para regenerar los recursos de marca desde el PNG original, ejecuta `node scripts/app-icons.mjs` con Microsoft Edge instalado. `public/icons/zen.ico` es el recurso común del ejecutable, el portable, la ventana, la bandeja y el favicon. `public/icons/zen-256.png` alimenta el componente de marca.
+
 ## 03 · Configurar el equipo ![](assets/turquesa.svg)
 
 ZEN guarda el perfil en `%APPDATA%\ZEN`. El flujo activo usa la cuenta iniciada en Codex y puede arrancar sin configurar variables. `CODEX_HOME` es opcional y selecciona la raíz de Codex. El valor por defecto es `.codex` en el perfil del usuario.
@@ -51,5 +53,6 @@ Las copias anteriores de la biblioteca se restauran en **Apuntes → Respaldo y 
 
 - Valida el artefacto con `node scripts/single-file-smoke.mjs release/single-file/ZEN.exe` y comprueba su SHA-256 con `Get-FileHash .\release\single-file\ZEN.exe -Algorithm SHA256`. Los informes de empaquetado se generan en `docs/evidence/`. [Pruebas](TESTING.md)
 - Para actualizar, sal de ZEN desde la bandeja, conserva una copia del EXE anterior en `release/` y reemplaza el ejecutable. Si se ha pedido instalarlo en el escritorio, entrega solo `ZEN.exe`. Comprueba el hash y el arranque sin reiniciar Codex.
+- Los accesos directos de ZEN deben apuntar al `ZEN.exe` portable. La ventana comunica esa ruta a Windows para que el botón de la barra de tareas pueda mostrar el icono y volver a abrir ZEN después de salir.
 - Si falla el arranque, cierra ZEN y restaura el EXE anterior. Para recuperar datos tras una importación, importa la copia que ZEN guardó en `backups` con una versión compatible.
 - Antes de publicar, revisa qué archivos se subirán. El repositorio admite fuentes y documentación revisadas. El EXE se distribuye como activo de Release únicamente cuando se autoriza esa entrega. [Reglas de trabajo](../AGENTS.md)

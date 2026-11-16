@@ -50,9 +50,13 @@ export function HubSearch({data, close, choose}: {data:HubData; close:()=>void; 
   const activeEntry = results[active];
   useEffect(()=>{
     const dialog=modal.current;
+    const opener=document.activeElement;
     dialog?.showModal();
     search.current?.focus();
-    return ()=>{if(dialog?.open) dialog.close();};
+    return ()=>{
+      if(dialog?.open)dialog.close();
+      if(opener instanceof HTMLElement&&opener.isConnected)opener.focus({preventScroll:true});
+    };
   },[]);
   useEffect(()=>{if(activeEntry) document.getElementById('hub-result-'+activeEntry.id)?.scrollIntoView({block:'nearest'});},[activeEntry]);
 

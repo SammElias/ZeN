@@ -1,12 +1,13 @@
 import {z} from 'zod';
 import {AppearanceOptions} from './companion-appearance';
-import {CompanionSettingsSchema} from './codex-companion';
+import {CompanionSettingsSchema,migrateWindowPreferences} from './codex-companion';
 import {LauncherOrder} from './companion-workspace';
 import {HubData, HubDraft} from './knowledge-hub';
 
 export const PortableSettings = CompanionSettingsSchema.pick({
-  shortcut:true, returnShortcut:true, motion:true, sounds:true, notifications:true,
-  followPointerDisplay:true, respectFullscreen:true, keepOnTop:true,
+  shortcut:true, returnShortcut:true, motion:true, sounds:true, interfaceSounds:true, interfaceVolume:true, notifications:true,
+  followPointerDisplay:true, respectFullscreen:true, windowLocked:true, alwaysOnTop:true, dismissCapsuleOnOutsideClick:true,
+  hideCapsuleFromTaskbar:true, collapseOnBlur:true, keepExpanded:true,
 });
 
 export const PortableAppearance = z.object({
@@ -21,7 +22,7 @@ export type PortableAppearance = z.infer<typeof PortableAppearance>;
 export const CompanionBackup = z.object({
   format:z.literal('zen-backup'),
   version:z.literal(1),
-  settings:PortableSettings,
+  settings:z.preprocess(migrateWindowPreferences,PortableSettings),
   appearance:PortableAppearance,
   order:LauncherOrder,
   library:HubData,

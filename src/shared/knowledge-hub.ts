@@ -53,6 +53,12 @@ export const HubFields = z.object({
 }).strict();
 export type HubFields = z.infer<typeof HubFields>;
 
+export function hubContentError(fields: HubFields): string | undefined {
+  if (fields.kind === 'note' && !fields.description.trim()) return 'Escribe el contenido del apunte.';
+  if ((fields.kind === 'snippet' || fields.kind === 'prompt') && !fields.code.trim()) return 'Escribe el código o el texto.';
+  if (fields.kind === 'resource' && !fields.url) return 'Introduce la URL del recurso.';
+}
+
 export const HubEntry = HubFields.extend({id, createdAt: date, updatedAt: date, copiedAt: date.optional()}).strict();
 export type HubEntry = z.infer<typeof HubEntry>;
 export type RecentHubNote = Pick<HubEntry, 'id' | 'title' | 'updatedAt' | 'favorite'> & {folder: string | null};

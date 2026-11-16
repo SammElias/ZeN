@@ -2,7 +2,7 @@ import React, {useLayoutEffect, useRef, useState} from 'react';
 import type {CompanionSession, CompanionStatus} from '../shared/codex-companion';
 import {codexTabs, type CodexTab} from '../shared/companion-navigation';
 import {activeSession, completionDetail, currentChat, phaseNames as names} from '../shared/companion-presentation';
-import {CodexContext} from './CodexContext';
+import {CodexContext,type ContextDraft} from './CodexContext';
 import {CompanionIcon, Connection, OpenCodex, Signal} from './CompanionActions';
 import {CopyVisible, SearchField, Segments, searchText} from './WorkspaceTools';
 import {MarkdownPreview as CodexReplyText} from './MarkdownPreview';
@@ -19,7 +19,7 @@ function Completion({session,full=false}:{session:CompanionSession;full?:boolean
 
 const tabNames = {activity: 'Actividad', summary: 'Resumen'} satisfies Record<CodexTab, string>;
 
-export function CodexWorkspace({status, monochrome}: {status: CompanionStatus; monochrome: boolean}) {
+export function CodexWorkspace({status, monochrome, visible, memory}: {status: CompanionStatus; monochrome: boolean; visible:boolean;memory:{current?:ContextDraft}}) {
  const root = useRef<HTMLElement>(null);
  const permissions = status.workspace?.page === 'permissions';
  const tab = permissions ? 'activity' : status.workspace?.codexTab ?? 'activity';
@@ -61,10 +61,10 @@ export function CodexWorkspace({status, monochrome}: {status: CompanionStatus; m
   <div role="tabpanel" id={'codex-panel-' + tab} aria-labelledby={'codex-tab-' + tab} tabIndex={0}>
    {monochrome && <h2 className="codex-pane-title">{permissions ? 'Permisos' : tabNames[tab]}</h2>}
    {error && <p role="alert">{error}</p>}
-   {tab === 'summary' ? <CodexSummary status={status}/>
+   {tab === 'summary' ? <CodexSummary status={status} visible={visible} memory={memory}/>
     : permissions ? <>
      <button className="codex-back-activity" onClick={() => select('activity')}>← Actividad</button>
-     <Approvals status={status}/>
+     {visible&&<Approvals status={status}/>}
     </> : <Activity status={status}/>}
   </div>
  </section>;
@@ -85,7 +85,7 @@ function Activity({status}:{status:CompanionStatus}){
  return <>
   <div className="activity-summary"><div><Connection status={status}/><Signal status={status}/></div><div className="actions"><button className="codex-permissions" onClick={()=>void window.companion.navigate('permissions')}>Permisos{status.approvals.length?' · '+status.approvals.length:''}</button><OpenCodex id={currentChat(status)}/></div></div>
   {status.targetError&&<p role="alert">{status.targetError}</p>}
-  {status.sessions.length>0&&<div className="view-toolbar activity-tools"><SearchField value={query} onChange={setQuery} label="Buscar actividad" placeholder="Buscar acción o comando…"/><Segments label="Tipo de actividad" value={kind} onChange={setKind} items={[{value:'all',label:'Todo'},{value:'commands',label:'Comandos'},{value:'files',label:'Archivos'}]}/><button aria-pressed={recent} onClick={()=>setRecent(v=>!v)}>{recent?'Recientes primero':'Antiguos primero'}</button><button aria-pressed={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Plegar detalles':'Ver detalles'}</button><small className="view-count">{shown} / {total}</small></div>}
+  {status.sessions.length>0&&<div className="view-toolbar activity-tools"><SearchField value={query} onChange={setQuery} label="Buscar actividad" placeholder="Buscar acción o comando…"/><Segments label="Tipo de actividad" value={kind} onChange={setKind} items={[{value:'all',label:'Todo'},{value:'commands',label:'Comandos'},{value:'files',label:'Archivos'}]}/><button aria-pressed={recent} data-ui-sound="press" onClick={()=>setRecent(v=>!v)}>{recent?'Recientes primero':'Antiguos primero'}</button><button aria-pressed={expanded} data-ui-sound="press" onClick={()=>setExpanded(v=>!v)}>{expanded?'Plegar detalles':'Ver detalles'}</button><small className="view-count">{shown} / {total}</small></div>}
   {total>0&&shown===0&&<p className="view-empty">No hay acciones que coincidan. Cambia el filtro o la búsqueda.</p>}
   {status.sessions.length===0?<div className="companion-empty"><CompanionIcon name="code"/><h2>Esperando actividad de este chat</h2></div>:sessions.map(({session:s,steps})=><article className={'companion-card session-card '+(s.id===current?.id?'current-session':'')} key={s.id}>
    <div className="session-heading"><h2>{s.label}</h2><span className={'state-'+s.state}>{names[s.state]}</span></div><small>{s.cwd}</small>
@@ -93,12 +93,12 @@ function Activity({status}:{status:CompanionStatus}){
   </article>)}
  </>;
 }
-function CodexSummary({status}:{status:CompanionStatus}){
+function CodexSummary({status,visible,memory}:{status:CompanionStatus;visible:boolean;memory:{current?:ContextDraft}}){
  const current=activeSession(status),session=status.target?current:undefined,reply=!status.settings.presentation&&!status.settings.paused?session?.lastReply:undefined;
  const privateMode=status.settings.paused||status.settings.presentation;
  return <>
   {status.targetError&&<p role="alert">{status.targetError}</p>}
-  <CodexContext key={privateMode?'private':JSON.stringify([status.target?.session,status.target?.cwd,status.targetError])} disabled={privateMode} targetTitle={status.targetError?undefined:status.target?.title}>
+  <CodexContext key={privateMode?'private':JSON.stringify([status.target?.session,status.target?.cwd,status.targetError])} disabled={privateMode} visible={visible} memory={memory} targetTitle={status.targetError?undefined:status.target?.title}>
   {reply?<article className="companion-card codex-last-response" aria-label="Última respuesta de Codex"><header><div><h2>Última respuesta</h2><small>{new Date(reply.at).toLocaleString('es')}</small></div><div className="actions"><OpenCodex id={session?.id}>Abrir Codex</OpenCodex><CopyVisible text={reply.text} label="Copiar respuesta"/></div></header><CodexReplyText className="codex-last-response-text" text={reply.text}/>{reply.truncated&&<small>Abre Codex para leer la respuesta completa.</small>}</article>:<div className="companion-empty codex-summary-empty"><h2>{status.settings.presentation||status.settings.paused?'Contenido oculto':'Todavía no hay una respuesta'}</h2><OpenCodex id={currentChat(status)}/></div>}
   </CodexContext>
   {current?.state==='finished'&&<section className="companion-card codex-turn-summary" aria-label="Resumen del turno"><h2>Resumen del turno</h2><Completion session={current} full={!status.settings.presentation}/></section>}

@@ -6,6 +6,16 @@ using System.Text.Json;
 if(args is ["--verify-history"]){Console.WriteLine(JsonSerializer.Serialize(WindowHistory.Verify()));return;}
 if(!OperatingSystem.IsWindows())return;
 Native.SetProcessDpiAwarenessContext((nint)(-4));
+if(args is ["--client-inset",var handle,var processId]&&long.TryParse(handle,out var raw)&&uint.TryParse(processId,out var expectedPid)){
+ var window=(nint)raw;
+ Native.GetWindowThreadProcessId(window,out var pid);
+ var client=new Native.POINT();
+ if(pid!=expectedPid||!Native.GetWindowRect(window,out var rect)||!Native.ClientToScreen(window,ref client))return;
+ var dpi=Native.GetDpiForWindow(window);
+ if(dpi==0)return;
+ Console.WriteLine(JsonSerializer.Serialize(new { x=(client.x-rect.left)*96d/dpi, y=(client.y-rect.top)*96d/dpi }));
+ return;
+}
 if(args is ["--restore"]){
  try{
   var line=await Console.In.ReadLineAsync();if(line is null||line.Length>1000)throw new Exception();
@@ -58,6 +68,7 @@ static class Native{
  };
  public delegate void WinEvent(nint hook,uint ev,nint hwnd,int obj,int child,uint thread,uint time);
  [StructLayout(LayoutKind.Sequential)]public struct RECT{public int left,top,right,bottom;}
+ [StructLayout(LayoutKind.Sequential)]public struct POINT{public int x,y;}
  [StructLayout(LayoutKind.Sequential)]public struct MONITORINFO{public uint size;public RECT monitor,work;public uint flags;}
  [StructLayout(LayoutKind.Sequential)]public struct MSG{public nint hwnd;public uint message;public nuint wParam;public nint lParam;public uint time;public int x,y;public uint extra;}
  public static WindowId? Identity(nint hwnd){try{if(hwnd==0||!IsWindow(hwnd))return null;GetWindowThreadProcessId(hwnd,out var pid);using var p=Process.GetProcessById((int)pid);return new(hwnd.ToString(),(int)pid,p.StartTime.ToUniversalTime().Ticks.ToString());}catch{return null;}}
@@ -92,6 +103,8 @@ static class Native{
  [DllImport("user32.dll")]public static extern nint GetWindowLongPtrW(nint hwnd,int index);
  [DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern int GetClassNameW(nint hwnd,System.Text.StringBuilder name,int count);
  [DllImport("user32.dll")]public static extern bool GetWindowRect(nint hwnd,out RECT rect);
+ [DllImport("user32.dll")]public static extern bool ClientToScreen(nint hwnd,ref POINT point);
+ [DllImport("user32.dll")]public static extern uint GetDpiForWindow(nint hwnd);
  [DllImport("dwmapi.dll")]public static extern int DwmGetWindowAttribute(nint hwnd,int attribute,out RECT rect,int size);
  [DllImport("user32.dll")]public static extern nint MonitorFromWindow(nint hwnd,uint flags);
  [DllImport("user32.dll")]public static extern bool GetMonitorInfoW(nint monitor,ref MONITORINFO info);

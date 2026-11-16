@@ -2,9 +2,12 @@
 
 ## 01 · Abrir y navegar ![](assets/violeta.svg)
 
-- Abre ZEN desde la bandeja o con `Ctrl+Alt+Z`, si conservas el atajo inicial. La cápsula muestra Codex y Sonido al mismo tiempo.
-- Selecciona **Inicio**, **Codex**, **Sonido** o **Apuntes**. Cambiar de sección conserva el panel desplegado. Pulsar de nuevo la activa lo recoge. **Avisos** está en la campana.
-- Arrastra desde el agarre. Las flechas alinean la cápsula a izquierda, centro o derecha en la parte superior del monitor actual. El candado controla si permanece encima. La **X** oculta ZEN. **Salir** cierra el proceso desde la bandeja.
+- Abre ZEN desde la bandeja o con `Ctrl+Alt+Z`, si conservas el atajo inicial. En la isla, activa el emblema con un clic, Enter o Espacio para abrir la barra.
+- Selecciona **Inicio**, **Codex**, **Sonido**, **Apuntes** o **Ajustes** en la barra. Cambiar de sección conserva el panel desplegado. Pulsar de nuevo la sección activa conserva su contenido. **Avisos** está en la campana.
+- Elige **Arriba**, **Izquierda**, **Derecha** o **Flotante** en **Ubicación de ZEN**, visible en la isla y en la barra. Puedes usar Tab y activar un botón con Enter o Espacio. El selector funciona con el candado puesto y conserva el panel abierto al moverlo.
+- Usa el candado junto al agarre para bloquear o desbloquear el arrastre desde la isla compacta o la barra. ZEN guarda el monitor, el anclaje y la última geometría flotante. Los paneles se abren hacia el interior junto a la barra. **Contraer a isla** oculta el panel y el emblema lo recupera. Escape cierra primero el menú o diálogo activo.
+- El pie reúne candado, **Más opciones** y **Contraer a isla**. El menú agrupa **Volver a mi aplicación**, **Ajustar posición**, **Siempre encima** y **Apariencia y preferencias**. La **X** y **Minimizar ZEN** llevan la ventana a la barra de tareas. Vuelve a la misma vista desde la barra, Alt+Tab o la bandeja. **Salir de ZEN** cierra la aplicación por completo.
+- **Más opciones → Distribución de ventana** permite elegir ubicación y controlar la restauración al iniciar. También ofrece las dos mitades, ventana libre, maximizar y recuperar la posición anterior. **Mantener expandida** evita la contracción al perder foco.
 - `Ctrl+Alt+C`, si conservas el atajo, vuelve al chat observado o fijado. **Volver a mi aplicación** usa la ventana anterior cuando puede recuperarla.
 
 ## 02 · Pedir, revisar y continuar ![](assets/azul.svg)
@@ -30,6 +33,21 @@ El respaldo de **Preferencias → Datos y configuración** traslada la bibliotec
 
 Sonido muestra el título y la fuente que publica Windows. Puedes seleccionar una sesión y usar sus controles disponibles. Cuando no hay una sesión, aparece **Sin reproducción**. En Preferencias, guarda el tema, el fondo y la densidad del cristal después de previsualizarlos. Pausa y Presentación limitan contenido y acciones sensibles según la vista.
 
+En **Preferencias → Sonidos y avisos**, puedes activar los efectos, regular el volumen y preescuchar la apertura con el ajuste actual antes de pulsar **Guardar**. El volumen inicial es 18 %. Los perfiles anteriores heredan el ajuste de sonidos de aviso hasta que elijas un valor propio para la interfaz. Pausa, Presentación y el silencio temporal se aplican a ambos. El volumen multimedia se controla desde Sonido.
+
+## Preferencias
+
+Abre **Preferencias** desde **Ajustes** en la barra, Inicio o **Más opciones**. La vista recuerda la última categoría y **Volver** recupera la sección anterior. Los borradores siguen disponibles al cambiar de categoría. El guardado se confirma después de que ZEN lo aplica.
+
+| Categoría | Ajustes y acciones |
+| --- | --- |
+| Apariencia | Tema, acento, fondo, opacidad y desenfoque interno. La previsualización temporal se suspende al salir de la categoría. Elegir o cambiar el archivo de imagen se aplica al momento. Usa un fondo predefinido o **Quitar de la vista** para dejar de mostrar la imagen y confirma con **Guardar apariencia**. |
+| Isla y cápsula | Ubicación, candado, mantener expandida, restauración al inicio y acceso a distribución. Estos controles se aplican al momento. Pulsa **Guardar** para aplicar siempre encima, monitor del puntero, pantalla completa, clic fuera, contracción al perder el foco, barra de tareas y animaciones. |
+| Sonidos y avisos | Efectos, volumen, preescucha, notificaciones, sonidos de aviso, Pausa y Presentación. El silencio temporal y la prueba de aviso actúan sobre la configuración guardada. |
+| Atajos | Mostrar cápsula y volver al chat de Codex. ZEN comprueba conflictos al guardar. |
+| Datos y configuración | Exportar, importar y preparar el restablecimiento de apariencia. El restablecimiento abre Apariencia con los valores iniciales para revisar y guardar. |
+| Conexión y diagnóstico | Estado de Codex, cuenta, chat fijado y señal. En **Detalles técnicos** están la revisión de hooks y el comando de copia. **Acerca de ZEN** muestra las atribuciones. |
+
 | Estado | Comportamiento esperado |
 | --- | --- |
 | Cargando | La petición o lectura muestra progreso cuando existe y evita duplicar el envío. |
@@ -39,4 +57,4 @@ Sonido muestra el título y la fuente que publica Windows. Puedes seleccionar un
 
 ## 05 · Tamaño y accesibilidad ![](assets/rosa.svg)
 
-El panel usa el alto disponible del monitor. En tamaños estrechos se priorizan los iconos etiquetados, los controles pueden distribuirse en dos filas dentro de la cabecera y los contenidos largos desplazan su propia zona. Comprobar foco, navegación por teclado, textos largos y movimiento reducido con los criterios de [Diseño](DESIGN_SYSTEM.md).
+El panel aprovecha el tamaño de la ventana. En tamaños estrechos se priorizan los iconos, los controles pueden distribuirse en dos filas dentro de la cabecera y los contenidos largos desplazan su propia zona. Comprobar foco, navegación por teclado, textos largos y movimiento reducido con los criterios de [Diseño](DESIGN_SYSTEM.md).

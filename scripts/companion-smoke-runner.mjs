@@ -18,7 +18,7 @@ export function companionSmokePassed(result) {
   return result?.passed === true && result.companionOnly === true && result.capsuleNoAuthority === true;
 }
 
-export async function runCompanionSmoke(executable, { timeout = 65000 } = {}) {
+export async function runCompanionSmoke(executable, { timeout = 150000 } = {}) {
   const sourceMode = !executable;
   const binary = sourceMode ? createRequire(import.meta.url)('electron') : resolve(executable);
   const args = sourceMode ? ['.', '--zen-shell-smoke'] : ['--zen-shell-smoke'];

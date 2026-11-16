@@ -11,7 +11,7 @@ const maximumBytes=52*1024*1024;
 export const backupSuffix='.zen-backup.json';
 export const backupName=()=>`ZEN-${new Date().toISOString().slice(0,10)}${backupSuffix}`;
 
-type BackupSources = {
+export type BackupSources = {
   appearance:CompanionAppearance;
   launcher:CompanionLauncher;
   notes:KnowledgeHub;

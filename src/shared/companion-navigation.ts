@@ -6,8 +6,6 @@ export type CodexTab = typeof codexTabs[number];
 export type LauncherPage = typeof launcherPages[number];
 export type WorkspacePage = typeof workspacePages[number];
 
-export function isLauncherPageSelected(page: WorkspacePage, launcher: LauncherPage) {
-  return page === launcher ||
-    (launcher === 'codex' && page === 'permissions') ||
-    (launcher === 'home' && page === 'settings');
+export function isLauncherPageSelected(page: WorkspacePage, launcher: LauncherPage | 'settings') {
+  return page === launcher || (launcher === 'codex' && page === 'permissions');
 }

@@ -1,6 +1,7 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {CodexRequest, MAX_CODEX_REQUEST} from '../shared/companion-request';
 import {CompanionIcon} from './CompanionActions';
+import {interfaceAudio} from './companion-interface-audio';
 
 const quickRequests = [
   {
@@ -13,19 +14,11 @@ const quickRequests = [
   },
 ] as const;
 
-export function CodexRequestForm({fixedChat}: {fixedChat?: string}) {
-  const [draft, setDraft] = useState('');
+export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string;draft:string;setDraft:(value:string)=>void}) {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{text: string; error?: boolean}>();
   const inFlight = useRef(false);
 
-  useEffect(() => {
-    const hide = () => {
-      if (document.hidden) setDraft('');
-    };
-    document.addEventListener('visibilitychange', hide);
-    return () => document.removeEventListener('visibilitychange', hide);
-  }, []);
 
   async function submit(text: string, clearDraft = false) {
     if (inFlight.current || !CodexRequest.safeParse(text).success) return;
@@ -35,23 +28,28 @@ export function CodexRequestForm({fixedChat}: {fixedChat?: string}) {
     try {
       const result = await window.companion.openRequest(text);
       if (!result.ok) {
+        interfaceAudio.play('error');
         setFeedback({text: result.error, error: true});
         return;
       }
       if (result.value.mode === 'queued') {
+        interfaceAudio.play('success');
         if (clearDraft) setDraft('');
         setFeedback({text: 'En cola en el chat fijado de Codex.'});
         return;
       }
       if (!result.value.opened) {
+        interfaceAudio.play('error');
         setFeedback({text: 'Petición copiada. Abre Codex, pégala con Ctrl+V y pulsa Enviar.', error: true});
         return;
       }
       if (clearDraft) setDraft('');
+      interfaceAudio.play('success');
       setFeedback({text: result.value.mode === 'clipboard'
         ? 'Petición copiada. Pégala con Ctrl+V y pulsa Enviar en Codex.'
         : 'Petición preparada. Pulsa Enviar en Codex.'});
     } catch {
+      interfaceAudio.play('error');
       setFeedback({text: 'ZEN no recibió confirmación. Revisa Codex antes de reintentar.', error: true});
     } finally {
       inFlight.current = false;
@@ -91,8 +89,9 @@ export function CodexRequestForm({fixedChat}: {fixedChat?: string}) {
       {fixedChat && <button type="button" onClick={async () => {
         try {
           const result = await window.companion.openCodex();
-          if (result.ok) return;
+          if (result.ok) {interfaceAudio.play('open');return;}
         } catch {/* Report the launch failure in the form. */}
+        interfaceAudio.play('error');
         setFeedback({text: 'No se pudo abrir el chat fijado en Codex.', error: true});
       }}>Abrir chat</button>}
     </div>}

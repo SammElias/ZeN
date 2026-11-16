@@ -3,6 +3,9 @@ import {z} from 'zod';
 import type {CompanionBridge} from '../shared/codex-companion';
 import {companionChannel, type CompanionCommand} from '../shared/companion-ipc';
 
+export type CompanionIpcHandler = ReturnType<typeof companionIpc>;
+export type CompanionWindowDialog = <T>(show: () => Promise<T>) => Promise<T>;
+
 type CommandValue<Command extends CompanionCommand> =
   Extract<Awaited<ReturnType<CompanionBridge[Command]>>, {ok: true}>['value'];
 

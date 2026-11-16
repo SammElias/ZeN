@@ -32,7 +32,9 @@ string Source(string id){
 bool Browser(string source)=>source is "Google Chrome" or "Microsoft Edge" or "Firefox" or "Brave" or "Opera" or "Vivaldi";
 (string Title,string Artist,string Album) TrackText(GlobalSystemMediaTransportControlsSessionMediaProperties props)
  =>(Clean(props.Title),Clean(props.Artist),Clean(props.AlbumTitle));
-bool Playing(GlobalSystemMediaTransportControlsSession s){try{return s.GetPlaybackInfo().PlaybackStatus==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;}catch{return false;}}
+GlobalSystemMediaTransportControlsSessionPlaybackStatus? PlaybackStatus(GlobalSystemMediaTransportControlsSession s){try{return s.GetPlaybackInfo().PlaybackStatus;}catch{return null;}}
+bool Playing(GlobalSystemMediaTransportControlsSession s)=>PlaybackStatus(s)==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+bool Paused(GlobalSystemMediaTransportControlsSession s)=>PlaybackStatus(s)==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused;
 bool Live()=>selected is not null&&selectedGeneration==Volatile.Read(ref generation)&&manager!.GetSessions().Any(s=>s.Equals(selected));
 void Clear(){selected=null;selectedId=null;selectedGeneration=-1;artKey=null;art=null;manual=false;}
 void Select(string token,GlobalSystemMediaTransportControlsSession session,int epoch,bool pinned){
@@ -67,18 +69,21 @@ async Task<object> Read(){
 }
 async Task<object> NowPlaying(){
  var available=manager!.GetSessions().ToArray();
- var candidate=NowPlayingSelection.Pick(available,observed,manager.GetCurrentSession(),Playing,s=>s.SourceAppUserModelId);
+ var current=manager.GetCurrentSession();
+ var candidate=NowPlayingSelection.Pick(available,observed,current,Playing,s=>s.SourceAppUserModelId)
+  ?? NowPlayingSelection.Pick(available,observed,current,Paused,s=>s.SourceAppUserModelId);
  if(candidate is null){observed=null;observedArtKey=null;observedArt=null;return new{track=(object?)null};}
  if(!candidate.Equals(observed)){observed=candidate;observedArtKey=null;observedArt=null;}
  // This read path never writes selected/selectedId/sessions or invokes playback controls.
  var props=await candidate.TryGetMediaPropertiesAsync();
  var text=TrackText(props);
  if(text!=observedArtKey){observedArtKey=text;observedArt=await Artwork(props);}
- if(!manager.GetSessions().Any(s=>s.Equals(candidate))||!Playing(candidate)){
+ var playback=PlaybackStatus(candidate);
+ if(!manager.GetSessions().Any(s=>s.Equals(candidate))||playback is not (GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing or GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused)){
   observed=null;observedArtKey=null;observedArt=null;return new{track=(object?)null};
  }
  var source=Source(candidate.SourceAppUserModelId);
- return new{track=(object)new{source,browser=Browser(source),title=text.Title,artist=text.Artist,album=text.Album,artwork=observedArt,playing=true}};
+ return new{track=(object)new{source,browser=Browser(source),title=text.Title,artist=text.Artist,album=text.Album,artwork=observedArt,playing=playback==GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing}};
 }
 async Task<object> Snapshot(bool followSystem){
  var epoch=Volatile.Read(ref generation);

@@ -94,10 +94,8 @@ else {
 app.on('second-instance', () => invokeFromInstance());
 void app.whenReady().then(async () => {
   const appIconPath = join(__dirname, 'renderer', 'icons', 'zen.ico');
-  const trayIconPath = join(__dirname, 'renderer', 'icons', 'tray.ico');
   const appIcon = nativeImage.createFromPath(appIconPath);
-  const trayIcon = nativeImage.createFromPath(trayIconPath);
-  if (appIcon.isEmpty() || trayIcon.isEmpty()) throw new ZenError('No se pudieron cargar los iconos de ZEN. Vuelve a compilar el paquete completo.');
+  if (appIcon.isEmpty()) throw new ZenError('No se pudo cargar el icono de ZEN. Vuelve a compilar el paquete completo.');
   const smoke = process.argv.some(value=>['--zen-smoke','--zen-objective-smoke','--zen-desktop-live-smoke','--zen-image-chat-smoke','--zen-folder-context-smoke','--zen-pet-smoke','--zen-interactions-smoke','--zen-shell-smoke'].includes(value));
   const petSmoke=process.argv.includes('--zen-pet-smoke'),interactionSmoke=process.argv.includes('--zen-interactions-smoke');
   const desktopLive = process.argv.includes('--zen-desktop-live-smoke');
@@ -788,7 +786,7 @@ void app.whenReady().then(async () => {
   handle('live-end', liveId, id => voice.end(id));
   handle('live-submit', z.string().uuid(), id => voice.submit(id));
   handle('clear-logs', noArg, () => { ensureIdle(); store.clearLogs(); return true; });
-  tray = new Tray(trayIconPath); tray.setToolTip('ZEN · Disponible');
+  tray = new Tray(appIconPath); tray.setToolTip('ZEN · Disponible');
   const openPreferences = async (show = true) => {
     if (preferences && !preferences.isDestroyed()) { preferences.show(); preferences.focus(); return; }
     preferences = new BrowserWindow({ width: 580, height: 680, title: 'ZEN · Preferencias', icon: appIconPath, show: false, backgroundColor: '#111115', webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } });
