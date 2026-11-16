@@ -2,7 +2,7 @@ import React, {lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useS
 import {CompanionSettingsSchema, type CompanionStatus} from '../shared/codex-companion';
 import {activeSession, connectionLabel, phaseNames as names} from '../shared/companion-presentation';
 import {defaultAppearance, type AppearanceState} from '../shared/companion-appearance';
-import type {LauncherPage, WorkspacePage} from '../shared/companion-workspace';
+import type {LauncherPage, SectionActivation, SectionPage, WorkspacePage} from '../shared/companion-workspace';
 import {CAPSULE_HEIGHT, CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT} from '../shared/island';
 import {launcherPages} from '../shared/companion-navigation';
 import {canAnimate,motionStyle} from './companion-motion';
@@ -23,6 +23,8 @@ import {ZenStatusMark} from './ZenStatusMark';
 import type {HubDestination} from './NotesWorkspace';
 import {DynamicIsland} from './DynamicIsland';
 import {CapsulePosition} from './CapsulePosition';
+import {defaultNeon} from '../shared/companion-neon';
+import {NeonBorder} from './NeonBorder';
 
 const NotesWorkspace = lazy(() => import('./NotesWorkspace').then(module => ({default:module.NotesWorkspace})));
 const narrowCapsule = window.matchMedia(`(max-width: ${CAPSULE_POSITION.narrowAt}px)`);
@@ -115,6 +117,7 @@ export function CodexCompanion(){
  const root=useRef<HTMLElement>(null),panel=useRef<HTMLElement>(null);
  const scroll=useRef<Partial<Record<WorkspacePage,number>>>({});
  const previousPage=useRef<WorkspacePage|undefined>(undefined);
+ const panelWasOpen=useRef(false);
  const previousSettingsPage=useRef<WorkspacePage>('home');
  const [settingsOpened,setSettingsOpened]=useState(false);
  const viewAnimation=useRef<Animation|undefined>(undefined);
@@ -123,6 +126,8 @@ export function CodexCompanion(){
  const contextMemory=useMemo<{current?:ContextDraft}>(()=>({}),[contextKey]);
  const [notesOpened,setNotesOpened]=useState(false);
  const focusDestination=useRef<'island'|'rail'|undefined>(undefined);
+ const activationAttempt=useRef(0);
+ const [sectionFocus,setSectionFocus]=useState<(SectionActivation&{section:SectionPage})>();
  const menuOpener=useRef<HTMLElement|null>(null);
  const [themePreview,setThemePreview]=useState<AppearanceState>();
  const [notesDestination,setNotesDestination]=useState<HubDestination>();
@@ -164,6 +169,19 @@ export function CodexCompanion(){
   focusDestination.current=compact?'island':'rail';
   void window.companion.island(compact).then(r=>{if(!r.ok){focusDestination.current=undefined;setError(r.error);}});
  };
+ const activateSection=async(section:SectionPage,keyboard:boolean)=>{
+  const attempt=++activationAttempt.current;
+  focusDestination.current=undefined;
+  setSectionFocus(undefined);
+  try {
+   const result=await window.companion.togglePage(section);
+   if(attempt!==activationAttempt.current)return;
+   if(!result.ok){setError(result.error);return;}
+   if(keyboard||!result.value.expanded)setSectionFocus({...result.value,section});
+  } catch {
+   if(attempt===activationAttempt.current)setError('No se pudo cambiar de sección.');
+  }
+ };
  async function openOptions(button:HTMLButtonElement){
   if(optionsInFlight.current)return;
   if(page!=='options')previousOptionsPage.current=expanded?page:undefined;
@@ -185,6 +203,8 @@ export function CodexCompanion(){
  useLayoutEffect(()=>{
   const element=panel.current;
   const before=previousPage.current;
+  const opening=!panelWasOpen.current;
+  panelWasOpen.current=expanded;
   if(!expanded||!element){viewAnimation.current?.cancel();return;}
   setVisited(true);
   element.scrollTop=scroll.current[page]??0;
@@ -196,17 +216,17 @@ export function CodexCompanion(){
   }else if(before==='settings'&&page!=='settings'){
    root.current?.querySelector<HTMLElement>('.capsule-launcher [aria-current=page],.capsule-options')?.focus({preventScroll:true});
   }
-  if(!canAnimate(element)||before===page)return;
+  if(!canAnimate(element)||!opening&&before===page)return;
   const order=status.workspace?.order??launcherPages;
   const index=(value?:WorkspacePage)=>order.findIndex(item=>item===value);
-  const direction=index(before)<0||index(page)<0||before==='notices'||page==='notices'?0:Math.sign(index(page)-index(before));
+  const direction=opening||index(before)<0||index(page)<0||before==='notices'||page==='notices'?0:Math.sign(index(page)-index(before));
   const axis=status.workspace?.edge?.side==='left'||status.workspace?.edge?.side==='right'?'Y':'X';
   const computed=getComputedStyle(element);
   const running=viewAnimation.current?.playState==='running';
   const from=running?{opacity:computed.opacity,transform:computed.transform}:
    {opacity:.45,transform:direction?`translate${axis}(${direction*motion.shift}px)`:'none'};
   viewAnimation.current?.cancel();
-  const animation=element.animate([from,{opacity:1,transform:'none'}],{duration:before?motion.navigation:motion.panel,easing:motion.enterEase});
+  const animation=element.animate([from,{opacity:1,transform:'none'}],{duration:opening?motion.panel:motion.navigation,easing:motion.enterEase});
   viewAnimation.current=animation;
  },[expanded,page]);
  useEffect(()=>()=>viewAnimation.current?.cancel(),[]);
@@ -232,6 +252,15 @@ export function CodexCompanion(){
   focusDestination.current=undefined;
   root.current?.querySelector<HTMLButtonElement>(showIsland?'.zen-island-trigger':'.capsule-launcher [aria-current=page],.companion-brand')?.focus({preventScroll:true});
  },[showIsland]);
+
+ useLayoutEffect(()=>{
+  if(!sectionFocus||(status.revision??0)<sectionFocus.revision)return;
+  if(page===sectionFocus.page&&expanded===sectionFocus.expanded&&showIsland!==expanded){
+   const target=expanded?panel.current:root.current?.querySelector<HTMLButtonElement>(`.zen-island-shell .capsule-launcher [data-page="${sectionFocus.section}"]`);
+   target?.focus({preventScroll:true});
+  }
+  setSectionFocus(undefined);
+ },[sectionFocus,status.revision,page,expanded,showIsland]);
 
  useEffect(()=>{
   if(!status.settings.collapseOnBlur)return;
@@ -315,16 +344,16 @@ export function CodexCompanion(){
   '--island-separator':`${ISLAND_LAYOUT.separator}px`,
  };
  return <main ref={root} onClick={playClick} className={'companion-capsule '+(expanded?'expanded companion-shell':'collapsed')} data-island={showIsland} data-sizing={status.workspace?.islandSizing===true} data-edge={edge?.side} data-orientation={vertical?'vertical':'horizontal'} data-position-stacked={stacked} data-native-caption={status.workspace?.nativeCaption===true} data-theme={appearance.theme} data-accent={appearance.accent} data-background={appearance.background} style={{...motionStyle,...appearanceVars(appearance),...geometryStyle} as React.CSSProperties} data-state={state} data-motion={status.settings.motion&&!reduced}>
-  {showIsland?<DynamicIsland status={status} ready={ready} open={()=>changeIsland(!island)} onError={setError}/>:<header className="companion-bar capsule-single-row" data-has-media={!!track||compactPlayer}>
+  {showIsland?<DynamicIsland status={status} ready={ready} open={()=>changeIsland(!island)} onActivate={activateSection} onError={setError}/>:<header className="companion-bar capsule-single-row" data-has-media={!!track||compactPlayer}>
    <CapsuleDragGrip workspace={expanded} locked={status.settings.windowLocked}/>
    <div className="capsule-codex-block" data-capsule-block="codex">
    <button className="companion-brand" aria-label={expanded?'Recoger a cápsula':'Abrir panel de ZEN'} title={expanded?'Recoger a cápsula':'Abrir última integración · '+launcherName[status.workspace?.last??'home']} aria-expanded={expanded} onClick={toggle}><ZenStatusMark status={status} ready={ready}/></button>
    <button className="companion-state" data-compact={status.workspace?.compact==='codex'} title={label+' · '+stateDetail} aria-label={label+' · Abrir estado de Codex'} onClick={()=>void openStatus()}><strong><i/><span className="capsule-state-label">{shortState[label]??label}</span></strong><small title={stateDetail}>{stateDetail}</small></button>
-   <button className="capsule-notices" data-page="notices" aria-label={unread?`Avisos · ${unread} pendientes`:'Avisos'} title={'Avisos'+(unread?' · '+unread+' pendientes':'')} aria-expanded={expanded&&page==='notices'} aria-pressed={expanded&&page==='notices'} aria-controls="capsule-content" onClick={()=>void window.companion.togglePage('notices')} onContextMenu={e=>{e.preventDefault();context('notices');}}>
+   <button className="capsule-notices" data-page="notices" aria-label={unread?`Avisos · ${unread} pendientes`:'Avisos'} title={'Avisos'+(unread?' · '+unread+' pendientes':'')} aria-expanded={expanded&&page==='notices'} aria-pressed={expanded&&page==='notices'} aria-controls="capsule-content" onClick={()=>navigate('notices')} onContextMenu={e=>{e.preventDefault();context('notices');}}>
     <CompanionIcon name="bell"/>{unread>0&&<b className="badge">{unread>99?'99+':unread}</b>}
    </button>
    </div>
-   <CapsuleNavigation status={status} onError={setError}/>
+   <CapsuleNavigation status={status} ready={ready} onActivate={activateSection} onError={setError}/>
    <div className="capsule-media-block" data-capsule-block="music">
     {compactPlayer?<CompanionMiniMusic status={status}/>:track?<CompanionNowPlaying track={track} player={mediaPlayer.track?{...mediaPlayer,track:mediaPlayer.track}:undefined}/>:<button className="capsule-music-empty" title={status.settings.presentation||status.settings.paused?'Sonido oculto por privacidad':'Abrir Sonido'} onClick={()=>navigate('spotify')}><CompanionIcon name="sound"/><span><strong>{status.settings.presentation||status.settings.paused?'Sonido oculto':'Sin reproducción'}</strong></span></button>}
    </div>
@@ -337,8 +366,10 @@ export function CodexCompanion(){
     <button className="capsule-fold" type="button" aria-label="Contraer a isla" title="Contraer a isla" onClick={()=>changeIsland(true)}><CompanionIcon name="collapse"/></button>
    </nav>
   </header>}
+  <NeonBorder options={appearance.neon??defaultNeon} visible={status.workspace?.surfaceVisible===true} motion={status.settings.motion}
+   shape={{side:expanded&&!vertical?undefined:edge?.side,compact:showIsland,attached:expanded&&vertical,radius:showIsland?999:18}}/>
   {vertical&&expanded&&<div className="edge-drag-strip" aria-hidden="true"/>}
-  {(expanded||visited)&&<section ref={panel} id="capsule-content" className="workspace-content" data-page={page} hidden={!expanded}
+  {(expanded||visited)&&<section ref={panel} id="capsule-content" className="workspace-content" data-page={page} tabIndex={-1} hidden={!expanded} inert={!expanded}
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
     {page==='home'?<CompanionHome status={status} ready={ready} visible={expanded} draft={homeDraft} setDraft={setHomeDraft} nowPlaying={nowPlaying?.playing?nowPlaying:null} onNavigate={navigate} onOpenNotes={navigateNotes}/>:
     page==='spotify'?<CompanionMusic status={status} player={mediaPlayer}/>:

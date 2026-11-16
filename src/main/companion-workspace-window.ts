@@ -1,7 +1,7 @@
 import {readFileSync, renameSync, writeFileSync} from 'node:fs';
 import {z} from 'zod';
 import type {Area} from '../shared/overlay-position';
-import {capsuleContentHeight,EDGE_ISLAND,ISLAND_LAYOUT,ISLAND_SIZE,type IslandSide} from '../shared/island';
+import {capsuleContentHeight,edgeContourDepth,edgeShoulder,EDGE_ISLAND,ISLAND_SIZE,ISLAND_STACKED,type IslandSide} from '../shared/island';
 import {WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {mergeShape} from './companion-placement';
 
@@ -36,15 +36,23 @@ const stateSchema = z.object({
 
 const clamp=(value:number,start:number,end:number)=>Math.max(start,Math.min(value,end));
 
+export function compactIslandSize(area:Area,vertical=false) {
+  const stacked=(vertical?area.height:area.width)<ISLAND_SIZE.width;
+  const length=stacked?ISLAND_STACKED.length:ISLAND_SIZE.width;
+  const cross=stacked?ISLAND_STACKED.cross:vertical?EDGE_ISLAND.width:ISLAND_SIZE.height;
+  return {stacked,width:Math.min(area.width,vertical?cross:length),height:Math.min(area.height,vertical?length:cross)};
+}
+
 export function edgeBounds(area:Area,dock:EdgeDock,compact:boolean,nativeCaption:boolean,railWidth=area.width/2):Area {
+  const compactSize=compactIslandSize(area,dock.side!=='top');
   if(dock.side==='top'){
-    const width=Math.min(area.width,compact?ISLAND_SIZE.width:Math.max(320,Math.round(railWidth)));
-    const height=Math.min(area.height,compact?ISLAND_SIZE.height:capsuleContentHeight(width));
+    const width=compact?compactSize.width:Math.min(area.width,Math.max(320,Math.round(railWidth)));
+    const height=compact?compactSize.height:Math.min(area.height,capsuleContentHeight(width));
     const reserve=nativeCaption?EDGE_ISLAND.captionReserve:0;
     return {width,height:height+reserve,x:clamp(Math.round(area.x+area.width*dock.fraction-width/2),area.x,area.x+area.width-width),y:area.y-reserve};
   }
-  const width=Math.min(area.width,compact?EDGE_ISLAND.width:EDGE_ISLAND.railWidth);
-  const height=Math.min(area.height,compact?EDGE_ISLAND.height:EDGE_ISLAND.railHeight);
+  const width=compact?compactSize.width:Math.min(area.width,EDGE_ISLAND.railWidth);
+  const height=compact?compactSize.height:Math.min(area.height,EDGE_ISLAND.railHeight);
   const reserve=nativeCaption?EDGE_ISLAND.captionReserve:0;
   return {width,height:height+reserve,
     x:dock.side==='left'?area.x:area.x+area.width-width,
@@ -70,19 +78,18 @@ export function edgeWorkspaceMinimum(area:Area,side:IslandSide) {
     height:Math.min(area.height,side==='top'?workspaceMinimum.height:EDGE_ISLAND.railHeight+workspaceCaptionHeight)};
 }
 
-export function edgeShape(width:number,height:number,side:IslandSide,railTop=0,panel=false,compact=width===EDGE_ISLAND.width):Area[] {
+export function edgeShape(width:number,height:number,side:IslandSide,railTop=0,panel=false,compact=side==='top'?width===ISLAND_SIZE.width:width===EDGE_ISLAND.width):Area[] {
   if(side==='top'){
     if(panel)return [];
-    return mergeShape(edgeShape(height,width,'left',0,false,width===ISLAND_SIZE.width)).map(({x,y,width,height})=>({x:y,y:x,width:height,height:width}));
+    return mergeShape(edgeShape(height,width,'left',0,false,compact)).map(({x,y,width,height})=>({x:y,y:x,width:height,height:width}));
   }
   const railWidth=panel?Math.min(EDGE_ISLAND.railWidth,width):width;
   const railHeight=panel?Math.min(EDGE_ISLAND.railHeight,Math.max(0,height-workspaceCaptionHeight)):height;
-  const shoulder=Math.min(Math.round(railHeight*.26),compact?ISLAND_LAYOUT.shoulder:34);
+  const shoulder=edgeShoulder(railHeight,compact);
   const panelRadius=14;
   return Array.from({length:height},(_,y)=>{
     const row=y-railTop;
-    const t=clamp(Math.min(row+.5,railHeight-row-.5)/shoulder,0,1);
-    const bulge=t*t*(3-2*t);
+    const bulge=edgeContourDepth(row+.5,railHeight,shoulder);
     const grown=row>=0&&row<railHeight?1+Math.round((railWidth-1)*bulge):0;
     if(!panel)return {x:side==='left'?0:width-grown,y,width:grown,height:1};
     const dy=Math.max(0,panelRadius-Math.min(y+.5,height-y-.5));
@@ -114,7 +121,7 @@ export function compactWorkspaceBounds(saved:WorkspaceGeometry, nativeCaption:bo
 export function islandBounds(saved:WorkspaceGeometry,nativeCaption=false):Area {
   const {area}=saved;
   const rail=saved.maximized?area:saved.bounds;
-  const width=Math.min(area.width,ISLAND_SIZE.width),height=Math.min(area.height,ISLAND_SIZE.height);
+  const {width,height}=compactIslandSize(area);
   const travel=area.width-rail.width;
   const ratio=travel>0?Math.max(0,Math.min(1,(rail.x-area.x)/travel)):.5;
   const reserve=nativeCaption?workspaceCaptionHeight:0;
@@ -123,10 +130,12 @@ export function islandBounds(saved:WorkspaceGeometry,nativeCaption=false):Area {
 }
 
 export function railFromIsland(area:Area,panel:Area,x:number,y:number):Area {
-  const travel=area.width-ISLAND_SIZE.width;
+  const travel=area.width-compactIslandSize(area).width;
   const ratio=travel>0?Math.max(0,Math.min(1,(x-area.x)/travel)):.5;
   const width=Math.min(panel.width,area.width);
-  return placeWorkspaceRail(area,{...panel,width,x:area.x+Math.round((area.width-width)*ratio),y});
+  const spare=area.width-width;
+  const sameAnchor=spare>0&&x-area.x===Math.round(travel*clamp((panel.x-area.x)/spare,0,1));
+  return placeWorkspaceRail(area,{...panel,width,x:sameAnchor?panel.x:area.x+Math.round(spare*ratio),y});
 }
 
 /** Moving the rail explicitly may shorten the panel to keep it below the same origin. */

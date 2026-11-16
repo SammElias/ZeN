@@ -3,7 +3,7 @@
 ## 01 · Abrir y navegar ![](assets/violeta.svg)
 
 - Abre ZEN desde la bandeja o con `Ctrl+Alt+Z`, si conservas el atajo inicial. En la isla, activa el emblema con un clic, Enter o Espacio para abrir la barra.
-- Selecciona **Inicio**, **Codex**, **Sonido**, **Apuntes** o **Ajustes** en la barra. Cambiar de sección conserva el panel desplegado. Pulsar de nuevo la sección activa conserva su contenido. **Avisos** está en la campana.
+- Selecciona **Home**, **Codex**, **Sonido**, **Apuntes** o **Ajustes** en la isla o en la barra. El icono abre el panel con un clic, Enter o Espacio. Si ese panel ya está visible, el mismo icono repliega ZEN a la isla. Elegir otro icono cambia de panel directamente. Al replegar se conserva el contexto y el foco vuelve al icono. **Avisos** se abre desde la campana.
 - Elige **Arriba**, **Izquierda**, **Derecha** o **Flotante** en **Ubicación de ZEN**, visible en la isla y en la barra. Puedes usar Tab y activar un botón con Enter o Espacio. El selector funciona con el candado puesto y conserva el panel abierto al moverlo.
 - Usa el candado junto al agarre para bloquear o desbloquear el arrastre desde la isla compacta o la barra. ZEN guarda el monitor, el anclaje y la última geometría flotante. Los paneles se abren hacia el interior junto a la barra. **Contraer a isla** oculta el panel y el emblema lo recupera. Escape cierra primero el menú o diálogo activo.
 - El pie reúne candado, **Más opciones** y **Contraer a isla**. El menú agrupa **Volver a mi aplicación**, **Ajustar posición**, **Siempre encima** y **Apariencia y preferencias**. La **X** y **Minimizar ZEN** llevan la ventana a la barra de tareas. Vuelve a la misma vista desde la barra, Alt+Tab o la bandeja. **Salir de ZEN** cierra la aplicación por completo.
@@ -41,7 +41,7 @@ Abre **Preferencias** desde **Ajustes** en la barra, Inicio o **Más opciones**.
 
 | Categoría | Ajustes y acciones |
 | --- | --- |
-| Apariencia | Tema, acento, fondo, opacidad y desenfoque interno. La previsualización temporal se suspende al salir de la categoría. Elegir o cambiar el archivo de imagen se aplica al momento. Usa un fondo predefinido o **Quitar de la vista** para dejar de mostrar la imagen y confirma con **Guardar apariencia**. |
+| Apariencia | Tema, acento, fondo, opacidad, desenfoque interno y **Borde luminoso**. Puedes encender el borde, elegir una de cuatro paletas, desactivar el movimiento y ajustar la intensidad, la velocidad y el remate de los bordes acoplados. La previsualización temporal se suspende al salir de la categoría. El archivo de imagen se aplica al elegirlo. Usa un fondo predefinido o **Quitar de la vista** para dejar de mostrar la imagen y confirma los cambios con **Guardar apariencia**. |
 | Isla y cápsula | Ubicación, candado, mantener expandida, restauración al inicio y acceso a distribución. Estos controles se aplican al momento. Pulsa **Guardar** para aplicar siempre encima, monitor del puntero, pantalla completa, clic fuera, contracción al perder el foco, barra de tareas y animaciones. |
 | Sonidos y avisos | Efectos, volumen, preescucha, notificaciones, sonidos de aviso, Pausa y Presentación. El silencio temporal y la prueba de aviso actúan sobre la configuración guardada. |
 | Atajos | Mostrar cápsula y volver al chat de Codex. ZEN comprueba conflictos al guardar. |

@@ -146,7 +146,7 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
    </header>
    <div className="preferences-page" hidden={category!=='appearance'} inert={category!=='appearance'}>
     {status.settings.presentation?<p role="status">Desactiva Presentación para editar la apariencia.</p>:
-     <AppearanceSettings key={backupRevision} value={status.appearance??defaultAppearance} visible={visible&&category==='appearance'} reset={restoreAppearance} onPreview={onPreview}/>}
+     <AppearanceSettings key={backupRevision} value={status.appearance??defaultAppearance} visible={visible&&status.workspace?.surfaceVisible===true&&category==='appearance'} motion={status.settings.motion} reset={restoreAppearance} onPreview={onPreview}/>}
    </div>
    {category==='capsule'&&<div className="preferences-page">
     <h3>Ubicación y restauración</h3>

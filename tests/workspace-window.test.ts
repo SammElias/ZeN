@@ -2,8 +2,8 @@ import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {expect, it} from 'vitest';
-import {CompanionWorkspaceWindow, compactWorkspaceBounds, edgeBounds, edgePanelBounds, edgeShape, edgeWorkspaceMinimum, islandBounds, placeWorkspaceRail, railFromIsland, restoreWorkspace, workspaceLayout} from '../src/main/companion-workspace-window';
-import {CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT, ISLAND_SIZE} from '../src/shared/island';
+import {CompanionWorkspaceWindow, compactIslandSize, compactWorkspaceBounds, edgeBounds, edgePanelBounds, edgeShape, edgeWorkspaceMinimum, islandBounds, placeWorkspaceRail, railFromIsland, restoreWorkspace, workspaceLayout} from '../src/main/companion-workspace-window';
+import {CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT, ISLAND_SIZE, ISLAND_STACKED} from '../src/shared/island';
 
 const primary = {id: 1, workArea: {x: 0, y: 40, width: 1921, height: 1040}};
 const secondary = {id: 2, workArea: {x: -1280, y: -100, width: 1280, height: 720}};
@@ -86,6 +86,22 @@ it('centers the upper dock on a secondary monitor and keeps its cutouts outside 
   const includes=(x:number,y:number)=>shape.some(rect=>x>=rect.x&&x<rect.x+rect.width&&y>=rect.y&&y<rect.y+rect.height);
   expect(includes(0,0)&&includes(width-1,0)&&includes(Math.floor(width/2),height-1)).toBe(true);
   expect(includes(0,height-1)||includes(width-1,height-1)).toBe(false);
+});
+
+it('makes room for both control groups when the compact island cannot fit in one line',()=>{
+  const area={x:32,y:20,width:390,height:365};
+  expect(compactIslandSize(area)).toEqual({stacked:true,width:ISLAND_STACKED.length,height:ISLAND_STACKED.cross});
+  expect(compactIslandSize(area,true)).toEqual({stacked:true,width:ISLAND_STACKED.cross,height:ISLAND_STACKED.length});
+  const top={side:'top' as const,displayId:1,fraction:.5};
+  const upper=edgeBounds(area,top,true,true);
+  expect(upper).toMatchObject({y:area.y-EDGE_ISLAND.captionReserve,width:ISLAND_STACKED.length,height:ISLAND_STACKED.cross+EDGE_ISLAND.captionReserve});
+  const right=edgeBounds(area,{...top,side:'right'},true,true);
+  expect(right.x+right.width).toBe(area.x+area.width);
+  expect(right.height).toBe(ISLAND_STACKED.length+EDGE_ISLAND.captionReserve);
+  const bounds=workspaceLayout(area,'right');
+  const saved={displayId:1,area,bounds,maximized:false};
+  const floating=islandBounds(saved);
+  expect(railFromIsland(area,bounds,floating.x,floating.y)).toEqual(bounds);
 });
 
 it('preserves legacy floating geometry separately when the selected location is docked',()=>{

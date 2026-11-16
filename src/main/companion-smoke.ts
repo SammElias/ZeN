@@ -19,6 +19,8 @@ import {capsuleShape} from './overlay';
 import {CAPSULE_POSITION,EDGE_ISLAND,ISLAND_BLUR_MS,ISLAND_SIZE} from '../shared/island';
 import {motion} from '../shared/companion-motion';
 import {interfaceTones} from '../shared/companion-interface-audio';
+import {sectionPages} from '../shared/companion-navigation';
+import {neonPaletteIds} from '../shared/companion-neon';
 export async function companionSmoke({cap,hub,integration,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture,dismissOnOutsideClick}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void}){
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
  mkdirSync(screenshots,{recursive:true});
@@ -62,6 +64,8 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const pillReady=()=>js(cap,"!!document.querySelector('.zen-island-trigger:not(:disabled)')&&!document.querySelector('.companion-bar')");
  const waitForIsland=()=>wait(async()=>await pillReady()&&cap.getBounds().width===ISLAND_SIZE.width&&cap.getBounds().height===ISLAND_SIZE.height+EDGE_ISLAND.captionReserve);
  const openIsland=async()=>{await js(cap,"document.querySelector('.zen-island-trigger').click()");await wait(()=>js(cap,"!!document.querySelector('.companion-bar')"));};
+ const clickSection=(page:string)=>js(cap,`document.querySelector('.capsule-launcher [data-page=${page}]').click()`);
+ const sectionOpen=(page:string)=>js(cap,`!!document.querySelector('.workspace-content:not([hidden])[data-page=${page}]')`);
  const selectPosition=async(side:string)=>{
   await js(cap,`(()=>{const button=document.querySelector('.capsule-position [data-position=${side}]');button.focus();button.click();})()`);
   await wait(()=>js(cap,`document.querySelector('.capsule-position [aria-pressed=true]')?.dataset.position===${JSON.stringify(side)}`));
@@ -69,25 +73,30 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const selectorProof:Record<string,unknown>={};
  const inspectSelector=async(side:string,phase:'compact'|'expanded')=>{
   const facts=await js(cap,`(()=>{
-   const buttons=[...document.querySelectorAll('.capsule-position button')];
+   const positions=[...document.querySelectorAll('.capsule-position button')];
+   const border=document.querySelector('.companion-capsule > .neon-border');
+   const sections=[...document.querySelectorAll('.zen-island-shell .capsule-launcher button')];
+   const buttons=[...positions,...sections];
    const points=buttons.flatMap(button=>{
     const {left,right,top,bottom}=button.getBoundingClientRect();
     return [[(left+right)/2,(top+bottom)/2],[left+2,top+2],[right-2,bottom-2]];
    });
-   const visible=buttons.length===4&&buttons.every((button,index)=>{
+   const visible=positions.length===4&&sections.length===${phase==='compact'?sectionPages.length:0}&&buttons.every((button,index)=>{
     const [x,y]=points[index*3],rect=button.getBoundingClientRect();
     return button.getAttribute('aria-label')&&button.title&&rect.width===${CAPSULE_POSITION.button}&&rect.height===${CAPSULE_POSITION.button}&&button.contains(document.elementFromPoint(x,y));
    });
-   for(const target of document.querySelectorAll('.zen-island-shell > :is(.zen-island-trigger,.capsule-move-grip,.capsule-pin)')){
+   const sectionsClosed=sections.every(button=>button.getAttribute('aria-expanded')==='false'&&!button.hasAttribute('aria-current')&&getComputedStyle(button.querySelector('span')).display==='none');
+   for(const target of document.querySelectorAll('.zen-island-shell :is(.zen-island-trigger,.capsule-move-grip,.capsule-pin)')){
     const {left,top,width,height}=target.getBoundingClientRect();
     points.push([left+width/2,top+height/2]);
     if(target.matches('.capsule-pin'))points.push([left+2,top+2],[left+width-2,top+height-2]);
    }
-   return {visible,active:buttons.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.position),coordinates:points.map(pair=>pair.map(Math.round).join(',')).join(';')};
+   const neon=!!border&&getComputedStyle(border).pointerEvents==='none'&&border.getAttribute('aria-hidden')==='true';
+   return {visible,sectionsClosed,neon,active:positions.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.position),coordinates:points.map(pair=>pair.map(Math.round).join(',')).join(';')};
   })()`);
   const native=await nativeProbe('-ControlPoints',facts.coordinates);
   selectorProof[`${side}-${phase}`]={bounds:cap.getBounds(),...facts,...native};
-  return facts.visible&&facts.active.length===1&&facts.active[0]===side&&native.hits?.length===(phase==='compact'?17:12)&&native.hits.every((hit:number)=>hit===1);
+  return facts.visible&&facts.sectionsClosed&&facts.neon&&facts.active.length===1&&facts.active[0]===side&&native.hits?.length===(phase==='compact'?17+3*sectionPages.length:12)&&native.hits.every((hit:number)=>hit===1);
  };
  const capsuleMenu=async(...path:string[])=>{
   let menu:Menu|undefined,popup:PopupOptions|undefined;
@@ -342,7 +351,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  let cursor={x:islandStart.x+30,y:islandStart.y+EDGE_ISLAND.captionReserve+18};
  screen.getCursorScreenPoint=()=>cursor;
  const gesture=(event:string,x:number)=>js(cap,`(() => {
-  const button=document.querySelector('.zen-island-shell > .capsule-move-grip');
+  const button=document.querySelector('.zen-island-shell .capsule-move-grip');
   button.setPointerCapture=()=>{};
   button.dispatchEvent(new PointerEvent('${event}',{bubbles:true,isPrimary:true,pointerId:1,screenX:${x}}));
  })()`);
@@ -353,7 +362,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   cursor={...cursor,x:cursor.x+50};
   await wait(async()=>cap.getBounds().x>islandStart.x);
   await gesture('pointerup',88);
-  await js(cap,"document.querySelector('.zen-island-shell > .capsule-move-grip').dispatchEvent(new MouseEvent('click',{detail:1,bubbles:true}))");
+  await js(cap,"document.querySelector('.zen-island-shell .capsule-move-grip').dispatchEvent(new MouseEvent('click',{detail:1,bubbles:true}))");
   await pause(motion.island+70);
   report.islandDragDoesNotOpen=await pillReady()&&cap.getBounds().x>islandStart.x;
  } finally {screen.getCursorScreenPoint=cursorPosition;}
@@ -440,7 +449,8 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  report.compactHeaderHeight=await js(cap,"document.querySelector('.companion-bar').getBoundingClientRect().height===66");
  report.capsuleContentRailHeight=await js(cap,`[...document.querySelectorAll('.capsule-single-row > [data-capsule-block]')]
   .every(block=>block.getBoundingClientRect().height===54)`);
- report.capsuleRefinedNavigation=await js(cap,`(()=>{
+ report.railWithoutPanelHasNoSelectedIcon=await js(cap,"!document.querySelector('.capsule-launcher [aria-current]')&&[...document.querySelectorAll('.capsule-launcher button')].every(button=>button.getAttribute('aria-expanded')==='false')");
+ const inspectActiveNavigation=()=>js(cap,`(()=>{
   const current=document.querySelector('.capsule-launcher button[aria-current=page]');
   const glyph=getComputedStyle(current.querySelector('svg')),label=getComputedStyle(current.querySelector('span'));
   const marker=getComputedStyle(current,'::after');
@@ -461,7 +471,7 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  })()`);
  await shot(cap,'capsule-roomy');
  report.noChat=await js(cap,"!document.querySelector('textarea')&&!window.zen");
- report.noCharacter=await js(cap,"!document.querySelector('canvas,.companion-wardrobe')");
+ report.noCharacter=await js(cap,"!document.querySelector('canvas:not(.neon-border),.companion-wardrobe')");
  report.noCursorPolling=await js(cap,"!('cursor' in window.companion)&&!('onCursor' in window.companion)");
  report.capsuleNoAuthority=await js(cap,`window.companion.decide('${randomUUID()}','allow').then(r=>!r.ok)`);
  for(const [alignment,ratio] of [['left',0],['right',1],['center',.5],['left',0]] as const){
@@ -491,8 +501,22 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  })()`;
  const foldedRail=await js(cap,railStyle);
  await nav('home');
+ report.capsuleRefinedNavigation=await inspectActiveNavigation();
  await wait(()=>js(cap,"[...document.querySelectorAll('.home-panel button')].some(b=>b.textContent==='Crear apunte')"));
  report.homeShowsRealEmptyStates=await js(cap,"document.querySelector('#home-title').textContent==='ZEN Workspace'&&!!document.querySelector('[data-home-card=notes]')&&document.querySelector('.home-panel').textContent.includes('Todavía no tienes apuntes.')");
+ const legacyFolderId=randomUUID(),aiFolderId=randomUUID();
+ const legacyNotebook=JSON.stringify({version:1,
+  folders:[{id:legacyFolderId,name:'AI Engineering'},{id:aiFolderId,name:'AI ENGINER'}],
+  notes:[
+   {id:randomUUID(),folderId:legacyFolderId,title:'Apunte anterior',description:'Contenido conservado',code:'',updatedAt:1},
+   {id:randomUUID(),folderId:aiFolderId,title:'Nota de AI ENGINER',description:'Contenido de IA',code:'',updatedAt:2},
+  ]});
+ writeFileSync(join(profile,'companion-notes.json'),legacyNotebook);
+ report.notesReadDeniedOutsideNotes=await js(cap,"window.companion.notesRead().then(r=>!r.ok)");
+ report.homeRecentLegacyMetadataOnly=await js(cap,`window.companion.notesRecent().then(r=>r.ok&&
+  r.value.map(n=>n.title).join('|')==='Nota de AI ENGINER|Apunte anterior'&&
+  r.value.every(n=>Object.keys(n).sort().join(',')==='favorite,folder,id,title,updatedAt')
+ )`)&&!existsSync(join(profile,'knowledge-hub.sqlite'));
  const homeBounds=cap.getBounds();
  report.workspaceInitiallyHalfLeft=same(homeBounds,workspaceLayout(workArea,'left'))&&!cap.isSnapped();
  try{await wait(async()=>await js(cap,railStyle)===foldedRail);}
@@ -506,22 +530,59 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await wait(async()=>same(homeBounds,cap.getBounds()));
  await shot(cap,'capsule-same-rail-expanded');
  await js(cap,"window.companion.launcher(false)");
- await wait(()=>js(cap,"!document.querySelector('.workspace-content:not([hidden])')"));
- report.capsuleRailStableAfterCollapse=await js(cap,railStyle)===foldedRail;
+ await wait(async()=>await js(cap,"!document.querySelector('.workspace-content:not([hidden])')")&&await js(cap,railStyle)===foldedRail);
+ report.capsuleRailStableAfterCollapse=true;
  report.workspaceLayoutOnlyFromOptions=await js(cap,"window.companion.workspaceLayout('right').then(r=>!r.ok)");
- for(const page of ['home','spotify','codex','notes','notices','settings']){
-  await js(cap,`document.querySelector('.companion-bar [data-page="${page}"]').click()`);await wait(()=>js(cap,`!!document.querySelector('.workspace-content:not([hidden])[data-page="${page}"]')`));
+ await clickSection('home');
+ await wait(()=>sectionOpen('home'));
+ report.sectionOpensFromRailWithoutPanel=true;
+ await js(cap,"window.companion.pinWindow(true)");
+ await clickSection('home');
+ await waitForIsland();
+ const pressSectionKey=(key:string)=>js(cap,`(()=>{
+  const icon=document.querySelector('.capsule-launcher [data-page=home]');
+  icon.focus();
+  icon.dispatchEvent(new KeyboardEvent('keydown',{key:${JSON.stringify(key)},bubbles:true,cancelable:true}));
+ })()`);
+ await pressSectionKey('Enter');
+ await wait(()=>js(cap,"document.activeElement?.id==='capsule-content'&&!document.activeElement.hidden"));
+ await pressSectionKey(' ');
+ await waitForIsland();
+ report.sectionKeyboardFocus=await js(cap,"document.activeElement?.matches('.zen-island-shell [data-page=home]')");
+ for(const page of sectionPages){
+  await clickSection(page);
+  await wait(()=>sectionOpen(page));
+  await wait(()=>js(cap,`document.activeElement?.id==='capsule-content'&&document.querySelector('.capsule-launcher [data-page=${page}]')?.title.startsWith('Replegar ')`));
   if(page==='settings')report.settingsInPrimaryNavigation=await js(cap,"!!document.querySelector('.preferences-center')&&document.querySelector('.capsule-launcher [aria-current=page]')?.dataset.page==='settings'");
-  const other=page==='home'?'spotify':'home';const beforeSwitch=cap.getBounds();await js(cap,`document.querySelector('.companion-bar [data-page="${other}"]').click()`);await wait(()=>js(cap,`!!document.querySelector('.workspace-content:not([hidden])[data-page="${other}"]')`));
-  if(!same(beforeSwitch,cap.getBounds())||!await js(cap,"document.querySelectorAll('.companion-bar [data-page]').length===6"))throw Error('Switching integrations changed geometry or hid integrations.');
-  await js(cap,`document.querySelector('.companion-bar [data-page="${page}"]').click()`);await wait(()=>js(cap,`!!document.querySelector('.workspace-content:not([hidden])[data-page="${page}"]')`));
-  await js(cap,`document.querySelector('.companion-bar [data-page="${page}"]').click()`);
-  if(!await js(cap,`!!document.querySelector('.workspace-content:not([hidden])[data-page="${page}"]')`))throw Error('Clicking the active section closed the workspace.');
-  await js(cap,"window.companion.launcher(false)");await wait(()=>js(cap,"!document.querySelector('.workspace-content:not([hidden])')"));
-  if(!same(compactBounds,cap.getBounds()))throw Error('Repeating the active icon did not restore the capsule anchor.');
+  await clickSection(page);
+  await waitForIsland();
+  await wait(()=>js(cap,`document.activeElement?.dataset.page===${JSON.stringify(page)}&&document.activeElement.getAttribute('aria-expanded')==='false'&&!!document.querySelector('#capsule-content[hidden][inert]')`));
+  await clickSection(page);
+  await wait(()=>sectionOpen(page));
+  const other=page==='home'?'spotify':'home', beforeSwitch=cap.getBounds(), moves=nativeCalls.bounds;
+  await clickSection(other);
+  await wait(()=>sectionOpen(other));
+  if(!same(beforeSwitch,cap.getBounds())||moves!==nativeCalls.bounds||!await js(cap,"document.querySelectorAll('.companion-bar [data-page]').length===6"))throw Error('Switching sections sized or hid the capsule.');
+  await clickSection(other);
+  await waitForIsland();
  }
+ report.lockAllowsNavigation=await js(cap,"document.querySelector('.zen-island-shell .capsule-pin').getAttribute('aria-pressed')==='true'");
+ await js(cap,"window.companion.pinWindow(false)");
  report.allNavigationIconsToggleCapsule=true;
- report.switchingIconsKeepsExpanded=true;await js(cap,"Promise.all([window.companion.togglePage('home'),window.companion.togglePage('spotify')])");await wait(()=>js(cap,"!!document.querySelector('.workspace-content:not([hidden])[data-page=spotify]')"));await js(cap,"Promise.all([window.companion.togglePage('home'),window.companion.togglePage('home')])");await wait(()=>js(cap,"!!document.querySelector('.workspace-content:not([hidden])[data-page=home]')"));report.fastIconClicksUseMainState=true;
+ report.switchingIconsKeepsExpanded=true;
+ await nav('permissions');
+ await clickSection('codex');
+ await waitForIsland();
+ await clickSection('codex');
+ await wait(()=>sectionOpen('permissions'));
+ report.sectionResumesCodexSubview=true;
+ await js(cap,"Promise.all([window.companion.togglePage('home'),window.companion.togglePage('spotify')])");
+ await wait(()=>sectionOpen('spotify'));
+ await js(cap,"Promise.all([window.companion.togglePage('home'),window.companion.togglePage('home')])");
+ await waitForIsland();
+ await js(cap,"Promise.all([window.companion.togglePage('home'),window.companion.togglePage('home'),window.companion.togglePage('home')])");
+ await wait(()=>sectionOpen('home'));
+ report.fastIconClicksUseMainState=true;
  await js(cap,"window.companion.launcher(false)");await wait(()=>js(cap,"!document.querySelector('.workspace-content:not([hidden])')"));
  await js(cap,"document.querySelector('.companion-brand').click()");await wait(()=>js(cap,"!!document.querySelector('.workspace-content:not([hidden])')"));
  const expandedBounds=cap.getBounds();
@@ -851,19 +912,6 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input),'value').set.call(input,${JSON.stringify(value)});
   input.dispatchEvent(new Event('input',{bubbles:true}));
  })()`);
- const legacyFolderId=randomUUID(),aiFolderId=randomUUID();
- const legacyNotebook=JSON.stringify({version:1,
-  folders:[{id:legacyFolderId,name:'AI Engineering'},{id:aiFolderId,name:'AI ENGINER'}],
-  notes:[
-   {id:randomUUID(),folderId:legacyFolderId,title:'Apunte anterior',description:'Contenido conservado',code:'',updatedAt:1},
-   {id:randomUUID(),folderId:aiFolderId,title:'Nota de AI ENGINER',description:'Contenido de IA',code:'',updatedAt:2},
-  ]});
- writeFileSync(join(profile,'companion-notes.json'),legacyNotebook);
- report.notesReadDeniedOutsideNotes=await js(cap,"window.companion.notesRead().then(r=>!r.ok)");
- report.homeRecentLegacyMetadataOnly=await js(cap,`window.companion.notesRecent().then(r=>r.ok&&
-  r.value.map(n=>n.title).join('|')==='Nota de AI ENGINER|Apunte anterior'&&
-  r.value.every(n=>Object.keys(n).sort().join(',')==='favorite,folder,id,title,updatedAt')
- )`)&&!existsSync(join(profile,'knowledge-hub.sqlite'));
  await js(cap,"document.querySelector('.capsule-launcher [data-page=notes]').click()");
  await wait(()=>js(cap,"document.querySelector('.hub-cards')?.children.length===3"));
  report.hubSimplifiedNavigation=await js(cap,`[...document.querySelectorAll('.hub-sidebar nav button')].map(b=>b.textContent.trim()).join('|')===
@@ -1012,6 +1060,12 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  const {textarea,available,saveBottom,readerBottom}=report.hubPromptEditorDimensions;
  report.hubPromptEditorUsesAvailableHeight=textarea>0&&Math.abs(textarea-available)<=2&&saveBottom<=readerBottom+1;
  await shot(cap,'workspace-prompt-editor');
+ await fillNoteField('notes-code','');
+ await clickSection('notes');
+ await waitForIsland();
+ await clickSection('notes');
+ await wait(()=>sectionOpen('notes'));
+ report.sectionTogglePreservesNotesDraft=await js(cap,"document.querySelector('#notes-code')?.value===''&&window.companion.notesRead().then(r=>r.ok&&r.value.data.entries.some(note=>note.kind==='prompt'&&note.code==='Resume el proyecto {{PROJECT_NAME}}'))");
  const longPrompt=Array.from({length:48},(_,i)=>'Paso '+(i+1)+': Revisa el material del proyecto y registra las decisiones y las tareas que deben completarse antes de la entrega.').join('\n\n');
  await fillNoteField('notes-code',longPrompt);
  await wait(()=>js(cap,"document.querySelector('.hub-save [role=status]')?.textContent==='Guardado'"));
@@ -1239,13 +1293,16 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  report.contextReviewExactSource=expectedContextPrompt.includes('versionSHA256')&&expectedContextPrompt.includes('selected-context.txt')&&await js(cap,"document.querySelector('.codex-context .context-analysis-review').textContent.includes('Revisar formulario en navegador')");
  await js(cap,"document.querySelector('.context-handoff').click();document.querySelector('.context-handoff')?.click()");await wait(()=>js(cap,"document.querySelector('.context-notice')?.textContent.includes('En cola en el chat fijado')"));
  report.contextSingleReviewedHandoff=queuedRequests.length===contextQueueStart+1&&queuedRequests.at(-1)?.text===expectedContextPrompt&&queuedRequests.at(-1)?.thread==='native-test'&&openedTargets.length===contextOpenStart;
- await js(cap,"window.companion.island(true)");
+ await clickSection('codex');
  await waitForIsland();
  const hookResult=(turn:string,text:string)=>{hub.accept({id:randomUUID(),event:'UserPromptSubmit',session:'native-test',cwd:'C:\\fixture',turn},()=>{});hub.accept({id:randomUUID(),event:'Stop',session:'native-test',cwd:'C:\\fixture',turn,lastAssistantMessage:text},()=>{});};
  hookResult('context-correlated-result','<zen_resultado id="'+contextMarker+'">Archivo analizado, resultado local de prueba.</zen_resultado>');hookResult('context-later-unrelated','Respuesta posterior que no corresponde a la petición de ZEN.');
  await wait(()=>js(cap,"!!document.querySelector('.zen-island-trigger[data-phase=finished]')"));
  report.islandReceivesCompletionQuietly=await pillReady()&&queuedRequests.length===contextQueueStart+1;
- await openIsland();
+ await clickSection('codex');
+ await wait(()=>sectionOpen('codex'));
+ await wait(()=>js(cap,"document.querySelector('.codex-context').textContent.includes('selected-context.txt')"));
+ report.sectionTogglePreservesCodexContext=await js(cap,"document.querySelector('[aria-label=\"Indicación para Codex\"]')?.value==='Revisa el contexto y explica el resultado.'");
  await js(cap,"window.companion.launcher(true)");
  await wait(()=>js(cap,"document.querySelector('.codex-context .codex-result-text')?.textContent==='Archivo analizado, resultado local de prueba.'"));report.contextAutoResultReturns=true;report.contextHookResultSurvivesLaterReply=true;
  report.contextPrivateNotInStatus=await js(cap,"window.companion.status().then(r=>!JSON.stringify(r).includes('Archivo analizado, resultado local')&&!JSON.stringify(r).includes('selected-context.txt'))");
@@ -1305,12 +1362,14 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   const rail=document.querySelector('.capsule-single-row'),panel=document.querySelector('.workspace-content:not([hidden])');
   const railBackground=blend(worst,read(rail,'backgroundColor'));
   const active=rail.querySelector('.capsule-launcher [aria-current=page]');
-  const selected=blend(railBackground,read(active,'backgroundColor'));
+  const selected=active&&blend(railBackground,read(active,'backgroundColor'));
   return [
    ['Estado',rail.querySelector('.companion-state small'),railBackground,4.5],
    ['Navegación',rail.querySelector('.capsule-launcher button:not([aria-current]) span'),railBackground,4.5],
-   ['Pestaña activa',active.querySelector('span'),selected,4.5],
-   ['Icono activo',active.querySelector('svg'),selected,3],
+   ...(active?[
+    ['Pestaña activa',active.querySelector('span'),selected,4.5],
+    ['Icono activo',active.querySelector('svg'),selected,3],
+   ]:[]),
    ['Sonido',rail.querySelector('.capsule-media-block small'),railBackground,4.5],
    ['Candado',rail.querySelector('.capsule-pin svg'),railBackground,3],
    ...(panel?.querySelector('.home-current-state')?[['Inicio',panel.querySelector('.home-current-state'),blend(worst,read(panel,'backgroundColor')),4.5]]:[]),
@@ -1447,6 +1506,13 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   return progress.value===48000&&progress.max===210000&&box('.music-timeline').bottom<=controls.top&&
    box('.music-artwork').right<=box('.music-track').left&&box('.music-copy').left>=controls.right;
  })()`);
+ const commandsBeforeFolding=mediaEffects;
+ await clickSection('spotify');
+ await waitForIsland();
+ await clickSection('spotify');
+ await wait(()=>js(cap,"!!document.querySelector('.music-player')"));
+ const reopenedTrack=await js(cap,"document.querySelector('.music-track h3').textContent+' — '+document.querySelector('.music-track p').textContent");
+ report.sectionToggleDoesNotControlPlayback=mediaEffects===commandsBeforeFolding&&reopenedTrack===copiedTrack;
  for(const page of ['home','codex','spotify','notes']){
   await nav(page);await resizeForFixture(1180,Math.min(680,area.height));
   if(!await js(cap,"document.body.scrollWidth<=innerWidth&&document.querySelector('.workspace-content:not([hidden])').scrollWidth<=document.querySelector('.workspace-content:not([hidden])').clientWidth+1")||!await headerLayout())throw Error('Wide workspace overflows: '+page);
@@ -1474,6 +1540,11 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await shot(cap,'polish-settings');
  await preference('shortcuts');
  await js(cap,`(()=>{const first=document.querySelector('#shortcut'),second=document.querySelector('#returnShortcut');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(first,second.value);first.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await clickSection('settings');
+ await waitForIsland();
+ await clickSection('settings');
+ await wait(()=>sectionOpen('settings'));
+ report.sectionTogglePreservesSettingsDraft=await js(cap,"!!document.querySelector('.preferences-page:not([hidden]) #shortcut')&&document.querySelector('#shortcut').value===document.querySelector('#returnShortcut').value&&!!document.querySelector('.preferences-page:not([hidden]) [data-pending=true]')");
  await js(cap,"document.querySelector('.preferences-page:not([hidden]) .preference-save .primary').click()");
  await wait(()=>js(cap,"document.querySelector('.preferences-page:not([hidden]) [role=alert]')?.textContent.includes('atajos diferentes')"));
  report.preferenceShortcutErrorKeepsDraft=await js(cap,"document.querySelector('#shortcut').value===document.querySelector('#returnShortcut').value&&!!document.querySelector('.preferences-page:not([hidden]) [data-pending=true]')");
@@ -1564,7 +1635,8 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await wait(()=>js(cap,"!!document.querySelector('.companion-capsule.collapsed[data-theme=monochrome]')"));
  report.monochromeGlassCapsule=await js(cap,"(()=>{const style=getComputedStyle(document.querySelector('.capsule-single-row'));return style.backgroundColor==='rgba(28, 28, 29, 0.82)'&&style.backdropFilter.includes('blur(24px)');})()")&&await nativeCapsuleFrame();
  report.monochromeCapsuleContrast=await glassContrast();
- report.monochromeCapsuleReadable=passesContrast(report.monochromeCapsuleContrast);
+ await nav('codex');
+ report.monochromeCapsuleReadable=passesContrast(report.monochromeCapsuleContrast)&&passesContrast(await glassContrast());
  report.profileBackupRequiresSettings=await js(cap,"window.companion.profileBackup('export').then(r=>!r.ok)");
  await preference('data');
  await shot(cap,'preferences-data');
@@ -1650,7 +1722,6 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await js(cap,"window.companion.island(false)");
  await nav('home');
  await pause(180);
- await js(cap,"window.companion.togglePage('home')");
  await js(cap,`(()=>{
   const form=document.querySelector('.codex-request-form');
   const field=form.querySelector('textarea');
@@ -1659,7 +1730,17 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
   field.dispatchEvent(new Event('scroll',{bubbles:true}));
  })()`);
  await pause(160);
- report.interfaceAudioUsesOneEffectPerTransition=await js(cap,`JSON.stringify(window.fixtureTones)===JSON.stringify([${interfaceTones.expand.ms},${interfaceTones.open.ms}])`);
+ await clickSection('codex');
+ await wait(()=>sectionOpen('codex'));
+ await pause(100);
+ await clickSection('codex');
+ await waitForIsland();
+ await clickSection('home');
+ await wait(()=>sectionOpen('home'));
+ await wait(()=>js(cap,"window.fixtureTones.length>=5"));
+ report.interfaceAudioUsesOneEffectPerTransition=await js(cap,`JSON.stringify(window.fixtureTones)===JSON.stringify([${interfaceTones.expand.ms},${interfaceTones.open.ms},${interfaceTones.navigate.ms},${interfaceTones.collapse.ms},${interfaceTones.expand.ms}])`);
+ // Let the opening tone and the audio engine's debounce finish before testing the selector.
+ await pause(180);
  const tonesBeforePosition=await js(cap,"window.fixtureTones.length");
  await selectPosition('right');
  await wait(()=>js(cap,`window.fixtureTones.length===${tonesBeforePosition+1}`));
@@ -1688,6 +1769,98 @@ export async function companionSmoke({cap,hub,integration,profile,openedTargets,
  await js(cap,"window.companion.island(true)");
  await wait(()=>js(cap,"!!document.querySelector('.zen-island-trigger')&&document.querySelector('.companion-capsule').dataset.sizing==='false'"));
  await js(cap,"window.restoreFixtureAudio();delete window.restoreFixtureAudio;delete window.fixtureTones;");
+
+ const neonLayer="document.querySelector('.companion-capsule > .neon-border')";
+ await preference('appearance');
+ await js(cap,"[...document.querySelectorAll('.appearance-theme button')].find(button=>button.textContent==='Oscuro').click()");
+ await js(cap,"document.querySelector('.appearance-save .primary').click()");
+ await wait(()=>js(cap,"document.querySelector('.appearance-save [role=status]')?.textContent==='Apariencia guardada.'"));
+ await js(cap,"window.companion.launcher(false)");
+ await js(cap,"window.companion.island(true)");
+ await wait(()=>js(cap,"!!document.querySelector('.zen-island-trigger')&&document.querySelector('.companion-capsule').dataset.sizing==='false'"));
+ await selectPosition('top');
+ await wait(()=>js(cap,`${neonLayer}?.dataset.running==='true'`));
+ await captureSurface('neon-top-amber','top');
+ try {
+  const rect=await js(cap,`(()=>{const r=${neonLayer}.getBoundingClientRect();return {x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height)};})()`);
+  await js(cap,`${neonLayer}.style.visibility='hidden'`);
+  let background;
+  try {background=(await cap.webContents.capturePage(rect,{stayAwake:true})).toDataURL();}
+  finally {await js(cap,`${neonLayer}.style.removeProperty('visibility')`);}
+  const video=await js(cap,`(async()=>{
+   const layer=${neonLayer}, canvas=document.createElement('canvas'), image=new Image();
+   image.src=${JSON.stringify(background)};await image.decode();
+   canvas.width=image.width;canvas.height=image.height;
+   const ctx=canvas.getContext('2d'),stream=canvas.captureStream(30);
+   const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8'}),chunks=[];
+   const recording=new Promise((resolve,reject)=>{
+    recorder.ondataavailable=event=>chunks.push(event.data);
+    recorder.onerror=reject;
+    recorder.onstop=()=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(new Blob(chunks,{type:'video/webm'}));};
+   });
+   let frame;
+   function draw(){ctx.drawImage(image,0,0);ctx.drawImage(layer,0,0,canvas.width,canvas.height);frame=requestAnimationFrame(draw);}
+   try {draw();recorder.start();await new Promise(resolve=>setTimeout(resolve,6100));recorder.stop();return await recording;}
+   finally{cancelAnimationFrame(frame);stream.getTracks().forEach(track=>track.stop());}
+  })()`);
+  await writeEvidence(join(screenshots,'neon-top.webm'),Buffer.from(video,'base64'));
+  report.neonClip='neon-top.webm';
+ } catch (error) {report.neonClip=String(error);}
+
+ await preference('appearance');
+ const selectNeon=async(palette:string)=>{
+  await js(cap,`document.querySelector('[data-neon-palette=${palette}]').click()`);
+  await wait(()=>js(cap,`${neonLayer}?.dataset.palette==='${palette}'&&document.querySelector('.appearance-preview .neon-border')?.dataset.palette==='${palette}'`));
+ };
+ const toggleNeon=(label:string)=>js(cap,`[...document.querySelectorAll('.appearance-settings [role=switch]')].find(input=>input.labels[0].textContent===${JSON.stringify(label)}).click()`);
+ const originalBounds=cap.getBounds(),accent=await js(cap,"document.querySelector('.companion-capsule').dataset.accent");
+ for(const palette of neonPaletteIds)await selectNeon(palette);
+ report.neonPalettesKeepAccent=await js(cap,"document.querySelector('.companion-capsule').dataset.accent")===accent&&
+  neonPaletteIds.length===await js(cap,"document.querySelectorAll('[data-neon-palette]').length");
+ await toggleNeon('Activar borde luminoso');
+ await wait(()=>js(cap,`!${neonLayer}&&!document.querySelector('.appearance-preview .neon-border')`));
+ report.neonDisabledKeepsGeometry=same(originalBounds,cap.getBounds());
+ await toggleNeon('Activar borde luminoso');
+ await wait(()=>js(cap,`${neonLayer}?.dataset.running==='true'`));
+ const frames=()=>js(cap,`(async()=>{
+  const canvas=${neonLayer},ctx=canvas.getContext('2d'),clear=ctx.clearRect;
+  let frames=0;ctx.clearRect=function(...args){frames++;return clear.apply(this,args);};
+  try{await new Promise(resolve=>setTimeout(resolve,1000));return frames;}
+  finally{ctx.clearRect=clear;}
+ })()`);
+ const rendererCpu=()=>app.getAppMetrics().find(metric=>metric.pid===cap.webContents.getOSProcessId())?.cpu.cumulativeCPUUsage;
+ const sampleNeon=async()=>{
+  const start=rendererCpu(),updates=await frames(),end=rendererCpu();
+  return {updates,rendererCpuSeconds:start===undefined||end===undefined?null:Math.max(0,end-start)};
+ };
+ const moving=await sampleNeon();
+ await toggleNeon('Animar el borde');
+ await wait(()=>js(cap,`${neonLayer}?.dataset.running==='false'`));
+ await pause(260);
+ const still=await sampleNeon();
+ report.neonSampling={intervalMs:1000,moving,still};
+ report.neonStaticVsAnimated=moving.updates>=10&&moving.updates<=32&&still.updates===0&&await js(cap,`(()=>{
+  const canvas=${neonLayer};return canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some((value,index)=>index%4===3&&value>0);
+ })()`);
+ await toggleNeon('Animar el borde');
+ cap.webContents.debugger.attach();
+ try {
+  await cap.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  await wait(()=>js(cap,`matchMedia('(prefers-reduced-motion: reduce)').matches&&${neonLayer}?.dataset.running==='false'`));
+  report.neonRespectsReducedMotion=true;
+  await cap.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]});
+ } finally {cap.webContents.debugger.detach();}
+ cap.minimize();
+ await wait(()=>js(cap,`!${neonLayer}`));
+ cap.restore();
+ await wait(()=>js(cap,`${neonLayer}?.dataset.running==='true'`));
+ report.neonPausesWhenMinimized=true;
+ await js(cap,"document.querySelector('.appearance-save .primary').click()");
+ await wait(()=>js(cap,"document.querySelector('.appearance-save [role=status]')?.textContent==='Apariencia guardada.'"));
+ report.neonSaved=JSON.parse(readFileSync(join(profile,'companion-appearance.json'),'utf8')).options.neon?.palette==='jade';
+ await js(cap,"document.querySelector('.neon-palette').scrollIntoView({block:'center'})");
+ await shot(cap,'neon-preferences');
+
  report.onlyExplicitCodexHandoffs=queuedRequests.length===6&&queuedRequests.every(item=>item.thread==='native-test')&&copiedRequests.length===0&&queuedRequests[3].text===expectedContextPrompt&&queuedRequests[4].text===expectedPagePrompt&&queuedRequests[5].text===visualPrompt;report.noExtraWindows=BrowserWindow.getAllWindows().length===1;
  integration.close();report.closedAppDoesNotBlock=await launch('PermissionRequest',{tool_name:'Bash',tool_input:{command:'must not run'}}).done==='{}';
  report.passed=Object.entries(report).filter(([k,v])=>typeof v==='boolean'&&!['apiCalled','physicalInputTested'].includes(k)).every(([,v])=>v===true);

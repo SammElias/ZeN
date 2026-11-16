@@ -1,8 +1,10 @@
 import React,{useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {defaultAppearance,AppearanceOptions,glassOpacity,type AppearanceState} from '../shared/companion-appearance';
 import {CompanionIcon} from './CompanionActions';
-import {PreferenceRow,PreferenceSave,type PreferenceFeedback} from './PreferencesControls';
+import {PreferenceRow,PreferenceSave,PreferenceSwitch,type PreferenceFeedback} from './PreferencesControls';
 import {ZenEmblem} from './ZenEmblem';
+import {defaultNeon, neonPalettes, neonPaletteIds, neonSpeeds, neonSpeedIds, neonVisual, type NeonOptions} from '../shared/companion-neon';
+import {NeonBorder} from './NeonBorder';
 const themeNames = {monochrome:'Monocromo', dark:'Oscuro', light:'Claro'} as const;
 const accentNames={violet:'Violeta',amber:'Ámbar',mint:'Menta'} as const;
 
@@ -16,18 +18,23 @@ export function appearanceVars(value:AppearanceState){
  const light=value.theme==='light',colors={violet:'178 153 255',amber:'255 177 101',mint:'108 220 193'};
  return{'--glass-opacity':value.opacity,'--glass-blur':value.blur+'px','--glass-rgb':light?'244 246 253':'18 20 31','--glass-text':light?'#202334':'#f8f9ff','--glass-secondary':light?'#39445a':'#cbd2e4','--glass-accent-rgb':colors[value.accent],'--zen-wallpaper':image} as React.CSSProperties;
 }
-export function AppearanceSettings({value,visible,reset,onPreview}:{value:AppearanceState;visible:boolean;reset:number;onPreview:(v:AppearanceState|undefined)=>void}) {
+function sameOption(key: keyof AppearanceOptions, a: AppearanceOptions, b: AppearanceOptions) {
+ return key==='neon'?JSON.stringify(a.neon??defaultNeon)===JSON.stringify(b.neon??defaultNeon):a[key]===b[key];
+}
+
+export function AppearanceSettings({value,visible,motion,reset,onPreview}:{value:AppearanceState;visible:boolean;motion:boolean;reset:number;onPreview:(v:AppearanceState|undefined)=>void}) {
  const [changes,setChanges]=useState<Partial<AppearanceOptions>>({});
  const [busy,setBusy]=useState(false);
  const [feedback,setFeedback]=useState<PreferenceFeedback>();
  const previousReset=useRef(reset);
  const draft=useMemo(()=>({...value,...changes}),[value,changes]);
- const dirty=(Object.keys(changes) as (keyof AppearanceOptions)[]).some(key=>draft[key]!==value[key]);
+ const dirty=(Object.keys(changes) as (keyof AppearanceOptions)[]).some(key=>!sameOption(key,draft,value));
+ const neon=draft.neon??defaultNeon;
 
  useLayoutEffect(()=>{
   if(previousReset.current===reset)return;
   previousReset.current=reset;
-  stage(defaultAppearance);
+  stage({...defaultAppearance,neon:defaultNeon});
  },[reset]);
  useLayoutEffect(()=>{
   onPreview(visible&&dirty?draft:undefined);
@@ -37,10 +44,15 @@ export function AppearanceSettings({value,visible,reset,onPreview}:{value:Appear
  function stage(update:Partial<AppearanceOptions>) {
   setChanges(previous=>{
    const next={...previous,...update};
-   for(const key of Object.keys(next) as (keyof AppearanceOptions)[]){if(next[key]===value[key])delete next[key];}
+   const nextDraft={...value,...next};
+   for(const key of Object.keys(next) as (keyof AppearanceOptions)[]){if(sameOption(key,nextDraft,value))delete next[key];}
    return next;
   });
   setFeedback(undefined);
+ }
+
+ function stageNeon(update:Partial<NeonOptions>) {
+  stage({neon:{...neon,...update}});
  }
 
  async function choose() {
@@ -61,8 +73,8 @@ export function AppearanceSettings({value,visible,reset,onPreview}:{value:Appear
   setBusy(true);
   setFeedback(undefined);
   try{
-   const {theme,accent,background,opacity,blur}=draft;
-   const result=await window.companion.appearanceSave(AppearanceOptions.parse({theme,accent,background,opacity,blur}));
+   const {theme,accent,background,opacity,blur,neon}=draft;
+   const result=await window.companion.appearanceSave(AppearanceOptions.parse({theme,accent,background,opacity,blur,neon}));
    if(!result.ok){setFeedback({text:result.error,error:true});return;}
    setChanges({});
    setFeedback({text:'Apariencia guardada.'});
@@ -76,6 +88,7 @@ export function AppearanceSettings({value,visible,reset,onPreview}:{value:Appear
   <div className="appearance-preview" data-preset={draft.background} role="img" aria-label="Vista previa de la cápsula con los ajustes actuales">
    <div className="appearance-preview-capsule" aria-hidden="true">
     <ZenEmblem/><span>ZEN</span><i/><CompanionIcon name="code"/><CompanionIcon name="sound"/><CompanionIcon name="notebook"/>
+    <NeonBorder options={neon} shape={{radius:15}} visible={visible} motion={motion}/>
    </div>
   </div>
   <fieldset disabled={busy} className="preference-fieldset">
@@ -116,6 +129,33 @@ export function AppearanceSettings({value,visible,reset,onPreview}:{value:Appear
    </PreferenceRow>
    <PreferenceRow title="Desenfoque" controlId="preference-blur" description="Suaviza el fondo interno bajo las superficies de cristal.">
     <div className="preference-range"><input id="preference-blur" aria-label="Desenfoque del cristal" aria-valuetext={`${draft.blur} px`} type="range" min={0} max={40} value={draft.blur} onChange={e=>stage({blur:e.currentTarget.valueAsNumber})}/><output htmlFor="preference-blur">{draft.blur} px</output></div>
+   </PreferenceRow>
+   <h3>Borde luminoso</h3>
+   <PreferenceSwitch title="Activar borde luminoso" checked={neon.enabled} onChange={enabled=>stageNeon({enabled})}/>
+   <PreferenceRow title="Color del borde">
+    <div className="preference-choices neon-palette" role="group" aria-label="Color del borde">
+     {neonPaletteIds.map(palette=><button key={palette} type="button" data-neon-palette={palette}
+       disabled={!neon.enabled} aria-pressed={neon.palette===palette} onClick={()=>stageNeon({palette})}>
+      <span className="neon-palette-swatch" aria-hidden="true" style={{'--neon-swatch':neonPalettes[palette].color} as React.CSSProperties}/>
+      {neonPalettes[palette].label}{neon.palette===palette&&<CompanionIcon name="check"/>}
+     </button>)}
+    </div>
+   </PreferenceRow>
+   <PreferenceSwitch title="Animar el borde" checked={neon.animated} disabled={!neon.enabled} onChange={animated=>stageNeon({animated})}/>
+   <PreferenceRow title="Intensidad del borde" controlId="neon-intensity">
+    <div className="preference-range"><input id="neon-intensity" type="range" min={neonVisual.minimumIntensity} max={100} value={neon.intensity}
+      aria-valuetext={`${neon.intensity} %`} disabled={!neon.enabled} onChange={e=>stageNeon({intensity:e.currentTarget.valueAsNumber})}/>
+     <output htmlFor="neon-intensity">{neon.intensity} %</output></div>
+   </PreferenceRow>
+   <PreferenceRow title="Velocidad del borde" controlId="neon-speed">
+    <select id="neon-speed" value={neon.speed} disabled={!neon.enabled||!neon.animated} onChange={e=>stageNeon({speed:e.currentTarget.value as NeonOptions['speed']})}>
+     {neonSpeedIds.map(speed=><option key={speed} value={speed}>{neonSpeeds[speed].label}</option>)}
+    </select>
+   </PreferenceRow>
+   <PreferenceRow title="Extensión de los extremos" controlId="neon-extension" description="Ajusta el remate en los bordes acoplados.">
+    <div className="preference-range"><input id="neon-extension" type="range" min={0} max={neonVisual.maximumExtension} value={neon.extension}
+      aria-valuetext={`${neon.extension} px`} disabled={!neon.enabled} onChange={e=>stageNeon({extension:e.currentTarget.valueAsNumber})}/>
+     <output htmlFor="neon-extension">{neon.extension} px</output></div>
    </PreferenceRow>
   </fieldset>
   <div className="appearance-save"><PreferenceSave name="Guardar apariencia" dirty={dirty} busy={busy} feedback={feedback} onSave={()=>void save()}

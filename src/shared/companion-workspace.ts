@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {codexTabs, launcherPages, workspacePages} from './companion-navigation';
+import {codexTabs, launcherPages, sectionPages, workspacePages} from './companion-navigation';
 import type {CapsuleLocation,WorkspaceLayoutPreferences} from './workspace-layout';
 import type {IslandSide} from './island';
 export {isLauncherPageSelected} from './companion-navigation';
@@ -9,7 +9,10 @@ export const WorkspacePage=z.enum(workspacePages);
 export type WorkspacePage=z.infer<typeof WorkspacePage>;
 export const LauncherPage=z.enum(launcherPages);
 export type LauncherPage=z.infer<typeof LauncherPage>;
+export const SectionPage=z.enum(sectionPages);
+export type SectionPage=z.infer<typeof SectionPage>;
+export type SectionActivation={expanded:boolean;page:WorkspacePage;revision:number};
 export const LauncherOrder=z.array(LauncherPage).length(launcherPages.length).refine(v=>new Set(v).size===launcherPages.length);
 export const CapsuleView=z.enum(['status','spotify','codex']);
 export type CapsuleView=z.infer<typeof CapsuleView>;
-export type WorkspaceState={expanded:boolean;island?:boolean;islandSizing?:boolean;islandControls?:boolean;edge?:{side:IslandSide;railTop:number};location?:CapsuleLocation;page:WorkspacePage;codexTab?:CodexTab;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView;nativeCaption?:boolean;layout?:WorkspaceLayoutPreferences;canRestorePosition?:boolean};
+export type WorkspaceState={expanded:boolean;surfaceVisible?:boolean;island?:boolean;islandSizing?:boolean;islandControls?:boolean;islandStacked?:boolean;edge?:{side:IslandSide;railTop:number};location?:CapsuleLocation;page:WorkspacePage;codexTab?:CodexTab;context?:LauncherPage;order?:LauncherPage[];last?:LauncherPage;compact?:CapsuleView;nativeCaption?:boolean;layout?:WorkspaceLayoutPreferences;canRestorePosition?:boolean};

@@ -5,7 +5,7 @@ import type {CodexReferenceSelection} from './codex-result-document';
 import type {CodexResultState} from './companion-codex-result';
 import {z} from 'zod';
 import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from './companion-media';
-import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab} from './companion-workspace';
+import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab,SectionActivation,SectionPage} from './companion-workspace';
 import type {CapsuleAlignment} from './overlay-position';
 import type {CapsuleLocation,WorkspaceLayoutAction, WorkspaceLayoutPreferences} from './workspace-layout';
 import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
@@ -60,7 +60,7 @@ export interface CompanionBridge{
  notesChange(change:HubAction):Promise<CompanionResult<HubResult>>;
  notesDraft(draft:HubDraft|null):Promise<CompanionResult<true>>;
  notesFile(action:HubFileAction):Promise<CompanionResult<HubFileResult>>;
- togglePage(page:LauncherPage):Promise<CompanionResult<boolean>>;
+ togglePage(page:SectionPage):Promise<CompanionResult<SectionActivation>>;
  launcher(open:boolean):Promise<CompanionResult<boolean>>;
  island(compact:boolean):Promise<CompanionResult<boolean>>;
  capsuleLocation(location:CapsuleLocation):Promise<CompanionResult<boolean>>;

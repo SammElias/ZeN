@@ -6,10 +6,11 @@ import {CompanionIcon} from './CompanionActions';
 import {ZenStatusMark} from './ZenStatusMark';
 import {CapsuleDragGrip, CapsulePin} from './CapsuleMove';
 import {CapsulePosition} from './CapsulePosition';
+import {CapsuleNavigation, type ActivateSection} from './CapsuleNavigation';
 
 const labels={idle:'ZEN',working:'Trabajando',attention:'Permiso',finished:'Terminado',error:'Error',paused:'En pausa'};
 
-export function DynamicIsland({status,ready,open,onError}:{status:CompanionStatus;ready:boolean;open:()=>void;onError:(error:string)=>void}) {
+export function DynamicIsland({status,ready,open,onActivate,onError}:{status:CompanionStatus;ready:boolean;open:()=>void;onActivate:ActivateSection;onError:(error:string)=>void}) {
  const {state}=orbitalPresentation(status);
  const finishedAt=status.notices.find(n=>n.kind==='finished'&&!n.read)?.at;
  const [expired,setExpired]=useState<number>();
@@ -28,7 +29,8 @@ export function DynamicIsland({status,ready,open,onError}:{status:CompanionStatu
   setFlash(visual==='finished'&&['working','attention'].includes(lastPhase.current));
   lastPhase.current=visual;
  },[visual]);
- return <div className="zen-island-shell">
+ return <div className="zen-island-shell" data-stacked={status.workspace?.islandStacked===true}>
+  <div className="zen-island-navigation">
   <button type="button" className="zen-island-trigger" data-phase={visual} data-flash={flash}
    aria-label={label+' · Expandir cápsula de ZEN'} aria-expanded={false} aria-haspopup="menu" title={label+' · Expandir cápsula'} disabled={!ready}
    onContextMenu={event=>{event.preventDefault();void window.companion.capsuleLocationMenu();}}
@@ -49,8 +51,12 @@ export function DynamicIsland({status,ready,open,onError}:{status:CompanionStatu
    {visual==='finished'?<CompanionIcon name="check"/>:visual==='attention'||visual==='error'?<b>!</b>:<i/>}
   </span>
   </button>
-  <CapsulePosition location={status.workspace?.location} ready={ready}/>
-  <CapsulePin locked={status.settings.windowLocked} ready={ready} onError={onError}/>
-  <CapsuleDragGrip workspace={false} locked={status.settings.windowLocked}/>
+  <CapsuleNavigation status={status} ready={ready} compact onActivate={onActivate} onError={onError}/>
+  </div>
+  <div className="zen-island-controls">
+   <CapsulePosition location={status.workspace?.location} ready={ready}/>
+   <CapsulePin locked={status.settings.windowLocked} ready={ready} onError={onError}/>
+   <CapsuleDragGrip workspace={false} locked={status.settings.windowLocked}/>
+  </div>
  </div>;
 }

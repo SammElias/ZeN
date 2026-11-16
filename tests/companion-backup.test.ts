@@ -27,6 +27,9 @@ describe('portable ZEN backup',()=>{
       const wallpaper=join(sourceRoot,'wallpaper.png');
       writeFileSync(wallpaper,png);
       source.appearance.import(wallpaper);
+      const {theme,accent,background,opacity,blur}=source.appearance.status();
+      source.appearance.save({theme,accent,background,opacity,blur,neon:{palette:'jade',extension:0,speed:'fast'}});
+      expect(new CompanionAppearance(sourceRoot,bytes=>bytes).status().neon).toMatchObject({palette:'jade',extension:0,speed:'fast'});
       source.notes.change({type:'save',fields:{...newFields('prompt'),title:'Mi prompt',code:'Contenido de prueba'}},()=>{});
       source.notes.draft({fields:{...newFields('note'),title:'Borrador'}});
       source.launcher.reorder(source.launcher.status().order.reverse());

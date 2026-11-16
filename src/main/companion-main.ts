@@ -31,12 +31,12 @@ import {CompanionSummaries} from './companion-summary';
 import {projectFile} from './companion-project-path';
 import {CompanionDesktop} from './companion-desktop';
 import {CompanionMedia,CompanionMediaObserver,NativeMediaRpc} from './companion-media';
-import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,isLauncherPageSelected} from '../shared/companion-workspace';
+import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,SectionPage,isLauncherPageSelected} from '../shared/companion-workspace';
 import {CompanionLauncher} from './companion-launcher';
 import {KnowledgeHub} from './knowledge-hub';
 import {MediaCommand} from '../shared/companion-media';
 import {mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
-import {CompanionWorkspaceWindow,compactWorkspaceBounds,edgeBounds,edgePanelBounds,edgeRailTop,edgeShape,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
+import {CompanionWorkspaceWindow,compactIslandSize,compactWorkspaceBounds,edgeBounds,edgePanelBounds,edgeRailTop,edgeShape,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
 import {EDGE_ISLAND,ISLAND_BLUR_MS} from '../shared/island';
 import {motion,surfaceProgress} from '../shared/companion-motion';
 import {CapsuleLocation,CapsuleMenuAnchor,WorkspaceLayoutAction,WorkspaceLayoutPreferences} from '../shared/workspace-layout';
@@ -136,6 +136,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    appearance:appearance.status(),
    workspace:{
     expanded,island,islandSizing,islandControls,page:workspacePage,location:location(),
+    surfaceVisible:surfaceVisible(),
+    islandStacked:compactIslandSize(isEdge()?dockDisplay().workArea:parked.area,isEdge()&&dock.side!=='top').stacked,
     edge:isEdge()?{side:dock.side,railTop:expanded?edgeRailTop(cap.getBounds(),dockDisplay().workArea,dock):0}:undefined,
     codexTab,context:contextPage,...launcherPreferences.status(),compact:compactView,
     nativeCaption,layout:workspaceWindow.preferences,canRestorePosition:!!workspaceWindow.previous,
@@ -216,10 +218,11 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const inset=edge&&nativeCaption&&!cap.isMaximized()?frameInsets.get((expanded?screen.getDisplayMatching(bounds):dockDisplay()).id)??{x:8,y:0}:{x:0,y:0};
    const railTop=expanded&&edge?edgeRailTop(bounds,dockDisplay().workArea,dock):0;
    const reserve=nativeCaption&&!expanded&&(edge||island||islandSizing)?workspaceCaptionHeight:0;
-   const key=edge?`edge/${dock.side}/${width}/${height}/${expanded}/${railTop}/${inset.x}/${inset.y}`:expanded?'workspace':`${width}x${height}/${reserve}`;
+   const compact=island||islandSizing&&!islandControls;
+   const key=edge?`edge/${dock.side}/${width}/${height}/${expanded}/${compact}/${railTop}/${inset.x}/${inset.y}`:expanded?'workspace':`${width}x${height}/${reserve}`;
    if(key===shapeSize)return;
    const shapedHeight=height-reserve;
-   const shape=edge?edgeShape(width,shapedHeight,dock.side,railTop,expanded):expanded?[]:capsuleShape({width,height:shapedHeight});
+   const shape=edge?edgeShape(width,shapedHeight,dock.side,railTop,expanded,compact):expanded?[]:capsuleShape({width,height:shapedHeight});
    cap.setShape(mergeShape(shape).map(rect=>({...rect,x:rect.x+inset.x,y:rect.y+inset.y+reserve})));
    shapeSize=key;
    captionInset=reserve;
@@ -639,7 +642,15 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    notes, window: cap, requireWorkspace, privateEffectsAllowed, withWindowDialog, copy: copyText, openExternal,
   });
   handle('codexTab',CodexTab,tab=>changeSurface(()=>{if(codexTab!==tab){invalidateContext();codexTab=tab;}openWorkspace('codex');}));
-  handle('togglePage',LauncherPage,page=>changeSurface(()=>{if(!(expanded&&isLauncherPageSelected(workspacePage,page)))openWorkspace(page);}));
+  handle('togglePage',SectionPage,page=>{
+   if(!surfaceVisible()||openDialogs)throw Error('Vuelve a la cápsula para cambiar de sección.');
+   changeSurface(()=>{
+    const sameSection=isLauncherPageSelected(workspacePage,page);
+    if(workspaceVisible()&&sameSection)collapse('status',true);
+    else openWorkspace(sameSection&&resumePanel?workspacePage:page);
+   });
+   return {expanded,page:workspacePage,revision};
+  });
   handle('launcher',z.boolean(),open=>changeSurface(()=>{if(open)openWorkspace(launcherPreferences.status().last);else collapse();}));
   handle('island',z.boolean(),compact=>changeSurface(()=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para cambiar la vista.');

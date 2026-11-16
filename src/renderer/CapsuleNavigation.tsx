@@ -2,7 +2,7 @@ import React, {useLayoutEffect, useRef, useState} from 'react';
 import {motion} from '../shared/companion-motion';
 import {canAnimate} from './companion-motion';
 import type {CompanionStatus} from '../shared/codex-companion';
-import {isLauncherPageSelected, launcherPages, type LauncherPage} from '../shared/companion-navigation';
+import {isLauncherPageSelected, launcherPages, type LauncherPage, type SectionPage} from '../shared/companion-navigation';
 import {CompanionIcon} from './CompanionActions';
 
 export const launcherName = {
@@ -14,7 +14,7 @@ export const launcherName = {
 } satisfies Record<LauncherPage, string>;
 
 const launcherMime = 'application/x-zen-integration';
-const launcherOrder = (status: CompanionStatus) => status.workspace?.order ?? launcherPages;
+const launcherOrder = (status: CompanionStatus): readonly LauncherPage[] => status.workspace?.order ?? launcherPages;
 
 function moveLauncherPage(order: readonly LauncherPage[], from: LauncherPage, to: LauncherPage) {
   const next = [...order];
@@ -23,14 +23,22 @@ function moveLauncherPage(order: readonly LauncherPage[], from: LauncherPage, to
   return next;
 }
 
-export function CapsuleNavigation({status, onError}: {status: CompanionStatus; onError: (error: string) => void}) {
+export type ActivateSection = (page: SectionPage, keyboard: boolean) => void;
+
+export function CapsuleNavigation({status, ready, compact = false, onActivate, onError}: {
+  status: CompanionStatus;
+  ready: boolean;
+  compact?: boolean;
+  onActivate: ActivateSection;
+  onError: (error: string) => void;
+}) {
   const nav=useRef<HTMLElement>(null);
   const marker=useRef<HTMLSpanElement>(null);
   const [dragged, setDragged] = useState<LauncherPage>();
-  const expanded = status.workspace?.expanded ?? false;
+  const expanded = !compact && status.workspace?.expanded === true;
   const page = status.workspace?.page ?? 'home';
   const order = launcherOrder(status);
-  const visiblePages = order.filter(value => value !== 'notices');
+  const visiblePages = order.filter((value): value is Exclude<LauncherPage,'notices'> => value !== 'notices');
   const approvals = status.approvals.length;
   useLayoutEffect(()=>{
     const root=nav.current,indicator=marker.current;
@@ -59,14 +67,15 @@ export function CapsuleNavigation({status, onError}: {status: CompanionStatus; o
     const resize=new ResizeObserver(()=>{if(!indicator.getAnimations().length)setMarker(false);});
     resize.observe(root);
     return ()=>resize.disconnect();
-  },[page,order,status.workspace?.edge?.side]);
+  },[expanded,page,order,status.workspace?.edge?.side]);
   useLayoutEffect(()=>{
+    if(compact)return;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const stop=()=>{if(reduced.matches||!status.settings.motion)marker.current?.getAnimations().forEach(animation=>animation.cancel());};
     stop();
     reduced.addEventListener('change',stop);
     return ()=>reduced.removeEventListener('change',stop);
-  },[status.settings.motion]);
+  },[compact,status.settings.motion]);
 
   function reportFailure(result: {ok: boolean; error?: string}) {
     if (!result.ok && result.error) onError(result.error);
@@ -81,18 +90,18 @@ export function CapsuleNavigation({status, onError}: {status: CompanionStatus; o
   }
 
   return <nav ref={nav} className="capsule-launcher" aria-label="Navegación de ZEN" data-capsule-block="navigation">
-    <span ref={marker} className="capsule-selection-marker" aria-hidden="true"/>
+    {!compact&&<span ref={marker} className="capsule-selection-marker" aria-hidden="true" hidden={!expanded}/>}
     {[...visiblePages, 'settings' as const].map((value, index) => {
       const settings = value === 'settings';
-      const selected = isLauncherPageSelected(page, value);
       const name = settings ? 'Configuración' : launcherName[value];
-      const active = expanded && selected;
-      const description = value === 'codex' && approvals ? `Codex · ${approvals} permiso pendiente` : name;
-      return <button key={value} data-page={value} aria-label={name} aria-expanded={active}
+      const label = settings ? 'Ajustes' : name;
+      const active = expanded && isLauncherPageSelected(page, value);
+      const tooltip = (active ? 'Replegar ' : 'Abrir ') + label;
+      return <button key={value} type="button" data-page={value} aria-label={name} aria-expanded={active} disabled={!ready}
         aria-controls="capsule-content"
-        title={settings ? name : (active ? 'Sección abierta' : 'Abrir ' + name) + ' · ' + description + ' · clic derecho para acciones · Alt + flechas para ordenar'}
-        aria-current={selected ? 'page' : undefined} aria-pressed={active} data-dragging={dragged === value}
-        draggable={!settings} onDragStart={settings ? undefined : event => {
+        title={value === 'codex' && approvals ? `${tooltip} · ${approvals} permisos pendientes` : tooltip}
+        aria-current={active ? 'page' : undefined} data-dragging={dragged === value}
+        draggable={!compact&&!settings} onDragStart={compact||settings ? undefined : event => {
           setDragged(value);
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData(launcherMime, value);
@@ -109,7 +118,13 @@ export function CapsuleNavigation({status, onError}: {status: CompanionStatus; o
         }} onContextMenu={settings ? undefined : event => {
           event.preventDefault();
           openContext(value);
-        }} onKeyDown={settings ? undefined : event => {
+        }} onKeyDown={event => {
+          if(event.key==='Enter'||event.key===' '){
+            event.preventDefault();
+            if(!event.repeat&&!event.nativeEvent.isComposing&&!dragged)onActivate(value,true);
+            return;
+          }
+          if(settings)return;
           if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
             event.preventDefault();
             openContext(value);
@@ -118,11 +133,11 @@ export function CapsuleNavigation({status, onError}: {status: CompanionStatus; o
             const target = visiblePages[index + (event.key === 'ArrowLeft' ? -1 : 1)];
             if (target) reorder(value, target);
           }
-        }} onClick={() => void (settings ? window.companion.navigate('settings') : window.companion.togglePage(value)).then(reportFailure)}>
+        }} onClick={event=>{if(!dragged)onActivate(value,event.detail===0);}}>
         {value === 'home'
           ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>
           : <CompanionIcon name={settings ? 'settings' : value === 'spotify' ? 'sound' : value === 'notes' ? 'notebook' : 'code'}/>}
-        <span>{settings ? 'Ajustes' : name}</span>
+        <span>{label}</span>
         {value === 'codex' && approvals > 0 && <b className="integration-badge permission-badge">{approvals}</b>}
       </button>;
     })}

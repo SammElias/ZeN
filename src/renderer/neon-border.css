@@ -1,0 +1,33 @@
+.neon-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  pointer-events: none;
+}
+.companion-capsule.expanded > .neon-border {
+  bottom: auto;
+  height: var(--capsule-header-height);
+}
+.companion-capsule[data-native-caption=true].collapsed:is([data-edge], [data-island=true]) > .neon-border {
+  top: var(--caption-reserve);
+  height: calc(100% - var(--caption-reserve));
+}
+.companion-capsule[data-orientation=vertical].expanded > .neon-border {
+  top: var(--edge-top);
+  right: auto;
+  width: var(--edge-width);
+  height: min(calc(100% - var(--caption-reserve)), var(--edge-height));
+}
+.companion-capsule[data-edge=right].expanded > .neon-border { left: auto; right: 0; }
+.appearance-preview-capsule { position: relative; }
+.neon-palette-swatch {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--neon-swatch);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .24);
+}
+.companion-capsule .workspace-content .neon-palette > button { padding-inline: 9px 21px; }
