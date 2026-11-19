@@ -37,6 +37,16 @@ describe('presentation is enforced before IPC and decisions',()=>{
   expect(JSON.stringify(displayStatus({...raw,workspace:{expanded:true,page:'codex'}},3,true))).not.toContain('PRIVATE PERMISSION');
   expect(raw.sessions[0].steps[0].preview).toBe('PRIVATE PERMISSION');
  });
+ it('exposes the observed sessions only on the visible Activity tab',()=>{
+  const f=fixture();f.event('PreToolUse',{session:'elsewhere',cwd:'C:\\Elsewhere',tool:'exec_command',preview:'OTHER PRIVATE COMMAND'});
+  const raw:CompanionStatus={...f.hub.status(),activitySessions:f.hub.activitySessions(),workspace:{expanded:true,page:'codex',codexTab:'activity'}};
+  const shown=displayStatus(raw,1,true);
+  expect(shown.activitySessions?.map(session=>session.id)).toEqual(['elsewhere']);
+  expect(JSON.stringify(shown)).not.toContain('OTHER PRIVATE COMMAND');
+  expect(displayStatus(raw,2,false).activitySessions).toBeUndefined();
+  expect(displayStatus({...raw,workspace:{expanded:true,page:'codex',codexTab:'summary'}},3,true).activitySessions).toBeUndefined();
+  for(const mode of ['paused','presentation'] as const)expect(displayStatus({...raw,settings:{...raw.settings,[mode]:true}},4,true).activitySessions).toBeUndefined();
+ });
  it('keeps notices and reception without external notifications or replay on exit',()=>{
   const f=fixture();f.hub.update({...f.hub.settings,presentation:true});f.event('UserPromptSubmit');f.event('Stop');expect(f.notices).toHaveLength(0);expect(f.hub.status().notices).toHaveLength(1);expect(f.hub.status().notices[0].audible).toBe(false);f.hub.update({...f.hub.settings,presentation:false});expect(f.notices).toHaveLength(0);expect(f.hub.status().notices[0].audible).toBe(false);expect(f.hub.settings).toMatchObject({sounds:true,notifications:true,paused:false});
  });

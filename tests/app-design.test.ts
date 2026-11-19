@@ -16,7 +16,7 @@ describe('local glass appearance and bounded wallpapers',()=>{
    const previous=JSON.stringify({options,image});
    writeFileSync(path,previous);
    const appearance=new CompanionAppearance(f.root,bytes=>bytes);
-   expect(appearance.status()).toMatchObject({...options,opacity:.74,imageName:image.name});
+   expect(appearance.status()).toMatchObject({...options,opacity:.62,imageName:image.name});
    expect(readFileSync(path,'utf8')).toBe(previous);
    appearance.save({...options,opacity:1});
    expect(new CompanionAppearance(f.root,bytes=>bytes).status()).toMatchObject({...options,opacity:1,imageName:image.name});

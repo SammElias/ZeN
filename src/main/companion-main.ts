@@ -1,7 +1,10 @@
+import {CompanionCalendar} from './companion-calendar';
+import {CalendarAction} from '../shared/companion-calendar';
 import {CompanionAppearance} from './companion-appearance';
 import {AppearanceOptions} from '../shared/companion-appearance';
 import {registerProfileBackupIpc} from './companion-backup-ipc';
 import {registerNotesIpc} from './companion-notes-ipc';
+import {decodeTemplateBackupImage, loadTemplateSeeds} from './companion-template-images';
 import {createSmokeMedia} from './companion-smoke-media';
 import {openCodexRequest,queueCodexRequest} from './companion-request';
 import {CodexRequest} from '../shared/companion-request';
@@ -20,7 +23,7 @@ import {CompanionHub} from './companion-hub';
 import {CompanionIntegration} from './companion-integration';
 import {CodexRpc} from './codex-rpc';
 import {CapsuleAlignment,type Area,type DockEdge} from '../shared/overlay-position';
-import {capsuleShape,nearestEdge} from './overlay';
+
 import {codexChatUrl,noticeChatUrl,isSilenced} from '../shared/companion-presentation';
 import {CodexReplyReader} from './companion-codex-reader';
 import {inspectCodexCompanion} from './companion-codex-inspection';
@@ -31,24 +34,27 @@ import {CompanionSummaries} from './companion-summary';
 import {projectFile} from './companion-project-path';
 import {CompanionDesktop} from './companion-desktop';
 import {CompanionMedia,CompanionMediaObserver,NativeMediaRpc} from './companion-media';
-import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,SectionPage,isLauncherPageSelected} from '../shared/companion-workspace';
+import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,SectionPage,CapsuleHoverInput,isLauncherPageSelected} from '../shared/companion-workspace';
 import {CompanionLauncher} from './companion-launcher';
 import {KnowledgeHub} from './knowledge-hub';
 import {MediaCommand} from '../shared/companion-media';
 import {mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
-import {CompanionWorkspaceWindow,compactIslandSize,compactWorkspaceBounds,edgeBounds,edgePanelBounds,edgeRailTop,edgeShape,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
+import {CompanionWorkspaceWindow,compactIslandSize,edgeBounds,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
 import {EDGE_ISLAND,ISLAND_BLUR_MS} from '../shared/island';
-import {motion,surfaceProgress} from '../shared/companion-motion';
+import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel} from './companion-capsule-layout';
+import {motion} from '../shared/companion-motion';
 import {CapsuleLocation,CapsuleMenuAnchor,WorkspaceLayoutAction,WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {capsuleMenuItems} from './companion-capsule-menu';
 import {companionIpc} from './companion-ipc';
 import {companionChannel,companionInterfaceEffectChannel} from '../shared/companion-ipc';
 import {surfaceSound,type InterfaceEffect} from '../shared/companion-interface-audio';
 import {nativeHelper} from './native-helper';
+import {CompanionHover} from './companion-hover';
 protocol.registerSchemesAsPrivileged([{scheme:'zen-theme',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 const appUserModelId='com.zen.desktop';
 app.setName('ZEN');app.setAppUserModelId(appUserModelId);
-const smoke=process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+process.pid);mkdirSync(p,{recursive:true});app.setPath('userData',p);}
+const hoverSmoke=process.argv.includes('--zen-hover-smoke');
+const smoke=hoverSmoke||process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+process.pid);mkdirSync(p,{recursive:true});app.setPath('userData',p);}
 const copiedRequests:string[]=[];const queuedRequests:{thread:string;text:string}[]=[];const copiedText:string[]=[];const openedTargets:string[]=[];const openExternal=(url:string)=>smoke?(openedTargets.push(url),Promise.resolve()):shell.openExternal(url);
 const copyText = (text: string) => { if (smoke) copiedText.push(text); else clipboard.writeText(text); };
 let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
@@ -64,7 +70,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   if(smoke)target=CompanionTargetSchema.parse({session:'native-test',cwd:'C:\\fixture',title:'Revisar formulario en navegador'});
   else if(existsSync(targetFile))try{target=CompanionTargetSchema.parse(JSON.parse(readFileSync(targetFile,'utf8')));}catch{targetError='No se pudo leer el chat fijado. Revisa la configuración local de ZEN.';}
   const launcherPreferences=new CompanionLauncher(join(profile,'companion-launcher.json'));
-  const notes = new KnowledgeHub(join(profile, 'knowledge-hub.sqlite'), join(profile, 'companion-notes.json'));
+  const notes = new KnowledgeHub(join(profile, 'knowledge-hub.sqlite'), join(profile, 'companion-notes.json'),
+   ()=>loadTemplateSeeds(join(__dirname,'renderer','hub-templates')),decodeTemplateBackupImage);
   // An older saved preference file is reloaded by the same constructor in the isolated packaged fixture.
   if(smoke){
    writeFileSync(join(profile,'companion-appearance.json'),JSON.stringify({options:{theme:'dark',accent:'violet',background:'dusk',opacity:.41,blur:7}}));
@@ -72,7 +79,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   }
   const appearance=new CompanionAppearance(profile,bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error();const size=image.getSize(),ratio=Math.min(1,2560/Math.max(size.width,size.height));if(ratio<1)image=image.resize({width:Math.max(1,Math.round(size.width*ratio)),height:Math.max(1,Math.round(size.height*ratio)),quality:'best'});return image.toPNG();});
   let codexTab:CodexTab='activity';let contextPage:LauncherPage|undefined;
-  let expanded=false,island=true,islandSizing=false,islandControls=false,compactView:CapsuleView='status',workspacePage:WorkspacePage=launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
+  let expanded=false,workspacePage:WorkspacePage=workspaceWindow.page??launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
   const renderer=join(__dirname,'renderer','index.html'),preload=join(__dirname,'preload.cjs'),icon=join(__dirname,'renderer','icons','zen.ico');
   const rendererQuery={view:'capsule'};
   const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
@@ -94,13 +101,20 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const isEdge=()=>location()!=='floating';
   const dockDisplay=()=>screen.getAllDisplays().find(d=>d.id===dock.displayId)??screen.getPrimaryDisplay();
   const activeWorkspaceMinimum=()=>isEdge()?edgeWorkspaceMinimum(dockDisplay().workArea,dock.side):workspaceMinimum;
-  const surfaceBounds=(compact:boolean)=>isEdge()?edgeBounds(dockDisplay().workArea,dock,compact,nativeCaption,parked.bounds.width):
-   compact?islandBounds(parked,nativeCaption):compactWorkspaceBounds(parked,nativeCaption);
+  const surfaceBounds=()=>isEdge()?edgeBounds(dockDisplay().workArea,dock,true,nativeCaption):islandBounds(parked,nativeCaption);
+  const layout=(open=expanded)=>{
+   const area=isEdge()?dockDisplay().workArea:parked.area;
+   const view=capsuleLayout(area,surfaceBounds(),parked.bounds,isEdge()?dock.side:undefined,open||nativeCaption,nativeCaption?workspaceCaptionHeight:0);
+   // On Windows keep the compositor viewport in place between hover states.
+   // The native region still exposes only the compact silhouette when closed.
+   return open?view:{...view,panel:undefined};
+  };
   let taskbarHidden=settings.hideCapsuleFromTaskbar;
-  const cap=new BrowserWindow({...surfaceBounds(true),title:'ZEN · Isla',frame:false,thickFrame:nativeCaption,roundedCorners:false,transparent:false,
+  const cap=new BrowserWindow({...layout(false).bounds,title:'ZEN · Isla',frame:false,thickFrame:nativeCaption,roundedCorners:false,transparent:false,
    ...(nativeCaption?{titleBarStyle:'hidden' as const,titleBarOverlay:{height:workspaceCaptionHeight,color:'#00000000',symbolColor:'#f2f3fb'}}:{}),
    backgroundColor:'#101116',hasShadow:false,maximizable:false,minimizable:false,show:false,skipTaskbar:taskbarHidden,
    alwaysOnTop:false,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
+  const currentLayout=()=>expanded?resizeCapsuleLayout(layout(),cap.getBounds(),isEdge()?dock.side:undefined):layout();
   const setTaskbarHidden=(hidden:boolean)=>{
    if(taskbarHidden===hidden)return;
    cap.setSkipTaskbar(hidden);
@@ -120,36 +134,44 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const visibility=new CapsuleVisibility();
   const surfaceVisible=()=>!cap.isDestroyed()&&cap.isVisible()&&!cap.isMinimized();
   let openDialogs=0,editing=false;
+  let hoverInput:CapsuleHoverInput={inside:false,blocked:false,reduced:false};
+  let hoverClosing=false,panelOpening=false,nativeGeometryInteraction=false,fromApps=false;
+  let panelPaint:number|undefined,paintSequence=0;
+  let paintTimeout:ReturnType<typeof setTimeout>|undefined;
+  const cancelPanelPaint=()=>{clearTimeout(paintTimeout);panelPaint=undefined;};
   let blurTimer:ReturnType<typeof setTimeout>|undefined;
   const cancelAutoCollapse=()=>{clearTimeout(blurTimer);blurTimer=undefined;};
   const withWindowDialog=async <T,>(show:()=>Promise<T>)=>{
    cancelAutoCollapse();
    openDialogs++;
+   hover.refresh();
    try{return await show();}
-   finally{openDialogs--;}
+   finally{openDialogs--;hover.refresh();}
   };
   const workspaceVisible=(page?:WorkspacePage)=>surfaceVisible()&&expanded&&(page===undefined||workspacePage===page);
   const summaryVisible=()=>workspaceVisible('codex')&&codexTab==='summary';
   const privateEffectsAllowed=()=>!settings.presentation&&!settings.paused;
+  const activityVisible=()=>workspaceVisible('codex')&&codexTab==='activity'&&privateEffectsAllowed();
   const snapshot=()=>displayStatus({
    ...hub.status(),
+   activitySessions:activityVisible()?hub.activitySessions():undefined,
    appearance:appearance.status(),
    workspace:{
-    expanded,island,islandSizing,islandControls,page:workspacePage,location:location(),
-    surfaceVisible:surfaceVisible(),
+    expanded,island:!expanded,islandSizing:false,islandControls:false,page:workspacePage,location:location(),geometry:currentLayout(),
+    surfaceVisible:surfaceVisible(),hoverClosing,panelOpening,panelPaint,fromApps,
     islandStacked:compactIslandSize(isEdge()?dockDisplay().workArea:parked.area,isEdge()&&dock.side!=='top').stacked,
-    edge:isEdge()?{side:dock.side,railTop:expanded?edgeRailTop(cap.getBounds(),dockDisplay().workArea,dock):0}:undefined,
-    codexTab,context:contextPage,...launcherPreferences.status(),compact:compactView,
+    edge:isEdge()?{side:dock.side,railTop:layout().capsule.y}:undefined,
+    codexTab,context:contextPage,...launcherPreferences.status(),recentSection:launcherPreferences.recentSection,compact:'status',
     nativeCaption,layout:workspaceWindow.preferences,canRestorePosition:!!workspaceWindow.previous,
    },
    desktop:desktop?.status(),
   },++revision,surfaceVisible());
-  const broadcast=()=>{if(!cap.isDestroyed())cap.webContents.send(companionChannel('status'),snapshot());};
+  const broadcast=()=>{if(!cap.isDestroyed())cap.webContents.send(companionChannel('status'),snapshot());if(activityVisible()&&!smoke)void refreshActivityTitles();};
   const playEffect=(effect:InterfaceEffect)=>{
    if(!cap.isDestroyed()&&surfaceVisible())cap.webContents.send(companionInterfaceEffectChannel,effect);
   };
   function changeSurface(run:()=>void) {
-   const current=()=>({island,expanded,page:workspacePage,tab:codexTab,
+   const current=()=>({island:!expanded,expanded,page:workspacePage,tab:codexTab,
     disclosure:workspacePage==='options'?'options':workspacePage==='shortcuts'?`shortcuts/${contextPage}`:undefined});
    const before=current();
    run();
@@ -162,13 +184,22 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const summaries=new CompanionSummaries(smoke?undefined:target,(id,key,value)=>hub.setSummary(id,key,value));
   const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(event,session,reply)=>{
    summaries.observe(event,session);
-   if(reply)context.observeReply(session.id,session.cwd,reply);
+   if(reply){context.observeReply(session.id,session.cwd,reply);calendar.observe(session.id,session.cwd,reply.text);}
   });hub.targetError=targetError;
   const codexHome=smoke?join(profile,'codex-fixture'):process.env.CODEX_HOME??join(app.getPath('home'),'.codex');
   const replyReader=new CodexReplyReader(codexHome);
+  let nextTitleCheck=0;
+  async function refreshActivityTitles(){
+   if(Date.now()<nextTitleCheck)return;
+   const unnamed=hub.activitySessions().filter(session=>!session.title);
+   if(!unnamed.length)return;
+   nextTitleCheck=Date.now()+10000;
+   const titles=await replyReader.observedTitles(unnamed);
+   if(!activityVisible())return;
+   for(const [id,title] of titles)hub.setTitle(id,title);
+  }
   const integration=new CompanionIntegration(profile,codexHome,dirname(nativeHelper(__dirname,'hook')),hub);
-  const mediaAllowed=()=>privateEffectsAllowed()&&surfaceVisible()&&
-   (expanded?workspacePage==='spotify':!island&&compactView==='spotify'&&hub.status().approvals.length===0);
+  const mediaAllowed=()=>privateEffectsAllowed()&&workspaceVisible('spotify');
   const mediaObservationAllowed=()=>surfaceReady&&privateEffectsAllowed()&&surfaceVisible();
   const smokeMedia = smoke ? createSmokeMedia() : undefined;
   const mediaHelper = nativeHelper(__dirname, 'media');
@@ -183,9 +214,23 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    finally { requestInFlight = false; }
   };
   const submitRequest = async (thread: string, text: string, verify: () => void | Promise<void>) => {
-   if (!smoke) return queueCodexRequest(thread,text,codexHome,verify);
-   await verify();
-   queuedRequests.push({thread,text});
+   if (smoke){
+    await verify();
+    queuedRequests.push({thread,text});
+    return;
+   }
+   const destination=target;
+   const checkDestination=()=>{
+    if(!privateEffectsAllowed()||targetError||target!==destination||destination?.session!==thread)
+     throw Error('Revisa el chat fijado, Pausa y Presentación antes de enviar a Codex.');
+   };
+   return queueCodexRequest(thread,text,codexHome,()=>{
+    checkDestination();
+    return verify();
+   },url=>{
+    checkDestination();
+    return openExternal(url);
+   });
   };
   const context=new CompanionContext({
    policy:()=>({visible:summaryVisible(),presentation:settings.presentation,paused:settings.paused,target,targetError}),
@@ -209,34 +254,96 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     return preferCompanionReply(hub.lastReply(selected),local);
    },
   });
-  let shapeSize='',captionInset=0,resizeTimer:ReturnType<typeof setInterval>|undefined;
+  const calendar=new CompanionCalendar(join(profile,'companion-calendar.json'),{
+   policy:()=>({visible:workspaceVisible('calendar'),allowed:privateEffectsAllowed(),target:targetError?undefined:target}),
+   queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:broadcast,
+  });
+  let shapeSize='',captionInset=0,workspaceFrame=false;
+  let hoverRegion:Area[]=[],capsuleRegion:Area[]=[];
+  let panelRetraction=0,retractionTimer:ReturnType<typeof setInterval>|undefined;
+  const resetRetraction=()=>{clearInterval(retractionTimer);panelRetraction=0;panelOpening=false;};
+  const animatePanel=()=>settings.motion&&!hoverInput.reduced;
   const desktopHelper=nativeHelper(__dirname,'desktop');
-  const frameInsets=new Map<number,{x:number;y:number}>();
+  const frameInsets=new Map<string,{x:number;y:number}>();
+  const insetKey=(display:number,workspace=workspaceFrame)=>`${display}:${workspace}`;
+  let frameInsetRevision=0;
   let insetProbe:Promise<void>|undefined;
+  const cancelFrameInsetProbe=()=>{
+   frameInsetRevision++;
+   insetProbe=undefined;
+  };
   const updateShape=()=>{
-   const bounds=cap.getBounds(),{width,height}=bounds,edge=isEdge();
-   const inset=edge&&nativeCaption&&!cap.isMaximized()?frameInsets.get((expanded?screen.getDisplayMatching(bounds):dockDisplay()).id)??{x:8,y:0}:{x:0,y:0};
-   const railTop=expanded&&edge?edgeRailTop(bounds,dockDisplay().workArea,dock):0;
-   const reserve=nativeCaption&&!expanded&&(edge||island||islandSizing)?workspaceCaptionHeight:0;
-   const compact=island||islandSizing&&!islandControls;
-   const key=edge?`edge/${dock.side}/${width}/${height}/${expanded}/${compact}/${railTop}/${inset.x}/${inset.y}`:expanded?'workspace':`${width}x${height}/${reserve}`;
+   const layout=currentLayout(),bounds=cap.getBounds();
+   // Keep the new area clipped until the renderer has drawn its glass and content.
+   const geometry=panelPaint===undefined?layout:{...layout,panel:undefined};
+   const display=screen.getDisplayMatching(bounds).id;
+   const inset=(nativeCaption&&!cap.isMaximized()&&
+    (frameInsets.get(insetKey(display))??frameInsets.get(insetKey(display,!workspaceFrame))))||{x:0,y:0};
+   const side=isEdge()?dock.side:undefined;
+   const shown=retractCapsulePanel(geometry,side,panelRetraction);
+   const key=JSON.stringify([geometry,shown.panel,side,inset]);
    if(key===shapeSize)return;
-   const shapedHeight=height-reserve;
-   const shape=edge?edgeShape(width,shapedHeight,dock.side,railTop,expanded,compact):expanded?[]:capsuleShape({width,height:shapedHeight});
-   cap.setShape(mergeShape(shape).map(rect=>({...rect,x:rect.x+inset.x,y:rect.y+inset.y+reserve})));
+   const offset=(rect:Area)=>({...rect,x:rect.x+inset.x,y:rect.y+inset.y});
+   // Keep the original area eligible for hover reversal while its uncovered part passes clicks through.
+   hoverRegion=capsuleLayoutShape(geometry,side).map(offset);
+   capsuleRegion=geometry.panel?capsuleLayoutShape({...geometry,panel:undefined},side).map(offset):hoverRegion;
+   cap.setShape(shown===geometry?hoverRegion:capsuleLayoutShape(shown,side).map(offset));
    shapeSize=key;
-   captionInset=reserve;
+   captionInset=nativeCaption?workspaceCaptionHeight:0;
+  };
+  const animateRetraction=(closing:boolean)=>{
+   clearInterval(retractionTimer);
+   const from=panelRetraction,to=closing?1:0;
+   panelOpening=!closing&&from!==to;
+   if(from===to)return;
+   const start=performance.now();
+   retractionTimer=setInterval(()=>{
+    if(quitting||!expanded||!surfaceVisible()){resetRetraction();return;}
+    const t=animatePanel()?Math.min(1,(performance.now()-start)/motion.panelTransition):1;
+    panelRetraction=from+(to-from)*t*t*(3-2*t);
+    updateShape();
+    if(t===1){
+     clearInterval(retractionTimer);
+     if(panelOpening){panelOpening=false;broadcast();}
+    }
+   },16);
+  };
+  const finishPanelPaint=(token:number)=>{
+   if(token!==panelPaint||!expanded||!surfaceVisible())return false;
+   cancelPanelPaint();
+   if(!hoverClosing&&animatePanel()){
+    panelRetraction=1;
+    animateRetraction(false);
+   }
+   updateShape();
+   broadcast();
+   return true;
+  };
+  const revealPaintedPanel=async(token:number)=>{
+   if(token!==panelPaint||!surfaceVisible())return false;
+   const panel=currentLayout().panel;
+   if(!panel)return false;
+   try{
+    // A renderer frame callback precedes Chromium's compositor submission.
+    // A one-pixel copy waits for the surface before exposing the new native region.
+    const point={x:panel.x+Math.floor(panel.width/2),y:panel.y+Math.floor(panel.height/2),width:1,height:1};
+    await cap.webContents.capturePage(point,{stayAwake:true});
+   }catch{return false;}
+   return finishPanelPaint(token);
   };
   const readFrameInset=()=>{
-   if(!nativeCaption||!isEdge()||cap.isDestroyed()||cap.isMaximized()||cap.isMinimized())return;
+   if(!nativeCaption||cap.isDestroyed()||cap.isMaximized()||cap.isMinimized())return;
    const insetDisplay=()=>expanded?screen.getDisplayMatching(cap.getBounds()):dockDisplay();
    const {id}=insetDisplay();
-   if(frameInsets.has(id)||insetProbe)return insetProbe;
+   const key=insetKey(id);
+   if(frameInsets.has(key)||insetProbe)return insetProbe;
+   const revision=frameInsetRevision;
    const insetSchema=z.object({x:z.number().min(0).max(32),y:z.number().min(0).max(32)});
    insetProbe=new Promise<void>(resolve=>{
     execFile(desktopHelper,['--client-inset',cap.getNativeWindowHandle().readBigUInt64LE().toString(),String(process.pid)],{windowsHide:true,timeout:1500},(error,stdout)=>{
-     if(!error&&!cap.isDestroyed()&&!cap.isMaximized()&&insetDisplay().id===id){
-      try{frameInsets.set(id,insetSchema.parse(JSON.parse(stdout)));updateShape();}catch{/* Retain Windows' usual inset if the sample is unavailable. */}
+     if(revision!==frameInsetRevision){resolve();return;}
+     if(!error&&!cap.isDestroyed()&&!cap.isMaximized()&&!cap.isMinimized()&&insetDisplay().id===id){
+      try{frameInsets.set(key,insetSchema.parse(JSON.parse(stdout)));updateShape();}catch{/* Retain Windows' usual inset if the sample is unavailable. */}
      }
      insetProbe=undefined;
      resolve();
@@ -244,56 +351,17 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    });
    return insetProbe;
   };
-  const stopIslandResize=()=>{clearInterval(resizeTimer);resizeTimer=undefined;islandSizing=false;islandControls=false;};
   const setCaptionTheme=()=>{
-   if(nativeCaption)cap.setTitleBarOverlay({
-    height:workspaceCaptionHeight,
-    symbolColor:!expanded&&(island||isEdge())?'#00000000':!isEdge()&&appearance.status().theme==='light'?'#161a24':'#f2f3fb',
-   });
+   if(nativeCaption)cap.setTitleBarOverlay({height:workspaceCaptionHeight,symbolColor:'#00000000'});
   };
-  const positionSurface=(animate=false)=>{
-   if(expanded)return;
-   stopIslandResize();
-   if(nativeCaption&&(island||isEdge())){cap.setMinimizable(false);cap.setMaximizable(false);setCaptionTheme();}
-   const next=surfaceBounds(island),current=cap.getBounds();
-   const place=(bounds:Area)=>{
-    const old=cap.getBounds();
-    if(bounds.x!==old.x||bounds.y!==old.y||bounds.width!==old.width||bounds.height!==old.height)cap.setBounds(bounds);
-    updateShape();
-   };
-   const finish=()=>{
-    stopIslandResize();
-    place(next);
-    if(nativeCaption&&!island&&!isEdge()){cap.setMinimizable(true);cap.setMaximizable(true);setCaptionTheme();}
-   };
-   if(!animate||!settings.motion||!surfaceVisible()||systemPreferences.getAnimationSettings().prefersReducedMotion||
-      (current.width===next.width&&current.height===next.height&&current.x===next.x&&current.y===next.y)){finish();return;}
-   const closing=island;
-   const earlyControls=isEdge()&&!closing;
-   const duration=closing?motion.panel:motion.island;
-   // Animate the visible rectangle while the hidden caption is still reserved.
-   // On expansion, the full rail resumes its native title controls at the same visible origin.
-   const fromInset=captionInset;
-   const toInset=nativeCaption&&(isEdge()||closing)?workspaceCaptionHeight:0;
-   const motionInset=nativeCaption?workspaceCaptionHeight:0;
-   const inAnimation=(bounds:Area,inset:number):Area=>({...bounds,y:bounds.y+inset-motionInset,height:bounds.height-inset+motionInset});
-   const from=inAnimation(current,fromInset),to=inAnimation(next,toInset);
-   islandSizing=true;
-   place(from);
-   const start=performance.now();
-   resizeTimer=setInterval(()=>{
-    if(!settings.motion||systemPreferences.getAnimationSettings().prefersReducedMotion){finish();broadcast();return;}
-    const progress=Math.min(1,(performance.now()-start)/duration);
-    if(progress===1){finish();broadcast();return;}
-    const ease=surfaceProgress(progress,closing);
-    const blend=(key:keyof Area)=>Math.round(from[key]+(to[key]-from[key])*ease);
-    place({x:blend('x'),y:blend('y'),width:blend('width'),height:blend('height')});
-    if(earlyControls&&!islandControls&&ease>=.97){islandControls=true;broadcast();}
-   },16);
+  const positionSurface=()=>{
+   const next=layout().bounds,current=cap.getBounds();
+   if(Object.keys(next).some(key=>next[key as keyof Area]!==current[key as keyof Area]))cap.setBounds(next);
+   updateShape();
   };
-  cap.on('resize',updateShape);
-  cap.on('move',()=>{if(isEdge()){updateShape();void readFrameInset();}});
   let changingMode=false;
+  cap.on('resize',()=>{if(!changingMode)updateShape();});
+  cap.on('move',()=>{if(!changingMode&&isEdge()){updateShape();void readFrameInset();}});
   let savePositionTimer:ReturnType<typeof setTimeout>|undefined;
   const workspaceGeometry=()=>{
    const maximized=cap.isMaximized();
@@ -305,57 +373,65 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    clearTimeout(savePositionTimer);
    if(expanded&&!cap.isMinimized()){
     const current=workspaceGeometry();
-    workspaceWindow.save({mode:'workspace',current,...(!isEdge()?{floating:current}:{})});
+    if(!current.maximized){
+     const view=currentLayout();
+     const vertical=isEdge()&&dock.side!=='top';
+     parked={...parked,bounds:{...parked.bounds,width:current.bounds.width,height:view.panel!.height+(vertical?0:view.capsule.height)}};
+    }
+    workspaceWindow.save({mode:'workspace',page:workspacePage,current:{...current,bounds:parked.bounds},edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
    }
   };
   const scheduleWorkspaceSave=()=>{
    if(!expanded||changingMode||cap.isMinimized())return;
-   if(isEdge())broadcast();
+   broadcast();
    clearTimeout(savePositionTimer);
    savePositionTimer=setTimeout(rememberWorkspace,250);
   };
   cap.on('move',scheduleWorkspaceSave);
   cap.on('resize',scheduleWorkspaceSave);
   cap.on('unmaximize',scheduleWorkspaceSave);
-  const enterWorkspace=(maximize=!isEdge()&&parked.maximized,restore=false,bounds=parked.bounds)=>{
-   stopIslandResize();
-   changingMode=true;
-   island=false;
-   expanded=true;
-   updateShape();
+  const configureWorkspaceFrame=()=>{
+   workspaceFrame=true;
+   cancelFrameInsetProbe();
    cap.setResizable(true);
    cap.setMovable(!settings.windowLocked);
    cap.setMinimizable(true);
    cap.setMaximizable(true);
-   setCaptionTheme();
-   const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);
    setTaskbarHidden(false);
    cap.setTitle('ZEN');
    if(cap.isMaximized())cap.unmaximize();
-   const area=dockDisplay().workArea;
-   cap.setBounds(isEdge()&&!restore?edgePanelBounds(area,bounds,dock):bounds);
+  };
+  const enterWorkspace=(byHover=false)=>{
+   changingMode=true;
+   expanded=true;
+   if(!byHover||cap.isFocused())configureWorkspaceFrame();
+   positionSurface();
+   if(workspaceFrame)cap.setMinimumSize(Math.min(320,dockDisplay().workArea.width),Math.min(320,dockDisplay().workArea.height));
    updateShape();
-   if(maximize)cap.maximize();
+   void readFrameInset();
    changingMode=false;
    rememberWorkspace();
   };
-  cap.on('maximize',()=>{
-   if(!expanded&&!changingMode){enterWorkspace(true);broadcast();}
-   else scheduleWorkspaceSave();
-  });
-  const rememberRail=()=>workspaceWindow.save({mode:'capsule',current:parked,edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
+  cap.on('maximize',()=>{scheduleWorkspaceSave();broadcast();});
+  const rememberRail=()=>workspaceWindow.save({mode:'capsule',page:workspacePage,current:parked,edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
   const leaveWorkspace=()=>{
    clearTimeout(savePositionTimer);
-   if(!isEdge()&&!cap.isMinimized())parked=workspaceGeometry();
+   cancelPanelPaint();
+   resetRetraction();
    changingMode=true;
    if(cap.isMaximized())cap.unmaximize();
    expanded=false;
-   cap.setMinimumSize(0,0);
-   cap.setMovable(false);
-   cap.setResizable(false);
-   setTaskbarHidden(settings.hideCapsuleFromTaskbar);
-   cap.setTitle('ZEN · Cápsula');
+   if(workspaceFrame){
+    workspaceFrame=false;
+    cap.setMinimumSize(0,0);
+    cap.setMovable(false);
+    cap.setResizable(false);
+    cancelFrameInsetProbe();
+    setTaskbarHidden(settings.hideCapsuleFromTaskbar);
+    cap.setTitle('ZEN · Cápsula');
+   }
    positionSurface();
+   void readFrameInset();
    changingMode=false;
    rememberRail();
   };
@@ -370,10 +446,11 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     if(before.maximized)cap.unmaximize();
     if(action==='restore'){
      if(previous)cap.setBounds(restoreWorkspace(previous,displays,monitor));
-    }else cap.setBounds(workspaceLayout(monitor.workArea,action));
+    }else {parked={...parked,area:monitor.workArea,displayId:monitor.id,bounds:workspaceLayout(monitor.workArea,action)};positionSurface();}
     if(action==='restore'&&previous?.maximized)cap.maximize();
    }
-   rememberWorkspace();
+   if(action==='restore'&&previous){parked={...previous,bounds:restoreWorkspace(previous,displays,monitor)};positionSurface();}
+   rememberWorkspace();broadcast();
   };
   const setTopmost=(next:boolean)=>{
    // Electron's default level inserts the window behind the taskbar HWND on Windows.
@@ -389,51 +466,53 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   };
   const secure=(w:BrowserWindow,url:string)=>{w.setMenu(null);w.webContents.setWindowOpenHandler(()=>({action:'deny'}));w.webContents.on('will-navigate',(e,next)=>{if(next!==url)e.preventDefault();});w.webContents.on('will-frame-navigate',e=>{if(!e.isMainFrame)e.preventDefault();});w.webContents.on('did-finish-load',broadcast);w.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));};
   secure(cap,rendererUrl);
-  cap.webContents.session.protocol.handle('zen-theme',request=>{try{const u=new URL(request.url);if(request.method!=='GET'||u.hostname!=='background'||u.search||u.hash||settings.presentation)throw Error();const bytes=appearance.image(u.pathname.slice(1));return new Response(bytes,{headers:{'Content-Type':'image/png','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"}});}catch{return new Response(null,{status:404});}});
+  cap.webContents.session.protocol.handle('zen-theme',request=>{
+   try{
+    const u=new URL(request.url);
+    if(request.method!=='GET'||u.hash)throw Error();
+    const reference=u.hostname==='template'&&/^\/([a-f\d-]{36})\/(thumbnail|reference)$/i.exec(u.pathname);
+    let image:{bytes:Buffer;mime:string};
+    if(reference&&workspaceVisible('notes')&&privateEffectsAllowed()&&/^\?v=\d+$/.test(u.search)){
+     const stored=notes.referenceImage(reference[1],reference[2]==='thumbnail');
+     if(!stored)throw Error();
+     image=stored;
+    }else if(u.hostname==='background'&&!u.search&&!settings.presentation){
+     image={bytes:appearance.image(u.pathname.slice(1)),mime:'image/png'};
+    }else throw Error();
+    return new Response(new Uint8Array(image.bytes),{headers:{'Content-Type':image.mime,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+     'Content-Security-Policy':"default-src 'none'; sandbox"}});
+   }catch{return new Response(null,{status:404});}
+  });
   const invalidateContext=()=>{context.invalidate();replyEpoch++;};
-  const openWorkspace=(page:WorkspacePage)=>{
+  const openWorkspace=(page:WorkspacePage,byHover=false,fromLauncher=byHover)=>{
    cancelAutoCollapse();
+   if(!byHover)hover.selectExplicitly();
    if(expanded&&workspacePage===page){broadcast();return;}
    endDrag();
    launcherPreferences.visit(page);
-   if(page!=='spotify'||(expanded?workspacePage:compactView==='spotify'?'spotify':workspacePage)!=='spotify')media.close();
    if(workspacePage!==page)invalidateContext();
-   compactView='status';
    workspacePage=page;
+   fromApps=fromLauncher;
    if(page==='notices')hub.markNoticesRead();
    visibility.invoke();
-   if(!expanded)enterWorkspace();
+   if(!expanded){
+    if(byHover){
+     const token=panelPaint=++paintSequence;
+     // An occluded renderer can suspend frame callbacks. Bound the wait for it.
+     paintTimeout=setTimeout(()=>finishPanelPaint(token),250);
+    }
+    enterWorkspace(byHover);
+   }
    syncVisibility();
    broadcast();
-   if(page==='codex')void refreshLastReply();
+   if(!byHover)hover.refresh();
+   if(page==='codex'||page==='calendar')void refreshLastReply();
   };
-  let resumePanel=false;
-  const openRail=()=>{
-   if(!island||expanded)return;
-   if(resumePanel){
-    resumePanel=false;
-    openWorkspace(workspacePage);
-    return;
-   }
-   island=false;
-   cap.setTitle('ZEN · Cápsula');
-   positionSurface(true);
-   broadcast();
-  };
-  const collapse=(view:CapsuleView='status',toIsland=false)=>{
+  const collapse=()=>{
    cancelAutoCollapse();
-   if(toIsland&&openDialogs)return;
+   if(openDialogs)return;
    endDrag();
-   if(expanded||!toIsland)resumePanel=expanded&&toIsland;
-   const samePlayer=view==='spotify'||toIsland&&(workspacePage==='spotify'||compactView==='spotify');
-   if(!samePlayer)media.close();
-   if(view!=='status'){launcherPreferences.visit(view);workspacePage=view;}
-   if(!toIsland)compactView=view;
-   if(expanded){invalidateContext();leaveWorkspace();}
-   const change=island!==toIsland;
-   island=toIsland;
-   cap.setTitle(island?'ZEN · Isla':'ZEN · Cápsula');
-   if(change)positionSurface(true);
+   if(expanded){invalidateContext();leaveWorkspace();hoverClosing=false;hover.collapsed();}
    broadcast();syncVisibility();
   };
   const showCapsule=(explicit=true)=>{
@@ -454,18 +533,17 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    broadcast();
   };
   reveal=()=>showCapsule();
-  const endDrag=()=>{clearInterval(dragTimer);clearTimeout(dragLimit);dragTimer=undefined;if(moved){moved=false;rememberRail();}};
+  const endDrag=()=>{clearInterval(dragTimer);clearTimeout(dragLimit);dragTimer=undefined;if(moved){moved=false;if(expanded)rememberWorkspace();else rememberRail();}};
   const moveRail=(monitor:ReturnType<typeof activeDisplay>,bounds:Area)=>{
    parked={displayId:monitor.id,area:monitor.workArea,bounds:placeWorkspaceRail(monitor.workArea,bounds),maximized:false};
-   positionSurface();
+   positionSurface();broadcast();
   };
   const drag=()=>{
-   if(expanded||islandSizing||settings.windowLocked||!surfaceVisible())return;
+   if(settings.windowLocked||!surfaceVisible())return;
    endDrag();
-   const start=screen.getCursorScreenPoint(),rail=cap.getBounds();
+   const start=screen.getCursorScreenPoint(),rail=surfaceBounds();
    const panel=parked.maximized?parked.area:parked.bounds;
    const grabX=(start.x-rail.x)/rail.width,grabY=start.y-rail.y;
-   let edge:DockEdge='top';
    dragTimer=setInterval(()=>{
     const cursor=screen.getCursorScreenPoint();
     if(!moved&&Math.hypot(cursor.x-start.x,cursor.y-start.y)<4)return;
@@ -474,33 +552,52 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     if(isEdge()){
      if(dock.side==='top'){
       dock={side:'top',displayId:monitor.id,fraction:Math.min(1,Math.max(0,(cursor.x-grabX*rail.width+rail.width/2-area.x)/area.width))};
-      positionSurface();
+      positionSurface();broadcast();
       return;
      }
      const middle=area.x+area.width/2;
      const side=cursor.x<middle-24?'left':cursor.x>middle+24?'right':dock.side;
      const caption=nativeCaption?EDGE_ISLAND.captionReserve:0;
      const fraction=Math.min(1,Math.max(0,(cursor.y-grabY+(rail.height+caption)/2-area.y)/area.height));
-     const changed=side!==dock.side;
      dock={side,displayId:monitor.id,fraction};
      positionSurface();
-     if(changed)broadcast();
+     broadcast();
      return;
     }
-    edge=nearestEdge(area,cursor,edge);
-    if(island){
+    {
      const bounds=railFromIsland(area,panel,Math.round(cursor.x-grabX*rail.width),cursor.y-grabY+captionInset);
      moveRail(monitor,bounds);
      return;
     }
-    const width=Math.min(panel.width,area.width);
-    const x=edge==='left'?area.x:edge==='right'?area.x+area.width-width:Math.round(cursor.x-grabX*width);
-    const y=edge==='top'?area.y:cursor.y-grabY;
-    moveRail(monitor,{...panel,x,y,width});
    },30);
-   dragLimit=setTimeout(endDrag,30000);
+   dragLimit=setTimeout(()=>{endDrag();hover.refresh();},30000);
   };
-  const hide=()=>{rememberWorkspace();cancelAutoCollapse();endDrag();if(islandSizing)positionSurface();media.close();visibility.hide();setTaskbarHidden(false);cap.minimize();};
+  const hover=new CompanionHover({
+   sample:()=>{
+    const visible=nativeCaption&&(!smoke||hoverSmoke)&&surfaceReady&&!quitting&&surfaceVisible();
+    const bounds=visible?cap.getBounds():undefined;
+    const cursor=bounds?screen.getCursorScreenPoint():undefined;
+    const over=(region:Area[])=>Boolean(bounds&&cursor&&region.some(rect=>
+     cursor.x>=bounds.x+rect.x&&cursor.x<bounds.x+rect.x+rect.width&&
+     cursor.y>=bounds.y+rect.y&&cursor.y<bounds.y+rect.y+rect.height));
+    return {visible,expanded,page:workspacePage,overCapsule:over(capsuleRegion),overWorkspace:expanded&&over(hoverRegion),
+     blocked:!!(openDialogs||dragTimer||nativeGeometryInteraction||hoverInput.blocked),
+     locked:settings.windowLocked,animate:animatePanel()};
+   },
+   open:page=>changeSurface(()=>openWorkspace(page,true)),
+   close:()=>changeSurface(collapse),
+   previewClose:closing=>{
+    hoverClosing=closing;
+    if(quitting||!surfaceVisible())return;
+    animateRetraction(closing);
+    broadcast();
+   },
+  });
+  if(nativeCaption){
+   cap.hookWindowMessage(0x0231,()=>{nativeGeometryInteraction=true;hover.refresh();}); // WM_ENTERSIZEMOVE
+   cap.hookWindowMessage(0x0232,()=>{nativeGeometryInteraction=false;hover.refresh();}); // WM_EXITSIZEMOVE
+  }
+  const hide=()=>{rememberWorkspace();cancelAutoCollapse();endDrag();media.close();visibility.hide();setTaskbarHidden(false);cap.minimize();};
   const dismissOnOutsideClick=()=>{
    if(!expanded&&settings.dismissCapsuleOnOutsideClick&&surfaceReady&&!quitting&&!visibility.hidden&&!openDialogs&&!dragTimer&&surfaceVisible())hide();
   };
@@ -513,22 +610,33 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    event.preventDefault();
    hide();
   });
-  const canAutoCollapse=()=>!island&&settings.collapseOnBlur&&!settings.keepExpanded&&!editing&&!dragTimer&&!moved&&
-   !openDialogs&&!requestInFlight&&!quitting&&surfaceVisible();
+  const canAutoCollapse=()=>!nativeCaption&&expanded&&settings.collapseOnBlur&&!settings.windowLocked&&!settings.keepExpanded&&
+   !editing&&!dragTimer&&!moved&&!openDialogs&&!requestInFlight&&!quitting&&surfaceVisible();
   cap.on('blur',()=>{
    const eligible=canAutoCollapse();
    endDrag();
+   hover.refresh();
    cancelAutoCollapse();
-   if(eligible)blurTimer=setTimeout(()=>{if(canAutoCollapse()&&!cap.isFocused())collapse('status',true);},ISLAND_BLUR_MS);
+   if(eligible)blurTimer=setTimeout(()=>{if(canAutoCollapse()&&!cap.isFocused())collapse();},ISLAND_BLUR_MS);
   });
-  cap.on('focus',cancelAutoCollapse);
+  cap.on('focus',()=>{
+   cancelAutoCollapse();
+   if(!expanded||workspaceFrame||changingMode)return;
+   changingMode=true;
+   configureWorkspaceFrame();
+   cap.setMinimumSize(Math.min(320,dockDisplay().workArea.width),Math.min(320,dockDisplay().workArea.height));
+   changingMode=false;
+   updateShape();
+   void readFrameInset();
+  });
   cap.on('restore',()=>{
    visibility.invoke();
    if(!expanded)setTaskbarHidden(settings.hideCapsuleFromTaskbar);
+   updateShape();
    syncVisibility();
    broadcast();
   });
-  const hidePrivateContent=()=>{invalidateContext();mediaObserver.close();broadcast();};
+  const hidePrivateContent=()=>{cancelPanelPaint();resetRetraction();hoverInput={reduced:hoverInput.reduced,inside:false,blocked:false};hover.reset();invalidateContext();mediaObserver.close();broadcast();};
   cap.on('hide',hidePrivateContent);
   cap.on('minimize',()=>{setTaskbarHidden(false);hidePrivateContent();});
   const reposition=()=>{
@@ -543,6 +651,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    syncVisibility();
   };
   const refreshDisplays=()=>{
+   cancelFrameInsetProbe();
    frameInsets.clear();
    const display=dockDisplay();
    if(isEdge()&&display.id!==dock.displayId){
@@ -551,7 +660,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     if(expanded&&!cap.isMinimized()&&!cap.isMaximized()){
      const minimum=activeWorkspaceMinimum();
      cap.setMinimumSize(minimum.width,minimum.height);
-     cap.setBounds(edgePanelBounds(display.workArea,cap.getBounds(),dock));
+     positionSurface();
     }
    }
    reposition();
@@ -559,16 +668,16 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   };
   screen.on('display-added',refreshDisplays);screen.on('display-removed',refreshDisplays);screen.on('display-metrics-changed',refreshDisplays);
   const openCurrent=async()=>{await openExternal(codexChatUrl(hub.status()));};
-  const tray=new Tray(icon);tray.setToolTip('ZEN · Codex');tray.setContextMenu(Menu.buildFromTemplate([{label:'Abrir ZEN',click:()=>{reveal();if(!expanded)openWorkspace(launcherPreferences.status().last);}},{label:'Mostrar cápsula',click:()=>{if(expanded)collapse();reveal();}},{label:'Volver al chat de Codex',click:()=>void openCurrent()},{label:'Volver a mi aplicación',click:()=>void desktop?.restore().catch(()=>{})},{type:'separator'},{label:'Salir de ZEN',click:()=>app.quit()}]));tray.on('click',reveal);
+  const tray=new Tray(icon);tray.setToolTip('ZEN · Codex');tray.setContextMenu(Menu.buildFromTemplate([{label:'Abrir ZEN',click:()=>{reveal();if(!expanded)openWorkspace(workspacePage);}},{label:'Mostrar cápsula',click:()=>{if(expanded)collapse();reveal();}},{label:'Volver al chat de Codex',click:()=>void openCurrent()},{label:'Volver a mi aplicación',click:()=>void desktop?.restore().catch(()=>{})},{type:'separator'},{label:'Salir de ZEN',click:()=>app.quit()}]));tray.on('click',reveal);
   let shortcutIssue:string|undefined,checking:Promise<boolean>|undefined;
   let replyRead:Promise<void>|undefined;
-  const replyVisible=()=>!smoke&&!targetError&&summaryVisible()&&privateEffectsAllowed();
+  const replyVisible=()=>!smoke&&!targetError&&(summaryVisible()||workspaceVisible('calendar')&&calendar.waiting)&&privateEffectsAllowed();
   const refreshLastReply=()=>{
    const selected=target;
    if(!selected||!replyVisible()||replyRead)return replyRead;
    const epoch=replyEpoch;
    replyRead=replyReader.read(selected).then(reply=>{
-    if(reply&&epoch===replyEpoch&&replyVisible())hub.setLastReply(selected.session,selected.cwd,reply);
+    if(reply&&epoch===replyEpoch&&replyVisible()){calendar.observe(selected.session,selected.cwd,reply.text);hub.setLastReply(selected.session,selected.cwd,reply);}
    }).catch(()=>{
     // Preserve the last observed answer if local recovery fails.
    }).finally(()=>{replyRead=undefined;});
@@ -597,7 +706,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(next==='floating')parked=floating?fitDisplay(floating,screen.getAllDisplays(),monitor):{
     displayId:monitor.id,area:monitor.workArea,bounds:workspaceLayout(monitor.workArea,workspaceWindow.preferences.side),maximized:false,
    };
-   if(expanded)enterWorkspace(next==='floating'&&parked.maximized,false,next==='floating'?parked.bounds:before.bounds);
+   if(expanded)enterWorkspace();
    else{positionSurface();rememberRail();}
    setCaptionTheme();
    updateShape();
@@ -611,8 +720,20 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(!workspaceVisible(page))throw Error('Abre la sección correspondiente en ZEN.');
   };
   handle('status',none,snapshot);
+  handle('calendar',CalendarAction,async action=>{
+   requireWorkspace('calendar');
+   if(action.type==='read')return calendar.snapshot();
+   if(action.type==='create')return calendar.create(action.draft);
+   return calendar.refresh(action.range,action.sources);
+  });
   handle('check',none,()=>smoke?true:check());
-  handle('openCodex',z.string().max(160).optional(),async id=>{await openExternal(codexChatUrl(hub.status(),id));return true;});
+  handle('openCodex',z.string().max(160).optional(),async id=>{
+   const status=hub.status();
+   const source=id&&activityVisible()&&id!==status.target?.session
+    ?{sessions:hub.activitySessions(),approvals:[],targetError:status.targetError}:status;
+   await openExternal(codexChatUrl(source,id));
+   return true;
+  });
   handle('returnApp',none,()=>{if(!desktop)throw Error('Control de ventanas no disponible.');return desktop.restore();});
   handle('openRequest', CodexRequest, text => {
    const verify = () => {
@@ -634,7 +755,15 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   });
   const appearanceWindow=()=>{if(!workspaceVisible('settings')||settings.presentation)throw Error('Abre Apariencia y desactiva Presentación.');};
   handle('appearanceSave',AppearanceOptions,value=>{appearanceWindow();const result=appearance.save(value);setCaptionTheme();broadcast();return result;});
-  handle('appearanceChoose',none,async()=>{appearanceWindow();if(smoke){const path=join(profile,'appearance-fixture.png');writeFileSync(path,nativeImage.createFromBitmap(Buffer.from([180,120,70,255]),{width:1,height:1}).toPNG());const result=appearance.import(path);broadcast();return result;}const picked=await withWindowDialog(()=>dialog.showOpenDialog(cap,{title:'Imagen de fondo de ZEN',properties:['openFile'],filters:[{name:'Imagen de fondo',extensions:['png','jpg','jpeg','webp']}]}));appearanceWindow();if(picked.canceled||picked.filePaths.length!==1)return appearance.status();const result=appearance.import(picked.filePaths[0]);broadcast();return result;});
+  handle('appearanceChoose',none,async()=>{appearanceWindow();if(smoke){
+   const path=join(profile,'appearance-fixture.png'),size=256,bitmap=Buffer.alloc(size*size*4);
+   for(let pixel=0;pixel<size*size;pixel++){
+    const value=pixel%size%16<8?255:0;
+    bitmap.set([value,value,value,255],pixel*4);
+   }
+   writeFileSync(path,nativeImage.createFromBitmap(bitmap,{width:size,height:size}).toPNG());
+   const result=appearance.import(path);broadcast();return result;
+  }const picked=await withWindowDialog(()=>dialog.showOpenDialog(cap,{title:'Imagen de fondo de ZEN',properties:['openFile'],filters:[{name:'Imagen de fondo',extensions:['png','jpg','jpeg','webp']}]}));appearanceWindow();if(picked.canceled||picked.filePaths.length!==1)return appearance.status();const result=appearance.import(picked.filePaths[0]);broadcast();return result;});
   handle('mediaNowPlaying',none,()=>mediaObservationAllowed()?mediaObserver.read():null);
   handle('mediaObservationClose',none,()=>{mediaObserver.close();return true;});
   handle('navigate',WorkspacePage,page=>changeSurface(()=>openWorkspace(page)));
@@ -645,19 +774,29 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('togglePage',SectionPage,page=>{
    if(!surfaceVisible()||openDialogs)throw Error('Vuelve a la cápsula para cambiar de sección.');
    changeSurface(()=>{
-    const sameSection=isLauncherPageSelected(workspacePage,page);
-    if(workspaceVisible()&&sameSection)collapse('status',true);
-    else openWorkspace(sameSection&&resumePanel?workspacePage:page);
+    if(page==='settings'&&expanded&&workspacePage===page&&!settings.windowLocked)collapse();
+    else openWorkspace(expanded&&isLauncherPageSelected(workspacePage,page)?workspacePage:page,false,page!=='settings');
    });
    return {expanded,page:workspacePage,revision};
   });
-  handle('launcher',z.boolean(),open=>changeSurface(()=>{if(open)openWorkspace(launcherPreferences.status().last);else collapse();}));
+  handle('togglePanel',none,()=>{
+   if(!surfaceVisible()||openDialogs)throw Error('Vuelve a la cápsula para cambiar de sección.');
+   changeSurface(()=>{if(expanded)collapse();else openWorkspace(workspacePage);});
+   return {expanded,page:workspacePage,revision};
+  });
+  handle('launcher',z.boolean(),open=>changeSurface(()=>{if(open)openWorkspace(workspacePage);else collapse();}));
   handle('island',z.boolean(),compact=>changeSurface(()=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para cambiar la vista.');
-   if(compact)collapse('status',true);else openRail();
+   if(compact)collapse();else openWorkspace(workspacePage);
   }));
   handle('islandFocusGuard',z.boolean(),blocked=>{editing=blocked;if(blocked)cancelAutoCollapse();return true;});
-  handle('compact',CapsuleView,view=>changeSurface(()=>{collapse(view);visibility.invoke();syncVisibility();broadcast();}));
+  handle('capsuleHover',CapsuleHoverInput,input=>{
+   hoverInput=input;
+   hover.pointer(input.inside?input.app:undefined);
+   return true;
+  });
+  handle('panelPainted',z.number().int().positive(),revealPaintedPanel);
+  handle('compact',CapsuleView,view=>changeSurface(()=>{if(view==='status')collapse();else openWorkspace(view);visibility.invoke();syncVisibility();broadcast();}));
   handle('launcherOrder',LauncherOrder,order=>{launcherPreferences.reorder(order);broadcast();return true;});
   handle('options',none,()=>changeSurface(()=>openWorkspace('options')));
   handle('launcherContext',LauncherPage,page=>changeSurface(()=>{contextPage=page;openWorkspace('shortcuts');}));
@@ -668,7 +807,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('mediaRead',z.uuid(),id=>media.read(id));
   handle('mediaCommand',MediaCommand,value=>media.command(value));
   handle('mediaClose',z.enum(['workspace','compact']).optional(),scope=>{
-   if(scope===undefined||(scope===(expanded?'workspace':'compact')&&(expanded||compactView==='spotify')))media.close();
+   if(scope===undefined||scope==='workspace')media.close();
    return true;
   });
   handle('contextStatus',none,()=>context.status());
@@ -684,30 +823,37 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const persist=(v:CompanionSettings)=>{
    if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');
    const changed=v.shortcut!==settings.shortcut||v.returnShortcut!==settings.returnShortcut;
+   const lockChanged=v.windowLocked!==settings.windowLocked;
    if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);
    try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}
    catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}
    if(v.alwaysOnTop!==settings.alwaysOnTop)setTopmost(v.alwaysOnTop);
    if(!expanded&&!cap.isMinimized())setTaskbarHidden(v.hideCapsuleFromTaskbar);
-   if(v.windowLocked&&!settings.windowLocked)endDrag();
-   if(expanded&&v.windowLocked!==settings.windowLocked)cap.setMovable(!v.windowLocked);
-   if(!v.collapseOnBlur||v.keepExpanded)cancelAutoCollapse();
+   if(lockChanged&&v.windowLocked)endDrag();
+   if(workspaceFrame&&lockChanged)cap.setMovable(!v.windowLocked);
+   if(lockChanged||!v.collapseOnBlur||v.keepExpanded)cancelAutoCollapse();
    settings=v;
+   if(lockChanged){
+    // The panel is still clipped here, so locking the visible capsule cancels the reveal.
+    if(v.windowLocked&&panelPaint!==undefined)collapse();
+    hover.lockChanged();
+   }
    if(v.paused)summaries.clear();
    if(changed){shortcutIssue=undefined;hub.error=undefined;}
    hub.update(v);
    if(v.presentation||v.paused){context?.clear();replyEpoch++;media?.close();mediaObserver?.close();}
    syncVisibility();
+   hover.refresh();
    return true;
   };
   handle('save',CompanionSettingsSchema,value=>{requireWorkspace('settings');return persist({...value,windowLocked:settings.windowLocked,keepExpanded:settings.keepExpanded});});
   handle('keepExpanded',z.boolean(),enabled=>{
-   if(!surfaceVisible()||island)throw Error('Abre la cápsula para cambiar esta preferencia.');
+   if(!surfaceVisible())throw Error('Muestra ZEN para cambiar esta preferencia.');
    return enabled===settings.keepExpanded||persist({...settings,keepExpanded:enabled});
   });
   registerProfileBackupIpc(handle, {
    window: cap, profile, requireSettings: () => requireWorkspace('settings'), privateEffectsAllowed, withWindowDialog,
-   getSources: () => ({appearance, launcher: launcherPreferences, notes, settings}), saveSettings: persist,
+   getSources: () => ({appearance, launcher: launcherPreferences, notes, settings,calendar}), saveSettings: persist,
    broadcast: () => {setCaptionTheme();broadcast();},
   });
   handle('pinWindow',z.boolean(),enabled=>{
@@ -718,7 +864,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('presentation',z.boolean(),enabled=>persist({...settings,presentation:enabled}));
   handle('silence',z.union([z.literal(0),z.literal(30)]),minutes=>persist({...settings,silencedUntil:minutes?Date.now()+minutes*60000:0}));
   handle('testNotice',none,()=>{requireWorkspace('settings');if(settings.presentation)throw Error('Desactiva Presentación para probar avisos.');if(isSilenced(settings))throw Error('Los avisos están silenciados temporalmente. Reactívalos para probar.');if(!settings.notifications)throw Error('Activa las notificaciones para probar el aviso.');notify({id:'test',session:'',title:'Aviso de prueba',kind:'finished',read:false,at:Date.now()});return true;});
-  handle('clearNotices',none,()=>{hub.clearNotices();return true;});handle('hide',none,()=>{hide();return true;});handle('drag',z.enum(['start','end']),a=>{a==='start'?drag():endDrag();return true;});
+  handle('clearNotices',none,()=>{hub.clearNotices();return true;});handle('hide',none,()=>{hide();return true;});handle('drag',z.enum(['start','end']),a=>{a==='start'?drag():endDrag();hover.refresh();return true;});
   const moveCapsule=(alignment:CapsuleAlignment)=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para mover la cápsula.');
    if(settings.windowLocked)throw Error('Desbloquea la posición de ZEN para mover la cápsula.');
@@ -726,7 +872,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const monitor=screen.getDisplayMatching(cap.getBounds()),{workArea}=monitor;
    if(isEdge()){
     dock={...dock,side:alignment==='center'?dock.side:alignment,displayId:monitor.id,fraction:alignment==='center'?.5:dock.fraction};
-    if(expanded){if(cap.isMaximized())cap.unmaximize();cap.setBounds(edgePanelBounds(workArea,cap.getBounds(),dock));rememberWorkspace();}
+    if(expanded){if(cap.isMaximized())cap.unmaximize();positionSurface();rememberWorkspace();}
     else positionSurface();
     if(!workspaceWindow.save({edgeDock:dock}))throw Error('No se pudo guardar el anclaje.');
     updateShape();broadcast();return true;
@@ -748,7 +894,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   };
   handle('moveCapsule',CapsuleAlignment,moveCapsule);
   handle('capsuleLocationMenu',CapsuleMenuAnchor.optional(),anchor=>{
-   if(!surfaceVisible()||openDialogs||anchor&&island)return false;
+   if(!surfaceVisible()||openDialogs)return false;
    const content=cap.getContentBounds();
    const area=screen.getDisplayMatching(content).workArea;
    const point=anchor?{
@@ -756,7 +902,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     y:Math.min(area.y+area.height-1,Math.max(area.y,content.y+Math.min(anchor.y,content.height-1))),
    }:undefined;
    let selected=false;
-   const menu=Menu.buildFromTemplate(capsuleMenuItems({settings,location:location(),full:!!anchor,
+   const menu=Menu.buildFromTemplate(capsuleMenuItems({settings,location:location(),full:true,nativeHover:nativeCaption,
     previousApp:desktop?.status()??{available:false},setLocation,move:moveCapsule,
     update:value=>persist({...settings,...value}),layout:()=>changeSurface(()=>openWorkspace('options')),
     appearance:()=>changeSurface(()=>openWorkspace('settings')),openChat:openCurrent,
@@ -790,14 +936,15 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   });
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');copyText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
-  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearInterval(ticker);clearInterval(replyTicker);cancelAutoCollapse();stopIslandResize();rememberWorkspace();replyEpoch++;endDrag();summaries.clear();media?.close();mediaObserver?.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
+  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;cancelPanelPaint();resetRetraction();hover.reset();clearInterval(ticker);clearInterval(replyTicker);cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();summaries.clear();media?.close();mediaObserver?.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
   await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
   setCaptionTheme();
-  if(workspaceWindow.startupMode==='workspace')enterWorkspace(parked.maximized,true);
+  if(workspaceWindow.startupMode==='workspace')enterWorkspace();
   else positionSurface();
   await readFrameInset();
   setTopmost(settings.alwaysOnTop);
   surfaceReady=true;showCapsule(false);if(!smoke)void check();
-  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture:smokeMedia.state,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
+  if(hoverSmoke)return;
+  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture:smokeMedia.state,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});
 }

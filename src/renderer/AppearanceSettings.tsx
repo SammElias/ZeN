@@ -5,6 +5,7 @@ import {PreferenceRow,PreferenceSave,PreferenceSwitch,type PreferenceFeedback} f
 import {ZenEmblem} from './ZenEmblem';
 import {defaultNeon, neonPalettes, neonPaletteIds, neonSpeeds, neonSpeedIds, neonVisual, type NeonOptions} from '../shared/companion-neon';
 import {NeonBorder} from './NeonBorder';
+import {useNeonAnimation} from './useNeonAnimation';
 const themeNames = {monochrome:'Monocromo', dark:'Oscuro', light:'Claro'} as const;
 const accentNames={violet:'Violeta',amber:'Ámbar',mint:'Menta'} as const;
 
@@ -30,6 +31,7 @@ export function AppearanceSettings({value,visible,motion,reset,onPreview}:{value
  const draft=useMemo(()=>({...value,...changes}),[value,changes]);
  const dirty=(Object.keys(changes) as (keyof AppearanceOptions)[]).some(key=>!sameOption(key,draft,value));
  const neon=draft.neon??defaultNeon;
+ const neonAnimation=useNeonAnimation(neon,visible,motion);
 
  useLayoutEffect(()=>{
   if(previousReset.current===reset)return;
@@ -88,7 +90,7 @@ export function AppearanceSettings({value,visible,motion,reset,onPreview}:{value
   <div className="appearance-preview" data-preset={draft.background} role="img" aria-label="Vista previa de la cápsula con los ajustes actuales">
    <div className="appearance-preview-capsule" aria-hidden="true">
     <ZenEmblem/><span>ZEN</span><i/><CompanionIcon name="code"/><CompanionIcon name="sound"/><CompanionIcon name="notebook"/>
-    <NeonBorder options={neon} shape={{radius:15}} visible={visible} motion={motion}/>
+    <NeonBorder options={neon} shape={{radius:15}} visible={visible} animation={neonAnimation}/>
    </div>
   </div>
   <fieldset disabled={busy} className="preference-fieldset">

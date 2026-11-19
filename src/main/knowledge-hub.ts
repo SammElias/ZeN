@@ -3,8 +3,14 @@ import {closeSync, existsSync, fstatSync, openSync, readSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {imageSize} from 'image-size';
 import {CompanionNotes} from './companion-notes';
+import {hubName} from '../shared/companion-navigation';
+import type {TemplateDraft, TemplateImage, TemplateRecord, TemplateRequest} from '../shared/knowledge-templates';
 import {
-  collections, HubAction, HubData, HubDraft, HubEntry, HubFolder, hubContentError, newFields, variables,
+  changeTemplates, createTemplateTable, restoreTemplates, seedTemplates, templateBackup,
+  templateImage, validateTemplateDraft, validateTemplates,
+} from './knowledge-templates';
+import {
+  HubAction, HubData, HubDraft, HubEntry, HubFolder, hubContentError, newFields, variables,
   type HubFields, type HubResult, type HubSession, type RecentHubNote,
 } from '../shared/knowledge-hub';
 
@@ -58,7 +64,7 @@ function validateImages(images: HubFields['images']) {
 
 export function validateHubBackup(raw: unknown) {
   const parsed = HubData.safeParse(raw);
-  if (!parsed.success) throw Error('El archivo no es un respaldo válido de Knowledge Hub.');
+  if (!parsed.success) throw Error(`El archivo no es un respaldo válido del ${hubName}.`);
   const data = parsed.data;
   if (new Set(data.folders.map(folder => folder.id)).size !== data.folders.length ||
       new Set(data.entries.map(entry => entry.id)).size !== data.entries.length) throw Error('El respaldo tiene identificadores duplicados.');
@@ -68,12 +74,15 @@ export function validateHubBackup(raw: unknown) {
     }
   }
   for (const entry of data.entries) validateFields(entry, data);
-  if (Buffer.byteLength(JSON.stringify(data)) > hubMaximumBytes) throw Error('La biblioteca supera el límite de 32 MB.');
+  const {templates, ...notes} = data;
+  if (Buffer.byteLength(JSON.stringify(notes)) > hubMaximumBytes) throw Error('La biblioteca de apuntes supera el límite de 32 MB.');
+  if (templates) validateTemplates(templates);
   return data;
 }
 
 export class KnowledgeHub {
-  constructor(private readonly path: string, private readonly legacyPath: string) {}
+  constructor(private readonly path: string, private readonly legacyPath: string, private readonly seeds:()=>TemplateRecord[]=()=>[],
+    private readonly decodeReference?:(image:TemplateImage)=>void) {}
 
   isStoragePath(path: string) {
     const destination = path.toLowerCase();
@@ -105,11 +114,6 @@ export class KnowledgeHub {
   private initialize(db: DatabaseSync) {
     const legacy = new CompanionNotes(this.legacyPath).read();
     const folders: HubFolder[] = legacy.folders.map(folder => ({...folder, group: 'folder'}));
-    for (const group of ['folder', 'technology', 'ai'] as const) {
-      for (const name of collections[group]) {
-        if (!folders.some(folder => folder.group === group && namesMatch(folder.name, name))) folders.push({id: randomUUID(), name, group});
-      }
-    }
     const entries: HubEntry[] = legacy.notes.map(note => ({
       ...newFields('note', note.folderId), ...note, createdAt: note.updatedAt,
     }));
@@ -117,7 +121,7 @@ export class KnowledgeHub {
   }
 
   private replace(db: DatabaseSync, data: HubData) {
-    db.exec('DELETE FROM hub_entries; DELETE FROM hub_folders; DELETE FROM hub_state;');
+    db.exec("DELETE FROM hub_entries; DELETE FROM hub_folders; DELETE FROM hub_state WHERE key IN ('theme','draft');");
     db.prepare("INSERT INTO hub_state VALUES ('theme', ?)").run(data.theme);
     this.writeFolders(db, data.folders);
     for (const entry of data.entries) this.writeEntry(db, entry);
@@ -140,11 +144,15 @@ export class KnowledgeHub {
     return HubData.parse({version: 2, theme, folders, entries});
   }
 
-  read(): HubSession {
+  read(includeTemplates = false): HubSession {
     return this.transaction(db => {
       const data = this.snapshot(db);
       const draft = db.prepare("SELECT value FROM hub_state WHERE key='draft'").get()?.value;
-      return {data, draft: draft ? HubDraft.parse(JSON.parse(String(draft))) : undefined};
+      const session = {data, draft: draft ? HubDraft.parse(JSON.parse(String(draft))) : undefined};
+      if (!includeTemplates) return session;
+      this.prepareTemplates(db);
+      const {templates,templateDraft} = templateBackup(db);
+      return {...session, data:{...data, templates}, templateDraft};
     });
   }
 
@@ -182,15 +190,44 @@ export class KnowledgeHub {
     });
   }
 
-  restore(raw: unknown, draft?: HubDraft) {
+  restore(raw: unknown, draft?: HubDraft, templateDraft?:TemplateDraft) {
     const data = validateHubBackup(raw);
     const recovered = draft && HubDraft.parse(draft);
     if (recovered) validateImages(recovered.fields.images);
+    if (templateDraft) validateTemplateDraft(templateDraft);
+    for (const template of data.templates ?? []) if (template.image) this.decodeReference?.(template.image);
+    if (templateDraft?.image) this.decodeReference?.(templateDraft.image);
     return this.transaction(db => {
       this.replace(db, data);
+      if (data.templates !== undefined) {
+        createTemplateTable(db);
+        restoreTemplates(db,data.templates,templateDraft);
+      }
       if (recovered) db.prepare("INSERT INTO hub_state VALUES ('draft', ?)").run(JSON.stringify(recovered));
-      return data;
+      return this.snapshot(db);
     });
+  }
+
+  private prepareTemplates(db: DatabaseSync) {
+    createTemplateTable(db);
+    seedTemplates(db,this.seeds);
+  }
+
+  templates(action: Exclude<TemplateRequest,{type:'image'|'source'|'copy'}>) {
+    if ((action.type==='save'||action.type==='draft')&&action.draft?.image) {
+      validateTemplateDraft(action.draft);
+      this.decodeReference?.(action.draft.image);
+    }
+    return this.transaction(db=>{
+      this.prepareTemplates(db);
+      return changeTemplates(db,action);
+    });
+  }
+
+  referenceImage(id:string, thumbnail:boolean) {
+    const db=new DatabaseSync(this.path,{readOnly:true});
+    try { return templateImage(db,id,thumbnail); }
+    finally { db.close(); }
   }
 
   change(raw: HubAction, copy: (text: string) => void): HubResult {

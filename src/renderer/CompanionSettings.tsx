@@ -13,7 +13,7 @@ import {ZenEmblem} from './ZenEmblem';
 
 const categories={
  appearance:{title:'Apariencia',icon:'settings',description:'Personaliza el tema, el fondo y el acabado del cristal.'},
- capsule:{title:'Isla y cápsula',icon:'presentation',description:'Elige dónde aparece ZEN y cómo se comporta su ventana.'},
+ capsule:{title:'Cápsula y panel',icon:'presentation',description:'Elige dónde aparece ZEN y cómo se comporta su ventana.'},
  audio:{title:'Sonidos y avisos',icon:'bell',description:'Controla los efectos de interfaz, los avisos y las notificaciones.'},
  shortcuts:{title:'Atajos',icon:'code',description:'Cambia las combinaciones de teclado de ZEN.'},
  data:{title:'Datos y configuración',icon:'folder',description:'Traslada tus datos a otro equipo o recupera una copia.'},
@@ -28,7 +28,7 @@ const windowOptions=[
  ['followPointerDisplay','Monitor del puntero','Abre la cápsula en el monitor donde está el puntero.'],
  ['respectFullscreen','Respetar pantalla completa','Oculta la cápsula sobre aplicaciones a pantalla completa.'],
  ['dismissCapsuleOnOutsideClick','Minimizar al hacer clic fuera','Minimiza la cápsula cuando haces clic en otra ventana.'],
- ['collapseOnBlur','Contraer al perder el foco','Recoge la cápsula al pasar a otra aplicación.'],
+ ['collapseOnBlur','Ocultar panel al perder el foco','Deja la cápsula pequeña al pasar a otra aplicación.'],
  ['hideCapsuleFromTaskbar','Ocultar cápsula de la barra de tareas','También la oculta de Alt+Tab mientras está recogida.'],
  ['motion','Animaciones de estado','Aplica transiciones a la cápsula y a los paneles.'],
 ] as const;
@@ -47,9 +47,9 @@ function lastCategory():Category {
  }catch{return 'appearance';}
 }
 
-export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCategoryChange}: {
+export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCategoryChange,onBackupImported}: {
  status:CompanionStatus;visible:boolean;onBack:()=>void;onLayout:()=>void;
- onPreview:(appearance:AppearanceState|undefined)=>void;onCategoryChange:()=>void;
+ onPreview:(appearance:AppearanceState|undefined)=>void;onCategoryChange:()=>void;onBackupImported:()=>void;
 }) {
  const [category,setCategory]=useState(lastCategory);
  const [changes,setChanges]=useState<Partial<Record<Category,Partial<Settings>>>>({});
@@ -126,7 +126,7 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
  }
 
  const saveBar=<PreferenceSave dirty={dirty} busy={busy} feedback={feedback[category]} onDiscard={discard} onSave={()=>void save()}/>;
- const booleanRows=(items:typeof windowOptions|typeof noticeOptions)=>items.map(([key,title,description])=>
+ const booleanRows=(items:readonly (typeof windowOptions[number]|typeof noticeOptions[number])[])=>items.map(([key,title,description])=>
   <PreferenceSwitch key={key} checked={draft[key]} title={title} description={description} onChange={value=>edit(key,value)}/>);
 
  return <div className="preferences-center">
@@ -153,10 +153,10 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
     <PreferenceRow title="Ubicación de ZEN" description="Se aplica al elegir una posición.">
      <CapsulePosition location={status.workspace?.location} ready={Boolean(status.workspace)} cards/>
     </PreferenceRow>
-    <PreferenceSwitch title="Bloquear posición" description="Desactiva el arrastre de la cápsula." checked={status.settings.windowLocked}
+    <PreferenceSwitch title="Fijar panel y posición" description="Detiene la apertura y el repliegue al pasar el cursor y bloquea el arrastre. Puedes abrir y recoger ZEN con sus controles." checked={status.settings.windowLocked}
      onChange={value=>void immediate(()=>window.companion.pinWindow(value))}/>
-    <PreferenceSwitch title="Mantener expandida" description="Mantiene abierta la cápsula al perder el foco." checked={status.settings.keepExpanded}
-     onChange={value=>void immediate(()=>window.companion.keepExpanded(value))}/>
+    {!status.workspace?.nativeCaption&&<PreferenceSwitch title="Mantener panel abierto" description="Conserva abierto el panel al pasar a otra aplicación." checked={status.settings.keepExpanded}
+     onChange={value=>void immediate(()=>window.companion.keepExpanded(value))}/>}
     {layout&&<PreferenceSwitch title="Restaurar al iniciar ZEN" description="Recupera la presentación y la geometría guardadas." checked={layout.restoreOnLaunch}
      onChange={value=>void immediate(()=>window.companion.workspaceLayoutPreferences({...layout,restoreOnLaunch:value}))}/>}
     <PreferenceRow title="Distribución de ventana" description="Cambia el tamaño o vuelve a la distribución anterior.">
@@ -164,7 +164,9 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
     </PreferenceRow>
     <p className="preference-hint">Estos controles se aplican al momento.</p>
     {immediateFeedback?.error&&<p role="alert">{immediateFeedback.text}</p>}
-    <fieldset disabled={busy} className="preference-fieldset"><h3>Comportamiento</h3>{booleanRows(windowOptions)}</fieldset>
+    <fieldset disabled={busy} className="preference-fieldset"><h3>Comportamiento</h3>
+     {booleanRows(windowOptions.filter(([key])=>key!=='collapseOnBlur'||!status.workspace?.nativeCaption))}
+    </fieldset>
     {saveBar}
    </div>}
    {category==='audio'&&<div className="preferences-page">
@@ -197,6 +199,7 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
    {category==='data'&&<div className="preferences-page">
     <BackupSettings disabled={status.settings.presentation||status.settings.paused} onImported={()=>{
      setChanges({});setFeedback({});setBackupRevision(value=>value+1);
+     onBackupImported();
     }}/>
     <div className="preferences-reset">
      <h3>Restablecer apariencia</h3>

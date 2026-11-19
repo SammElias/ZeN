@@ -18,6 +18,7 @@ zen_mascota_kit/
 public/mascot/
 public/coucou-sounds/
 public/icons/coucou-source.png
+public/hub-templates/*.jpg
 src/coucou/mochi/engine.ts
 src/coucou/mochi/outfits.ts
 docs/ui-preview/

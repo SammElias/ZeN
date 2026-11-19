@@ -1,6 +1,5 @@
 .companion-capsule.expanded .workspace-content[data-page=settings] {
   padding: 0;
-  background: rgb(var(--glass-rgb) / calc(.88 + .12 * var(--glass-opacity)));
 }
 .preferences-retained { container-type: inline-size; }
 .preferences-retained[hidden], .preferences-page[hidden] { display: none; }

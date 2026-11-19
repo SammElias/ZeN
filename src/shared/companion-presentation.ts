@@ -33,6 +33,12 @@ export function completionDetail(session:CompanionSession){
 }
 export function toolActivity(tool?:string):{label:string;kind?:'command'|'file'}{
  if(!tool)return {label:'Codex'};
+ if(/gmail[_-].*search/i.test(tool))return {label:'Buscar correos'};
+ if(/gmail[_-].*(read|get)_(email|thread)/i.test(tool))return {label:'Leer correo'};
+ if(/gmail[_-].*list_labels/i.test(tool))return {label:'Consultar etiquetas de Gmail'};
+ if(/gmail[_-].*get_profile/i.test(tool))return {label:'Consultar perfil de Gmail'};
+ if(/calendar[_-].*(list|search|get|freebusy)/i.test(tool))return {label:'Consultar calendario'};
+ if(/calendar[_-].*create.*event/i.test(tool))return {label:'Crear evento'};
  if(/cua_repl|computer_use/i.test(tool))return {label:'Control visual'};
  if(/browser|chrome|playwright/i.test(tool))return {label:'Navegador'};
  if(/apply_patch|^edit$|^write$/i.test(tool))return {label:'Edición de archivos',kind:'file'};

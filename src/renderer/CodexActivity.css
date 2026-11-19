@@ -1,0 +1,115 @@
+.codex-monitor {
+  container-type: inline-size;
+  --chat-tint: rgb(var(--glass-rgb) / .54);
+  --chat-accent: rgb(var(--glass-accent-rgb) / .28);
+  --chat-active: #79c3ff;
+  --chat-permission: #f0ba77;
+  --chat-error: #fd97a6;
+  --chat-finished: #87d3ad;
+}
+
+[data-theme=light] .codex-monitor,
+[data-theme=monochrome] .codex-monitor {
+  --chat-active: #28577e;
+  --chat-permission: #86531a;
+  --chat-error: #9b3548;
+  --chat-finished: #27674f;
+}
+
+.codex-monitor-connection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  margin-block-end: 12px;
+}
+
+.codex-monitor-grid {
+  display: grid;
+  grid-template-columns: minmax(176px, 234px) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.codex-chat-list, .codex-chat-detail {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--chat-tint);
+}
+
+.codex-chat-list { padding: 12px 8px 8px; }
+.codex-chat-list h2 { padding-inline: 7px; margin: 0 0 8px; font-size: 13px; }
+.codex-monitor .codex-chat-toggle { display: none; }
+.codex-chat-picker { max-height: min(64vh, 570px); overflow-y: auto; }
+.codex-chat-group h3 { margin: 12px 7px 5px; color: var(--glass-secondary); font-size: 11px; font-weight: 600; }
+.codex-monitor .codex-chat-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 8px;
+  min-height: 46px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  text-align: start;
+}
+
+.codex-monitor .codex-chat-row[aria-pressed=true] {
+  border-color: var(--chat-accent);
+  background: rgb(var(--glass-accent-rgb) / .15);
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.codex-chat-copy { display: grid; gap: 3px; min-width: 0; }
+.codex-chat-copy :is(strong,small) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.codex-chat-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--glass-secondary); }
+.codex-chat-dot:is([data-state=thinking],[data-state=working]) { background: var(--chat-active); }
+.codex-chat-dot[data-state=approval] { background: var(--chat-permission); }
+.codex-chat-dot[data-state=error] { background: var(--chat-error); }
+.codex-chat-dot[data-state=finished] { background: var(--chat-finished); }
+
+.codex-chat-detail { padding: 14px 16px; }
+.codex-chat-header { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.codex-chat-header > div { min-width: 0; }
+.codex-chat-header h2 { margin: 0 0 3px; font-size: 18px; overflow-wrap: anywhere; }
+.codex-monitor-actions { display: grid; gap: 4px; }
+.codex-monitor .codex-monitor-actions button { background: rgb(var(--glass-accent-rgb) / .12); color: var(--glass-text); }
+.codex-chat-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block: 12px 7px;
+  padding: 9px 0;
+  border-block: 1px solid var(--line);
+  font-size: 12px;
+}
+.codex-chat-current time { margin-inline-start: auto; }
+.codex-chat-timeline { padding: 0; margin: 4px 0 0; list-style: none; }
+.codex-chat-timeline li {
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.codex-chat-timeline li + li { border-block-start: 1px solid var(--line); }
+.codex-chat-timeline time, .codex-chat-current time { color: var(--glass-secondary); font-size: 11px; font-variant-numeric: tabular-nums; }
+.codex-chat-timeline code { display: block; margin: 8px 0; overflow-wrap: anywhere; color: var(--glass-secondary); }
+.codex-monitor summary { cursor: pointer; }
+.codex-activity-filters > summary { width: max-content; padding-block: 5px; color: var(--glass-secondary); font-size: 11px; }
+.codex-activity-filters > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 4px 8px; }
+.codex-activity-filters > div > label { flex: 1 1 150px; }
+.codex-activity-filters select { padding: 5px 8px; }
+
+@container (max-width: 660px) {
+  .codex-monitor-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .codex-chat-list { padding: 6px; }
+  .codex-chat-list h2 { display: none; }
+  .codex-chat-picker[data-open=false] { display: none; }
+  .codex-monitor .codex-chat-toggle { display: flex; justify-content: space-between; width: 100%; }
+}

@@ -8,6 +8,7 @@ function call<Command extends CompanionCommand>(name: Command, input?: unknown):
 }
 
 const bridge: CompanionBridge = {
+  calendar: action => call('calendar',action),
   status: () => call('status'),
   onStatus: callback => {
     const channel = companionChannel('status');
@@ -39,10 +40,14 @@ const bridge: CompanionBridge = {
   notesChange: change => call('notesChange', change),
   notesDraft: draft => call('notesDraft', draft),
   notesFile: action => call('notesFile', action),
+  templates: action => call('templates', action),
   togglePage: page => call('togglePage', page),
+  togglePanel: () => call('togglePanel'),
   launcher: open => call('launcher', open),
   island: compact => call('island', compact),
   islandFocusGuard: blocked => call('islandFocusGuard', blocked),
+  capsuleHover: input => call('capsuleHover', input),
+  panelPainted: token => call('panelPainted', token),
   keepExpanded: enabled => call('keepExpanded', enabled),
   launcherOrder: order => call('launcherOrder', order),
   launcherContext: page => call('launcherContext', page),

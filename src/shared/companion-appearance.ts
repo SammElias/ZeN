@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {NeonOptions} from './companion-neon';
-export const glassOpacity = {minimum: .74, maximum: 1, initial: .90} as const;
+export const glassOpacity = {minimum: .62, maximum: 1, initial: .78} as const;
 export const AppearanceOptions=z.object({
  theme:z.enum(['dark','light','monochrome']).default('monochrome'),
  accent:z.enum(['violet','amber','mint']).default('violet'),

@@ -1,5 +1,5 @@
 import {matchesTarget,normalizeTargetFolder,stripWindowsPathPrefix} from '../shared/companion-target';
-import {CompanionTargetSchema,COMPANION_REPLY_LIMIT,type CompanionTarget,type CompanionLastReply} from '../shared/codex-companion';
+import {CompanionTargetSchema,COMPANION_REPLY_LIMIT,type CompanionTarget,type CompanionLastReply,type CompanionSession} from '../shared/codex-companion';
 import {DatabaseSync} from 'node:sqlite';
 import {lstat,open,realpath,type FileHandle} from 'node:fs/promises';
 import {basename,isAbsolute,join,relative,resolve,sep} from 'node:path';
@@ -82,6 +82,25 @@ export class CodexReplyReader {
  private replyCache?: ReplyCache;
 
  constructor(private codexHome: string) {}
+
+ async observedTitles(sessions:ReadonlyArray<Pick<CompanionSession,'id'|'cwd'>>){
+  const titles=new Map<string,string>();
+  try{
+   const database=await confinedFile(this.codexHome,join(this.codexHome,'state_5.sqlite'));
+   const db=new DatabaseSync(database,{readOnly:true});
+   try{
+    db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=50');
+    const lookup=db.prepare('SELECT title,cwd FROM threads WHERE id=?');
+    for(const {id,cwd} of sessions){
+     const row=lookup.get(id),folder=normalizeTargetFolder(cwd);
+     if(folder&&typeof row?.cwd==='string'&&normalizeTargetFolder(row.cwd)===folder&&typeof row.title==='string'&&row.title.trim()){
+      titles.set(id,row.title.trim().slice(0,200));
+     }
+    }
+   }finally{db.close();}
+  }catch{/* The project folder remains the label when local metadata is unavailable. */}
+  return titles;
+ }
 
  async read(target:CompanionTarget):Promise<CompanionLastReply|undefined>{
  const codexHome = this.codexHome;

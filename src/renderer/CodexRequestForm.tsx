@@ -58,10 +58,15 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
   }
 
   return <form className="codex-request-form" aria-labelledby="home-composer-title" onSubmit={event => {event.preventDefault(); void submit(draft, true);}}>
-    <label id="home-composer-title" className="home-composer-title" htmlFor="codex-request">
-      <span className="home-status-icon"><CompanionIcon name="code"/></span>
-      Petición para Codex
-    </label>
+    <div className="home-composer-heading">
+      <label id="home-composer-title" className="home-composer-title" htmlFor="codex-request">
+        <CompanionIcon name="code"/>Petición para Codex
+      </label>
+      <small id="home-request-destination" title={fixedChat}>
+        {fixedChat && <CompanionIcon name="pin"/>}
+        <span>{fixedChat ? `Chat fijado · ${fixedChat}` : 'Revisa y envía la petición en Codex.'}</span>
+      </small>
+    </div>
     <textarea id="codex-request" rows={2} maxLength={MAX_CODEX_REQUEST} value={draft} disabled={busy}
       aria-describedby="home-request-destination" placeholder="¿Qué necesitas que haga Codex?"
       onChange={event => {setDraft(event.target.value); setFeedback(undefined);}}
@@ -83,7 +88,6 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
         <CompanionIcon name="arrow"/>
       </button>
     </div>
-    <small id="home-request-destination">{fixedChat ? `Chat fijado · ${fixedChat}` : 'Revisa y envía la petición en Codex.'}</small>
     {feedback && <div className="codex-request-actions">
       <small role={feedback.error ? 'alert' : 'status'}>{feedback.text}</small>
       {fixedChat && <button type="button" onClick={async () => {

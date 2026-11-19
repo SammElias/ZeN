@@ -1,11 +1,11 @@
 .companion-capsule { --zen-transition: var(--motion-hover) var(--motion-enterEase); }
-.companion-capsule[data-motion=true] :is(.workspace-content,.capsule-single-row) button {
+.companion-capsule[data-motion=true] :is(.workspace-content,.compact-capsule) button {
   transition: background-color var(--motion-hover) var(--motion-enterEase),
     border-color var(--motion-hover) var(--motion-enterEase),
     color var(--motion-hover) var(--motion-enterEase),
     box-shadow var(--motion-press) var(--motion-exitEase);
 }
-.companion-capsule[data-motion=true] :is(.workspace-content,.capsule-single-row) button:active:not(:disabled) {
+.companion-capsule[data-motion=true] :is(.workspace-content,.compact-capsule) button:active:not(:disabled) {
   box-shadow: inset 0 0 0 2px rgb(171 145 239 / .26), inset 0 2px 5px #0004;
 }
 .companion-capsule .capsule-launcher { position: relative; }
@@ -15,16 +15,51 @@
   position: absolute;
   z-index: 2;
   border-radius: 4px;
-  background: #bca2ff;
+  background: var(--capsule-app-ink, var(--rail-action));
 }
 .capsule-selection-marker[hidden] { display: none; }
 .notes-retained { display: contents; }
 .notes-retained[hidden] { display: none; }
-.companion-capsule[data-motion=true] > .capsule-single-row {
-  animation: zen-opacity-in var(--motion-navigation) var(--motion-enterEase);
+.companion-capsule[data-motion=true] .workspace-surface > .workspace-content {
+  transition: opacity var(--motion-panel) var(--motion-enterEase),
+    translate var(--motion-panel) var(--motion-enterEase);
 }
-.companion-capsule[data-orientation=vertical][data-sizing=true][data-island=false] > .capsule-single-row {
-  min-width: var(--edge-width);
+.companion-capsule[data-motion=true] .workspace-surface[data-panel-phase=preparing] > .workspace-content {
+  opacity: .72;
+  translate: var(--panel-drift);
+}
+@starting-style {
+  .companion-capsule[data-motion=true] .workspace-surface > .workspace-content {
+    opacity: .72;
+    translate: var(--panel-drift);
+  }
+}
+/* Both images are fixed to one rotating cuboid so their horizontal edges meet. */
+.workspace-content[data-cube-direction=bottom] { --cube-turn: -90deg; --cube-entry: 90deg; }
+.workspace-content[data-cube-direction=top] { --cube-turn: 90deg; --cube-entry: -90deg; }
+.workspace-content[data-cube-direction]::view-transition { pointer-events: none; }
+.workspace-content[data-cube-direction]::view-transition-group(root) {
+  animation: none;
+  perspective: max(1200px, calc(6 * var(--cube-depth)));
+}
+.workspace-content[data-cube-direction]::view-transition-image-pair(root) {
+  isolation: auto;
+  transform-style: preserve-3d;
+  animation: zen-app-cube var(--motion-appCube) ease-out both;
+}
+.workspace-content[data-cube-direction]::view-transition-old(root),
+.workspace-content[data-cube-direction]::view-transition-new(root) {
+  animation: none;
+  backface-visibility: hidden;
+  mix-blend-mode: normal;
+  background-color: rgb(var(--glass-rgb) / .16);
+  height: 100%;
+}
+.workspace-content[data-cube-direction]::view-transition-old(root) { transform: translateZ(var(--cube-depth)); }
+.workspace-content[data-cube-direction]::view-transition-new(root) { transform: rotateX(var(--cube-entry)) translateZ(var(--cube-depth)); }
+@keyframes zen-app-cube {
+  from { transform: translateZ(calc(-1 * var(--cube-depth))) rotateX(0deg); }
+  to { transform: translateZ(calc(-1 * var(--cube-depth))) rotateX(var(--cube-turn)); }
 }
 .companion-capsule[data-motion=true] :is(.hub-menu[open] > div,.hub-sidebar[data-mobile-open=true],.workspace-layout-menu[open] > :nth-child(2)) {
   animation: zen-menu-in var(--motion-navigation) var(--motion-enterEase);

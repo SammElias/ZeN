@@ -3,6 +3,8 @@ import {AppearanceOptions} from './companion-appearance';
 import {CompanionSettingsSchema,migrateWindowPreferences} from './codex-companion';
 import {LauncherOrder} from './companion-workspace';
 import {HubData, HubDraft} from './knowledge-hub';
+import {TemplateDraft} from './knowledge-templates';
+import {CalendarLibrary} from './companion-calendar';
 
 export const PortableSettings = CompanionSettingsSchema.pick({
   shortcut:true, returnShortcut:true, motion:true, sounds:true, interfaceSounds:true, interfaceVolume:true, notifications:true,
@@ -27,5 +29,7 @@ export const CompanionBackup = z.object({
   order:LauncherOrder,
   library:HubData,
   draft:HubDraft.optional(),
+  templateDraft:TemplateDraft.optional(),
+  calendar:CalendarLibrary.optional(),
 }).strict();
 export type CompanionBackup = z.infer<typeof CompanionBackup>;

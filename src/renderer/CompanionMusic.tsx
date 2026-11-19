@@ -29,34 +29,6 @@ export function useNowPlaying(status:CompanionStatus){
  return{track:blocked?null:track};
 }
 
-function CapsuleTrack({track}:{track:MediaNowPlaying}){
- const title=track.title||'Sin título';
- const playback=track.playing?'En reproducción':'En pausa';
- const label=[title,track.artist,track.source,playback].filter(Boolean).join(' · ');
- return <button className="mini-track" title={label+' · Abrir Sonido'} aria-label={'Abrir Sonido · '+label} onClick={()=>void window.companion.navigate('spotify')}>
-  {track.artwork?<img src={track.artwork} alt=""/>:<MusicIcon name="music"/>}
-  <span><strong>{title}</strong><small>{track.playing?track.artist||track.source:playback}</small></span>
- </button>;
-}
-
-type Transport = Pick<ReturnType<typeof useMediaPlayer>,'busy'|'command'>;
-
-function CapsuleTransport({track,busy,command}:{track:MediaTrack}&Transport) {
- const playback=track.playing?'pause':'play';
- return <div className="mini-transport" role="group" aria-label="Controles de reproducción">
-  {track.controls.previous&&<button className="mini-skip" aria-label="Anterior" title="Anterior" disabled={busy} onClick={()=>void command('previous')}><MusicIcon name="previous"/></button>}
-  {track.controls[playback]&&<button className="mini-play" aria-label={track.playing?'Pausar':'Reproducir'} title={track.playing?'Pausar':'Reproducir'} disabled={busy} onClick={()=>void command(playback)}><MusicIcon name={playback}/></button>}
-  {track.controls.next&&<button className="mini-skip" aria-label="Siguiente" title="Siguiente" disabled={busy} onClick={()=>void command('next')}><MusicIcon name="next"/></button>}
- </div>;
-}
-
-export function CompanionNowPlaying({track,player}:{track:MediaNowPlaying;player?:{track:MediaTrack}&Transport}){
- return <div className="capsule-mini-music capsule-now-playing" aria-label={track.playing?'Multimedia en reproducción':'Multimedia en pausa'} data-source={track.source} data-playing={track.playing}>
-  <CapsuleTrack track={track}/>
-  {player&&<CapsuleTransport {...player}/>}
- </div>;
-}
-
 export function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | 'compact', visible=true) {
  const [snapshot, setSnapshot] = useState<MediaSnapshot>();
  const [busy, setBusy] = useState(false);
@@ -201,7 +173,7 @@ export function CompanionMusic({status,player}:{status:CompanionStatus;player:Re
   if (!result.ok) setNotice(result.error);
  }
  return <section className="music-workspace" aria-busy={busy}>
-  <div className="music-heading"><h2>Sonido</h2><div className="actions">{!blocked&&<button onClick={()=>void window.companion.compact('spotify')}>Ver en cápsula</button>}{!blocked&&track?.source==='Spotify'&&<button onClick={()=>void open()}>Abrir Spotify ↗</button>}</div></div>
+  <div className="music-heading"><h2>Sonido</h2><div className="actions">{!blocked&&track?.source==='Spotify'&&<button onClick={()=>void open()}>Abrir Spotify ↗</button>}</div></div>
   {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2>{status.settings.presentation&&<button className="primary" onClick={()=>void showMusic()}>Salir de presentación y mostrar sonido</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}</div>:<>
    {(sessions.length>1||manual||!track&&sessions.length>0)&&<div className="media-sources" role="group" aria-label="Reproductores de Windows">
     <button aria-pressed={!manual} disabled={busy} onClick={()=>void followSystem()}>Automático</button>
@@ -227,15 +199,4 @@ export function CompanionMusic({status,player}:{status:CompanionStatus;player:Re
   {notice&&<p role="status" className="music-notice">{blocked?'Detalles ocultos.':notice}</p>}
 
  </section>;
-}
-
-export function CompanionMiniMusic({status}:{status:CompanionStatus}){
- const {sessions,track,busy,notice,blocked,select,command}=useMediaPlayer(status,'compact');
- return <div className="capsule-mini-music" aria-label="Sonido en cápsula">
-  {blocked?<span className="mini-music-empty">Sonido oculto</span>:track?<>
-   <CapsuleTrack track={track}/>
-   <CapsuleTransport track={track} busy={busy} command={command}/>
-  </>:sessions.length>0?<select aria-label="Elegir reproductor compacto" value="" disabled={busy} onChange={e=>void select(e.target.value)}><option value="">Elige reproductor</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>:<span className="mini-music-empty">Sin reproducción</span>}
-  {notice&&<span className="mini-music-notice" role="status" aria-label={notice} title={notice}>!</span>}<button className="mini-dismiss" aria-label="Volver al estado" title="Volver al estado de Codex" onClick={()=>void window.companion.compact('status')}>×</button>
- </div>;
 }

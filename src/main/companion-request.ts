@@ -27,7 +27,10 @@ async function desktopCodex(): Promise<string> {
   return findCodex();
 }
 
-export async function queueCodexRequest(thread: string, text: string, codexHome: string, verify: () => void | Promise<void>) {
+export async function queueCodexRequest(
+  thread: string, text: string, codexHome: string, verify: () => void | Promise<void>,
+  wake: (url: string) => Promise<void>,
+) {
   if (!uuid.test(thread)) throw Error('El chat fijado no tiene un identificador válido. Revisa el vínculo con Codex.');
   const binary = await desktopCodex();
   const args = ['queue', '--thread', thread, '--message=' + text];
@@ -38,20 +41,26 @@ export async function queueCodexRequest(thread: string, text: string, codexHome:
     throw Error('La petición es demasiado larga para enviarla desde Windows. Acorta el texto o adjunta un archivo.');
   }
   await verify();
+  let output: string;
   try {
     const {stdout} = await exec(binary, args, {
       env: {...codexEnvironment(process.env), CODEX_HOME: codexHome},
       cwd: codexHome, windowsHide: true, timeout: 10000, maxBuffer: 8192,
     });
-    const receipt = /^Queued message ([\da-f-]+) for thread ([\da-f-]+)\.$/im.exec(stdout);
-    if (receipt && uuid.test(receipt[1]) && receipt[2].toLowerCase() === thread.toLowerCase()) return;
+    output = stdout;
   } catch (error) {
     const stderr = (error as {stderr?: string}).stderr ?? '';
     if (/(?:unexpected argument|unrecognized subcommand) ['`"]queue['`"]/i.test(stderr)) {
       throw Error('Esta instalación de Codex no admite el envío desde ZEN. Puedes copiar la petición al chat fijado.');
     }
+    throw Error(unknownDelivery);
   }
-  throw Error(unknownDelivery);
+  const receipt = /^Queued message ([\da-f-]+) for thread ([\da-f-]+)\.$/im.exec(output);
+  if (!receipt || !uuid.test(receipt[1]) || receipt[2].toLowerCase() !== thread.toLowerCase()) throw Error(unknownDelivery);
+
+  // The CLI persists the message. The desktop handler wakes its own app-server.
+  try { await wake(`codex://threads/wake/${thread}`); }
+  catch { throw Error('La petición quedó en cola, pero no se pudo avisar a Codex. Abre el chat fijado y revisa la cola antes de reintentar.'); }
 }
 
 export async function openCodexRequest(

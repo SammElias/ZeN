@@ -1,6 +1,6 @@
 # ZEN · compañero de Codex para Windows
 
-ZEN reúne la actividad de Codex, el sonido de Windows y los avisos en una sola cápsula. Desde Inicio puedes pedir a Codex que consulte tu correo o agenda. Apuntes guarda tu biblioteca y tus prompts en el equipo.
+ZEN reúne la actividad de Codex, el sonido de Windows y los avisos en una cápsula pequeña que abre directamente los paneles. HUB guarda tu biblioteca y tus prompts en el equipo. Calendario permite crear eventos locales y solicitar consultas al conector disponible en el chat fijado de Codex.
 
 - [Instalación rápida, actualización y traslado a otro equipo](docs/DEPLOYMENT.md)
 - [Uso y atajos](docs/UX_FLOWS.md)

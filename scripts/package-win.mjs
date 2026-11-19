@@ -59,7 +59,7 @@ for (const path of paths) {
   });
 }
 await writeFile(join(appDirectory, 'package.json'), JSON.stringify({ name: 'zen-desktop', version: '0.1.0', main: 'dist/main.cjs', private: true }, null, 2));
-await writeFile(join(destination, 'LEEME.txt'), 'ZEN es un compañero de Codex para Windows con actividad observada, permisos de un uso, avisos, Sonido y Apuntes. Los auxiliares requieren .NET Runtime 10. Para observar actividad, prepara la integración en Preferencias y revisa los hooks con /hooks en el CLI de Codex. Si ZEN está cerrado o no respondes, el permiso vuelve a Codex. Incluye código MIT adaptado de Coucou, iconos de ZEN y tonos propios. Consulta docs/DEPLOYMENT.md en el repositorio de ZEN.');
+await writeFile(join(destination, 'LEEME.txt'), 'ZEN es un compañero de Codex para Windows con actividad observada, permisos de un uso, avisos, Sonido y HUB. Los auxiliares requieren .NET Runtime 10. Para observar actividad, prepara la integración en Preferencias y revisa los hooks con /hooks en el CLI de Codex. Si ZEN está cerrado o no respondes, el permiso vuelve a Codex. Incluye código MIT adaptado de Coucou, iconos de ZEN y tonos propios. Consulta docs/DEPLOYMENT.md en el repositorio de ZEN.');
 
 const files = await fileHashes(appDirectory);
 let smoke;

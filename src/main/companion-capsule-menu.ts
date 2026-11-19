@@ -6,7 +6,7 @@ import {isSilenced} from '../shared/companion-presentation';
 
 type Action = () => unknown;
 type Context = {
- settings:CompanionSettings; location:CapsuleLocation; full:boolean;
+ settings:CompanionSettings; location:CapsuleLocation; full:boolean; nativeHover:boolean;
  previousApp:{available:boolean;name?:string};
  setLocation:(location:CapsuleLocation)=>unknown; move:(alignment:CapsuleAlignment)=>unknown;
  update:(settings:Partial<CompanionSettings>)=>unknown;
@@ -24,7 +24,7 @@ export function capsuleMenuItems(c:Context):MenuItemConstructorOptions[] {
  if(!c.full)return [...at,...commands];
  const {settings}=c;
  const item=(label:string,action:Action,enabled=true):MenuItemConstructorOptions=>({label,enabled,click:()=>c.run(action)});
- const check=(label:string,key:'alwaysOnTop'|'keepExpanded'|'sounds'|'presentation'):MenuItemConstructorOptions=>({
+ const check=(label:string,key:'alwaysOnTop'|'windowLocked'|'keepExpanded'|'sounds'|'presentation'):MenuItemConstructorOptions=>({
   type:'checkbox',label,checked:settings[key],click:()=>c.run(()=>c.update({[key]:!settings[key]})),
  });
  const quiet=isSilenced(settings);
@@ -38,7 +38,8 @@ export function capsuleMenuItems(c:Context):MenuItemConstructorOptions[] {
    item('Mover al extremo derecho',()=>c.move('right')),
   ]},
   item('Distribución de ventana',c.layout),
-  check('Siempre encima','alwaysOnTop'),check('Mantener expandida','keepExpanded'),
+  check('Siempre encima','alwaysOnTop'),
+  c.nativeHover?check('Fijar panel y posición','windowLocked'):check('Mantener panel abierto','keepExpanded'),
   {type:'separator'},
   item('Apariencia y preferencias',c.appearance),check('Sonidos de aviso','sounds'),
   item(quiet?'Reactivar avisos':'Silenciar avisos 30 min',()=>c.update({silencedUntil:quiet?0:Date.now()+1800000})),

@@ -7,7 +7,11 @@ import {readBackup, readLibraryBackup, restoreBackup, snapshotBackup, writeBacku
 import {CompanionLauncher} from '../src/main/companion-launcher';
 import {KnowledgeHub} from '../src/main/knowledge-hub';
 import {CompanionSettingsSchema} from '../src/shared/codex-companion';
-import {newFields} from '../src/shared/knowledge-hub';
+import {libraryFolders,newFields,type HubData} from '../src/shared/knowledge-hub';
+import {emptyTemplate} from '../src/shared/knowledge-templates';
+
+// 2 × 2 JPEG fixture, used as both original and thumbnail for the round trip.
+const jpeg='/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKKKAP/2Q==';
 
 function profile(root:string) {
   const appearance=new CompanionAppearance(root,bytes=>bytes);
@@ -18,6 +22,27 @@ function profile(root:string) {
 }
 
 describe('portable ZEN backup',()=>{
+  it('keeps empty folders and assigned legacy categories selectable in the right library',()=>{
+    const built='77fc2ea1-5952-4d90-88de-0591b99e6123', used='77fc2ea1-5952-4d90-88de-0591b99e6124';
+    const empty='77fc2ea1-5952-4d90-88de-0591b99e6125', entry='77fc2ea1-5952-4d90-88de-0591b99e6126';
+    const data:HubData={version:2,theme:'light',folders:[
+      {id:built,name:'Carpeta vacía',group:'folder'},
+      {id:used,name:'Dataverse',group:'technology'},
+      {id:empty,name:'RAG',group:'ai'},
+    ],entries:[
+      {...newFields('note',used),id:entry,title:'Apunte',description:'Texto',createdAt:1,updatedAt:1},
+    ]};
+    expect(libraryFolders(data,'note').map(folder=>folder.id)).toEqual([built,used]);
+    expect(libraryFolders(data,'prompt').map(folder=>folder.id)).toEqual([built]);
+    expect(libraryFolders(data,'note',empty).map(folder=>folder.id)).toEqual([built,used,empty]);
+  });
+
+  it('starts a fresh library without generating unused folders',()=>{
+    const root=mkdtempSync(join(tmpdir(),'zen-empty-hub-'));
+    try {expect(profile(root).notes.read().data.folders).toEqual([]);}
+    finally {rmSync(root,{recursive:true,force:true});}
+  });
+
   it('moves library, draft and wallpaper to another profile and keeps a recoverable previous copy',()=>{
     const sourceRoot=mkdtempSync(join(tmpdir(),'zen-backup-origin-'));
     const targetRoot=mkdtempSync(join(tmpdir(),'zen-backup-target-'));
@@ -32,6 +57,9 @@ describe('portable ZEN backup',()=>{
       expect(new CompanionAppearance(sourceRoot,bytes=>bytes).status().neon).toMatchObject({palette:'jade',extension:0,speed:'fast'});
       source.notes.change({type:'save',fields:{...newFields('prompt'),title:'Mi prompt',code:'Contenido de prueba'}},()=>{});
       source.notes.draft({fields:{...newFields('note'),title:'Borrador'}});
+      const image={name:'fixture.jpg',mime:'image/jpeg' as const,original:jpeg,thumbnail:jpeg};
+      source.notes.templates({type:'save',draft:{fields:{...emptyTemplate(),name:'Diseño',description:'Una referencia',prompt:'Diseña {{nombre_proyecto}}'},image}});
+      source.notes.templates({type:'draft',draft:{fields:{...emptyTemplate(),name:'Otro diseño'},image}});
       source.launcher.reorder(source.launcher.status().order.reverse());
       source.settings.sounds=false;
       writeFileSync(join(sourceRoot,'gmail-oauth.bin'),'NOT_A_PORTABLE_CREDENTIAL');
@@ -45,6 +73,9 @@ describe('portable ZEN backup',()=>{
       const backup=readBackup(path);
       const recovery=restoreBackup(targetRoot,target,backup,value=>{target.settings=value;});
       expect(snapshotBackup(target)).toEqual(backup);
+      expect(backup.library.templates).toMatchObject([{name:'Diseño',image}]);
+      expect(backup.templateDraft?.image).toEqual(image);
+      expect(target.notes.referenceImage(backup.library.templates![0].id,false)?.bytes).toEqual(Buffer.from(jpeg,'base64'));
       expect(target.settings).toMatchObject({paused:true,presentation:true,silencedUntil:123,sounds:false});
       expect(readBackup(join(targetRoot,'backups',recovery)).library.entries.map(entry=>entry.title)).toEqual(['Anterior']);
     }finally {

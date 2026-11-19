@@ -56,7 +56,6 @@
   outline-offset: 2px;
 }
 .companion-capsule .workspace-content button:focus-visible:not(:where(.knowledge-hub *)) { outline-offset: 2px; }
-.companion-capsule > .capsule-single-row button:focus-visible { outline-offset: -2px; }
 .companion-capsule .workspace-section-heading{margin-bottom:20px;gap:12px}.companion-capsule .workspace-section-heading h1{font-size:27px;letter-spacing:-.7px}
 .view-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--zen-gap);margin:var(--zen-section-gap) 0;padding:10px;border:1px solid var(--line);border-radius:var(--zen-card-radius);background:var(--zen-surface)}
 .view-count{font-size:11px!important;white-space:nowrap;font-variant-numeric:tabular-nums;margin-left:auto;color:var(--glass-secondary)}

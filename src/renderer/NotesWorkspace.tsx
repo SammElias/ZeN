@@ -1,10 +1,12 @@
 import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, Grid2X2, HardDrive, List, Menu, Plus, Search, Settings2, Star, Upload, X} from 'lucide-react';
 import {noteLimits} from '../shared/companion-notes';
+import {hubName} from '../shared/companion-navigation';
 import type {AppearanceState} from '../shared/companion-appearance';
-import {singularLabels, hubContentError, newFields, type HubAction, type HubData, type HubDraft, type HubEntry, type HubFields, type HubFileAction, type HubFolder} from '../shared/knowledge-hub';
+import {singularLabels, hubContentError, libraryFolderLabel, libraryFolders, newFields, type HubAction, type HubData, type HubDraft, type HubEntry, type HubFields, type HubFileAction, type HubFolder} from '../shared/knowledge-hub';
 import {appearanceVars} from './AppearanceSettings';
 import {KnowledgeEditor} from './KnowledgeEditor';
+import {TemplatesWorkspace} from './TemplatesWorkspace';
 import {motion} from '../shared/companion-motion';
 import {canAnimate,positionNoteMenu,visibleRect} from './companion-motion';
 import {interfaceAudio} from './companion-interface-audio';
@@ -13,7 +15,7 @@ import './NotesWorkspace.css';
 
 type Mode = 'read' | 'edit' | 'preview';
 type Confirmation = {text: string; label: string; run: () => void};
-const workspace = ['dashboard','all','prompt','ai'] as const;
+const workspace = ['dashboard','all','prompt','ai','templates'] as const;
 const creatable = ['note','prompt'] as const;
 
 function editing(entry: HubEntry): HubDraft {
@@ -32,6 +34,8 @@ export type HubDestination = 'all' | 'new' | {noteId: string};
 export function NotesWorkspace({appearance, destination, visible, animate}: {appearance: AppearanceState; destination?: HubDestination; visible:boolean;animate:boolean}) {
   const [data,setData] = useState<HubData>();
   const [location,setLocation] = useState<HubLocation>({section:'dashboard'});
+  const [templatesOpened,setTemplatesOpened] = useState(false);
+  const [templatesRevision,setTemplatesRevision] = useState(0);
   const [draft,setDraft] = useState<HubDraft>();
   const [mode,setMode] = useState<Mode>('read');
   const [dirty,setDirty] = useState(false);
@@ -248,6 +252,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
   },[visible,animate]);
 
   function showLocation(next: HubLocation) {
+    if(next.section==='templates')setTemplatesOpened(true);
     listScroll.current=0;
     setLocation(next);
     setDraft(undefined);
@@ -374,6 +379,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     if(!visible)return;
     function shortcuts(event:KeyboardEvent) {
       const key=event.key.toLowerCase();
+      if(section==='templates'&&key!=='escape')return;
       if ((event.ctrlKey||event.metaKey) && key==='k' && data) {
         event.preventDefault();toggleSearch(!showSearch);return;
       }
@@ -404,6 +410,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
       const result=await window.companion.notesFile(action);
       if (!result.ok) {error(result.error);return;}
       if (result.value.type==='import') {
+        setTemplatesRevision(value=>value+1);
         setData(result.value.data);setDraft(undefined);setDirty(false);setLocation({section:'dashboard'});
         setFeedback({text:'Biblioteca restaurada.'});
       } else if (result.value.type==='image') image=result.value.image;
@@ -423,11 +430,10 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     if(section==='ai') return entry.folderId===aiFolder?.id;
     return section==='all' && (!activeFolder || entry.folderId===activeFolder.id);
   }).filter(entry=>matchText(entry,query)).sort((a,b)=>order==='name'?a.title.localeCompare(b.title,'es'):b.updatedAt-a.updatedAt);
-  const showLibrary=!['dashboard','settings','backup'].includes(section);
+  const showLibrary=!['dashboard','settings','backup','templates'].includes(section);
   const defaultKind=section==='prompt'?'prompt':'note';
   const subheading=section==='ai'?aiFolderName:activeFolder?.name ?? sectionLabels[section];
-  const noteFolderIds=new Set(data?.entries.filter(entry=>entry.kind==='note').map(entry=>entry.folderId));
-  const noteFolders=data?.folders.filter(folder=>folder.group==='folder'||noteFolderIds.has(folder.id)) ?? [];
+  const noteFolders=data?libraryFolders(data,'note',activeFolder?.id):[];
   const sameGroup=data?.folders.filter(folder=>folder.group===folderForm?.group) ?? [];
   const folderIndex=sameGroup.findIndex(folder=>folder.id===folderForm?.id);
 
@@ -445,12 +451,11 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
 
   const theme = data?.theme ?? 'light';
   const glassTheme = theme === 'light' && appearance.theme === 'monochrome' ? 'monochrome' : theme;
-  return <section className="notes-workspace knowledge-hub" data-hub-theme={theme}
-    style={appearanceVars({...appearance, theme:glassTheme})} aria-labelledby="notes-title">
+  return <section className="notes-workspace knowledge-hub" data-hub-theme={appearance.theme==='dark'?'dark':'light'} aria-labelledby="notes-title">
     <div className="hub-shell">
-      <aside className="hub-sidebar" data-mobile-open={showNav} aria-label="Navegación de Knowledge Hub">
+      <aside className="hub-sidebar" data-mobile-open={showNav} aria-label={`Navegación de ${hubName}`}>
           <button type="button" className="hub-brand" onClick={()=>{if(section!=='dashboard')goto({section:'dashboard'});}}>
-          <span><BookOpen size={18}/></span><strong>Knowledge Hub</strong>
+          <span><BookOpen size={18}/></span><strong>{hubName}</strong>
         </button>
         <nav>
           <h2>Espacio de trabajo</h2>
@@ -469,7 +474,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
         <header className="hub-top">
           <button type="button" className="hub-mobile-toggle" aria-label="Navegación" aria-expanded={showNav}
             onClick={()=>{setShowNav(!showNav);interfaceAudio.play(showNav?'close':'open');}}><Menu size={18}/></button>
-          <button type="button" className="hub-search-launch" disabled={!data} onClick={()=>toggleSearch(true)}>
+          {section!=='templates' && <><button type="button" className="hub-search-launch" disabled={!data} onClick={()=>toggleSearch(true)}>
             <Search size={17}/><span>Buscar en la biblioteca…</span><kbd>Ctrl K</kbd>
           </button>
             <details className="hub-menu hub-create" onToggle={event=>positionNoteMenu(event.currentTarget)}>
@@ -482,11 +487,11 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
             })}<button type="button" className="notes-new-folder" disabled={!data} onClick={event=>{
               event.currentTarget.closest('details')?.removeAttribute('open');setFolderForm({name:'',group:'folder'});interfaceAudio.play('open');
             }}><FolderPlus size={16}/>Carpeta</button></div>
-          </details>
+          </details></>}
         </header>
 
         <div className="hub-heading">
-          <h1 id="notes-title">{section==='dashboard'?'Knowledge Hub':subheading}</h1>
+          <h1 id="notes-title">{section==='dashboard'?hubName:subheading}</h1>
           {section==='dashboard' && <div className="hub-tools">
             <div className="hub-switch" aria-label="Vista de biblioteca">
               <button type="button" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed={!list} onClick={()=>setList(false)}><Grid2X2 size={16}/></button>
@@ -534,16 +539,18 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
         </form>}
 
         {data && section==='dashboard' && <HubDashboard data={data} navigate={goto} open={choose} list={list}/>}
+        {templatesOpened&&<TemplatesWorkspace key={templatesRevision} visible={visible&&section==='templates'}/>}
         {data && section==='settings' && <div className="hub-panel">
-          <h2>Apariencia de Apuntes</h2>
-          <div className="hub-switch" aria-label="Tema">
+          <h2>Tema del lector</h2>
+          <p>El lector conserva su contraste claro u oscuro. La navegación y Templates usan la apariencia general de ZEN.</p>
+          <div className="hub-switch" aria-label="Tema del lector">
             {(['light','dark'] as const).map(theme=><button type="button" key={theme} aria-pressed={data.theme===theme}
               disabled={busy} onClick={()=>void mutate({type:'theme',theme})}>{theme==='light'?'Claro':'Oscuro'}</button>)}
           </div>
         </div>}
         {data && section==='backup' && <div className="hub-panel">
           <h2>Biblioteca local</h2>
-          <p>Exporta la biblioteca o restáurala desde un respaldo de Apuntes o una copia completa de ZEN.</p>
+          <p>Exporta la biblioteca o restáurala desde un respaldo del {hubName} o una copia completa de ZEN.</p>
           <div className="hub-tools">
             <button type="button" disabled={busy} onClick={()=>void files({type:'export'})}><Download size={16}/>Exportar JSON</button>
             <button type="button" disabled={busy} onClick={()=>void files({type:'import'})}><Upload size={16}/>Restaurar biblioteca</button>
@@ -568,7 +575,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
                 {section==='all' && noteFolders.length>0 && <select className="hub-folder-filter" aria-label="Filtrar por carpeta"
                   value={activeFolder?.id ?? ''} onChange={event=>goto({section:'all',folderId:event.target.value || undefined})}>
                   <option value="">Todas las carpetas</option>
-                  {noteFolders.map(folder=><option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                  {noteFolders.map(folder=><option key={folder.id} value={folder.id}>{libraryFolderLabel(folder)}</option>)}
                 </select>}
                 <input type="search" aria-label="Filtrar sección" value={query} placeholder="Filtrar…" onChange={event=>setQuery(event.target.value)}/>
                 <select aria-label="Orden" value={order} onChange={event=>setOrder(event.target.value)}>
@@ -585,7 +592,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
               })}</ul>
               {!items.length && <p className="hub-muted">{query?'No hay coincidencias.':'Todavía no hay elementos.'}</p>}
             </aside>
-            {draft && <div className="hub-reader">
+            {draft && <div className="hub-reader" data-reader-theme={theme} style={appearanceVars({...appearance,theme:glassTheme})}>
               <KnowledgeEditor key={editorKey} data={data} draft={draft} saved={saved} mode={mode} busy={busy}
                 back={closeReader}
                 dirty={dirty} valid={valid} backup={draftBackedUp} update={update} setMode={setMode} save={()=>void save(true)}

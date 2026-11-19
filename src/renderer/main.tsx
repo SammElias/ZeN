@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {CodexCompanion} from './CodexCompanion';
 import './companion-base.css';
-import './capsule-single-row.css';
+import './capsule-navigation.css';
 import './companion-clean.css';
 import './liquid-glass.css';
 import './workspace-polish.css';

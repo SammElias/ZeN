@@ -38,16 +38,18 @@ Para fijar un chat, guarda `companion-target.json` en `%APPDATA%\ZEN` con los va
 }
 ```
 
-Sin chat fijado, ZEN prepara un borrador para enviar desde Codex. Con chat fijado, la entrega directa requiere un CLI que admita `queue`.
+Sin chat fijado, ZEN prepara un borrador para enviar desde Codex. Con chat fijado, la entrega directa requiere un CLI que admita `queue` y una versión de Codex de escritorio que pueda reactivar ese chat desde el enlace de ZEN.
 
 ## 04 · Trasladar datos y preferencias ![](assets/violeta.svg)
 
 1. En el equipo de origen, abre **Preferencias → Datos y configuración → Exportar copia**. Guarda el archivo `.zen-backup.json`.
-2. Transfiérelo por un canal privado. Incluye biblioteca, carpetas, imágenes, borrador guardado, apariencia, fondo, atajos y preferencias portables de la cápsula.
+2. Transfiérelo por un canal privado. Incluye biblioteca, carpetas, imágenes, borrador guardado, eventos locales de Calendario, apariencia, fondo, atajos y preferencias portables de la cápsula.
 3. En el equipo de destino, abre la misma sección y elige **Importar copia**. Revisa la confirmación. ZEN guarda la copia anterior en `%APPDATA%\ZEN\backups` antes de sustituir biblioteca y preferencias.
 4. Comprueba tus atajos y configura Codex en el destino. Las sesiones, credenciales, hooks, chat fijado y posiciones de pantalla son propios de cada instalación.
 
-En **Apuntes → Respaldo y exportación → Restaurar biblioteca** puedes abrir tanto un respaldo de Apuntes como una copia completa de ZEN. Esa acción recupera la biblioteca. Usa **Ajustes → Datos y configuración → Importar copia** para recuperar también el borrador y las preferencias. El respaldo completo es JSON sin cifrar. [Seguridad](SECURITY.md)
+En **HUB → Respaldo y exportación → Restaurar biblioteca** puedes abrir tanto un respaldo del HUB como una copia completa de ZEN. Esa acción recupera la biblioteca. Usa **Ajustes → Datos y configuración → Importar copia** para recuperar también el borrador y las preferencias. El respaldo completo es JSON sin cifrar. [Seguridad](SECURITY.md)
+
+Las copias nuevas incluyen los templates, sus referencias y sus miniaturas. La copia completa también incluye el borrador de Templates. Al importar una copia antigua sin galería, ZEN conserva los templates locales. Usa una versión que incluya Templates en el equipo de destino para recuperar la nueva galería.
 
 ## 05 · Verificar, actualizar y revertir ![](assets/ambar.svg)
 
@@ -56,3 +58,4 @@ En **Apuntes → Respaldo y exportación → Restaurar biblioteca** puedes abrir
 - Los accesos directos de ZEN deben apuntar al `ZEN.exe` portable. La ventana comunica esa ruta a Windows para que el botón de la barra de tareas pueda mostrar el icono y volver a abrir ZEN después de salir.
 - Si falla el arranque, cierra ZEN y restaura el EXE anterior. Para recuperar datos tras una importación, importa la copia que ZEN guardó en `backups` con una versión compatible.
 - Antes de publicar, revisa qué archivos se subirán. El repositorio admite fuentes y documentación revisadas. El EXE se distribuye como activo de Release únicamente cuando se autoriza esa entrega. [Reglas de trabajo](../AGENTS.md)
+- Templates incluye ocho miniaturas originales. Las referencias JPG presentes en una instalación local se pueden usar al compilar en ese equipo. Cada usuario puede añadir sus referencias en HUB.

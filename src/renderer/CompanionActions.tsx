@@ -47,7 +47,17 @@ export function Connection({status}:{status:CompanionStatus}){
  return <span className={'connection-status connection-'+(status.settings.paused?'paused':status.connection?.state??'unchecked')} title={status.connection?.checkedAt?'Comprobado a las '+new Date(status.connection.checkedAt).toLocaleTimeString('es'):undefined}><i/>{connectionLabel(status)}</span>;
 }
 export function Signal({status}:{status:CompanionStatus}){const now=useClock();return <small className="last-signal" title={status.lastEventAt?new Date(status.lastEventAt).toLocaleString('es'):undefined}>{lastSignalLabel(status.lastEventAt,now)}</small>;}
-export function Quiet({status}:{status:CompanionStatus}){
+export function Quiet({status, compact=false}:{status:CompanionStatus; compact?:boolean}){
  const now=useClock(),quiet=isSilenced(status.settings,now),[error,setError]=useState('');
- return <div className="quiet-control"><button data-quiet={quiet} aria-pressed={quiet} title="Silencia sonido y notificaciones; sigue recibiendo actividad y permisos" onClick={async()=>{const r=await window.companion.silence(quiet?0:30);setError(r.ok?'':r.error);}}><CompanionIcon name={quiet?'bell':'mute'}/>{quiet?'Reactivar avisos · '+Math.ceil((status.settings.silencedUntil-now)/60000)+' min':'Silenciar avisos 30 min'}</button>{error&&<small role="alert">{error}</small>}</div>;
+ const remaining = Math.ceil((status.settings.silencedUntil-now)/60000)+' min';
+ const action = quiet ? 'Reactivar avisos · '+remaining : 'Silenciar avisos 30 min';
+ return <div className="quiet-control">
+   <button type="button" data-quiet={quiet} aria-pressed={quiet} aria-label={action}
+     title={compact ? action : 'Silencia sonido y notificaciones; sigue recibiendo actividad y permisos'}
+     onClick={async()=>{const r=await window.companion.silence(quiet?0:30);setError(r.ok?'':r.error);}}>
+     <CompanionIcon name={quiet?'bell':'mute'}/>
+     {compact ? (quiet && remaining) : action}
+   </button>
+   {error&&<small role="alert">{error}</small>}
+ </div>;
 }

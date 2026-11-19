@@ -1,16 +1,16 @@
 import React, {memo, useEffect, useRef} from 'react';
-import {neonPalettes, neonSpeeds, neonVisual, type NeonOptions} from '../shared/companion-neon';
+import {neonPalettes, neonVisual, type NeonOptions} from '../shared/companion-neon';
 import {measureContour, neonContour, traceContour, type NeonShape} from './neon-contour';
+import type {NeonAnimation} from './useNeonAnimation';
 import './neon-border.css';
 
 const fade=(distance: number, width: number)=>Math.max(0,Math.min(1,distance/width));
 
-export const NeonBorder = memo(function NeonBorder({options,shape,visible,motion}: {
-  options: NeonOptions; shape: NeonShape; visible: boolean; motion: boolean;
+export const NeonBorder = memo(function NeonBorder({options,shape,visible,animation}: {
+  options: NeonOptions; shape: NeonShape; visible: boolean; animation: NeonAnimation;
 }) {
   const canvas=useRef<HTMLCanvasElement>(null);
-  const phase=useRef(.34);
-  const {enabled,palette,animated,intensity,speed,extension}=options;
+  const {enabled,palette,intensity,extension}=options;
   const {side,attached,compact,radius}=shape;
 
   useEffect(()=>{
@@ -20,20 +20,23 @@ export const NeonBorder = memo(function NeonBorder({options,shape,visible,motion
     const backing=document.createElement('canvas');
     const base=backing.getContext('2d');
     if(!base)return;
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    const {line,halo,segment,frameMs}=neonVisual;
+    const {line,halo,segment}=neonVisual;
     const {color,core}=neonPalettes[palette],strength=intensity/100;
     let width=0,height=0,pixelRatio=0;
     let track: ReturnType<typeof measureContour>=[],length=0;
-    let frame: number|undefined,lastTime=0;
+    let previouslyPainted=false;
 
-    function paint() {
+    function paint(phase: number | null, resized = false) {
       if(!length)return;
+      const running=String(phase!==null);
+      if(layer!.dataset.running!==running)layer!.dataset.running=running;
+      if(phase===null&&!previouslyPainted&&!resized)return;
       ctx!.clearRect(0,0,width,height);
       ctx!.drawImage(backing,0,0,width,height);
-      if(!animated||!motion||reduced.matches)return;
+      previouslyPainted=phase!==null;
+      if(phase===null)return;
       const trail=length*segment,steps=20;
-      const head=phase.current*(side?length+trail:length);
+      const head=phase*(side?length+trail:length);
       const draw=(from:number,to:number,alpha:number)=>{
         ctx!.beginPath();
         if(side)traceContour(ctx!,track,Math.max(0,from),Math.min(length,to));
@@ -61,27 +64,6 @@ export const NeonBorder = memo(function NeonBorder({options,shape,visible,motion
         if(alpha>.005)draw(from,to,alpha);
       }
       ctx!.globalAlpha=1;
-    }
-
-    function tick(time:number) {
-      if(lastTime===0)lastTime=time-frameMs;
-      const elapsed=time-lastTime;
-      if(elapsed>=frameMs){
-        phase.current=(phase.current+elapsed/neonSpeeds[speed].duration)%1;
-        lastTime=time;
-        paint();
-      }
-      frame=requestAnimationFrame(tick);
-    }
-
-    function schedule() {
-      if(frame!==undefined)cancelAnimationFrame(frame);
-      frame=undefined;
-      lastTime=0;
-      const running=length>0&&animated&&motion&&!reduced.matches&&!document.hidden;
-      layer!.dataset.running=String(running);
-      if(!document.hidden)paint();
-      if(running)frame=requestAnimationFrame(tick);
     }
 
     const fit=new ResizeObserver(([entry])=>{
@@ -122,19 +104,16 @@ export const NeonBorder = memo(function NeonBorder({options,shape,visible,motion
           base.stroke(path);
         }
       }
-      schedule();
+      paint(animation.running?animation.phase:null,true);
     });
     fit.observe(layer,{box:'device-pixel-content-box'});
-    reduced.addEventListener('change',schedule);
-    document.addEventListener('visibilitychange',schedule);
+    animation.listeners.add(paint);
     return ()=>{
       fit.disconnect();
-      reduced.removeEventListener('change',schedule);
-      document.removeEventListener('visibilitychange',schedule);
-      if(frame!==undefined)cancelAnimationFrame(frame);
+      animation.listeners.delete(paint);
       layer.dataset.running='false';
     };
-  },[enabled,visible,motion,side,attached,compact,radius,palette,animated,intensity,speed,extension]);
+  },[enabled,visible,animation,side,attached,compact,radius,palette,intensity,extension]);
 
   return enabled&&visible?<canvas className="neon-border" ref={canvas} data-palette={palette} aria-hidden="true"/>:null;
 });

@@ -3,7 +3,11 @@ import {renameSync, rmSync, writeFileSync} from 'node:fs';
 import {basename} from 'node:path';
 import {dialog, nativeImage, type BrowserWindow} from 'electron';
 import {z} from 'zod';
+import {hubName} from '../shared/companion-navigation';
 import {HubAction, HubDraft, HubFileAction, type HubFileResult, type HubImage} from '../shared/knowledge-hub';
+import {TemplateRequest, type TemplateReply} from '../shared/knowledge-templates';
+import {readTemplateImage} from './companion-template-images';
+import {copyTemplatePrompt} from './knowledge-templates';
 import {entryMarkdown, fileStem} from '../shared/knowledge-markdown';
 import {wallpaperBytes} from './companion-appearance';
 import {readLibraryBackup} from './companion-backup';
@@ -53,23 +57,23 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
 
   function requireNotes() {
     requireWorkspace('notes');
-    if (!privateEffectsAllowed()) throw Error('Desactiva la pausa o Presentación para abrir Apuntes.');
+    if (!privateEffectsAllowed()) throw Error(`Desactiva la pausa o Presentación para abrir ${hubName}.`);
   }
 
   async function restoreLibrary(): Promise<HubFileResult> {
-    if (restoring) throw Error('Ya hay una restauración de Apuntes abierta.');
+    if (restoring) throw Error(`Ya hay una restauración del ${hubName} abierta.`);
     restoring = true;
     try {
       const picked = await withWindowDialog(() => dialog.showOpenDialog(window, {
-        title: 'Elegir copia para restaurar Apuntes', properties: ['openFile'],
-        filters: [{name: 'Copias de ZEN y de Apuntes', extensions: ['json']}],
+        title: `Elegir copia para restaurar el ${hubName}`, properties: ['openFile'],
+        filters: [{name: `Copias de ZEN y del ${hubName}`, extensions: ['json']}],
       }));
       requireNotes();
       if (picked.canceled || picked.filePaths.length !== 1) return {type: 'cancelled'};
       const {library, complete} = readLibraryBackup(picked.filePaths[0]);
       const {response} = await withWindowDialog(() => dialog.showMessageBox(window, {
-        type: 'warning', message: '¿Restaurar la biblioteca de Apuntes?',
-        detail: `La copia contiene ${library.entries.length} elementos. Sustituirá la biblioteca actual y su borrador guardado.` +
+        type: 'warning', message: `¿Restaurar la biblioteca del ${hubName}?`,
+        detail: `La copia contiene ${library.entries.length} elementos${library.templates ? ' y '+library.templates.length+' templates' : ''}. Sustituirá los datos de la biblioteca incluidos en la copia.` +
           (complete ? '\n\nAquí se restaura solo la biblioteca. Para recuperar también el borrador y los ajustes, usa Ajustes → Datos y configuración → Importar copia.' : ''),
         buttons: ['Cancelar', 'Restaurar biblioteca'], defaultId: 0, cancelId: 0, noLink: true,
       }));
@@ -99,6 +103,30 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
     requireNotes();
     return notes.draft(draft);
   });
+  handle('templates', TemplateRequest, async (action):Promise<TemplateReply> => {
+    requireNotes();
+    if(action.type==='image'){
+      const picked=await withWindowDialog(()=>dialog.showOpenDialog(window,{
+        title:'Elegir referencia visual',properties:['openFile'],
+        filters:[{name:'Imagen',extensions:['png','jpg','jpeg','webp']}],
+      }));
+      requireNotes();
+      if(picked.canceled||picked.filePaths.length!==1)return {type:'cancelled'};
+      return {type:'image',image:readTemplateImage(picked.filePaths[0])};
+    }
+    if(action.type==='source'||action.type==='copy'){
+      const detail=notes.templates({type:'detail',id:action.id});
+      if(detail.type!=='detail')throw Error('El template no está disponible.');
+      if(action.type==='source'){
+        if(!detail.item.sourceUrl)throw Error('El template no tiene enlace de origen.');
+        await openExternal(detail.item.sourceUrl);
+      }else{
+        copyTemplatePrompt(detail.item.prompt,action.values,copy);
+      }
+      return {type:'done'};
+    }
+    return notes.templates(action);
+  });
   handle('notesFile', HubFileAction, async (action): Promise<HubFileResult> => {
     requireNotes();
     if (action.type === 'url') {
@@ -117,11 +145,11 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
       return {type: 'image', image: readAttachment(path)};
     }
 
-    const {data} = notes.read();
+    const {data} = notes.read(action.type==='export');
     const entry = action.type === 'markdown' ? data.entries.find(item => item.id === action.id) : undefined;
     if (action.type === 'markdown' && !entry) throw Error('Guarda el elemento antes de exportarlo.');
     const destination = await withWindowDialog(() => dialog.showSaveDialog(window, {
-      title: 'Exportar Knowledge Hub',
+      title: `Exportar ${hubName}`,
       defaultPath: entry ? fileStem(entry.title) + '.md' : 'zen-knowledge-hub.json',
       filters: [{name: entry ? 'Markdown' : 'Respaldo JSON', extensions: [entry ? 'md' : 'json']}],
     }));

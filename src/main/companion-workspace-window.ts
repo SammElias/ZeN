@@ -4,6 +4,7 @@ import type {Area} from '../shared/overlay-position';
 import {capsuleContentHeight,edgeContourDepth,edgeShoulder,EDGE_ISLAND,ISLAND_SIZE,ISLAND_STACKED,type IslandSide} from '../shared/island';
 import {WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {mergeShape} from './companion-placement';
+import {WorkspacePage} from '../shared/companion-workspace';
 
 export const workspaceMinimum = {width: 320, height: 320};
 export const workspaceCaptionHeight = EDGE_ISLAND.captionReserve;
@@ -27,6 +28,7 @@ export type EdgeDock = z.infer<typeof edgeDock>;
 const stateSchema = z.object({
   version: z.literal(1),
   mode: z.enum(['capsule', 'workspace']),
+  page: WorkspacePage.optional(),
   preferences: WorkspaceLayoutPreferences,
   current: geometry.optional(),
   previous: geometry.optional(),
@@ -186,6 +188,7 @@ export class CompanionWorkspaceWindow {
   }
 
   get startupMode() { return this.preferences.restoreOnLaunch ? this.state.mode : 'capsule'; }
+  get page() { return this.state.page; }
   get preferences() { return this.state.preferences; }
   get current() { return this.state.current; }
   get previous() { return this.state.previous; }

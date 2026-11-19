@@ -5,11 +5,13 @@ import {hasCorrelatedResult} from './companion-codex-result';
 export function displayStatus(raw:CompanionStatus,revision:number,visible:boolean):CompanionStatus{
  const value=structuredClone(raw);value.revision=revision;
  const workspaceVisible=visible&&value.workspace?.expanded;
+ const showActivity=workspaceVisible&&!value.settings.presentation&&!value.settings.paused&&value.workspace?.page==='codex'&&value.workspace.codexTab==='activity';
+ if(!showActivity)delete value.activitySessions;
  const showLatest=workspaceVisible&&!value.settings.presentation&&!value.settings.paused&&value.workspace?.page==='codex'&&value.workspace.codexTab==='summary';
  if(!workspaceVisible||value.workspace?.page!=='permissions'){
   const pendingIds=new Set(value.approvals.map(approval=>approval.id));
   for(const approval of value.approvals)approval.preview='';
-  for(const session of value.sessions)for(const step of session.steps)if(pendingIds.has(step.id))delete step.preview;
+  for(const session of [...value.sessions,...value.activitySessions??[]])for(const step of session.steps)if(pendingIds.has(step.id))delete step.preview;
  }
  for(const session of value.sessions){
   if(!showLatest||hasCorrelatedResult(session.lastReply?.text))delete session.lastReply;

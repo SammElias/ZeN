@@ -30,7 +30,16 @@ export class CompanionHub{
   const value=prior??{id:session,label:this.target.title,title:this.target.title,cwd:this.target.cwd,state:'idle' as const,at:0,steps:[]};
   value.lastReply={...next};this.sessions.set(session,value);this.changed();return true;
  }
- status():CompanionStatus{return{settings:{...this.settings},target:this.target?{...this.target}:undefined,targetError:this.targetError,ignoredEvents:this.ignoredEvents,account:this.account,checking:this.checking,connection:{...this.connection},integration:this.lastEventAt?'receiving':this.installed?'waiting':'missing',sessions:[...this.sessions.values()].sort((a,b)=>b.at-a.at).map(s=>({...s,lastReply:s.lastReply?{...s.lastReply}:undefined,summary:s.summary?structuredClone(s.summary):undefined,observation:s.observation?{...s.observation}:undefined,state:['thinking','working'].includes(s.state)&&this.now()-s.at>120000?'unknown':s.state,steps:s.steps.map(t=>({...t}))})),approvals:[...this.pending.values()].map(p=>({...p.view})),notices:this.notices.map(n=>({...n})),lastEventAt:this.lastEventAt,error:this.error};}
+ private snapshotSessions(supervise=false){
+  return [...this.sessions.values()].filter(s=>supervise||!this.target||s.id===this.target.session)
+   .sort((a,b)=>b.at-a.at).map(s=>({...s,lastReply:!supervise&&s.lastReply?{...s.lastReply}:undefined,
+    summary:!supervise&&s.summary?structuredClone(s.summary):undefined,observation:s.observation?{...s.observation}:undefined,
+    state:(['thinking','working'].includes(s.state)||s.state==='approval'&&!this.pendingFor(s.id))&&this.now()-s.at>120000?'unknown' as const:s.state,
+    steps:s.steps.map(t=>({...t}))}));
+ }
+ private pendingFor(id:string){return [...this.pending.values()].some(p=>p.view.session===id);}
+ activitySessions(){return this.snapshotSessions(true);}
+ status():CompanionStatus{return{settings:{...this.settings},target:this.target?{...this.target}:undefined,targetError:this.targetError,ignoredEvents:this.ignoredEvents,account:this.account,checking:this.checking,connection:{...this.connection},integration:this.lastEventAt?'receiving':this.installed?'waiting':'missing',sessions:this.snapshotSessions(),approvals:[...this.pending.values()].map(p=>({...p.view})),notices:this.notices.map(n=>({...n})),lastEventAt:this.lastEventAt,error:this.error};}
  publish(){this.changed();}
  private notice(id:string,session:string,title:string,kind:CompanionNotice['kind']){const item={id,session,title,kind,read:false,audible:this.settings.sounds&&!this.settings.presentation&&!isSilenced(this.settings,this.now()),at:this.now()};this.notices=[item,...this.notices].slice(0,30);if(this.settings.notifications&&!this.settings.presentation&&!isSilenced(this.settings,this.now()))this.notify(item);}
  markNoticesRead(){for(const n of this.notices)n.read=true;this.changed();}
@@ -39,12 +48,13 @@ export class CompanionHub{
  update(settings:CompanionSettings){this.settings=settings;if(settings.paused)for(const id of [...this.pending.keys()])this.decide(id,'pass');this.changed();}
  accept(raw:unknown,reply:(d:Decision)=>void):()=>void{
   const parsed=CompanionEventSchema.safeParse(raw);if(!parsed.success||this.settings.paused){reply('pass');return()=>{};}
-  const e=parsed.data;if(this.targetError||this.target&&!matchesTarget(this.target,e.session,e.cwd)){this.ignoredEvents++;reply('pass');this.changed();return()=>{};}
+  const e=parsed.data,scoped=!this.target||matchesTarget(this.target,e.session,e.cwd);
+  if(this.targetError||this.target?.session===e.session&&!scoped){this.ignoredEvents++;reply('pass');this.changed();return()=>{};}
   if(this.seen.has(e.id)){reply('pass');return()=>{};}this.seen.add(e.id);if(this.seen.size>2000)this.seen.delete(this.seen.values().next().value!);
-  this.lastEventAt=this.now();const prior=this.sessions.get(e.session);
+  if(scoped)this.lastEventAt=this.now();const prior=this.sessions.get(e.session);
   if(prior?.turn&&e.turn&&prior.turn!==e.turn&&e.event!=='UserPromptSubmit'&&e.event!=='SessionStart'){reply('pass');this.changed();return()=>{};}
   if(['UserPromptSubmit','SessionStart','Stop','Interrupt','SessionEnd'].includes(e.event))for(const [id,p]of this.pending)if(p.view.session===e.session)this.decide(id,'pass');
-  const title=prior?.title??this.target?.title;
+  const title=prior?.title??(scoped?this.target?.title:undefined);
   const label=title??e.cwd.split(/[\\/]/).filter(Boolean).pop()??'Codex';
   const observation:NonNullable<CompanionSession['observation']>=e.event==='UserPromptSubmit'?{since:this.now(),startedAt:this.now(),actions:0}:e.event==='SessionStart'?{since:this.now(),actions:0}:{...prior?.observation??{since:this.now(),actions:0}};
   if(e.event==='PreToolUse')observation.actions++;
@@ -60,8 +70,9 @@ export class CompanionHub{
   const labels:Record<CompanionEvent['event'],string>={SessionStart:'Sesión abierta',UserPromptSubmit:'Pensando',PreToolUse:'Ejecutando',PermissionRequest:'Necesita permiso',PostToolUse:e.failed?'Herramienta con error':'Acción terminada',Stop:'Turno terminado',SubagentStart:'Agente iniciado',SubagentStop:'Agente terminado',Interrupt:'Interrumpido',SessionEnd:'Sesión cerrada'};
   if(!duplicateStop){
    const activity=e.tool?toolActivity(e.tool):undefined;
-   const label=activity?`${labels[e.event]} · ${activity.label}`:labels[e.event];
-   session.steps=[...session.steps,{id:e.id,label,kind:activity?.kind,preview:e.preview,at:this.now()}].slice(-20);
+   const toolLabel=activity&&(e.tool?.startsWith(activity.label.replace(/…$/,''))?'Herramienta de Codex':activity.label);
+   const label=toolLabel?`${labels[e.event]} · ${toolLabel}`:labels[e.event];
+   session.steps=[...session.steps,{id:e.id,label,kind:activity?.kind,tool:e.tool,preview:scoped?e.preview:undefined,at:this.now()}].slice(-20);
   }
   if(e.event==='UserPromptSubmit')session.state='thinking';
   else if(e.event==='PreToolUse')session.state='working';
@@ -69,7 +80,8 @@ export class CompanionHub{
   else if(e.event==='Stop')session.state='finished';
   else if(e.event==='Interrupt')session.state='interrupted';
   else if(['SessionStart','SessionEnd'].includes(e.event))session.state='idle';
-  this.sessions.set(e.session,session);if(this.sessions.size>40){const oldest=[...this.sessions.keys()].find(id=>id!==e.session&&![...this.pending.values()].some(p=>p.view.session===id));if(oldest)this.sessions.delete(oldest);}
+  this.sessions.set(e.session,session);if(this.sessions.size>40){const oldest=this.snapshotSessions(true).reverse().find(s=>s.id!==e.session&&s.id!==this.target?.session&&!this.pendingFor(s.id));if(oldest)this.sessions.delete(oldest.id);}
+  if(!scoped){if(e.event==='PermissionRequest')session.state='approval';reply('pass');this.changed();return()=>{};}
   try{this.observed?.(e,session,acceptedReply?{...acceptedReply}:undefined);}catch{/* Optional observers cannot delay or break hook replies. */}
   if(e.event==='PermissionRequest'){
    if(e.turn&&e.preview&&!e.truncated&&e.preview.length<=64000){session.state='approval';const view={id:e.id,session:e.session,turn:e.turn,label,tool:e.tool??'Acción',preview:e.preview,expiresAt:this.now()+105000};const timer=setTimeout(()=>this.decide(e.id,'pass'),105000);this.pending.set(e.id,{view,reply,timer});this.notice(e.id,e.session,'Codex necesita tu permiso','permission');this.changed();return()=>this.abandon(e.id);}

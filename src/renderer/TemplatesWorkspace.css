@@ -1,0 +1,189 @@
+.hub-main > .templates-view {
+  flex: 1;
+  overflow: auto;
+  overflow-anchor: none;
+  min-height: 0;
+  min-width: 0;
+  padding: 3px 4px 12px;
+  scrollbar-width: thin;
+  container-type: inline-size;
+}
+.templates-view[hidden], .template-gallery[hidden] { display: none; }
+.template-intro, .template-filters, .template-detail-tools, .template-prompt header, .template-zoom header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.template-intro { margin-bottom: 18px; }
+.template-intro p { color: var(--hub-muted); margin: 0; font-size: 13px; }
+.template-filters { justify-content: start; margin-bottom: 17px; }
+.template-search {
+  display: flex;
+  position: relative;
+  flex: 1 1 210px;
+  min-width: 0;
+  color: var(--hub-muted);
+}
+.template-search svg { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+.knowledge-hub .template-search input { width: 100%; padding-inline-start: 34px; }
+.template-filters select { max-width: 100%; }
+.knowledge-hub .template-filters button[aria-pressed=true], .knowledge-hub .template-favorite[aria-pressed=true] {
+  color: var(--hub-accent);
+  background: color-mix(in srgb, var(--hub-fill) 22%, var(--hub-popover));
+}
+.template-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
+  gap: clamp(10px, 2cqw, 17px);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.template-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 7px;
+  overflow: hidden;
+  background: var(--hub-paper);
+  border: 1px solid var(--hub-line);
+  border-radius: 15px;
+  box-shadow: var(--hub-shadow);
+  transition: border-color var(--zen-transition);
+}
+.template-card:focus-within, .template-card:hover { border-color: color-mix(in srgb, var(--hub-fill) 66%, var(--hub-line)); }
+.knowledge-hub .template-open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0 0 5px;
+  border-radius: 10px;
+}
+.knowledge-hub .template-open:hover:not(:disabled) { background: transparent; }
+.template-open strong { padding-inline: 7px; font-size: 15px; margin-top: 2px; }
+.template-description {
+  padding-inline: 7px;
+  color: var(--hub-muted);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.template-image, .template-zoom-trigger {
+  background: color-mix(in srgb, #181821 88%, var(--hub-fill));
+  color: #f2f1f9;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 8 / 5;
+  width: 100%;
+  border-radius: 10px;
+}
+.template-image img, .template-zoom-trigger img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.template-image-unavailable {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  font-size: 12px;
+  padding: 8px;
+  text-align: center;
+}
+.knowledge-hub .template-card > .template-favorite {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  min-width: 34px;
+  background: var(--hub-popover);
+  border-radius: 10px;
+}
+.template-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.template-card > .template-tags { margin-top: auto; padding: 4px 7px 5px; }
+.template-tags li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  padding: 2px 7px;
+  border: 1px solid var(--hub-line);
+  background: var(--hub-code);
+  color: var(--hub-text);
+  border-radius: 99px;
+}
+.template-empty { display: grid; justify-items: center; gap: 8px; padding: 25px; text-align: center; }
+.template-empty p { margin: 0; }
+.template-detail, .template-editor { display: grid; gap: 14px; min-width: 0; }
+.template-detail-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.template-figure, .template-editor-image, .template-information, .template-adapt, .template-fields {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.template-figure figcaption { font-size: 13px; font-weight: 700; }
+.knowledge-hub .template-zoom-trigger {
+  position: relative;
+  display: grid;
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: auto;
+  min-height: 100px;
+}
+.template-zoom-trigger img { height: auto; max-height: 52vh; }
+.template-enlarge { position: absolute; right: 7px; bottom: 7px; box-sizing: content-box; background: var(--hub-popover); padding: 6px; border-radius: 6px; }
+.template-information h2, .template-information h3, .template-information p,
+.template-editor h2, .template-editor h3, .template-prompt h3, .template-adapt h3, .template-zoom h2 { margin: 0; }
+.knowledge-hub .template-information h2 {
+  margin: 0;
+  font-size: clamp(20px, 4.5cqw, 30px);
+  font-weight: 720;
+  line-height: 1.1;
+  letter-spacing: -.035em;
+}
+.knowledge-hub .template-information h2:focus-visible { outline: none; }
+.template-information h3 { margin-top: 7px; }
+.template-information > ul:not(.template-tags) { padding-inline-start: 16px; margin: 0; }
+.template-prompt pre, .template-personalized pre {
+  color: var(--hub-text);
+  background: var(--hub-code);
+  border: 1px solid var(--hub-line);
+  border-radius: 9px;
+  padding: 12px;
+  margin-bottom: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.6;
+  user-select: text;
+}
+.template-variables { grid-template-columns: repeat(auto-fit,minmax(min(100%,160px),1fr)); }
+.template-fields label { display: grid; gap: 4px; min-width: 0; font-size: 12px; }
+.template-fields :is(input,textarea) { width: 100%; }
+.template-fields textarea { resize: vertical; }
+.template-personalized summary { cursor: pointer; font-weight: 650; }
+.template-adapt > button, .template-figure > button:not(.template-zoom-trigger) { justify-self: start; }
+.knowledge-hub .template-zoom { width: min(94vw,950px); max-width: 100%; }
+.template-zoom header { margin-bottom: 8px; }
+.template-zoom img { width: 100%; max-height: 76vh; display: block; object-fit: contain; }
+@container (max-width: 575px) {
+  .template-detail-grid { grid-template-columns: minmax(0,1fr); }
+}

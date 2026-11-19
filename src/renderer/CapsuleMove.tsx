@@ -2,8 +2,8 @@ import React, {useEffect, useRef} from 'react';
 import {CompanionIcon} from './CompanionActions';
 
 export function CapsulePin({locked, ready, onError}: {locked: boolean; ready: boolean; onError: (error: string) => void}) {
-  return <button className="capsule-pin" type="button" aria-label="Bloquear posición" data-ui-sound="press"
-    title={locked ? 'Desbloquear posición' : 'Bloquear posición'} aria-pressed={locked} disabled={!ready}
+  return <button className="capsule-pin" type="button" aria-label="Fijar panel y posición" data-ui-sound="press"
+    title={locked ? 'Panel fijado · Volver al modo automático' : 'Modo automático · Fijar panel y posición'} aria-pressed={locked} disabled={!ready}
     onClick={() => void window.companion.pinWindow(!locked).then(result => {if (!result.ok) onError(result.error);})}>
     <CompanionIcon name={locked ? 'lock' : 'lockOpen'}/>
   </button>;

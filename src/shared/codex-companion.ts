@@ -1,3 +1,4 @@
+import type {CalendarAction,CalendarSnapshot,CalendarEvent,CalendarOperation} from './companion-calendar';
 import type {CodexRequestReceipt} from './companion-request';
 import type {AppearanceOptions,AppearanceState} from './companion-appearance';
 import type {ContextInput,ContextPreview,ContextFile} from './companion-context';
@@ -5,10 +6,11 @@ import type {CodexReferenceSelection} from './codex-result-document';
 import type {CodexResultState} from './companion-codex-result';
 import {z} from 'zod';
 import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from './companion-media';
-import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab,SectionActivation,SectionPage} from './companion-workspace';
+import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab,SectionActivation,SectionPage,CapsuleHoverInput} from './companion-workspace';
 import type {CapsuleAlignment} from './overlay-position';
 import type {CapsuleLocation,WorkspaceLayoutAction, WorkspaceLayoutPreferences} from './workspace-layout';
 import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
+import type {TemplateReply,TemplateRequest} from './knowledge-templates';
 import type {InterfaceEffect} from './companion-interface-audio';
 export const CompanionSettingsSchema=z.object({
  shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),
@@ -39,11 +41,11 @@ export const CompanionEventSchema=z.object({id:z.string().uuid(),event:z.enum(ho
 export type CompanionEvent=z.infer<typeof CompanionEventSchema>;
 export type CompanionPhase='idle'|'thinking'|'working'|'approval'|'finished'|'error'|'interrupted'|'unknown';
 export type CompanionSummary={state:'ready'|'unavailable';files:{path:string;change:'added'|'changed'|'removed'}[];omitted:number;startedAt?:number;endedAt:number};
-export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:CompanionSummary;lastReply?:CompanionLastReply;label:string;title?:string;cwd:string;state:CompanionPhase;tool?:string;at:number;observation?:{since:number;startedAt?:number;endedAt?:number;actions:number};steps:{id:string;label:string;preview?:string;kind?:'command'|'file';at:number}[]};
+export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:CompanionSummary;lastReply?:CompanionLastReply;label:string;title?:string;cwd:string;state:CompanionPhase;tool?:string;at:number;observation?:{since:number;startedAt?:number;endedAt?:number;actions:number};steps:{id:string;label:string;tool?:string;preview?:string;kind?:'command'|'file';at:number}[]};
 export type CompanionApproval={id:string;session:string;turn:string;label:string;tool:string;preview:string;expiresAt:number};
 export type CompanionNotice={id:string;session:string;title:string;kind:'permission'|'finished'|'error';read:boolean;audible?:boolean;at:number};
 export type CompanionConnection={state:'unchecked'|'missing'|'review'|'disabled'|'ready'|'unavailable';checkedAt?:number;total:number;trusted:number;enabled:number};
-export type CompanionStatus={appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
+export type CompanionStatus={appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;
@@ -60,17 +62,22 @@ export interface CompanionBridge{
  notesChange(change:HubAction):Promise<CompanionResult<HubResult>>;
  notesDraft(draft:HubDraft|null):Promise<CompanionResult<true>>;
  notesFile(action:HubFileAction):Promise<CompanionResult<HubFileResult>>;
+ templates(action:TemplateRequest):Promise<CompanionResult<TemplateReply>>;
  togglePage(page:SectionPage):Promise<CompanionResult<SectionActivation>>;
+ togglePanel():Promise<CompanionResult<SectionActivation>>;
  launcher(open:boolean):Promise<CompanionResult<boolean>>;
  island(compact:boolean):Promise<CompanionResult<boolean>>;
  capsuleLocation(location:CapsuleLocation):Promise<CompanionResult<boolean>>;
  capsuleLocationMenu(anchor?:import('./workspace-layout').CapsuleMenuAnchor):Promise<CompanionResult<boolean>>;
  islandFocusGuard(blocked:boolean):Promise<CompanionResult<boolean>>;
+ capsuleHover(input:CapsuleHoverInput):Promise<CompanionResult<boolean>>;
+ panelPainted(token:number):Promise<CompanionResult<boolean>>;
  keepExpanded(enabled:boolean):Promise<CompanionResult<boolean>>;
  launcherOrder(order:LauncherPage[]):Promise<CompanionResult<boolean>>;launcherContext(page:LauncherPage):Promise<CompanionResult<boolean>>;options():Promise<CompanionResult<boolean>>;compact(view:CapsuleView):Promise<CompanionResult<boolean>>;
  mediaCurrent():Promise<CompanionResult<MediaTrack|null>>;
  mediaSnapshot(followSystem?:true):Promise<CompanionResult<MediaSnapshot>>;
  mediaList():Promise<CompanionResult<MediaSession[]>>;mediaSelect(id:string):Promise<CompanionResult<MediaTrack>>;mediaRead(id:string):Promise<CompanionResult<MediaTrack>>;mediaCommand(value:MediaCommand):Promise<CompanionResult<{accepted:boolean}>>;mediaClose(surface?:'workspace'|'compact'):Promise<CompanionResult<boolean>>;
+ calendar(action:CalendarAction):Promise<CompanionResult<CalendarSnapshot|{event?:CalendarEvent;local?:boolean;operation?:CalendarOperation}>>;
  status():Promise<CompanionResult<CompanionStatus>>;onStatus(cb:(v:CompanionStatus)=>void):()=>void;
  onInterfaceEffect(cb:(effect:InterfaceEffect)=>void):()=>void;
  openCodex(id?:string):Promise<CompanionResult<boolean>>;check():Promise<CompanionResult<boolean>>;

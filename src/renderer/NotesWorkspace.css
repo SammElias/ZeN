@@ -1,7 +1,6 @@
 .knowledge-hub {
   --hub-rgb: var(--glass-rgb);
   --hub-tint: var(--glass-accent-rgb);
-  --hub-bg: rgb(var(--hub-rgb) / var(--glass-panel-opacity));
   --hub-sidebar: rgb(var(--hub-rgb) / calc(.54 + .4 * var(--glass-opacity)));
   --hub-paper: rgb(var(--hub-rgb) / calc(.53 + .43 * var(--glass-opacity)));
   --hub-popover: rgb(var(--hub-rgb) / .96);
@@ -23,8 +22,7 @@
   accent-color: var(--hub-accent);
   scrollbar-color: var(--hub-accent) transparent;
   color: var(--hub-text);
-  background: radial-gradient(ellipse at 18% 0%, rgb(var(--hub-tint) / .1), transparent 60%), var(--hub-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+  background: transparent;
   border: 1px solid var(--hub-line);
   border-radius: 16px;
   box-shadow: var(--hub-shadow);
@@ -49,7 +47,7 @@
   --hub-number: var(--hub-text);
   --hub-on-accent: #fafafa;
 }
-.companion-capsule[data-theme=monochrome] .knowledge-hub[data-hub-theme=dark] {
+.companion-capsule[data-theme=monochrome] .hub-reader[data-reader-theme=dark] {
   --hub-rgb: 28 28 29;
   --hub-tint: 245 245 245;
   --hub-text: #fafafa;
@@ -189,7 +187,7 @@
   padding: clamp(12px, 2.1vw, 25px);
   scrollbar-width: thin;
 }
-.hub-main > :not(.hub-library) { flex: none; }
+.hub-main > :not(.hub-library, .templates-view) { flex: none; }
 .hub-top, .hub-heading, .hub-toolbar, .notes-editor-heading, .notes-code-heading, .hub-save {
   display: flex;
   align-items: center;
@@ -382,6 +380,27 @@
   .notes-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .hub-reader { display: flex; min-width: 0; min-height: 0; container: note-reader / inline-size; }
+.hub-reader[data-reader-theme] {
+  --hub-rgb: var(--glass-rgb);
+  --hub-text: var(--glass-text);
+  --hub-muted: var(--glass-secondary);
+  --hub-line: color-mix(in srgb, var(--hub-text) 17%, transparent);
+  --hub-paper: rgb(var(--hub-rgb) / calc(.53 + .43 * var(--glass-opacity)));
+  --hub-code: rgb(var(--hub-rgb) / .93);
+  --hub-accent: color-mix(in srgb, var(--hub-fill), var(--hub-text) 68%);
+  --hub-keyword: #823b80;
+  --hub-string: #35654a;
+  --hub-number: #a24829;
+  color: var(--hub-text);
+  color-scheme: light;
+}
+.hub-reader[data-reader-theme=dark] {
+  --hub-keyword: #e3abda;--hub-string: #a2d7b1;--hub-number: #f4ad87;
+  color-scheme: dark;
+}
+[data-theme=monochrome] .hub-reader {
+  --hub-keyword: var(--hub-text);--hub-string: var(--hub-muted);--hub-number: var(--hub-text);
+}
 .hub-library[data-reader-open=false] .hub-reader { display: none; }
 .notes-editor {
   display: flex;

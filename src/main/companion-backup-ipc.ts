@@ -1,6 +1,7 @@
 import {dialog, type BrowserWindow} from 'electron';
 import {z} from 'zod';
 import type {CompanionSettings} from '../shared/codex-companion';
+import {hubName} from '../shared/companion-navigation';
 import {backupName, backupSuffix, readBackup, restoreBackup, snapshotBackup, writeBackup, type BackupSources} from './companion-backup';
 import type {CompanionIpcHandler, CompanionWindowDialog} from './companion-ipc';
 
@@ -52,7 +53,7 @@ export function registerProfileBackupIpc(handle: CompanionIpcHandler, {
       const backup = readBackup(source.filePaths[0]);
       const {response} = await withWindowDialog(() => dialog.showMessageBox(window, {
         type: 'warning', message: '¿Importar esta copia de ZEN?',
-        detail: `La copia contiene ${backup.library.entries.length} elementos de Apuntes. Sustituirá la biblioteca y las preferencias de este equipo. ZEN guardará una copia anterior en el perfil local.`,
+        detail: `La copia contiene ${backup.library.entries.length} elementos del ${hubName}${backup.library.templates ? ' y '+backup.library.templates.length+' templates' : ''}. Sustituirá los datos incluidos y las preferencias de este equipo. ZEN guardará una copia anterior en el perfil local.`,
         buttons: ['Cancelar', 'Importar copia'], defaultId: 0, cancelId: 0, noLink: true,
       }));
       requireBackup();

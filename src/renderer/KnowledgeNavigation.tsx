@@ -1,13 +1,13 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {ArrowRight, BookOpen, BrainCircuit, Code2, FolderKanban, House, Link2, MessageSquareText, Search, X} from 'lucide-react';
+import {ArrowRight, BookOpen, BrainCircuit, Code2, FolderKanban, House, Layers3, Link2, MessageSquareText, Search, X} from 'lucide-react';
 import {kindLabels, kinds, languages, singularLabels, type HubData, type HubEntry} from '../shared/knowledge-hub';
 
 export const entryIcons = {note:BookOpen, snippet:Code2, project:FolderKanban, resource:Link2, prompt:MessageSquareText};
-export const sectionIcons = {dashboard:House, all:BookOpen, prompt:MessageSquareText, ai:BrainCircuit};
+export const sectionIcons = {dashboard:House, all:BookOpen, prompt:MessageSquareText, ai:BrainCircuit, templates:Layers3};
 export type HubSection = keyof typeof sectionIcons | 'settings' | 'backup';
 export type HubLocation = {section: HubSection; folderId?: string};
 export const sectionLabels: Record<HubSection,string> = {
-  dashboard:'Inicio', all:'Todos los apuntes', prompt:'Biblioteca de prompts', ai:'Conocimiento de IA',
+  dashboard:'Inicio', all:'Todos los apuntes', prompt:'Biblioteca de prompts', ai:'Conocimiento de IA', templates:'Templates',
   settings:'Configuración', backup:'Respaldo y exportación',
 };
 

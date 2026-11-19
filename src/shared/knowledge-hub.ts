@@ -1,16 +1,12 @@
 import {z} from 'zod';
 import {noteLimits} from './companion-notes';
+import {TemplateRecord, templateLimit, type TemplateDraft} from './knowledge-templates';
 
 export const kinds = ['note', 'snippet', 'project', 'resource', 'prompt'] as const;
 export const languages = ['PowerShell', 'Bash', 'Python', 'C#', 'JavaScript', 'TypeScript', 'SQL', 'JSON', 'YAML', 'Azure CLI'] as const;
 export const kindLabels = {note: 'Apuntes', snippet: 'Comandos', project: 'Proyectos', resource: 'Recursos', prompt: 'Prompts'};
 export const singularLabels = {note: 'Apunte', snippet: 'Comando', project: 'Proyecto', resource: 'Recurso', prompt: 'Prompt'};
 export const collectionGroups = ['folder', 'technology', 'ai'] as const;
-export const collections = {
-  folder: ['AI Agents', 'RAG & Vector DB', 'MCP & Tools', 'Azure & Cloud', 'Power Platform', 'Backend Development', 'Architecture', 'DevOps'],
-  technology: ['AI Engineering', 'Azure AI', 'Power Platform', 'Dataverse', 'Copilot Studio', 'Python', 'C# / .NET', 'React / TypeScript', 'Git & DevOps'],
-  ai: ['LLM Fundamentals', 'Prompt Engineering', 'AI Agents', 'Tool Calling', 'MCP', 'RAG', 'Embeddings', 'Vector Databases', 'Memory & Context', 'AI Security', 'Evaluation & Observability', 'Azure AI', 'OpenAI APIs', 'Multi-agent Architecture'],
-};
 
 const id = z.uuid();
 const date = z.number().int().min(0).max(8640000000000000);
@@ -67,15 +63,25 @@ export const HubData = z.object({
   theme: z.enum(['light', 'dark']),
   folders: z.array(HubFolder).max(150),
   entries: z.array(HubEntry).max(2500),
+  templates: z.array(TemplateRecord).max(templateLimit).optional(),
 }).strict();
 export type HubData = z.infer<typeof HubData>;
+
+export function libraryFolders(data: HubData, kind: HubEntry['kind'], selected?: string | null) {
+  const inUse = new Set(data.entries.filter(entry => entry.kind === kind).map(entry => entry.folderId));
+  return data.folders.filter(folder => folder.group === 'folder' || inUse.has(folder.id) || folder.id === selected);
+}
+
+export const libraryFolderLabel = (folder: HubFolder) =>
+  folder.name + (folder.group === 'technology' ? ' · Tecnología' : folder.group === 'ai' ? ' · IA' : '');
+
 export const HubDraft = z.object({
   id: id.optional(),
   expected: date.optional(),
   fields: HubFields.extend({title: z.string().max(noteLimits.title)}),
 }).strict();
 export type HubDraft = z.infer<typeof HubDraft>;
-export type HubSession = {data: HubData; draft?: HubDraft};
+export type HubSession = {data: HubData; draft?: HubDraft; templateDraft?:TemplateDraft};
 
 export const HubAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('save'), id: id.optional(), expected: date.optional(), fields: HubFields}).strict(),

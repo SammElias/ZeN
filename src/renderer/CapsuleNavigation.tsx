@@ -2,14 +2,15 @@ import React, {useLayoutEffect, useRef, useState} from 'react';
 import {motion} from '../shared/companion-motion';
 import {canAnimate} from './companion-motion';
 import type {CompanionStatus} from '../shared/codex-companion';
-import {isLauncherPageSelected, launcherPages, type LauncherPage, type SectionPage} from '../shared/companion-navigation';
+import {hubName, isLauncherPageSelected, launcherPages, type LauncherPage, type SectionPage} from '../shared/companion-navigation';
 import {CompanionIcon} from './CompanionActions';
 
 export const launcherName = {
   home: 'Home',
   codex: 'Codex',
   spotify: 'Sonido',
-  notes: 'Apuntes',
+  notes: hubName,
+  calendar: 'Calendario',
   notices: 'Avisos',
 } satisfies Record<LauncherPage, string>;
 
@@ -35,11 +36,14 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
   const nav=useRef<HTMLElement>(null);
   const marker=useRef<HTMLSpanElement>(null);
   const [dragged, setDragged] = useState<LauncherPage>();
-  const expanded = !compact && status.workspace?.expanded === true;
+  const expanded = status.workspace?.expanded === true;
   const page = status.workspace?.page ?? 'home';
   const order = launcherOrder(status);
   const visiblePages = order.filter((value): value is Exclude<LauncherPage,'notices'> => value !== 'notices');
+  const navigationPages = [...visiblePages, 'settings' as const];
+  const activeSection = expanded ? navigationPages.find(value => isLauncherPageSelected(page, value)) : undefined;
   const approvals = status.approvals.length;
+  const unread = status.notices.filter(notice=>!notice.read).length;
   useLayoutEffect(()=>{
     const root=nav.current,indicator=marker.current;
     if(!root||!indicator)return;
@@ -69,7 +73,6 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
     return ()=>resize.disconnect();
   },[expanded,page,order,status.workspace?.edge?.side]);
   useLayoutEffect(()=>{
-    if(compact)return;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const stop=()=>{if(reduced.matches||!status.settings.motion)marker.current?.getAnimations().forEach(animation=>animation.cancel());};
     stop();
@@ -89,17 +92,32 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
     void window.companion.launcherContext(value).then(reportFailure);
   }
 
-  return <nav ref={nav} className="capsule-launcher" aria-label="Navegación de ZEN" data-capsule-block="navigation">
-    {!compact&&<span ref={marker} className="capsule-selection-marker" aria-hidden="true" hidden={!expanded}/>}
-    {[...visiblePages, 'settings' as const].map((value, index) => {
+  function moveFocus(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const vertical=getComputedStyle(event.currentTarget).flexDirection==='column';
+    const previous=vertical?'ArrowUp':'ArrowLeft', next=vertical?'ArrowDown':'ArrowRight';
+    if (event.key!==previous && event.key!==next) return;
+    const buttons=[...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:enabled')];
+    const index=buttons.findIndex(button=>button===event.target);
+    if (index<0) return;
+    event.preventDefault();
+    buttons[(index+(event.key===previous?-1:1)+buttons.length)%buttons.length].focus();
+  }
+
+  return <nav ref={nav} className="capsule-launcher" aria-label="Navegación de ZEN" data-capsule-block="navigation" onKeyDown={moveFocus}>
+    <span ref={marker} className="capsule-selection-marker" data-section={activeSection} aria-hidden="true" hidden={!expanded}/>
+    {navigationPages.map((value, index) => {
       const settings = value === 'settings';
       const name = settings ? 'Configuración' : launcherName[value];
       const label = settings ? 'Ajustes' : name;
-      const active = expanded && isLauncherPageSelected(page, value);
-      const tooltip = (active ? 'Replegar ' : 'Abrir ') + label;
-      return <button key={value} type="button" data-page={value} aria-label={name} aria-expanded={active} disabled={!ready}
+      const active = activeSection === value;
+      const recent = !expanded && status.workspace?.recentSection === value;
+      const tooltip = (settings && active && !status.settings.windowLocked ? 'Ocultar ' : 'Abrir ') + label;
+      return <button key={value} type="button" data-page={value} data-section={value} data-hover-app={compact&&!settings?value:undefined} data-recent={recent || undefined}
+        aria-label={name} aria-description={recent ? 'Última sección usada' : undefined} aria-expanded={active} disabled={!ready}
         aria-controls="capsule-content"
-        title={value === 'codex' && approvals ? `${tooltip} · ${approvals} permisos pendientes` : tooltip}
+        title={value === 'codex' && approvals ? `${tooltip} · ${approvals} permisos pendientes` :
+          value==='home'&&unread?`${tooltip} · ${unread} avisos pendientes`:tooltip}
         aria-current={active ? 'page' : undefined} data-dragging={dragged === value}
         draggable={!compact&&!settings} onDragStart={compact||settings ? undefined : event => {
           setDragged(value);
@@ -136,9 +154,10 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
         }} onClick={event=>{if(!dragged)onActivate(value,event.detail===0);}}>
         {value === 'home'
           ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>
-          : <CompanionIcon name={settings ? 'settings' : value === 'spotify' ? 'sound' : value === 'notes' ? 'notebook' : 'code'}/>}
+          : <CompanionIcon name={settings ? 'settings' : value === 'spotify' ? 'sound' : value === 'notes' ? 'notebook' : value==='calendar'?'calendar':'code'}/>}
         <span>{label}</span>
         {value === 'codex' && approvals > 0 && <b className="integration-badge permission-badge">{approvals}</b>}
+        {value === 'home' && unread > 0 && <b className="integration-badge">{unread>99?'99+':unread}</b>}
       </button>;
     })}
   </nav>;
@@ -151,7 +170,7 @@ export function CapsuleMenu({status,context}:{status:CompanionStatus;context?:La
  const move=(offset:number)=>{if(!context)return;const to=order[order.indexOf(context)+offset];if(to)void run(window.companion.launcherOrder(moveLauncherPage(order,context,to)));};
  return <section className="capsule-inline-menu" aria-label={context?'Acciones de '+launcherName[context]:'Distribución de ventana'}><h1>{context?launcherName[context]:'Ventana'}</h1>{context&&<div className="capsule-menu-grid">
   <button onClick={()=>void run(window.companion.navigate(context))}>Abrir {launcherName[context]}</button>
-  {(context==='spotify'||context==='codex')&&<button onClick={()=>void run(window.companion.compact(context))}>Ver en cápsula</button>}
+
   {context==='codex'&&<><button onClick={()=>void run(window.companion.openCodex())}>Volver al chat fijado</button><button onClick={()=>void run(window.companion.navigate('permissions'))}>Revisar permisos</button></>}
   <button disabled={order.indexOf(context)===0} onClick={()=>move(-1)}>← Mover a la izquierda</button><button disabled={order.indexOf(context)===order.length-1} onClick={()=>move(1)}>Mover a la derecha →</button>
  </div>}

@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {ArrowLeft, ArrowUpRight, Check, Code2, Copy, Download, FilePlus2, ImagePlus, List, ListChecks, Pencil, Sparkles, Star, Table, Trash2, Undo2} from 'lucide-react';
 import {noteLimits} from '../shared/companion-notes';
-import {languages, singularLabels, technicalTemplate, variables, type HubData, type HubDraft, type HubEntry, type HubFields} from '../shared/knowledge-hub';
+import {languages, libraryFolderLabel, libraryFolders, singularLabels, technicalTemplate, variables, type HubData, type HubDraft, type HubEntry, type HubFields} from '../shared/knowledge-hub';
 import {formatNoteMarkdown} from './note-markdown';
 import {KnowledgeCode} from './KnowledgeCode';
 import {MarkdownPreview} from './MarkdownPreview';
@@ -41,9 +41,8 @@ export function KnowledgeEditor(props: Props) {
   const references = relatedEntries.filter(item => related.includes(item.id));
   const folder = data.folders.find(item => item.id === fields.folderId);
   const folderField = <label>Carpeta<select value={fields.folderId ?? ''} onChange={event => update({folderId:event.target.value || null})}>
-    <option value="">Sin carpeta</option>{data.folders.map(item => <option key={item.id} value={item.id}>
-      {item.name}{item.group==='technology'?' · Tecnología':item.group==='ai'?' · IA':''}
-    </option>)}
+    <option value="">Sin carpeta</option>{libraryFolders(data,kind,fields.folderId).map(item =>
+      <option key={item.id} value={item.id}>{libraryFolderLabel(item)}</option>)}
   </select></label>;
   const tagsField = <label>Etiquetas<input defaultValue={tags.join(', ')}
     placeholder="mcp, arquitectura" maxLength={850} onChange={event => update({tags:tagsFrom(event.target.value)})}/></label>;

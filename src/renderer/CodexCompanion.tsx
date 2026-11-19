@@ -1,33 +1,34 @@
 import React, {lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {flushSync} from 'react-dom';
 import {CompanionSettingsSchema, type CompanionStatus} from '../shared/codex-companion';
-import {activeSession, connectionLabel, phaseNames as names} from '../shared/companion-presentation';
+import {activeSession} from '../shared/companion-presentation';
 import {defaultAppearance, type AppearanceState} from '../shared/companion-appearance';
 import type {LauncherPage, SectionActivation, SectionPage, WorkspacePage} from '../shared/companion-workspace';
-import {CAPSULE_HEIGHT, CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT} from '../shared/island';
-import {launcherPages} from '../shared/companion-navigation';
+import {CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT} from '../shared/island';
+import {appCubeDirection, hubName, launcherPages, type AppPage} from '../shared/companion-navigation';
 import {canAnimate,motionStyle} from './companion-motion';
 import {motion} from '../shared/companion-motion';
 import type {ContextDraft} from './CodexContext';
 import {setLanguage} from '../coucou/i18n/i18n';
 import {interfaceAudio} from './companion-interface-audio';
 import {appearanceVars} from './AppearanceSettings';
-import {CapsuleMenu, CapsuleNavigation, launcherName} from './CapsuleNavigation';
-import {CapsuleDragGrip, CapsulePin} from './CapsuleMove';
+import {CapsuleMenu} from './CapsuleNavigation';
 import {CodexWorkspace} from './CodexWorkspace';
 import {CompanionIcon} from './CompanionActions';
 import {CompanionHome} from './CompanionHome';
-import {CompanionMiniMusic, CompanionMusic, CompanionNowPlaying, useMediaPlayer, useNowPlaying} from './CompanionMusic';
+import {CompanionMusic, useMediaPlayer, useNowPlaying} from './CompanionMusic';
 import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
-import {ZenStatusMark} from './ZenStatusMark';
 import type {HubDestination} from './NotesWorkspace';
+import {CompanionCalendar} from './CompanionCalendar';
 import {DynamicIsland} from './DynamicIsland';
-import {CapsulePosition} from './CapsulePosition';
 import {defaultNeon} from '../shared/companion-neon';
 import {NeonBorder} from './NeonBorder';
+import {WorkspaceNeonBorder} from './WorkspaceNeonBorder';
+import {useNeonAnimation} from './useNeonAnimation';
+import {useCapsuleHover} from './useCapsuleHover';
 
 const NotesWorkspace = lazy(() => import('./NotesWorkspace').then(module => ({default:module.NotesWorkspace})));
-const narrowCapsule = window.matchMedia(`(max-width: ${CAPSULE_POSITION.narrowAt}px)`);
 
 setLanguage('es');
 const initial: CompanionStatus = {
@@ -40,18 +41,73 @@ const initial: CompanionStatus = {
  notices: [],
 };
 
-function useCompanion() {
+type CubePanel = HTMLElement & {startViewTransition?(update: () => void): ViewTransition};
+
+function useCompanion(panel: React.RefObject<HTMLElement|null>) {
  const [status, setStatus] = useState(initial);
  const [ready, setReady] = useState(false);
  useEffect(() => {
-  function update(value: CompanionStatus) {
-   setStatus(current => (current.revision ?? -1) > (value.revision ?? 0) ? current : value);
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  let latest=initial,shown=initial;
+  let cube:{element:CubePanel;page:WorkspacePage;view?:ViewTransition;committed:boolean}|undefined;
+  function commit() {
+   shown=latest;
+   setStatus(latest);
    setReady(true);
   }
+  function stopCube() {
+   const previous=cube;
+   cube=undefined;
+   if(previous){previous.view?.skipTransition();delete previous.element.dataset.cubeDirection;}
+  }
+  function update(value: CompanionStatus) {
+   if((latest.revision??-1)>(value.revision??0))return;
+   latest=value;
+   const element=panel.current as CubePanel|null;
+   const next=value.workspace;
+   const canTurn=element&&!element.hidden&&next?.expanded&&next.surfaceVisible&&next.panelPaint===undefined&&
+    !next.hoverClosing&&!next.panelOpening&&value.settings.motion&&!reduced.matches&&!document.hidden&&
+    shown.settings.paused===value.settings.paused&&shown.settings.presentation===value.settings.presentation&&
+    shown.target?.session===value.target?.session&&shown.target?.cwd===value.target?.cwd&&shown.targetError===value.targetError;
+   if(canTurn&&cube?.page===next.page){
+    if(cube.committed)commit();
+    return;
+   }
+   stopCube();
+   if(canTurn&&next.fromApps&&element.startViewTransition){
+    const before=element.dataset.page as WorkspacePage|undefined;
+    const buttons=element.closest('main')?.querySelectorAll<HTMLElement>('.capsule-launcher [data-hover-app]:enabled');
+    const order=Array.from(buttons??[]).filter(button=>button.getClientRects().length).map(button=>button.dataset.hoverApp as AppPage);
+    const direction=before&&appCubeDirection(order,before,next.page);
+    if(direction){
+     const pending:NonNullable<typeof cube>={element,page:next.page,committed:false};
+     cube=pending;
+     element.style.setProperty('--cube-depth',`${element.clientHeight/2}px`);
+     element.dataset.cubeDirection=direction;
+     const view=element.startViewTransition(()=>{
+      if(cube!==pending)return;
+      pending.committed=true;
+      flushSync(commit);
+     });
+     pending.view=view;
+     const clean=()=>{
+      if(cube!==pending)return;
+      cube=undefined;
+      delete element.dataset.cubeDirection;
+     };
+     void view.ready.catch(()=>{});
+     void view.finished.then(clean,clean);
+     return;
+    }
+   }
+   commit();
+  }
+  const reduceMotion=()=>{if(reduced.matches&&cube){stopCube();commit();}};
+  reduced.addEventListener('change',reduceMotion);
   const unsubscribe = window.companion.onStatus(update);
   void window.companion.status().then(result => {if (result.ok) update(result.value);});
-  return unsubscribe;
- }, []);
+  return()=>{unsubscribe();reduced.removeEventListener('change',reduceMotion);stopCube();};
+ }, [panel]);
  return {status, ready};
 }
 
@@ -95,37 +151,33 @@ function playClick(event: React.MouseEvent<HTMLElement>) {
  }
 }
 
-const shortState:Record<string,string>={
- 'Avisos en pausa':'En pausa','Pensando':'Trabajando','Usando herramientas':'Trabajando',
- 'Necesita tu permiso':'Pide permiso','Turno terminado':'Terminado','Revisar error':'Revisar error',
- 'Esperando eventos de Codex':'En espera','Sin actividad reciente':'En espera',
- 'Codex no disponible':'Sin conexión','Integración sin preparar':'Sin enlace',
- 'Revisión pendiente en Codex':'Por revisar','Hooks desactivados':'Desactivado',
- 'Eventos recibidos':'Disponible','Comprobar conexión':'Sin verificar',
-};
-
 export function CodexCompanion(){
- const {status,ready}=useCompanion(),[error,setError]=useState(''),[reduced,setReduced]=useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+ const root=useRef<HTMLElement>(null),panel=useRef<HTMLElement>(null);
+ const {status,ready}=useCompanion(panel),[error,setError]=useState(''),[reduced,setReduced]=useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
  const {track:nowPlaying}=useNowPlaying(status);
  const expanded=status.workspace?.expanded??false,page=status.workspace?.page??'home';
  const mediaPlayer=useMediaPlayer(status,'workspace',expanded&&page==='spotify');
- const [optionsOpen,setOptionsOpen]=useState(false);
- const optionsInFlight=useRef(false);
+ const [openedPages,setOpenedPages]=useState<WorkspacePage[]>([]);
  const previousOptionsPage=useRef<WorkspacePage|undefined>(undefined);
- const island=status.workspace?.island!==false,showIsland=island||status.workspace?.islandSizing===true&&!status.workspace?.islandControls;
+
  const [visited,setVisited]=useState(false);
- const root=useRef<HTMLElement>(null),panel=useRef<HTMLElement>(null);
+ useCapsuleHover(root,ready&&status.workspace?.nativeCaption===true);
  const scroll=useRef<Partial<Record<WorkspacePage,number>>>({});
  const previousPage=useRef<WorkspacePage|undefined>(undefined);
  const panelWasOpen=useRef(false);
  const previousSettingsPage=useRef<WorkspacePage>('home');
  const [settingsOpened,setSettingsOpened]=useState(false);
  const viewAnimation=useRef<Animation|undefined>(undefined);
+ const hoverClosing=status.workspace?.hoverClosing===true;
+ const panelOpening=status.workspace?.panelOpening===true;
+ const panelPaint=status.workspace?.panelPaint;
+ const actions=useRef<Promise<unknown>>(Promise.resolve());
  const [homeDraft,setHomeDraft]=useState('');
  const contextKey=JSON.stringify([status.target?.session,status.target?.cwd,status.targetError,status.settings.paused,status.settings.presentation]);
  const contextMemory=useMemo<{current?:ContextDraft}>(()=>({}),[contextKey]);
  const [notesOpened,setNotesOpened]=useState(false);
- const focusDestination=useRef<'island'|'rail'|undefined>(undefined);
+ const [notesRevision,setNotesRevision]=useState(0);
+ const focusDestination=useRef(false);
  const activationAttempt=useRef(0);
  const [sectionFocus,setSectionFocus]=useState<(SectionActivation&{section:SectionPage})>();
  const menuOpener=useRef<HTMLElement|null>(null);
@@ -147,12 +199,11 @@ export function CodexCompanion(){
  const appearance: AppearanceState = status.settings.presentation
   ? {...savedAppearance, background: 'aurora', imageUrl: undefined, imageName: undefined}
   : (expanded && page === 'settings' ? themePreview : undefined) ?? savedAppearance;
+ const neon=appearance.neon??defaultNeon;
+ const surfaceVisible=status.workspace?.surfaceVisible===true;
+ const neonAnimation=useNeonAnimation(neon,surfaceVisible,status.settings.motion);
  useCompanionAudio(status,ready);
  useEffect(()=>{const q=matchMedia('(prefers-reduced-motion: reduce)'),fn=()=>setReduced(q.matches);q.addEventListener('change',fn);return()=>q.removeEventListener('change',fn);},[]);
- const active=activeSession(status),phase=status.approvals.length?'approval':active?.state??'idle',state=status.settings.paused?'sleeping':phase==='unknown'||phase==='interrupted'?'idle':phase;
- const unread=status.notices.filter(n=>!n.read).length,label=status.settings.paused?'Avisos en pausa':active?names[phase]:connectionLabel(status);
- const stateDetail=(status.settings.presentation&&error?'Revisa Codex':error)||status.desktop?.error||status.targetError||(status.settings.presentation?'Presentación · detalles ocultos':status.workspace?.compact==='codex'?(active?.steps.at(-1)?.preview?.split('\n')[0]?.slice(0,180)||active?.steps.at(-1)?.label||'Sin acciones recibidas'):status.target?'Fijado · '+status.target.title:active?.label)||'Tu escritorio, a mano';
- const toggle=()=>void window.companion.launcher(!expanded);
  const navigate=(v:WorkspacePage)=>void window.companion.navigate(v).then(r=>{if(!r.ok)setError(r.error);});
  const returnFromSettings=()=>navigate(previousSettingsPage.current);
  const navigateNotes=(destination:HubDestination)=>{
@@ -161,45 +212,43 @@ export function CodexCompanion(){
    if(!result.ok){setNotesDestination(undefined);setError(result.error);}
   });
  };
- const context=(v:LauncherPage)=>{
-  menuOpener.current=root.current?.querySelector<HTMLElement>(`.companion-bar [data-page="${v}"]`)??null;
-  void window.companion.launcherContext(v).then(r=>{if(!r.ok)setError(r.error);});
- };
- const changeIsland=(compact:boolean)=>{
-  focusDestination.current=compact?'island':'rail';
-  void window.companion.island(compact).then(r=>{if(!r.ok){focusDestination.current=undefined;setError(r.error);}});
+ function settlePanel(element:HTMLElement){
+  const {opacity,translate}=getComputedStyle(element);
+  viewAnimation.current?.cancel();
+  return viewAnimation.current=element.animate([{opacity,translate},{opacity:.72,translate:'var(--panel-drift)'}],
+   {duration:motion.panel,easing:motion.enterEase,fill:'forwards'});
+ }
+ function runPanelAction<T>(action:()=>Promise<T>,closing:boolean):Promise<T>{
+  const next=actions.current.then(async()=>{
+   const element=panel.current;
+   const animation=closing&&element&&!element.hidden&&canAnimate(element)&&!hoverClosing?settlePanel(element):undefined;
+   try{
+    if(animation)await animation.finished.catch(()=>{});
+    return await action();
+   }finally{animation?.cancel();}
+  });
+  actions.current=next.catch(()=>{});
+  return next;
+ }
+ const toggle=()=>{
+  focusDestination.current=true;
+  void runPanelAction(()=>window.companion.togglePanel(),expanded).then(result=>{if(!result.ok)setError(result.error);});
  };
  const activateSection=async(section:SectionPage,keyboard:boolean)=>{
   const attempt=++activationAttempt.current;
-  focusDestination.current=undefined;
+  focusDestination.current=false;
   setSectionFocus(undefined);
   try {
-   const result=await window.companion.togglePage(section);
+   const closesSettings=section==='settings'&&page==='settings'&&expanded&&!status.settings.windowLocked;
+   const result=closesSettings?await runPanelAction(()=>window.companion.togglePage(section),true):await window.companion.togglePage(section);
    if(attempt!==activationAttempt.current)return;
    if(!result.ok){setError(result.error);return;}
+   setError('');
    if(keyboard||!result.value.expanded)setSectionFocus({...result.value,section});
   } catch {
    if(attempt===activationAttempt.current)setError('No se pudo cambiar de sección.');
   }
  };
- async function openOptions(button:HTMLButtonElement){
-  if(optionsInFlight.current)return;
-  if(page!=='options')previousOptionsPage.current=expanded?page:undefined;
-  optionsInFlight.current=true;
-  setOptionsOpen(true);
-  const rect=button.getBoundingClientRect();
-  try{
-   const result=await window.companion.capsuleLocationMenu({x:Math.max(0,Math.round(rect.left)),y:Math.max(0,Math.round(rect.bottom))});
-   if(!result.ok)setError(result.error);
-   else if(result.value&&button.isConnected&&!document.hidden)button.focus({preventScroll:true});
-  }catch{
-   setError('No se pudieron abrir las opciones de ZEN.');
-  }finally{
-   optionsInFlight.current=false;
-   setOptionsOpen(false);
-  }
- }
-
  useLayoutEffect(()=>{
   const element=panel.current;
   const before=previousPage.current;
@@ -207,63 +256,55 @@ export function CodexCompanion(){
   panelWasOpen.current=expanded;
   if(!expanded||!element){viewAnimation.current?.cancel();return;}
   setVisited(true);
+  setOpenedPages(current=>current.includes(page)?current:[...current,page]);
   element.scrollTop=scroll.current[page]??0;
   previousPage.current=page;
   if(page==='settings'&&before!=='settings'){
    previousSettingsPage.current=before??'home';
    setSettingsOpened(true);
-   element.querySelector<HTMLElement>('.preferences-back')?.focus({preventScroll:true});
-  }else if(before==='settings'&&page!=='settings'){
-   root.current?.querySelector<HTMLElement>('.capsule-launcher [aria-current=page],.capsule-options')?.focus({preventScroll:true});
+   if(document.hasFocus())element.querySelector<HTMLElement>('.preferences-back')?.focus({preventScroll:true});
+  }else if(before==='settings'&&page!=='settings'&&document.hasFocus()){
+   root.current?.querySelector<HTMLElement>('.capsule-launcher [aria-current=page],.zen-island-trigger')?.focus({preventScroll:true});
   }
-  if(!canAnimate(element)||!opening&&before===page)return;
+  if(!canAnimate(element)||opening||before===page||panelPaint!==undefined||status.workspace?.fromApps)return;
   const order=status.workspace?.order??launcherPages;
   const index=(value?:WorkspacePage)=>order.findIndex(item=>item===value);
-  const direction=opening||index(before)<0||index(page)<0||before==='notices'||page==='notices'?0:Math.sign(index(page)-index(before));
+  const direction=index(before)<0||index(page)<0||before==='notices'||page==='notices'?0:Math.sign(index(page)-index(before));
   const axis=status.workspace?.edge?.side==='left'||status.workspace?.edge?.side==='right'?'Y':'X';
   const computed=getComputedStyle(element);
   const running=viewAnimation.current?.playState==='running';
   const from=running?{opacity:computed.opacity,transform:computed.transform}:
-   {opacity:.45,transform:direction?`translate${axis}(${direction*motion.shift}px)`:'none'};
+   {opacity:.78,transform:direction?`translate${axis}(${direction*motion.shift}px)`:'none'};
   viewAnimation.current?.cancel();
-  const animation=element.animate([from,{opacity:1,transform:'none'}],{duration:opening?motion.panel:motion.navigation,easing:motion.enterEase});
+  const animation=element.animate([from,{opacity:1,transform:'none'}],{duration:motion.navigation,easing:motion.enterEase});
   viewAnimation.current=animation;
  },[expanded,page]);
+ useLayoutEffect(()=>{
+  if(!expanded||panelPaint===undefined)return;
+  // The inner callback runs after the first opportunity to paint the prepared panel.
+  let frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(()=>{void window.companion.panelPainted(panelPaint);});});
+  return()=>cancelAnimationFrame(frame);
+ },[expanded,panelPaint]);
  useEffect(()=>()=>viewAnimation.current?.cancel(),[]);
  useEffect(()=>{if(reduced||!status.settings.motion)viewAnimation.current?.cancel();},[reduced,status.settings.motion]);
- const placement=status.workspace?.location;
- const [stacked,setStacked]=useState(narrowCapsule.matches);
- useEffect(()=>{
-  const resize=()=>setStacked(narrowCapsule.matches);
-  narrowCapsule.addEventListener('change',resize);
-  resize();
-  return ()=>narrowCapsule.removeEventListener('change',resize);
- },[]);
  useLayoutEffect(()=>{
-  const controls=root.current?.querySelector('.capsule-single-row,.zen-island-shell');
-  if(!placement||!controls||!canAnimate(controls))return;
-  const animation=controls.animate([{opacity:.7},{opacity:1}],{duration:motion.hover,easing:motion.enterEase});
-  return ()=>animation.cancel();
- },[placement,reduced,status.settings.motion]);
-
- useLayoutEffect(()=>{
-  const destination=showIsland?'island':'rail';
-  if(focusDestination.current!==destination)return;
-  focusDestination.current=undefined;
-  root.current?.querySelector<HTMLButtonElement>(showIsland?'.zen-island-trigger':'.capsule-launcher [aria-current=page],.companion-brand')?.focus({preventScroll:true});
- },[showIsland]);
-
+  if(!focusDestination.current)return;
+  focusDestination.current=false;
+  const section=status.workspace?.recentSection;
+  const target=expanded?panel.current:root.current?.querySelector<HTMLElement>(section?`.capsule-launcher [data-page="${section}"]`:'.zen-island-trigger');
+  target?.focus({preventScroll:true});
+ },[expanded]);
  useLayoutEffect(()=>{
   if(!sectionFocus||(status.revision??0)<sectionFocus.revision)return;
-  if(page===sectionFocus.page&&expanded===sectionFocus.expanded&&showIsland!==expanded){
+  if(page===sectionFocus.page&&expanded===sectionFocus.expanded){
    const target=expanded?panel.current:root.current?.querySelector<HTMLButtonElement>(`.zen-island-shell .capsule-launcher [data-page="${sectionFocus.section}"]`);
    target?.focus({preventScroll:true});
   }
   setSectionFocus(undefined);
- },[sectionFocus,status.revision,page,expanded,showIsland]);
+ },[sectionFocus,status.revision,page,expanded]);
 
  useEffect(()=>{
-  if(!status.settings.collapseOnBlur)return;
+  if(status.workspace?.nativeCaption||!status.settings.collapseOnBlur)return;
   let previous:boolean|undefined;
   const sync=()=>{
    const active=document.activeElement;
@@ -285,18 +326,11 @@ export function CodexCompanion(){
    window.removeEventListener('blur',sync);
    void window.companion.islandFocusGuard(false);
   };
- },[status.settings.collapseOnBlur]);
-
- async function openStatus() {
-  const hasApprovals = status.approvals.length > 0;
-  const result = await window.companion.navigate(hasApprovals ? 'permissions' : 'codex');
-  if (!result.ok) setError(result.error);
-  else if (!hasApprovals) void window.companion.check();
- }
+ },[status.settings.collapseOnBlur,status.workspace?.nativeCaption]);
 
  useEffect(()=>{
   function handleEscape(event: KeyboardEvent) {
-   if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||island||optionsInFlight.current||root.current?.querySelector('dialog[open]'))return;
+   if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||!expanded||root.current?.querySelector('dialog[open]'))return;
    event.preventDefault();
    const disclosure=root.current?.querySelector<HTMLDetailsElement>('.workspace-content:not([hidden]) :is(.hub-menu,.workspace-layout-menu,.settings-connection)[open]');
    if(disclosure&&(disclosure.contains(document.activeElement)||disclosure.classList.contains('workspace-layout-menu'))){
@@ -315,25 +349,22 @@ export function CodexCompanion(){
     });
     return;
    }
-   if(expanded&&page==='settings'){
-    returnFromSettings();
-    return;
-   }
-   changeIsland(true);
+   toggle();
   }
   window.addEventListener('keydown',handleEscape);
   return () => window.removeEventListener('keydown',handleEscape);
- },[expanded,island,page]);
+ },[expanded,page]);
 
  const edge=status.workspace?.edge;
  const vertical=edge?.side==='left'||edge?.side==='right';
- const track=mediaPlayer.track??nowPlaying;
- const compactPlayer=!expanded&&status.workspace?.compact==='spotify'&&status.approvals.length===0;
+ const geometry=status.workspace?.geometry;
+ const panelAbove=geometry?.panel&&geometry.panel.y<geometry.capsule.y&&!vertical;
  const geometryStyle={
-  '--capsule-base-height':`${(stacked?CAPSULE_POSITION.stackedHeight:CAPSULE_HEIGHT)-2}px`,
-  '--edge-top':`${edge?.railTop??0}px`,
-  '--edge-width':`${EDGE_ISLAND.railWidth}px`,
-  '--edge-height':`${EDGE_ISLAND.railHeight}px`,
+  '--panel-top':`${geometry?.panel?.y??0}px`,
+  '--panel-left':`${geometry?.panel?.x??0}px`,
+  '--panel-width':`${geometry?.panel?.width??0}px`,
+  '--panel-height':`${geometry?.panel?.height??0}px`,
+  '--panel-drift':vertical?(edge?.side==='left'?'-8px 0':'8px 0'):(panelAbove?'0 8px':'0 -8px'),
   '--caption-reserve':`${EDGE_ISLAND.captionReserve}px`,
   '--position-button':`${CAPSULE_POSITION.button}px`,
   '--position-gap':`${CAPSULE_POSITION.gap}px`,
@@ -343,43 +374,36 @@ export function CodexCompanion(){
   '--island-gap':`${ISLAND_LAYOUT.gap}px`,
   '--island-separator':`${ISLAND_LAYOUT.separator}px`,
  };
- return <main ref={root} onClick={playClick} className={'companion-capsule '+(expanded?'expanded companion-shell':'collapsed')} data-island={showIsland} data-sizing={status.workspace?.islandSizing===true} data-edge={edge?.side} data-orientation={vertical?'vertical':'horizontal'} data-position-stacked={stacked} data-native-caption={status.workspace?.nativeCaption===true} data-theme={appearance.theme} data-accent={appearance.accent} data-background={appearance.background} style={{...motionStyle,...appearanceVars(appearance),...geometryStyle} as React.CSSProperties} data-state={state} data-motion={status.settings.motion&&!reduced}>
-  {showIsland?<DynamicIsland status={status} ready={ready} open={()=>changeIsland(!island)} onActivate={activateSection} onError={setError}/>:<header className="companion-bar capsule-single-row" data-has-media={!!track||compactPlayer}>
-   <CapsuleDragGrip workspace={expanded} locked={status.settings.windowLocked}/>
-   <div className="capsule-codex-block" data-capsule-block="codex">
-   <button className="companion-brand" aria-label={expanded?'Recoger a cápsula':'Abrir panel de ZEN'} title={expanded?'Recoger a cápsula':'Abrir última integración · '+launcherName[status.workspace?.last??'home']} aria-expanded={expanded} onClick={toggle}><ZenStatusMark status={status} ready={ready}/></button>
-   <button className="companion-state" data-compact={status.workspace?.compact==='codex'} title={label+' · '+stateDetail} aria-label={label+' · Abrir estado de Codex'} onClick={()=>void openStatus()}><strong><i/><span className="capsule-state-label">{shortState[label]??label}</span></strong><small title={stateDetail}>{stateDetail}</small></button>
-   <button className="capsule-notices" data-page="notices" aria-label={unread?`Avisos · ${unread} pendientes`:'Avisos'} title={'Avisos'+(unread?' · '+unread+' pendientes':'')} aria-expanded={expanded&&page==='notices'} aria-pressed={expanded&&page==='notices'} aria-controls="capsule-content" onClick={()=>navigate('notices')} onContextMenu={e=>{e.preventDefault();context('notices');}}>
-    <CompanionIcon name="bell"/>{unread>0&&<b className="badge">{unread>99?'99+':unread}</b>}
-   </button>
-   </div>
-   <CapsuleNavigation status={status} ready={ready} onActivate={activateSection} onError={setError}/>
-   <div className="capsule-media-block" data-capsule-block="music">
-    {compactPlayer?<CompanionMiniMusic status={status}/>:track?<CompanionNowPlaying track={track} player={mediaPlayer.track?{...mediaPlayer,track:mediaPlayer.track}:undefined}/>:<button className="capsule-music-empty" title={status.settings.presentation||status.settings.paused?'Sonido oculto por privacidad':'Abrir Sonido'} onClick={()=>navigate('spotify')}><CompanionIcon name="sound"/><span><strong>{status.settings.presentation||status.settings.paused?'Sonido oculto':'Sin reproducción'}</strong></span></button>}
-   </div>
-   <CapsulePosition location={placement} ready={ready}/>
-   <nav className="capsule-actions" data-capsule-block="controls" aria-label="Controles de la cápsula">
-    <CapsulePin locked={status.settings.windowLocked} ready={ready} onError={setError}/>
-    <button className="capsule-options" aria-label="Más opciones" title="Más opciones" aria-haspopup="menu" aria-expanded={optionsOpen} onClick={event=>void openOptions(event.currentTarget)}>
-     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-    </button>
-    <button className="capsule-fold" type="button" aria-label="Contraer a isla" title="Contraer a isla" onClick={()=>changeIsland(true)}><CompanionIcon name="collapse"/></button>
-   </nav>
-  </header>}
-  <NeonBorder options={appearance.neon??defaultNeon} visible={status.workspace?.surfaceVisible===true} motion={status.settings.motion}
-   shape={{side:expanded&&!vertical?undefined:edge?.side,compact:showIsland,attached:expanded&&vertical,radius:showIsland?999:18}}/>
-  {vertical&&expanded&&<div className="edge-drag-strip" aria-hidden="true"/>}
-  {(expanded||visited)&&<section ref={panel} id="capsule-content" className="workspace-content" data-page={page} tabIndex={-1} hidden={!expanded} inert={!expanded}
+ const rectStyle=(rect?:{x:number;y:number;width:number;height:number})=>rect?{left:rect.x,top:rect.y,width:rect.width,height:rect.height}:undefined;
+ return <main ref={root} onClick={playClick} className={'companion-capsule fixed-capsule '+(expanded?'expanded companion-shell':'collapsed')} data-island={!expanded} data-edge={edge?.side} data-orientation={vertical?'vertical':'horizontal'} data-native-caption={status.workspace?.nativeCaption===true} data-theme={appearance.theme} data-accent={appearance.accent} data-background={appearance.background} style={{...motionStyle,...appearanceVars(appearance),...geometryStyle} as React.CSSProperties} data-motion={status.settings.motion&&!reduced}>
+  <header className="compact-capsule" style={rectStyle(geometry?.capsule)}>
+   <DynamicIsland status={status} ready={ready} open={toggle} onActivate={activateSection} onError={setError} error={status.settings.presentation&&error?'Revisa la configuración en Codex.':error}/>
+   <NeonBorder options={neon} visible={surfaceVisible} animation={neonAnimation}
+    shape={{side:edge?.side,compact:true,radius:18}}/>
+  </header>
+  {(expanded||visited)&&<div className="workspace-surface" style={rectStyle(geometry?.panel)} hidden={!expanded} inert={!expanded}
+   data-panel-phase={panelPaint!==undefined?'preparing':hoverClosing?'closing':panelOpening?'opening':'visible'}>
+   <section ref={panel} id="capsule-content" className="workspace-content" data-page={page} tabIndex={-1} hidden={!expanded} inert={!expanded}
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
-    {page==='home'?<CompanionHome status={status} ready={ready} visible={expanded} draft={homeDraft} setDraft={setHomeDraft} nowPlaying={nowPlaying?.playing?nowPlaying:null} onNavigate={navigate} onOpenNotes={navigateNotes}/>:
-    page==='spotify'?<CompanionMusic status={status} player={mediaPlayer}/>:
-    page==='notes'?(safeNotes?null:<div className="companion-empty"><h2>Apuntes ocultos</h2><p role="status">Desactiva la pausa o Presentación para abrir el cuaderno.</p></div>):
-    page==='notices'?<><div className="workspace-section-heading"><h1>Avisos</h1></div><CompanionNotices status={status}/></>:
-    page==='options'||page==='shortcuts'?<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>:
-    page==='settings'?null:
-    <CodexWorkspace status={status} visible={expanded} memory={contextMemory} monochrome={appearance.theme==='monochrome'}/>}
+    {(openedPages.includes('home')||page==='home')&&<div hidden={!expanded||page!=='home'} inert={!expanded||page!=='home'}>
+     <CompanionHome status={status} ready={ready} visible={expanded&&page==='home'} draft={homeDraft} setDraft={setHomeDraft} nowPlaying={nowPlaying} onNavigate={navigate} onOpenNotes={navigateNotes}/>
+    </div>}
+    {safeNotes&&(openedPages.includes('calendar')||page==='calendar')&&<div hidden={!expanded||page!=='calendar'} inert={!expanded||page!=='calendar'}>
+     <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision}/>
+    </div>}
+    {(openedPages.includes('spotify')||page==='spotify')&&<div hidden={!expanded||page!=='spotify'} inert={!expanded||page!=='spotify'}>
+     <CompanionMusic status={status} player={mediaPlayer}/>
+    </div>}
+    {page==='notes'&&!safeNotes&&<div className="companion-empty"><h2>{hubName} oculto</h2><p role="status">Desactiva la pausa o Presentación para abrir la biblioteca.</p></div>}
+    {page==='notices'&&<><div className="workspace-section-heading"><h1>Avisos</h1></div><CompanionNotices status={status}/></>}
+    {(page==='options'||page==='shortcuts')&&<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>}
+    {(openedPages.some(value=>value==='codex'||value==='permissions')||page==='codex'||page==='permissions')&&
+     <div hidden={!expanded||page!=='codex'&&page!=='permissions'} inert={!expanded||page!=='codex'&&page!=='permissions'}>
+      <CodexWorkspace status={status} visible={expanded&&(page==='codex'||page==='permissions')} memory={contextMemory} monochrome={appearance.theme==='monochrome'}/>
+     </div>}
     {(settingsOpened||page==='settings')&&<div className="preferences-retained" hidden={!expanded||page!=='settings'} inert={!expanded||page!=='settings'}>
-     <CompanionSettings status={status} visible={expanded&&page==='settings'} onBack={returnFromSettings} onLayout={()=>{
+     <CompanionSettings status={status} visible={expanded&&page==='settings'} onBack={returnFromSettings}
+      onBackupImported={()=>{setNotesRevision(value=>value+1);setNotesDestination(undefined);}} onLayout={()=>{
       previousOptionsPage.current='settings';navigate('options');
      }} onPreview={setThemePreview} onCategoryChange={()=>{
       scroll.current.settings=0;
@@ -387,8 +411,10 @@ export function CodexCompanion(){
      }}/>
     </div>}
     {safeNotes&&(notesOpened||notesVisible&&expanded)&&<div className="notes-retained" hidden={!notesVisible||!expanded} inert={!notesVisible||!expanded}>
-     <Suspense fallback={<p role="status">Abriendo Apuntes…</p>}><NotesWorkspace appearance={appearance} destination={notesDestination} visible={notesVisible&&expanded} animate={status.settings.motion&&!reduced}/></Suspense>
+     <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} destination={notesDestination} visible={notesVisible&&expanded} animate={status.settings.motion&&!reduced}/></Suspense>
     </div>}
-   </section>}
+   </section>
+   <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible} animation={neonAnimation}/>
+  </div>}
  </main>;
 }

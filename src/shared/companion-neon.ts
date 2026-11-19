@@ -15,7 +15,7 @@ export const neonSpeeds = {
 
 export const neonPaletteIds=Object.keys(neonPalettes) as (keyof typeof neonPalettes)[];
 export const neonSpeedIds=Object.keys(neonSpeeds) as (keyof typeof neonSpeeds)[];
-export const neonVisual = {line: 1.25, halo: 5, inset: 1.5, segment: .18, minimumIntensity: 15, maximumExtension: 18, frameMs: 1000 / 30} as const;
+export const neonVisual = {line: 2.5, halo: 5, inset: 1.5, segment: .18, minimumIntensity: 15, maximumExtension: 18, frameMs: 1000 / 30} as const;
 
 export const NeonOptions = z.object({
   enabled: z.boolean().default(true),
