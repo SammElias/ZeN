@@ -14,6 +14,8 @@ Los accesos comparten una paleta. Home usa azul, HUB ámbar, Calendario rosa, M�
 
 La cápsula mantiene sus dimensiones y anclaje al mostrar u ocultar el panel. La superficie del panel se sitúa debajo, a la derecha o a la izquierda según la ubicación. Flotante utiliza el lado con espacio disponible. La región Win32 contiene únicamente la silueta pequeña y el panel.
 
+**Modo simple** adapta el panel a cada sección y al área útil del monitor. Los tamaños iniciales van de **480 × 240 DIP** en Avisos a **560 × 370 DIP** en Preferencias. Los desplegables abren información secundaria dentro del panel desplazable. HUB usa la geometría y la interfaz habituales. Todas las vistas comparten el tema y el contorno luminoso de ZEN.
+
 El candado indica modo automático cuando está abierto y modo fijado cuando está cerrado. El mismo botón mantiene su posición junto al agarre y muestra su estado en la etiqueta emergente. El emblema permite recoger el panel fijado.
 
 Los seis accesos admiten apertura por cursor, clic y teclado. El marcador de la sección permanece activo al pasar al contenido. Los controles de ubicación y el candado siguen ocupando sus posiciones y responden a su activación habitual.

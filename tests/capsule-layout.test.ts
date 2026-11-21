@@ -1,5 +1,6 @@
 import {expect,it} from 'vitest';
-import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel} from '../src/main/companion-capsule-layout';
+import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from '../src/main/companion-capsule-layout';
+import {workspacePages} from '../src/shared/companion-navigation';
 import {edgeBounds,islandBounds} from '../src/main/companion-workspace-window';
 import {CompanionWorkspaceWindow} from '../src/main/companion-workspace-window';
 import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
@@ -32,6 +33,39 @@ it('retains capsule size when Windows resizes or snaps the panel',()=>{
  const resized=resizeCapsuleLayout(natural,{...natural.bounds,width:700,height:800},'right');
  expect(resized.capsule.width).toBe(natural.capsule.width);expect(resized.capsule.height).toBe(natural.capsule.height);
  expect(resized.panel!.width+resized.capsule.width).toBe(700);expect(resized.panel!.height).toBe(800);
+});
+it('fits the simple panel while retaining the capsule and excluding the unused rail corners',()=>{
+ const size=simpleWorkspacePanels.calendar!;
+ for(const side of ['top','left','right',undefined] as const){
+  const anchor=side?edgeBounds(area,{side,displayId:1,fraction:.5},true,true):
+   islandBounds({area,bounds:desired,displayId:1,maximized:false},true);
+  const full=capsuleLayout(area,anchor,desired,side,true,34);
+  const view=capsuleLayout(area,anchor,desired,side,true,34,size);
+  expect(view.panel).toMatchObject(size);
+  expect(view.panel!.height).toBeLessThan(full.panel!.height);
+  expect(view.bounds.x+view.capsule.x).toBe(full.bounds.x+full.capsule.x);
+  expect(view.bounds.y+view.capsule.y).toBe(full.bounds.y+full.capsule.y);
+  expect(resizeCapsuleLayout(view,view.bounds,side,true)).toEqual(view);
+  if(side==='left'||side==='right'){
+   const x=view.panel!.x+Math.floor(view.panel!.width/2);
+   expect(capsuleLayoutShape(view,side).some(rect=>rect.y===view.capsule.y&&rect.x<=x&&x<rect.x+rect.width)).toBe(false);
+   const resized=resizeCapsuleLayout(view,{...view.bounds,height:view.bounds.height+50},side,true);
+   expect(resized.panel!.height).toBe(size.height+50);
+  }
+ }
+ const shortArea={x:-300,y:40,width:300,height:260};
+ const rail=edgeBounds(shortArea,{side:'right',displayId:2,fraction:1},true,true);
+ const {bounds,panel}=capsuleLayout(shortArea,rail,desired,'right',true,34,size);
+ expect(bounds.x+panel!.x).toBe(shortArea.x);
+ expect(bounds.y+panel!.y).toBe(shortArea.y);
+ expect(panel!.height).toBe(shortArea.height);
+});
+it('gives every workspace except HUB a compact size and keeps room for the floating capsule',()=>{
+ expect(Object.keys(simpleWorkspacePanels).sort()).toEqual(workspacePages.filter(page=>page!=='notes').sort());
+ const anchor=islandBounds({area,bounds:{...desired,y:area.y+area.height-315},displayId:1,maximized:false},true);
+ const music=capsuleLayout(area,anchor,desired,undefined,true,34,simpleWorkspacePanels.spotify);
+ expect(music.panel).toMatchObject({width:490,height:260});
+ expect(music.panel!.y).toBe(music.capsule.y+music.capsule.height);
 });
 it('retracts the panel toward the capsule from each position while keeping the capsule fixed',()=>{
  const rightEdge=({x,width}:{x:number;width:number})=>x+width;

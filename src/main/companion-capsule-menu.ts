@@ -6,11 +6,11 @@ import {isSilenced} from '../shared/companion-presentation';
 
 type Action = () => unknown;
 type Context = {
- settings:CompanionSettings; location:CapsuleLocation; full:boolean; nativeHover:boolean;
+ settings:CompanionSettings; location:CapsuleLocation; full:boolean; nativeHover:boolean; simpleMode:boolean;
  previousApp:{available:boolean;name?:string};
  setLocation:(location:CapsuleLocation)=>unknown; move:(alignment:CapsuleAlignment)=>unknown;
  update:(settings:Partial<CompanionSettings>)=>unknown;
- layout:Action; appearance:Action; openChat:Action; openNotices:Action; restoreApp:Action; hide:Action; quit:Action;
+ layout:Action; toggleSimpleMode:Action; appearance:Action; openChat:Action; openNotices:Action; restoreApp:Action; hide:Action; quit:Action;
  run:(action:Action)=>void;
 };
 
@@ -39,6 +39,7 @@ export function capsuleMenuItems(c:Context):MenuItemConstructorOptions[] {
    item('Mover al extremo derecho',()=>c.move('right')),
   ]},
   item('Distribución de ventana',c.layout),
+  {type:'checkbox',label:'Modo simple',checked:c.simpleMode,click:()=>c.run(c.toggleSimpleMode)},
   check('Siempre encima','alwaysOnTop'),
   c.nativeHover?check('Fijar panel y posición','windowLocked'):check('Mantener panel abierto','keepExpanded'),
   {type:'separator'},

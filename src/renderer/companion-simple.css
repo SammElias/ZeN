@@ -1,0 +1,126 @@
+.companion-capsule.expanded .workspace-content[data-simple-mode]:not([data-page=settings]) { padding: 12px 14px; }
+
+.workspace-content[data-simple-mode] {
+  .workspace-section-heading { margin-bottom: 8px; }
+  .companion-empty { padding: 18px 10px; }
+  .companion-empty h2 { font-size: 16px; }
+  .companion-empty p { margin: 8px auto 0; }
+  .simple-disclosure {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--zen-surface);
+  }
+  .simple-disclosure > summary { cursor: pointer; }
+  .simple-disclosure[open] > summary { margin-bottom: 8px; }
+}
+
+.companion-capsule .workspace-content[data-simple-mode][data-page=home] {
+  .home-status { gap: 8px; }
+  .home-status-heading { gap: 6px 12px; }
+  .home-status-heading h1 { font-size: 22px; }
+  .home-brand-mark { width: 30px; height: 30px; }
+  .home-brand-mark .zen-emblem { width: 21px; height: 21px; }
+  .home-panel, .home-status button.home-date { padding: 8px 10px; border-radius: 12px; }
+  .home-weather { gap: 6px; }
+  .home-weather-current strong { font-size: 29px; }
+  .home-weather-outlook { gap: 3px; }
+  .home-weather-footer { padding-top: 5px; }
+  .home-status-icon { width: 28px; height: 28px; }
+  .home-status-icon svg { width: 15px; height: 15px; }
+  .home-glance { gap: 8px; }
+  .home-date-copy time { font-size: 13px; }
+  .home-sleep { gap: 4px 9px; }
+  .home-sleep-summary { flex-basis: 95px; gap: 6px; }
+  .home-sleep-values { gap: 6px 10px; }
+  .home-sleep-values dd { font-size: 16px; }
+  .home-sleep .home-panel-link { min-height: 26px; }
+  .home-simple-codex .home-header-actions { margin-bottom: 8px; }
+  .codex-request-form { padding: 10px; border-radius: 12px; }
+  .home-status .codex-request-form textarea { min-height: 55px; max-height: 105px; font-size: 15px; }
+}
+@container (min-width: 430px) {
+  .companion-capsule .workspace-content[data-simple-mode][data-page=home] .home-glance:has(.home-sleep) {
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  }
+}
+
+.companion-capsule .workspace-content[data-simple-mode][data-page=calendar] {
+  .calendar-workspace, .calendar-overview, .calendar-summary, .calendar-heading, .calendar-controls { gap: 7px; }
+  .calendar-overview { grid-template-columns: minmax(0, 1fr); }
+  .calendar-overview > .calendar-summary:empty { display: none; }
+  .calendar-next { padding: 8px 10px; border-radius: 10px; }
+  .calendar-next h2 { margin-bottom: 4px; }
+  .calendar-next-link, .calendar-event { padding: 6px 9px; }
+  .calendar-agenda { display: flex; flex-direction: column; }
+  .calendar-agenda > header { gap: 6px; }
+  .calendar-agenda h2 { margin-inline-end: auto; font-size: 14px; }
+  .calendar-agenda > p { order: 1; margin: 5px 0 0; }
+  .calendar-events { max-height: 138px; gap: 4px; margin-top: 6px; }
+  .calendar-events p { margin: 4px 0; }
+  .calendar-month { grid-template-columns: minmax(0, 1fr); padding: 8px 0 0; border: 0; background: transparent; }
+  .calendar-day { min-height: 26px; height: 28px; aspect-ratio: auto; border-radius: 6px; }
+  .calendar-dialog { padding: 14px; }
+}
+
+.companion-capsule .workspace-content[data-simple-mode][data-page=metrics] {
+  .oura-workspace { gap: 8px; }
+  .oura-heading h1 { margin: 2px 0; font-size: 21px; }
+  .oura-cards { gap: 6px; }
+  button.oura-card { gap: 4px; padding: 8px; }
+  .oura-card strong { font-size: 16px; }
+  .oura-card .oura-checked { padding-top: 3px; }
+  .oura-history, .oura-connection { padding: 9px; }
+  .oura-footer { margin: 6px 0; }
+}
+
+.companion-capsule .workspace-content[data-simple-mode][data-page=spotify] {
+  .music-heading { flex-flow: row wrap; align-items: center; margin-bottom: 6px; }
+  .music-heading h2 { font-size: 21px; }
+  .media-sources { margin-bottom: 6px; }
+  .music-simple-sources { margin-top: 6px; }
+  .music-simple-sources .media-sources { margin: 0; }
+  .music-system-volume { gap: 2px; margin-bottom: 7px; padding: 6px 9px; }
+  .music-system-volume input { height: 20px; }
+  .music-player { --cover-size: 44px; gap: 5px 8px; padding: 8px 10px; }
+  .music-artwork { grid-row: 1; }
+  .music-track h3 { margin-block: 2px; font-size: 15px; -webkit-line-clamp: 1; }
+  .music-track p { font-size: 12px; }
+  .music-track small { display: none; }
+  .music-timeline, .music-player-actions { grid-column: 1 / -1; }
+  .music-timeline { gap: 3px; }
+  .music-player-actions { justify-content: space-between; gap: 4px; }
+  .music-empty { display: flex; align-items: center; gap: 9px; padding: 10px; border-radius: 10px; }
+  .music-empty h3 { margin: 0; font-size: 14px; }
+  .music-empty > svg { width: 19px; height: 19px; }
+  .music-controls { gap: 5px; }
+  .music-controls button { width: 29px; height: 29px; padding: 5px; }
+  .music-controls .music-play { width: 35px; height: 35px; padding: 7px; }
+  .music-controls .music-play svg { width: 16px; height: 16px; }
+}
+
+.companion-capsule .workspace-content[data-simple-mode] {
+  .codex-monitor-connection { min-height: 25px; margin-bottom: 6px; }
+  .codex-chat-detail, .codex-inline-approval { padding: 8px 10px; }
+  .codex-chat-header h2 { font-size: 15px; }
+  .codex-chat-current { margin-block: 6px; padding: 5px 0; }
+  .codex-chat-timeline li { padding-block: 5px; }
+  .view-toolbar { margin-bottom: 6px; padding: 6px; }
+  .notice-card { margin-bottom: 6px; padding: 7px 10px; }
+  .notice-card small { margin-top: 3px; }
+  .capsule-inline-menu { padding: 6px; }
+  .capsule-inline-menu h1 { font-size: 20px; margin: 0 0 8px; }
+}
+
+.companion-capsule .workspace-content[data-simple-mode][data-page=settings] {
+  .preferences-center { grid-template-columns: minmax(0, 1fr); }
+  .preferences-sidebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; }
+  .preferences-title { margin: 0; gap: 5px; }
+  .preferences-category-select { max-width: 100%; margin-inline-start: auto; min-height: 29px; }
+  .preferences-content { padding: 10px 12px; border-inline-start: 0; border-top: 1px solid var(--line); }
+  .preferences-category-heading { margin-bottom: 8px; }
+  .preferences-category-heading h2 { font-size: 18px; }
+  .preferences-category-heading p { display: none; }
+  .appearance-preview { min-height: 56px; margin-bottom: 8px; }
+  .preference-row { padding-block: 6px; }
+}

@@ -25,9 +25,10 @@ type Props = {
 };
 
 const fullDate = new Intl.DateTimeFormat('es', {dateStyle:'full'});
+const simpleDate = new Intl.DateTimeFormat('es', {weekday:'long',day:'numeric',month:'short'});
 const sleepDates = new Intl.DateTimeFormat('es', {day:'numeric', month:'short', timeZone:'UTC'});
 
-function HomeDate({onOpen}:{onOpen:()=>void}) {
+function HomeDate({onOpen,simpleMode}:{onOpen:()=>void;simpleMode:boolean}) {
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
     let midnight: ReturnType<typeof setTimeout>;
@@ -51,7 +52,7 @@ function HomeDate({onOpen}:{onOpen:()=>void}) {
 
   return <button type="button" className="home-panel home-date" data-home-card="date" onClick={onOpen} aria-label={`Abrir Calendario. Hoy es ${label}`}>
     <span className="home-status-icon"><CompanionIcon name="calendar"/></span>
-    <span className="home-date-copy"><span>Hoy</span><time dateTime={day}>{label}</time></span>
+    <span className="home-date-copy"><span>Hoy</span><time dateTime={day}>{simpleMode?simpleDate.format(today):label}</time></span>
     <CompanionIcon name="arrow"/>
   </button>;
 }
@@ -84,6 +85,10 @@ function HomeSleep({sleep,onOpen}:{sleep:OuraHomeSleep;onOpen:()=>void}) {
 
 export function CompanionHome({status, ready, visible, weatherVisible, draft, setDraft, onDismissAssessment, nowPlaying, onNavigate}: Props) {
   const [navigationError, setNavigationError] = useState('');
+  const [requestOpen, setRequestOpen] = useState(false);
+  const simpleMode = status.workspace?.simpleMode;
+  const assessmentPending = Boolean(onDismissAssessment);
+  useEffect(()=>{if(assessmentPending)setRequestOpen(true);},[assessmentPending]);
   const hidden = status.settings.presentation || status.settings.paused;
   const track = hidden ? null : nowPlaying;
   const session = activeSession(status);
@@ -100,6 +105,9 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
       .catch(()=>setNavigationError('No se pudo abrir la vista de Codex.'));
   }
 
+  const request=<CodexRequestForm fixedChat={status.target?.title} draft={draft} setDraft={setDraft} onDismissAssessment={onDismissAssessment}/>;
+  const openActivity=()=>onNavigate(permission?'permissions':'codex');
+
   return <section className="home-status" aria-labelledby="home-title" data-phase={phase}>
     <header className="home-status-heading">
       <div className="home-wordmark">
@@ -107,7 +115,7 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
         <h1 id="home-title">ZEN <span>Workspace</span></h1>
       </div>
       <div className="home-header-actions">
-        {!hidden && <button type="button" className="home-open-requests" onClick={()=>open(()=>window.companion.openCodex())}>
+        {!simpleMode && !hidden && <button type="button" className="home-open-requests" onClick={()=>open(()=>window.companion.openCodex())}>
           Abrir chat en Codex<CompanionIcon name="arrow"/>
         </button>}
         <button type="button" onClick={()=>onNavigate('settings')}>
@@ -121,11 +129,11 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
 
     {weatherVisible && !hidden && <HomeWeather/>}
     {visible && <div className="home-glance">
-      <HomeDate onOpen={()=>onNavigate('calendar')}/>
+      <HomeDate onOpen={()=>onNavigate('calendar')} simpleMode={simpleMode===true}/>
       {!hidden && status.ouraHomeSleep && <HomeSleep sleep={status.ouraHomeSleep} onOpen={()=>onNavigate('metrics')}/>}
     </div>}
 
-    <nav className="home-status-grid" aria-label="Módulos">
+    {!simpleMode && <nav className="home-status-grid" aria-label="Módulos">
       <button type="button" className="home-module home-status-action" data-home-card="work" title={[workState,workDetail].filter(Boolean).join(' · ')} onClick={()=>{
         if (permission) onNavigate('permissions');
         else open(()=>window.companion.navigate('codex'));
@@ -154,8 +162,16 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
         </span>
         {track?.playing ? <span aria-hidden="true" className="home-playing-bars" data-visible={visible}><i/><i/><i/><i/></span> : <CompanionIcon name="arrow"/>}
       </button>
-    </nav>
+    </nav>}
 
-    {!hidden && <CodexRequestForm fixedChat={status.target?.title} draft={draft} setDraft={setDraft} onDismissAssessment={onDismissAssessment}/>}
+    {!hidden && <details className={simpleMode?'simple-disclosure home-simple-codex':undefined} open={!simpleMode||requestOpen}
+      onToggle={event=>{if(simpleMode)setRequestOpen(event.currentTarget.open);}}>
+      <summary hidden={!simpleMode}>{assessmentPending?'Valoración para Codex':'Petición para Codex'}</summary>
+      {simpleMode&&<div className="home-header-actions">
+        <button type="button" onClick={openActivity}>{permission?'Permisos pendientes':'Ver actividad'}</button>
+        <button type="button" onClick={()=>open(()=>window.companion.openCodex())}>Abrir chat en Codex<CompanionIcon name="arrow"/></button>
+      </div>}
+      {request}
+    </details>}
   </section>;
 }

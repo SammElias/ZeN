@@ -29,6 +29,7 @@ import {NeonBorder} from './NeonBorder';
 import {WorkspaceNeonBorder} from './WorkspaceNeonBorder';
 import {useNeonAnimation} from './useNeonAnimation';
 import {useCapsuleHover} from './useCapsuleHover';
+import './companion-simple.css';
 
 const NotesWorkspace = lazy(() => import('./NotesWorkspace').then(module => ({default:module.NotesWorkspace})));
 
@@ -153,6 +154,7 @@ export function CodexCompanion(){
  const {status,ready}=useCompanion(panel),[error,setError]=useState(''),[reduced,setReduced]=useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
  const {track:nowPlaying}=useNowPlaying(status);
  const expanded=status.workspace?.expanded??false,page=status.workspace?.page??'home';
+ const simpleMode=status.workspace?.simpleMode===true&&page!=='notes';
  const mediaPlayer=useMediaPlayer(status,'workspace',expanded&&page==='spotify');
  const [openedPages,setOpenedPages]=useState<WorkspacePage[]>([]);
  const previousOptionsPage=useRef<WorkspacePage|undefined>(undefined);
@@ -380,7 +382,7 @@ export function CodexCompanion(){
   </header>
   {(expanded||visited)&&<div className="workspace-surface" style={rectStyle(geometry?.panel)} hidden={!expanded} inert={!expanded}
    data-panel-phase={panelPaint!==undefined?'preparing':hoverClosing?'closing':panelOpening?'opening':'visible'}>
-   <section ref={panel} id="capsule-content" className="workspace-content" data-page={page} tabIndex={-1} hidden={!expanded} inert={!expanded}
+   <section ref={panel} id="capsule-content" className="workspace-content" data-page={page} data-simple-mode={simpleMode || undefined} tabIndex={-1} hidden={!expanded} inert={!expanded}
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
     {(openedPages.includes('home')||page==='home')&&<div hidden={!expanded||page!=='home'} inert={!expanded||page!=='home'}>
      <CompanionHome status={status} ready={ready} visible={expanded&&page==='home'} weatherVisible={expanded&&page==='home'&&surfaceVisible&&!hoverClosing}
@@ -389,9 +391,9 @@ export function CodexCompanion(){
       nowPlaying={nowPlaying} onNavigate={navigate}/>
     </div>}
     {safeNotes&&(openedPages.includes('calendar')||page==='calendar')&&<div hidden={!expanded||page!=='calendar'} inert={!expanded||page!=='calendar'}>
-     <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision}/>
+     <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision} simpleMode={status.workspace?.simpleMode===true}/>
     </div>}
-    {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura}/>}
+    {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura} simpleMode={simpleMode}/>}
     {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}
     {(openedPages.includes('spotify')||page==='spotify')&&<div hidden={!expanded||page!=='spotify'} inert={!expanded||page!=='spotify'}>
      <CompanionMusic status={status} player={mediaPlayer} volumeVisible={expanded&&page==='spotify'&&surfaceVisible&&!hoverClosing}/>

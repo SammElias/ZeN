@@ -165,6 +165,7 @@ export function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | '
 
 export function CompanionMusic({status,player,volumeVisible}:{status:CompanionStatus;player:ReturnType<typeof useMediaPlayer>;volumeVisible:boolean}){
  const {sessions,track,manual,busy,notice,blocked,select,followSystem,command,setNotice}=player;
+ const simpleMode=status.workspace?.simpleMode;
  async function showMusic() {
   const result = await window.companion.presentation(false);
   if (!result.ok) setNotice(result.error);
@@ -173,14 +174,15 @@ export function CompanionMusic({status,player,volumeVisible}:{status:CompanionSt
   const result = await window.companion.openSpotify();
   if (!result.ok) setNotice(result.error);
  }
+ const sources=(sessions.length>1||manual||!track&&sessions.length>0)?<div className="media-sources" role="group" aria-label="Reproductores de Windows">
+  <button aria-pressed={!manual} disabled={busy} onClick={()=>void followSystem()}>Automático</button>
+  {sessions.map((s,i)=><button key={s.id} data-session={s.id} aria-pressed={manual&&track?.session===s.id} disabled={busy} onClick={()=>void select(s.id)}><MusicIcon name="music"/>{s.name}{sessions.filter(v=>v.name===s.name).length>1?' · '+(i+1):''}{s.browser&&<small>Navegador</small>}</button>)}
+ </div>:null;
  return <section className="music-workspace" aria-busy={busy}>
   <div className="music-heading"><h2>Sonido</h2><div className="actions">{!blocked&&track?.source==='Spotify'&&<button onClick={()=>void open()}>Abrir Spotify ↗</button>}</div></div>
   {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2>{status.settings.presentation&&<button className="primary" onClick={()=>void showMusic()}>Salir de presentación y mostrar sonido</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}</div>:<>
    {volumeVisible&&<SystemVolumeSlider/>}
-   {(sessions.length>1||manual||!track&&sessions.length>0)&&<div className="media-sources" role="group" aria-label="Reproductores de Windows">
-    <button aria-pressed={!manual} disabled={busy} onClick={()=>void followSystem()}>Automático</button>
-    {sessions.map((s,i)=><button key={s.id} data-session={s.id} aria-pressed={manual&&track?.session===s.id} disabled={busy} onClick={()=>void select(s.id)}><MusicIcon name="music"/>{s.name}{sessions.filter(v=>v.name===s.name).length>1?' · '+(i+1):''}{s.browser&&<small>Navegador</small>}</button>)}
-   </div>}
+   {(!simpleMode||!track)&&sources}
    {track?<article className="music-player" data-source={track.source}>
     <div className="music-artwork">{track.artwork?<img src={track.artwork} alt="Carátula compartida por el reproductor"/>:<MusicIcon name="music"/>}</div>
     <div className="music-track"><span className="eyebrow">{track.playing?'REPRODUCIENDO':'EN ESPERA'} · {track.source}</span><h3 title={track.title}>{track.title||'Reproducción sin título'}</h3><p title={track.artist}>{track.artist||'Artista no informado'}</p>{track.album&&<small title={track.album}>{track.album}</small>}</div>
@@ -196,6 +198,7 @@ export function CompanionMusic({status,player,volumeVisible}:{status:CompanionSt
      <div className="music-copy"><CopyVisible text={[track.title,track.artist,track.album].filter(Boolean).join(' — ')} label="Copiar información"/></div>
     </div>
    </article>:<div className="music-empty"><MusicIcon name="music"/><h3>{busy?'Buscando reproducción…':sessions.length?'Elige un reproductor':'Sin reproducción'}</h3></div>}
+   {simpleMode&&track&&sources&&<details className="simple-disclosure music-simple-sources"><summary>Reproductores de Windows</summary>{sources}</details>}
 
   </>}
   {notice&&<p role="status" className="music-notice">{blocked?'Detalles ocultos.':notice}</p>}

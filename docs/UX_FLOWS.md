@@ -105,6 +105,10 @@ Abre **Preferencias** desde **Ajustes**, Inicio o el menú del emblema. La vista
 
 El panel aprovecha el tamaño de la ventana. La cápsula conserva sus dimensiones al abrir contenido. Si falta longitud en su eje, sus controles usan dos filas o columnas. El panel dispone de su propia superficie desplazable. Comprobar foco, navegación por teclado, textos largos y movimiento reducido con los criterios de [Diseño](DESIGN_SYSTEM.md).
 
+Para consultas rápidas, haz clic derecho en el emblema de ZEN y marca **Modo simple**. El tamaño del panel se ajusta a la sección. En Home, **Clima**, **Hoy** y **Sueño** aparecen primero y la petición para Codex se abre desde su desplegable. Calendario muestra el próximo evento y la agenda del día. El mes y los calendarios se pueden desplegar. Métricas muestra las lecturas de hoy con acceso al historial, y Sonido mantiene a mano el volumen y la reproducción. Preferencias ofrece un selector de categoría.
+
+HUB se abre en su tamaño e interfaz habituales. Al cambiar de HUB a otra sección, vuelve la vista compacta. Desmarca **Modo simple** en el menú para recuperar el tamaño habitual de toda la app. El ajuste dura hasta que sales de ZEN. Usa **Presentación** si quieres ocultar contenido privado.
+
 
 ## 06 · Calendario
 

@@ -21,7 +21,7 @@ export function useCapsuleHover(root: RefObject<HTMLElement|null>, enabled: bool
       if (!select) { clearInterval(selectTimer); selectTimer = undefined; }
       const blocked = pressed || !!select?.matches(':open') ||
         !!element.querySelector('dialog[open], [data-island-gesture]:not([hidden] *, [inert] *)');
-      const holdOpen = !!(document.hasFocus() && active?.matches('[data-hold-island-open]') &&
+      const holdOpen = !!(document.hasFocus() && active?.matches('[data-hold-island-open], .workspace-content[data-simple-mode] textarea:not([readonly])') &&
         element.contains(active) && !active.closest('[hidden],[inert]'));
       const input = {app, inside, blocked, holdOpen, reduced: motion.matches};
       if (previous && previous.app === app && previous.inside === inside && previous.blocked === blocked &&
@@ -51,7 +51,7 @@ export function useCapsuleHover(root: RefObject<HTMLElement|null>, enabled: bool
     const blur = () => { pressed = false; sync(); };
     const afterFocus = () => queueMicrotask(sync);
     const observer = new MutationObserver(sync);
-    observer.observe(element, {subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden','inert','data-island-gesture']});
+    observer.observe(element, {subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden','inert','data-island-gesture','data-simple-mode']});
     window.addEventListener('pointerover', updatePointer, true);
     window.addEventListener('pointerout', updatePointer, true);
     window.addEventListener('pointermove', updatePointer, true);

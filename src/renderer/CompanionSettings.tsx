@@ -133,12 +133,15 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
   <aside className="preferences-sidebar">
    <button type="button" className="preferences-back" onClick={onBack}><CompanionIcon name="return"/>Volver</button>
    <div className="preferences-title"><span><ZenEmblem/></span><h1>Preferencias</h1></div>
-   <nav className="preferences-nav" aria-label="Categorías de Preferencias">
+   {status.workspace?.simpleMode?<select className="preferences-category-select" aria-label="Categoría de preferencias"
+    value={category} onChange={event=>{const next=categoryKeys.find(key=>key===event.currentTarget.value);if(next)select(next);}}>
+    {categoryKeys.map(key=><option key={key} value={key}>{categories[key].title}</option>)}
+   </select>:<nav className="preferences-nav" aria-label="Categorías de Preferencias">
     {categoryKeys.map(key=><button type="button" key={key} data-category={key} aria-current={category===key?'page':undefined} aria-controls="preferences-panel" onClick={()=>select(key)}>
      <CompanionIcon name={categories[key].icon}/><span>{categories[key].title}</span>
      {category===key&&<CompanionIcon name="check"/>}
     </button>)}
-   </nav>
+   </nav>}
   </aside>
   <section className="preferences-content" id="preferences-panel" aria-labelledby="preferences-category-title">
    <header className="preferences-category-heading" key={category}>

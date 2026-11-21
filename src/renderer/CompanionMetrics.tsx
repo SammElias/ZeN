@@ -44,8 +44,9 @@ function OuraHistory({metric,status}:{metric:OuraMetric;status:OuraStatus}){
  </section>;
 }
 
-export function CompanionMetrics({status}:{status:OuraStatus}){
+export function CompanionMetrics({status,simpleMode}:{status:OuraStatus;simpleMode:boolean}){
  const [metric,setMetric]=useState<OuraMetric>('sleep');
+ const [historyOpen,setHistoryOpen]=useState(false);
  const [clientId,setClientId]=useState(status.clientId),[error,setError]=useState('');
  useEffect(()=>setClientId(status.clientId),[status.clientId]);
  const connected=status.state==='connected',connecting=status.state==='connecting',expired=status.state==='expired';
@@ -54,6 +55,17 @@ export function CompanionMetrics({status}:{status:OuraStatus}){
   try{const result=await window.companion.oura(action);if(!result.ok)setError(result.error);}
   catch{setError('No se pudo completar la acción de Oura.');}
  }
+ const preferences=<footer className="oura-footer">
+  <p>Para sincronizar el anillo, abre Oura en tu móvil. ZEN consulta los datos en la nube.</p>
+  <div><label>En la cápsula <select value={status.capsule} onChange={event=>void run({type:'capsule',mode:event.target.value==='sleep'?'sleep':'icon'})}>
+   <option value="icon">Solo icono</option><option value="sleep">Duración del sueño</option>
+  </select></label>
+  <button type="button" disabled={connecting} onClick={()=>void run({type:'disconnect'})}>Desconectar Oura</button></div>
+ </footer>;
+ const legal=<nav className="oura-footer" aria-label="Información legal de Métricas"><div>
+  <button type="button" onClick={()=>void run({type:'legal',page:'privacy'})}>Política de privacidad</button>
+  <button type="button" onClick={()=>void run({type:'legal',page:'terms'})}>Términos de servicio</button>
+ </div></nav>;
  return <section className="oura-workspace" aria-labelledby="oura-title">
   <header className="oura-heading"><div><span>Oura Ring{status.demo?' · Datos de prueba':''}</span><h1 id="oura-title">Métricas</h1></div>
    {connected&&<button type="button" data-oura-refresh disabled={status.busy}
@@ -83,7 +95,7 @@ export function CompanionMetrics({status}:{status:OuraStatus}){
     const verified=checked.every(at=>at!==undefined)?Math.min(...checked as number[]):undefined;
     const pending=!point||point.day!==status.today||(card.id==='sleep'&&point.seconds===undefined)||(card.id==='activity'&&point.steps===undefined);
     return <button className="oura-card" type="button" key={card.id} aria-pressed={metric===card.id} data-oura-card={card.id}
-     data-day={point?.day} onClick={()=>setMetric(card.id)}>
+     data-day={point?.day} onClick={()=>{setMetric(card.id);if(simpleMode)setHistoryOpen(true);}}>
      <span className="oura-card-title"><CompanionIcon name={card.icon}/>{card.title}</span>
      <strong>{value}</strong>
      {card.id!=='readiness'&&<span>{point?.score===undefined?'Puntuación pendiente':`Puntuación ${scoreText(point.score)}`}</span>}
@@ -92,18 +104,13 @@ export function CompanionMetrics({status}:{status:OuraStatus}){
      <small className="oura-checked">{verified===undefined?'Sin consulta correcta registrada':`Última consulta correcta · ${checkTime.format(verified)}`}</small>
     </button>;
    })}</div>
-   <OuraHistory metric={metric} status={status}/>
-   <footer className="oura-footer">
-    <p>Para sincronizar el anillo, abre Oura en tu móvil. ZEN consulta los datos en la nube.</p>
-    <div><label>En la cápsula <select value={status.capsule} onChange={event=>void run({type:'capsule',mode:event.target.value==='sleep'?'sleep':'icon'})}>
-     <option value="icon">Solo icono</option><option value="sleep">Duración del sueño</option>
-    </select></label>
-    <button type="button" disabled={connecting} onClick={()=>void run({type:'disconnect'})}>Desconectar Oura</button></div>
-   </footer>
+   {simpleMode?<details className="simple-disclosure oura-simple-history" open={historyOpen} onToggle={event=>setHistoryOpen(event.currentTarget.open)}>
+    <summary>Últimos siete días</summary><OuraHistory metric={metric} status={status}/>
+   </details>:<OuraHistory metric={metric} status={status}/>}
+   {!simpleMode&&preferences}
   </>}
-  <nav className="oura-footer" aria-label="Información legal de Métricas"><div>
-   <button type="button" onClick={()=>void run({type:'legal',page:'privacy'})}>Política de privacidad</button>
-   <button type="button" onClick={()=>void run({type:'legal',page:'terms'})}>Términos de servicio</button>
-  </div></nav>
+  {simpleMode?<details className="simple-disclosure oura-simple-settings"><summary>{connected?'Configuración de Oura':'Privacidad y términos'}</summary>
+   {connected&&preferences}{legal}
+  </details>:legal}
  </section>;
 }

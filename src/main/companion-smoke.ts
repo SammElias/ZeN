@@ -19,7 +19,7 @@ import type {createSmokeOura} from './companion-smoke-oura';
 import {emptyOuraCache} from '../shared/companion-oura';
 import {nativeHelper} from './native-helper';
 import {PasswordVault} from './password-vault';
-export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void}){
+export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick,toggleSimpleMode}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void;toggleSimpleMode:()=>void}){
 
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
  mkdirSync(screenshots,{recursive:true});
@@ -36,6 +36,8 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   if(!result.ok)throw Error(result.error);
   await wait(()=>js(cap,`document.querySelector('.workspace-content:not([hidden])')?.dataset.page===${JSON.stringify(page)}`));
  };
+ const inSimpleMode=()=>js(cap,"!!document.querySelector('#capsule-content[data-simple-mode]:not([hidden])')");
+ const changeSimpleMode=async(enabled:boolean)=>{toggleSimpleMode();await wait(async()=>await inSimpleMode()===enabled);};
  const compact=async()=>{
   await js(cap,"window.companion.island(true)");
   await wait(()=>js(cap,"!document.querySelector('.workspace-content:not([hidden])')&&!document.querySelector('.capsule-launcher [aria-current]')"));
@@ -183,7 +185,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('homeSummaryAboveComposer',await js(cap,`(()=>{
   const home=document.querySelector('.home-status');
   const request=home.querySelector('.codex-request-form');
-  return request===home.lastElementChild&&
+  return !!request?.getClientRects().length&&home.lastElementChild.contains(request)&&
    !!home.querySelector('.home-weather')&&!!home.querySelector('.home-date')&&!!home.querySelector('.home-sleep')&&
    !home.querySelector('.home-continue,.home-notices,#home-notes-title,#home-activity-title');
  })()`));
@@ -279,6 +281,17 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  observationFixture.playerAvailable=true;
  await nav('spotify');
  await wait(()=>js(cap,"!!document.querySelector('.music-player')"));
+ await changeSimpleMode(true);
+ await shot(cap,'simple-mode-sound');
+ const simpleSound=await js(cap,`(()=>{
+  const panel=document.querySelector('#capsule-content').getBoundingClientRect();
+  const slider=document.querySelector('#system-volume');
+  const playback=document.querySelector('.music-play');
+  return {height:panel.height,bottom:panel.bottom,slider:slider?.getBoundingClientRect().bottom,playback:playback?.getBoundingClientRect().bottom};
+ })()`);
+ if(simpleSound.height>261||!(simpleSound.slider<=simpleSound.bottom)||!(simpleSound.playback<=simpleSound.bottom))throw Error('Sonido compacto: '+JSON.stringify(simpleSound));
+ check('simpleModeSound',true);
+ await changeSimpleMode(false);
  const effectsBeforeHide=mediaEffects;
  await compact();
  await nav('spotify');
@@ -430,6 +443,16 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   await js(cap,"document.querySelector('.calendar-next-link').click()");
   await wait(()=>js(cap,`localStorage.getItem('zen-calendar-selected')===${JSON.stringify(upcomingDay)}`));
   check('calendarUpcomingOpensDay',await js(cap,"document.querySelector('.calendar-agenda .calendar-event')?.textContent.includes('Próximo evento de prueba')"));
+  await changeSimpleMode(true);
+  await shot(cap,'simple-mode-calendar');
+  check('simpleModeCalendarAgenda',await js(cap,`(()=>{
+   const event=document.querySelector('.calendar-agenda .calendar-event')?.getBoundingClientRect();
+   const panel=document.querySelector('#capsule-content').getBoundingClientRect();
+   return event?.bottom<=panel.bottom&&document.querySelector('.calendar-month-picker')?.open===false&&!!document.querySelector('[aria-label="Día siguiente"]');
+  })()`));
+  await js(cap,"document.querySelector('.calendar-month-picker summary').click()");
+  check('simpleModeCalendarMonth',await js(cap,"!!document.querySelector('.calendar-grid')?.getClientRects().length&&!!document.querySelector('[aria-label=\"Mes siguiente\"]')"));
+  await changeSimpleMode(false);
  } finally {restoreFixtureEvents();}
  await nav('metrics');
  await wait(()=>js(cap,"document.querySelector('#oura-client-id')"));
@@ -446,6 +469,13 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await connectOura();
  await wait(()=>js(cap,`document.querySelector('[data-oura-card=sleep]')?.dataset.day===${JSON.stringify(recentNight)}`));
  check('ouraCachedMorningAndTodayActivity',await js(cap,`document.querySelector('[data-oura-card=sleep]').dataset.day===${JSON.stringify(recentNight)}&&document.querySelector('[data-oura-card=activity]').dataset.day===${JSON.stringify(metricsToday)}`));
+ await changeSimpleMode(true);
+ check('simpleModeMetricsToday',await js(cap,"document.querySelectorAll('.oura-card').length===3&&!document.querySelector('.oura-simple-history').open&&document.querySelector('.oura-pending').textContent.includes('pendiente')"));
+ await shot(cap,'simple-mode-metrics');
+ await js(cap,"document.querySelector('[data-oura-card=activity]').click()");
+ await wait(()=>js(cap,"document.querySelector('.oura-simple-history[open] .oura-week[data-metric=activity]')"));
+ check('simpleModeMetricsHistory',true);
+ await changeSimpleMode(false);
  await nav('home');
  await wait(()=>js(cap,"document.querySelector('.home-sleep')?.textContent.includes('Anoche pendiente de sincronizar')"));
  check('homeSleepDatesPreviousNight',await js(cap,`document.querySelector('.home-sleep time')?.dateTime===${JSON.stringify(recentNight)}&&document.querySelector('.home-sleep')?.textContent.includes('7 h 0 min')`));
@@ -605,6 +635,27 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('translatorBothDirections',true);
  await shot(cap,'hub-translator');
  const translatorBounds=cap.getBounds();
+ const savedWindow=()=>JSON.parse(readFileSync(join(profile,'companion-workspace-window.json'),'utf8'));
+ await pause(300);
+ const fullLayout=savedWindow();
+ const windowFlags=()=>js(cap,'window.companion.status().then(({value})=>[value.settings.windowLocked,value.settings.alwaysOnTop,value.settings.presentation])');
+ const originalFlags=await windowFlags();
+ toggleSimpleMode();
+ await wait(()=>js(cap,"window.companion.status().then(({value})=>value.workspace.simpleMode)"));
+ check('simpleModeHubUnchanged',sameRect(cap.getBounds(),translatorBounds)&&!await inSimpleMode()&&await js(cap,`(()=>{
+  const source=document.querySelector('#translator-original');
+  const translation=document.querySelector('#translator-result');
+  return source.value==='The manager approves the requests.'&&translation.value==='El gestor aprueba las solicitudes.';
+ })()`));
+ await nav('home');
+ await wait(inSimpleMode);
+ check('simpleModeKeepsSavedLayout',JSON.stringify(savedWindow().current)===JSON.stringify(fullLayout.current));
+ await nav('notes');
+ check('simpleModeReturnsToFullHub',sameRect(cap.getBounds(),translatorBounds)&&!await inSimpleMode());
+ toggleSimpleMode();
+ await wait(()=>js(cap,"window.companion.status().then(({value})=>!value.workspace.simpleMode)"));
+ if(!sameRect(cap.getBounds(),translatorBounds))throw Error(`Modo simple recuperó ${JSON.stringify(cap.getBounds())}, se esperaba ${JSON.stringify(translatorBounds)}`);
+ check('simpleModeRestoresWorkspace',sameRect(cap.getBounds(),translatorBounds)&&JSON.stringify(await windowFlags())===JSON.stringify(originalFlags));
  await resizeForFixture(440,translatorBounds.height);
  check('translatorFitsNarrow',await js(cap,`(()=>{
   const editor=document.querySelector('.translator-workspace');
@@ -613,6 +664,38 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   return editor.scrollWidth<=editor.clientWidth+1&&target.top>=source.bottom;
  })()`));
  await resizeForFixture(translatorBounds.width,translatorBounds.height);
+ await nav('home');
+ const beforeCompact=await screenRect();
+ await compact();
+ await changeSimpleMode(true);
+ await wait(()=>js(cap,"!!document.querySelector('.home-weather')"));
+ check('simpleModeHome',await js(cap,`(()=>{
+  const details=document.querySelector('.home-simple-codex');
+  const weather=document.querySelector('.home-weather');
+  const glance=document.querySelector('.home-glance');
+  const panel=document.querySelector('#capsule-content').getBoundingClientRect();
+  return !details.open&&!!glance.querySelector('.home-date')&&!!glance.querySelector('.home-sleep')&&
+   glance.getBoundingClientRect().bottom<=panel.bottom&&!!(weather.compareDocumentPosition(details)&Node.DOCUMENT_POSITION_FOLLOWING);
+ })()`));
+ await shot(cap,'simple-mode-home');
+ await js(cap,"document.querySelector('.home-simple-codex summary').click()");
+ check('simpleModeHomeDraft',await js(cap,"document.querySelector('.home-simple-codex').open&&document.querySelector('#codex-request').value==='Borrador habitual de prueba'"));
+ const simpleHomeHeight=cap.getBounds().height;
+ for(const [page,selector] of [
+  ['codex','.codex-monitor'],['permissions','.codex-monitor'],['notices','.notice-tools'],
+  ['options','.capsule-inline-menu'],['shortcuts','.capsule-inline-menu'],['settings','.preferences-category-select'],
+ ]){
+  await nav(page);
+  check(`simpleMode-${page}`,await inSimpleMode()&&await js(cap,`!!document.querySelector(${JSON.stringify(selector)})?.getClientRects().length`));
+ }
+ check('simpleModeHasDifferentPanelSizes',cap.getBounds().height!==simpleHomeHeight);
+ await js(cap,`(()=>{const select=document.querySelector('.preferences-category-select');select.value='shortcuts';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+ await wait(()=>js(cap,"document.querySelector('#shortcut')?.getClientRects().length"));
+ check('simpleModeSettingsCategory',true);
+ await nav('home');
+ await compact();
+ check('simpleModeLeavesCapsuleAnchored',sameRect(await screenRect(),beforeCompact));
+ toggleSimpleMode();
  await nav('home');
  check('translatorRequiresHub',await js(cap,"window.companion.translator({type:'translate',from:'es',text:'Un ejemplo'}).then(r=>!r.ok)"));
  await nav('notes');

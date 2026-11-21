@@ -50,7 +50,7 @@ import {CompanionSystemVolume} from './companion-system-volume';
 import {mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
 import {CompanionWorkspaceWindow,compactIslandSize,edgeBounds,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
 import {EDGE_ISLAND,ISLAND_BLUR_MS} from '../shared/island';
-import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel} from './companion-capsule-layout';
+import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from './companion-capsule-layout';
 import {CapsuleLocation,CapsuleMenuAnchor,WorkspaceLayoutAction,WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {capsuleMenuItems} from './companion-capsule-menu';
 import {companionIpc} from './companion-ipc';
@@ -93,6 +93,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const appearance=new CompanionAppearance(profile,bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error();const size=image.getSize(),ratio=Math.min(1,2560/Math.max(size.width,size.height));if(ratio<1)image=image.resize({width:Math.max(1,Math.round(size.width*ratio)),height:Math.max(1,Math.round(size.height*ratio)),quality:'best'});return image.toPNG();});
   let contextPage:LauncherPage|undefined;
   let expanded=false,workspacePage:WorkspacePage=workspaceWindow.page??launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
+  let simpleMode=false;
+  let fullFrame:{geometry:WorkspaceGeometry;anchor:Area;location:CapsuleLocation}|undefined;
+  const simplePanel=(page=workspacePage)=>simpleMode?simpleWorkspacePanels[page]:undefined;
   const renderer=join(__dirname,'renderer','index.html'),preload=join(__dirname,'preload.cjs'),icon=join(__dirname,'renderer','icons','zen.ico');
   const rendererQuery={view:'capsule'};
   const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
@@ -117,7 +120,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const surfaceBounds=()=>isEdge()?edgeBounds(dockDisplay().workArea,dock,true,nativeCaption):islandBounds(parked,nativeCaption);
   const layout=(open=expanded)=>{
    const area=isEdge()?dockDisplay().workArea:parked.area;
-   const view=capsuleLayout(area,surfaceBounds(),parked.bounds,isEdge()?dock.side:undefined,open||nativeCaption,nativeCaption?workspaceCaptionHeight:0);
+   const view=capsuleLayout(area,surfaceBounds(),parked.bounds,isEdge()?dock.side:undefined,open||nativeCaption,nativeCaption?workspaceCaptionHeight:0,simplePanel());
    // On Windows keep the compositor viewport in place between hover states.
    // The native region still exposes only the compact silhouette when closed.
    return open?view:{...view,panel:undefined};
@@ -127,7 +130,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    ...(nativeCaption?{titleBarStyle:'hidden' as const,titleBarOverlay:{height:workspaceCaptionHeight,color:'#00000000',symbolColor:'#f2f3fb'}}:{}),
    backgroundColor:'#101116',hasShadow:false,maximizable:false,minimizable:false,show:false,skipTaskbar:taskbarHidden,
    alwaysOnTop:false,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
-  const currentLayout=()=>expanded?resizeCapsuleLayout(layout(),cap.getBounds(),isEdge()?dock.side:undefined):layout();
+  const currentLayout=()=>expanded?resizeCapsuleLayout(layout(),cap.getBounds(),isEdge()?dock.side:undefined,
+   !!simplePanel()&&!cap.isMaximized()&&!(nativeCaption&&cap.isSnapped())):layout();
   const setTaskbarHidden=(hidden:boolean)=>{
    if(taskbarHidden===hidden)return;
    cap.setSkipTaskbar(hidden);
@@ -186,7 +190,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    activitySessions:activityVisible()?hub.activitySessions():undefined,
    appearance:appearance.status(),
    workspace:{
-    expanded,island:!expanded,islandSizing:false,islandControls:false,page:workspacePage,location:location(),geometry:currentLayout(),
+    expanded,simpleMode,island:!expanded,islandSizing:false,islandControls:false,page:workspacePage,location:location(),geometry:currentLayout(),
     surfaceVisible:surfaceVisible(),...panelTransition.status(),fromApps,
     islandStacked:compactIslandSize(isEdge()?dockDisplay().workArea:parked.area,isEdge()&&dock.side!=='top').stacked,
     edge:isEdge()?{side:dock.side,railTop:layout().capsule.y}:undefined,
@@ -374,8 +378,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const setCaptionTheme=()=>{
    if(nativeCaption)cap.setTitleBarOverlay({height:workspaceCaptionHeight,symbolColor:'#00000000'});
   };
-  const positionSurface=()=>{
-   const next=layout().bounds,current=cap.getBounds();
+  const positionSurface=(next=layout().bounds)=>{
+   const current=cap.getBounds();
    if(Object.keys(next).some(key=>next[key as keyof Area]!==current[key as keyof Area]))cap.setBounds(next);
    updateShape();
   };
@@ -392,6 +396,10 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const rememberWorkspace=()=>{
    clearTimeout(savePositionTimer);
    if(expanded&&!cap.isMinimized()){
+    if(simplePanel()){
+     workspaceWindow.save({mode:'workspace',page:workspacePage,edgeDock:dock});
+     return;
+    }
     const current=workspaceGeometry();
     if(!current.maximized){
      const view=currentLayout();
@@ -421,12 +429,23 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    cap.setTitle('ZEN');
    if(cap.isMaximized())cap.unmaximize();
   };
-  const enterWorkspace=(byHover=false)=>{
+  const setWorkspaceMinimum=()=>{
+   const area=isEdge()?dockDisplay().workArea:parked.area;
+   const compact=simplePanel();
+   const height=compact?Math.max(surfaceBounds().height,Math.min(workspaceMinimum.height,compact.height)):workspaceMinimum.height;
+   cap.setMinimumSize(Math.min(workspaceMinimum.width,area.width),Math.min(height,area.height));
+  };
+  const enterWorkspace=(byHover=false,restore?:WorkspaceGeometry)=>{
    changingMode=true;
    expanded=true;
    if(!byHover||cap.isFocused())configureWorkspaceFrame();
-   positionSurface();
-   if(workspaceFrame)cap.setMinimumSize(Math.min(320,dockDisplay().workArea.width),Math.min(320,dockDisplay().workArea.height));
+   if(workspaceFrame)setWorkspaceMinimum();
+   // Normal bounds can include the native caption reserve outside the work area.
+   const monitor=restore&&screen.getAllDisplays().find(display=>display.id===restore.displayId);
+   const bounds=restore&&(monitor&&JSON.stringify(monitor.workArea)===JSON.stringify(restore.area)
+    ?restore.bounds:restoreWorkspace(restore,screen.getAllDisplays(),activeDisplay()));
+   positionSurface(bounds);
+   if(restore?.maximized)cap.maximize();
    updateShape();
    void readFrameInset();
    changingMode=false;
@@ -459,6 +478,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    rememberRail();
   };
   const applyWorkspaceLayout=(action:WorkspaceLayoutAction)=>{
+   if(simpleMode)toggleSimpleMode();
    const before=workspaceGeometry(),previous=workspaceWindow.previous;
    const displays=screen.getAllDisplays(),monitor=screen.getDisplayMatching(cap.getBounds());
    if(action==='restore'&&!previous)return;
@@ -507,26 +527,50 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    }catch{return new Response(null,{status:404});}
   });
   const invalidateContext=()=>{context.invalidate();replyEpoch++;};
+  const rememberFullFrame=()=>{
+   rememberWorkspace();
+   fullFrame={geometry:workspaceGeometry(),anchor:surfaceBounds(),location:location()};
+  };
+  const savedFullFrame=()=>{
+   const anchor=surfaceBounds();
+   if(fullFrame?.location===location()&&
+    (Object.keys(anchor) as (keyof Area)[]).every(key=>anchor[key]===fullFrame?.anchor[key]))return fullFrame.geometry;
+  };
   const openWorkspace=(page:WorkspacePage,byHover=false,fromLauncher=byHover)=>{
    if(workspacePage!==page){vault.lock();systemVolume.close();weather.cancel();translator.cancel();}
    cancelAutoCollapse();
    if(!byHover)hover.selectExplicitly();
    if(expanded&&workspacePage===page){broadcast();return;}
    endDrag();
+   const before=simplePanel(),next=simplePanel(page);
+   const resize=before!==next;
+   if(expanded&&resize&&!before)rememberFullFrame();
    launcherPreferences.visit(page);
    if(workspacePage!==page)invalidateContext();
    workspacePage=page;
    fromApps=fromLauncher;
    if(page==='notices')hub.markNoticesRead();
    visibility.invoke();
-   if(!expanded){
-    if(byHover)panelTransition.prepareHoverOpen();
-    enterWorkspace(byHover);
+   if(!expanded||resize){
+    if(!expanded&&byHover)panelTransition.prepareHoverOpen();
+    enterWorkspace(byHover,simpleMode&&!next?savedFullFrame():undefined);
    }
    syncVisibility();
    broadcast();
    if(!byHover)hover.refresh();
    if(page==='calendar')void refreshLastReply();
+  };
+  const toggleSimpleMode=()=>{
+   const before=simplePanel();
+   if(!simpleMode&&expanded&&workspacePage!=='notes')rememberFullFrame();
+   simpleMode=!simpleMode;
+   const restore=!simpleMode?savedFullFrame():undefined;
+   if(!simpleMode)fullFrame=undefined;
+   if(!expanded&&simpleMode){changeSurface(()=>openWorkspace(workspacePage));return;}
+   if(expanded){if(before||simplePanel())enterWorkspace(false,restore);}
+   else positionSurface();
+   broadcast();
+   hover.refresh();
   };
   const collapse=()=>{
    cancelAutoCollapse();
@@ -602,7 +646,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
      cursor.y>=bounds.y+rect.y&&cursor.y<bounds.y+rect.y+rect.height));
     return {visible,expanded,page:workspacePage,overCapsule:over(capsuleRegion),overWorkspace:expanded&&over(hoverRegion),
      blocked:!!(openDialogs||dragTimer||nativeGeometryInteraction||hoverInput.blocked),
-     holdOpen:!!(hoverInput.holdOpen&&workspacePage==='notes'&&cap.isFocused()),
+     holdOpen:!!(hoverInput.holdOpen&&(simplePanel()||workspacePage==='notes')&&cap.isFocused()),
      locked:settings.windowLocked,animate:animatePanel()};
    },
    open:page=>changeSurface(()=>openWorkspace(page,true)),
@@ -644,7 +688,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(!expanded||workspaceFrame||changingMode)return;
    changingMode=true;
    configureWorkspaceFrame();
-   cap.setMinimumSize(Math.min(320,dockDisplay().workArea.width),Math.min(320,dockDisplay().workArea.height));
+   setWorkspaceMinimum();
    changingMode=false;
    updateShape();
    void readFrameInset();
@@ -678,8 +722,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     dock={...dock,displayId:display.id};
     workspaceWindow.save({edgeDock:dock});
     if(expanded&&!cap.isMinimized()&&!cap.isMaximized()){
-     const minimum=activeWorkspaceMinimum();
-     cap.setMinimumSize(minimum.width,minimum.height);
+     if(simplePanel())setWorkspaceMinimum();
+     else {const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);}
      positionSurface();
     }
    }
@@ -744,7 +788,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const previous=location();
    if(next===previous)return true;
    const monitor=previous==='floating'?screen.getDisplayMatching(cap.getBounds()):dockDisplay();
-   const before=expanded?workspaceGeometry():parked;
+   const before=expanded&&!simplePanel()?workspaceGeometry():parked;
    endDrag();
    const floating=previous==='floating'?before:workspaceWindow.floating;
    const nextDock:EdgeDock=next==='floating'?dock:{side:next,displayId:monitor.id,fraction:next==='top'||dock.side==='top'?.5:dock.fraction};
@@ -926,7 +970,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const ratio=alignment==='left'?0:alignment==='right'?1:.5;
    if(expanded){
     const current=workspaceGeometry(),rect=fitWorkspace(workArea,current.bounds);
-    if(!workspaceWindow.save({previous:current}))throw Error('No se pudo guardar la posición anterior.');
+    if(!simplePanel()&&!workspaceWindow.save({previous:current}))throw Error('No se pudo guardar la posición anterior.');
     if(current.maximized)cap.unmaximize();
     cap.setBounds({...rect,x:workArea.x+Math.round((workArea.width-rect.width)*ratio)});
     rememberWorkspace();
@@ -948,7 +992,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     y:Math.min(area.y+area.height-1,Math.max(area.y,content.y+Math.min(anchor.y,content.height-1))),
    }:undefined;
    let selected=false;
-   const menu=Menu.buildFromTemplate(capsuleMenuItems({settings,location:location(),full:true,nativeHover:nativeCaption,
+   const menu=Menu.buildFromTemplate(capsuleMenuItems({settings,location:location(),full:true,nativeHover:nativeCaption,simpleMode,toggleSimpleMode,
     previousApp:desktop?.status()??{available:false},setLocation,move:moveCapsule,
     update:value=>persist({...settings,...value}),layout:()=>changeSurface(()=>openWorkspace('options')),
     appearance:()=>changeSurface(()=>openWorkspace('settings')),openChat:openCurrent,
@@ -975,7 +1019,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('workspaceLayoutPreferences',WorkspaceLayoutPreferences,({side,restoreOnLaunch})=>{
    if(!workspaceVisible('options')&&!workspaceVisible('settings'))throw Error('Abre la distribución de ventana o Preferencias.');
    if(!workspaceWindow.save({preferences:{...workspaceWindow.preferences,side,restoreOnLaunch}}))throw Error('No se pudo guardar la distribución.');
-   const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);
+   if(simplePanel())setWorkspaceMinimum();
+   else {const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);}
    setCaptionTheme();
    updateShape();
    broadcast();
@@ -992,6 +1037,6 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   setTopmost(settings.alwaysOnTop);
   surfaceReady=true;showCapsule(false);if(!smoke){powerMonitor.on('resume',wakeOura);wakeOura();void check();}
   if(hoverSmoke)return;
-  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
+  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick,toggleSimpleMode});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});
 }

@@ -14,7 +14,7 @@ function initialDay(){
  return calendarDateInZone(new Date(),systemZone);
 }
 
-export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:number}){
+export function CompanionCalendar({visible,revision,simpleMode}:{visible:boolean;revision?:number;simpleMode:boolean}){
  const [selected,setSelected]=useState(initialDay),[month,setMonth]=useState(()=>selected.slice(0,7)+'-01');
  const [now,setNow]=useState(Date.now);
  const [data,setData]=useState<CalendarSnapshot>(empty),[sources,setSources]=useState<string[]|null>(null);
@@ -117,35 +117,53 @@ export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:
   .format(new Date(event.start))+' – '+new Intl.DateTimeFormat(locale,{timeZone:systemZone,hour:'2-digit',minute:'2-digit'}).format(new Date(event.end));
  const sourceLabel=(event:CalendarEvent)=>event.accountId==='zen-local'?'Solo en ZEN':
   data.sources.find(source=>source.accountId===event.accountId&&source.id===event.calendarId)?.name??event.calendarId;
+ const monthControls=<>
+  <button aria-label="Mes anterior" onClick={()=>moveMonth(-1)}>‹</button>
+  <h2>{dateLabel(month,{month:'long',year:'numeric'})}</h2>
+  <button aria-label="Mes siguiente" onClick={()=>moveMonth(1)}>›</button>
+ </>;
+ const monthView=<section className="calendar-month" aria-label="Calendario mensual">
+  {!simpleMode&&<div className="calendar-selected"><span>{dateLabel(selected,{weekday:'long'})}</span><strong>{Number(selected.slice(-2))}</strong>
+   <small>{dateLabel(selected,{month:'long',year:'numeric'})}</small></div>}
+  <div className="calendar-grid" role="group" aria-label={dateLabel(month,{month:'long',year:'numeric'})}>
+   {Array.from({length:7},(_,index)=><span className="calendar-weekday" key={index}>{dateLabel(addCalendarDays('2024-01-01',index),{weekday:'short'})}</span>)}
+   {grid.map(date=><button key={date} className="calendar-day" data-other-month={date.slice(0,7)!==month.slice(0,7)}
+    aria-label={dateLabel(date,{dateStyle:'full'})} aria-pressed={selected===date} aria-current={today===date?'date':undefined} onClick={()=>choose(date)}>
+    {Number(date.slice(-2))}{events.some(event=>calendarOverlaps(event,{start:date,end:addCalendarDays(date,1),timeZone:systemZone}))&&<i aria-label="Hay eventos"/>}
+   </button>)}
+  </div>
+ </section>;
+ const syncDetails=<>
+  <p className="calendar-sync" role="status">{sync}{lastUpdate&&' · '+new Date(lastUpdate).toLocaleString(locale)}
+   <small>{dateLabel(range.start,{day:'numeric',month:'short'})+' – '+dateLabel(addCalendarDays(range.end,-1),{day:'numeric',month:'short'})+' · '+systemZone}</small>
+  </p>
+  {!data.canRequest&&<p className="calendar-connect">Puedes crear eventos en «Solo en ZEN». Fija un chat de Codex en Ajustes para consultar tus calendarios.</p>}
+  {data.canRequest&&!data.sources.length&&<p className="calendar-connect">Actualizar solicitará los datos al conector de calendario del chat fijado. La conexión se confirma al recibir un resultado válido.</p>}
+  {data.sources.length>0&&<details className="calendar-sources"><summary>Calendarios · {sources?.length??data.sources.length}</summary>
+   {data.sources.map(source=><label key={sourceKey(source)}><input type="checkbox" checked={sources===null||sources.includes(sourceKey(source))}
+    onChange={event=>setSources(current=>{
+     const active=current??data.sources.map(sourceKey);
+     return event.target.checked?[...new Set([...active,sourceKey(source)])]:active.filter(value=>value!==sourceKey(source));
+    })}/>{source.name}<small>{source.writable?'Lectura y escritura':'Solo lectura'}</small></label>)}
+  </details>}
+ </>;
+ const pendingOperations=data.operations.filter(item=>item.type==='created').map(item=><p className="calendar-connect" key={item.id}>
+  {item.status==='waiting'?'Creación pendiente de confirmación.':item.message??'Resultado de creación incierto.'}
+  {' '}<button onClick={()=>void window.companion.openCodex()}>Comprobar en Codex</button>
+ </p>);
  return <div className="calendar-workspace">
   <header className="calendar-heading">
    <h1>Calendario</h1><div className="calendar-controls">
-    <button aria-label="Mes anterior" onClick={()=>moveMonth(-1)}>‹</button>
-    <h2>{dateLabel(month,{month:'long',year:'numeric'})}</h2>
-    <button aria-label="Mes siguiente" onClick={()=>moveMonth(1)}>›</button>
+    {!simpleMode&&monthControls}
     <button onClick={()=>choose(today)}>Hoy</button>
     <button disabled={busy||waiting||!data.canRequest||sources?.length===0} onClick={()=>void refresh()}><CompanionIcon name="calendar"/>{busy||waiting?'Actualizando…':'Actualizar'}</button>
    </div>
   </header>
   <div className="calendar-overview">
    <div className="calendar-summary">
-    <p className="calendar-sync" role="status">{sync}{lastUpdate&&' · '+new Date(lastUpdate).toLocaleString(locale)}
-     <small>{dateLabel(range.start,{day:'numeric',month:'short'})+' – '+dateLabel(addCalendarDays(range.end,-1),{day:'numeric',month:'short'})+' · '+systemZone}</small>
-    </p>
-    {!data.canRequest&&<p className="calendar-connect">Puedes crear eventos en «Solo en ZEN». Fija un chat de Codex en Ajustes para consultar tus calendarios.</p>}
-    {data.canRequest&&!data.sources.length&&<p className="calendar-connect">Actualizar solicitará los datos al conector de calendario del chat fijado. La conexión se confirma al recibir un resultado válido.</p>}
+    {!simpleMode&&syncDetails}
     {(error||failed?.message)&&<p role="alert">{error||failed?.message} La copia anterior sigue disponible.</p>}
-    {data.operations.filter(item=>item.type==='created').map(item=><p className="calendar-connect" key={item.id}>
-     {item.status==='waiting'?'Creación pendiente de confirmación.':item.message??'Resultado de creación incierto.'}
-     {' '}<button onClick={()=>void window.companion.openCodex()}>Comprobar en Codex</button>
-    </p>)}
-    {data.sources.length>0&&<details className="calendar-sources"><summary>Calendarios · {sources?.length??data.sources.length}</summary>
-     {data.sources.map(source=><label key={sourceKey(source)}><input type="checkbox" checked={sources===null||sources.includes(sourceKey(source))}
-      onChange={event=>setSources(current=>{
-       const active=current??data.sources.map(sourceKey);
-       return event.target.checked?[...new Set([...active,sourceKey(source)])]:active.filter(value=>value!==sourceKey(source));
-      })}/>{source.name}<small>{source.writable?'Lectura y escritura':'Solo lectura'}</small></label>)}
-    </details>}
+    {!simpleMode&&pendingOperations}
    </div>
    <section className="calendar-next" aria-labelledby="calendar-next-title">
     <h2 id="calendar-next-title"><CompanionIcon name="calendar"/>Próximo evento</h2>
@@ -156,24 +174,25 @@ export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:
     </button>:<p>Sin eventos próximos en la agenda disponible.</p>}
    </section>
   </div>
-  <section className="calendar-month" aria-label="Calendario mensual">
-   <div className="calendar-selected"><span>{dateLabel(selected,{weekday:'long'})}</span><strong>{Number(selected.slice(-2))}</strong>
-    <small>{dateLabel(selected,{month:'long',year:'numeric'})}</small></div>
-   <div className="calendar-grid" role="group" aria-label={dateLabel(month,{month:'long',year:'numeric'})}>
-    {Array.from({length:7},(_,index)=><span className="calendar-weekday" key={index}>{dateLabel(addCalendarDays('2024-01-01',index),{weekday:'short'})}</span>)}
-    {grid.map(date=><button key={date} className="calendar-day" data-other-month={date.slice(0,7)!==month.slice(0,7)}
-     aria-label={dateLabel(date,{dateStyle:'full'})} aria-pressed={selected===date} aria-current={today===date?'date':undefined} onClick={()=>choose(date)}>
-     {Number(date.slice(-2))}{events.some(event=>calendarOverlaps(event,{start:date,end:addCalendarDays(date,1),timeZone:systemZone}))&&<i aria-label="Hay eventos"/>}
-    </button>)}
-   </div>
-  </section>
+  {!simpleMode&&monthView}
   <section className="calendar-agenda" aria-label="Agenda del día seleccionado">
-   <header><h2>{dateLabel(selected,{weekday:'long',day:'numeric',month:'long'})}</h2><button disabled={!!draft} onClick={newEvent}>+ Crear evento</button></header>
+   <header><h2>{dateLabel(selected,{weekday:'long',day:'numeric',month:'long'})}</h2>
+    {simpleMode&&<div className="calendar-controls" aria-label="Cambiar día" role="group">
+     <button type="button" aria-label="Día anterior" onClick={()=>choose(addCalendarDays(selected,-1))}>‹</button>
+     <button type="button" aria-label="Día siguiente" onClick={()=>choose(addCalendarDays(selected,1))}>›</button>
+    </div>}
+    <button disabled={!!draft} onClick={newEvent}>+ Crear evento</button>
+   </header>
    {feedback&&!draft&&<p role="status">{feedback}</p>}
    <div className="calendar-events">{agenda.length?agenda.map(event=><button className="calendar-event" key={JSON.stringify([event.accountId,event.calendarId,event.id])} onClick={()=>setDetail(event)}>
     <time>{times(event)}</time><span><strong>{event.title}</strong><small>{sourceLabel(event)} · {event.accountId==='zen-local'?'Local':'Sincronizado'}</small></span>
    </button>):<p>{complete?'Sin eventos para esta fecha.':'Sin eventos locales. '+(waiting?'Esperando la consulta externa.':failed?'La consulta externa ha fallado.':'Todavía no se ha confirmado la agenda externa.')}</p>}</div>
   </section>
+  {simpleMode&&<>
+   {pendingOperations}
+   <details className="simple-disclosure calendar-month-picker"><summary>Vista mensual</summary><div className="calendar-controls">{monthControls}</div>{monthView}</details>
+   <details className="simple-disclosure calendar-summary"><summary>Calendarios y sincronización</summary>{syncDetails}</details>
+  </>}
   <dialog ref={createDialog} className="calendar-dialog" onCancel={()=>setDraft(undefined)}
    onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();setDraft(undefined);}}}>
    {draft&&<form onSubmit={save}>
