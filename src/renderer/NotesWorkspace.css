@@ -183,7 +183,28 @@
   padding: clamp(12px, 2.1vw, 25px);
   scrollbar-width: thin;
 }
-.hub-main > :not(.hub-library, .templates-view, .discovery-workspace) { flex: none; }
+.hub-main > :not(.hub-library, .templates-view, .discovery-workspace, .hub-quick-notes, .hub-whiteboard) { flex: none; }
+.hub-main[data-local-sheet] { overflow: hidden; }
+.hub-quick-notes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+.hub-quick-notes textarea {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  resize: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .hub-top, .hub-heading, .hub-toolbar, .notes-editor-heading, .notes-code-heading, .hub-save {
   display: flex;
   align-items: center;

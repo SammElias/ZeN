@@ -14,6 +14,8 @@ import type {CapsuleAlignment} from './overlay-position';
 import type {CapsuleLocation,WorkspaceLayoutAction, WorkspaceLayoutPreferences} from './workspace-layout';
 import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
 import type {TemplateReply,TemplateRequest} from './knowledge-templates';
+import type {QuickNotes,QuickNotesAction} from './quick-notes';
+import type {WhiteboardAction,WhiteboardDocument} from './whiteboard';
 import type {InterfaceEffect} from './companion-interface-audio';
 export const CompanionSettingsSchema=z.object({
  shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),
@@ -68,6 +70,8 @@ export interface CompanionBridge{
  notesRead():Promise<CompanionResult<HubSession>>;
  notesChange(change:HubAction):Promise<CompanionResult<HubResult>>;
  notesDraft(draft:HubDraft|null):Promise<CompanionResult<true>>;
+ quickNotes(action:QuickNotesAction):CompanionResult<QuickNotes>;
+ whiteboard(action:WhiteboardAction):CompanionResult<WhiteboardDocument|null>;
  notesFile(action:HubFileAction):Promise<CompanionResult<HubFileResult>>;
  templates(action:TemplateRequest):Promise<CompanionResult<TemplateReply>>;
  togglePage(page:SectionPage):Promise<CompanionResult<SectionActivation>>;

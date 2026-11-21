@@ -7,7 +7,7 @@ import type {LauncherPage, SectionActivation, SectionPage, WorkspacePage} from '
 import {CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT} from '../shared/island';
 import {appCubeDirection, capsulePages, hubName} from '../shared/companion-navigation';
 import {concealVaultView} from './PasswordVault';
-import {canAnimate,motionStyle} from './companion-motion';
+import {canAnimate,motionStyle,startCubeTurn} from './companion-motion';
 import {motion} from '../shared/companion-motion';
 import type {ContextDraft} from './CodexContext';
 import {setLanguage} from '../coucou/i18n/i18n';
@@ -43,15 +43,13 @@ const initial: CompanionStatus = {
  notices: [],
 };
 
-type CubePanel = HTMLElement & {startViewTransition?(update: () => void): ViewTransition};
-
 function useCompanion(panel: React.RefObject<HTMLElement|null>) {
  const [status, setStatus] = useState(initial);
  const [ready, setReady] = useState(false);
  useEffect(() => {
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   let latest=initial,shown=initial;
-  let cube:{element:CubePanel;page:WorkspacePage;view?:ViewTransition;committed:boolean}|undefined;
+  let cube:{page:WorkspacePage;turn?:ReturnType<typeof startCubeTurn>;committed:boolean}|undefined;
   function commit() {
    shown=latest;
    setStatus(latest);
@@ -60,14 +58,14 @@ function useCompanion(panel: React.RefObject<HTMLElement|null>) {
   function stopCube() {
    const previous=cube;
    cube=undefined;
-   if(previous){previous.view?.skipTransition();delete previous.element.dataset.cubeDirection;}
+   previous?.turn?.cancel();
   }
   function update(value: CompanionStatus) {
    if((latest.revision??-1)>(value.revision??0))return;
    latest=value;
    if(shown.workspace?.page!==value.workspace?.page||!value.workspace?.expanded||value.workspace?.hoverClosing||
      !value.workspace?.surfaceVisible||value.settings.paused||value.settings.presentation)concealVaultView();
-   const element=panel.current as CubePanel|null;
+   const element=panel.current;
    const next=value.workspace;
    const canTurn=element&&!element.hidden&&next?.expanded&&next.surfaceVisible&&next.panelPaint===undefined&&
     !next.hoverClosing&&!next.panelOpening&&value.settings.motion&&!reduced.matches&&!document.hidden&&
@@ -78,29 +76,25 @@ function useCompanion(panel: React.RefObject<HTMLElement|null>) {
     return;
    }
    stopCube();
-   if(canTurn&&next.fromApps&&element.startViewTransition){
+   if(canTurn&&next.fromApps){
     const before=element.dataset.page as WorkspacePage|undefined;
     const order=capsulePages(shown.workspace?.order);
     const direction=before&&appCubeDirection(order,before,next.page);
     if(direction){
-     const pending:NonNullable<typeof cube>={element,page:next.page,committed:false};
+     const pending:NonNullable<typeof cube>={page:next.page,committed:false};
      cube=pending;
-     element.style.setProperty('--cube-depth',`${element.clientHeight/2}px`);
-     element.dataset.cubeDirection=direction;
-     const view=element.startViewTransition(()=>{
+     const turn=startCubeTurn(element,direction,()=>{
       if(cube!==pending)return;
       pending.committed=true;
       flushSync(commit);
      });
-     pending.view=view;
-     const clean=()=>{
-      if(cube!==pending)return;
-      cube=undefined;
-      delete element.dataset.cubeDirection;
-     };
-     void view.ready.catch(()=>{});
-     void view.finished.then(clean,clean);
-     return;
+     if(turn){
+      pending.turn=turn;
+      const clean=()=>{if(cube===pending)cube=undefined;};
+      void turn.view.finished.then(clean,clean);
+      return;
+     }
+     cube=undefined;
     }
    }
    commit();
@@ -419,7 +413,9 @@ export function CodexCompanion(){
      }}/>
     </div>}
     {safeNotes&&(notesOpened||notesVisible&&expanded)&&<div className="notes-retained" hidden={!notesVisible||!expanded} inert={!notesVisible||!expanded}>
-     <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} visible={notesVisible&&expanded} surfaceVisible={surfaceVisible} animate={status.settings.motion&&!reduced} onAssess={prepareAssessment}/></Suspense>
+     <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} visible={notesVisible&&expanded}
+      surfaceVisible={surfaceVisible} animate={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening}
+      hoverEnabled={status.workspace?.nativeCaption===true&&!status.settings.windowLocked&&!hoverClosing&&!panelOpening} onAssess={prepareAssessment}/></Suspense>
     </div>}
    </section>
    <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible} animation={neonAnimation}/>

@@ -1,3 +1,5 @@
+export const navigationHoverDelay = 150;
+
 export const motion = {
   press: 90,
   hover: 120,

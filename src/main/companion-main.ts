@@ -602,6 +602,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
      cursor.y>=bounds.y+rect.y&&cursor.y<bounds.y+rect.y+rect.height));
     return {visible,expanded,page:workspacePage,overCapsule:over(capsuleRegion),overWorkspace:expanded&&over(hoverRegion),
      blocked:!!(openDialogs||dragTimer||nativeGeometryInteraction||hoverInput.blocked),
+     holdOpen:!!(hoverInput.holdOpen&&workspacePage==='notes'&&cap.isFocused()),
      locked:settings.windowLocked,animate:animatePanel()};
    },
    open:page=>changeSurface(()=>openWorkspace(page,true)),

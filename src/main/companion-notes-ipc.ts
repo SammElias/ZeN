@@ -6,6 +6,8 @@ import {z} from 'zod';
 import {hubName} from '../shared/companion-navigation';
 import {HubAction, HubDraft, HubFileAction, type HubFileResult, type HubImage} from '../shared/knowledge-hub';
 import {TemplateRequest, templatePrompt, type TemplateReply} from '../shared/knowledge-templates';
+import {QuickNotesAction} from '../shared/quick-notes';
+import {WhiteboardAction} from '../shared/whiteboard';
 import {readTemplateImage} from './companion-template-images';
 import {copyTemplatePrompt} from './knowledge-templates';
 import {entryMarkdown, fileStem} from '../shared/knowledge-markdown';
@@ -102,6 +104,25 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
   handle('notesDraft', HubDraft.nullable(), draft => {
     requireNotes();
     return notes.draft(draft);
+  });
+  // Finish the small local write before another input, navigation or window close can overtake it.
+  handle.sync('quickNotes', QuickNotesAction, action => {
+    requireNotes();
+    try {
+      return notes.quickNotes(action.type==='save'?action.value:undefined);
+    } catch {
+      throw Error(action.type==='save'?'No se pudieron guardar los apuntes.':'No se pudieron abrir los apuntes.');
+    }
+  });
+  handle.sync('whiteboard', WhiteboardAction, action => {
+    requireNotes();
+    try {
+      if (action.type==='read') return notes.whiteboard();
+      notes.whiteboard(action.value);
+      return null;
+    } catch {
+      throw Error(action.type==='save'?'No se pudo guardar la pizarra.':'No se pudo abrir la pizarra.');
+    }
   });
   handle('templates', TemplateRequest, async (action):Promise<TemplateReply> => {
     requireNotes();

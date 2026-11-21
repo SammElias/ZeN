@@ -5,6 +5,8 @@ import {afterEach, expect, it} from 'vitest';
 import {CompanionNotes} from '../src/main/companion-notes';
 import {KnowledgeHub} from '../src/main/knowledge-hub';
 import {newFields} from '../src/shared/knowledge-hub';
+import {emptyQuickNotes, QuickNotes} from '../src/shared/quick-notes';
+import {boardCoordinateLimit, emptyWhiteboard, WhiteboardDocument} from '../src/shared/whiteboard';
 
 const directories: string[] = [];
 function fixture() {
@@ -74,4 +76,56 @@ it('restores a validated snapshot atomically and rejects broken relationships', 
   expect(hub.read().data.entries).toHaveLength(0);
   hub.restore(JSON.parse(JSON.stringify(data)));
   expect(hub.read().data).toEqual(data);
+});
+
+it('reopens the continuous sheet with exact whitespace and position, independently of the library', () => {
+  const {file} = fixture();
+  const open = () => new KnowledgeHub(join(file,'../knowledge.sqlite'),file);
+  const hub = open();
+  const library = hub.change({type:'save',fields:{...newFields('note'),title:'Nota de biblioteca',description:'Otra nota'}},()=>{}).data;
+  expect(hub.quickNotes()).toEqual(emptyQuickNotes);
+
+  const saved: QuickNotes = {
+    text:'  Primera línea  \n\nSegunda\t línea 🙂\n',
+    selectionStart:3, selectionEnd:10, selectionDirection:'backward', scrollTop:32.25,
+  };
+  hub.quickNotes(saved);
+  expect(open().quickNotes()).toEqual(saved);
+  expect(open().read().data.entries).toEqual(library.entries);
+  expect(open().recentNotes()).toHaveLength(1);
+  const backup = open().read(true).data;
+  expect(JSON.stringify(backup)).not.toContain('Primera línea');
+  open().restore(backup);
+  expect(open().quickNotes()).toEqual(saved);
+
+  hub.quickNotes({...emptyQuickNotes});
+  expect(open().quickNotes()).toEqual(emptyQuickNotes);
+});
+
+it('persists whiteboard gestures and brush settings separately from the library and quick notes', () => {
+  const {file} = fixture();
+  const open = () => new KnowledgeHub(join(file,'../knowledge.sqlite'),file);
+  const hub = open();
+  expect(hub.whiteboard()).toEqual(emptyWhiteboard());
+  const notes = {...emptyQuickNotes,text:'Apunte local'};
+  hub.quickNotes(notes);
+  const drawing: WhiteboardDocument = {
+    version:1, width:12, color:'blue', strokes:[
+      {tool:'brush',width:2,color:'ink',points:[[0,319],[960,319],[970,319]]},
+      {tool:'eraser',points:[[480,300],[480,340]],clip:{left:0,top:-400,right:960,bottom:1040}},
+    ],
+  };
+  expect(WhiteboardDocument.parse(drawing)).toEqual(drawing);
+  expect(WhiteboardDocument.safeParse({...drawing,width:7}).success).toBe(false);
+  expect(WhiteboardDocument.safeParse({...drawing,strokes:[{tool:'eraser',points:[[0,boardCoordinateLimit+1]]}]}).success).toBe(false);
+  hub.whiteboard(drawing);
+  const reopened = open();
+  expect(reopened.whiteboard()).toEqual(drawing);
+  const backup = reopened.read(true).data;
+  expect(backup).not.toHaveProperty('whiteboard');
+  reopened.restore(backup);
+  expect(open().whiteboard()).toEqual(drawing);
+  reopened.whiteboard({...drawing,strokes:[]});
+  expect(open().whiteboard()).toEqual({...drawing,strokes:[]});
+  expect(open().quickNotes()).toEqual(notes);
 });

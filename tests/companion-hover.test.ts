@@ -4,7 +4,7 @@ import { motion } from '../src/shared/companion-motion';
 import { appCubeDirection, sectionPages, type AppPage, type WorkspacePage } from '../src/shared/companion-navigation';
 
 function fixture() {
-  const state = { visible:true, expanded:false, page:'home' as WorkspacePage, overCapsule:false, overWorkspace:false, blocked:false, locked:false, animate:false };
+  const state = { visible:true, expanded:false, page:'home' as WorkspacePage, overCapsule:false, overWorkspace:false, blocked:false, holdOpen:false, locked:false, animate:false };
   const open = vi.fn((app:AppPage) => { state.expanded = true; state.page = app; });
   const close = vi.fn(() => { state.expanded = false; hover.collapsed(); });
   const previewClose = vi.fn();
@@ -118,6 +118,24 @@ describe('the Windows capsule hover', () => {
     vi.advanceTimersByTime(100);
     expect(close).not.toHaveBeenCalled();
     capsule(false);
+    vi.advanceTimersByTime(450);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps focused quick notes open outside the island and still permits app hover', () => {
+    const {state, hover, capsule, close, open} = fixture();
+    capsule(true, 'notes');
+    vi.advanceTimersByTime(150);
+    state.holdOpen = true;
+    capsule(false);
+    vi.advanceTimersByTime(1200);
+    expect(close).not.toHaveBeenCalled();
+    capsule(true, 'spotify');
+    vi.advanceTimersByTime(150);
+    expect(open.mock.calls).toEqual([['notes'], ['spotify']]);
+    state.holdOpen = false;
+    capsule(false);
+    hover.refresh();
     vi.advanceTimersByTime(450);
     expect(close).toHaveBeenCalledTimes(1);
   });

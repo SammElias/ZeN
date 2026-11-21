@@ -1,4 +1,4 @@
-import { motion } from '../shared/companion-motion';
+import { motion, navigationHoverDelay } from '../shared/companion-motion';
 import { isLauncherPageSelected, type AppPage, type WorkspacePage } from '../shared/companion-navigation';
 
 type Sample = {
@@ -8,6 +8,7 @@ type Sample = {
   overCapsule: boolean;
   overWorkspace: boolean;
   blocked: boolean;
+  holdOpen: boolean;
   locked: boolean;
   animate: boolean;
 };
@@ -19,7 +20,6 @@ type HoverWindow = {
   previewClose(closing: boolean): void;
 };
 
-const openDelay = 150;
 const closeDelay = 450;
 const cursorInterval = 25;
 
@@ -88,7 +88,7 @@ export class CompanionHover {
 
     const now = performance.now();
     const app = !sample.blocked && sample.overCapsule && !this.selected ? this.app : undefined;
-    if (!sample.blocked && sample.expanded && this.tracking && !overSurface) {
+    if (!sample.blocked && !sample.holdOpen && sample.expanded && this.tracking && !overSurface) {
       this.dwellSince = undefined;
       this.outsideSince ??= now;
       this.tickClose(this.outsideSince + closeDelay - now, sample.animate);
@@ -99,7 +99,7 @@ export class CompanionHover {
     this.setClosing(false);
     if (app) {
       this.dwellSince ??= now;
-      const remaining = this.dwellSince + openDelay - now;
+      const remaining = this.dwellSince + navigationHoverDelay - now;
       if (remaining > 0) { this.wait(remaining); return; }
       this.selected = this.tracking = true;
       this.window.open(app);

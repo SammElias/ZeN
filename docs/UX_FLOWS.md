@@ -45,7 +45,13 @@ En Home, el editor **Petición para Codex** está al final, debajo de Clima, Hoy
 
 ## 03 · Guardar y transferir apuntes ![](assets/verde.svg)
 
-**HUB** abre en **Biblioteca de prompts**. El menú sigue con **Contraseñas**, **Templates**, **Descubrimiento de apps** y **Traductor**. En **Sistema** se mantienen **Configuración** y **Respaldo y exportación**.
+**HUB** abre en **Biblioteca de prompts**. En **Espacio de trabajo** están también **Contraseñas**, **Templates**, **Descubrimiento de apps** y **Traductor**. Debajo de **Sistema**, que agrupa **Configuración** y **Respaldo y exportación**, está **Bloc personal** con **Apuntes** y **Pizarra**.
+
+En Windows, con el candado abierto, deja el cursor 150 ms sobre una sección del menú de HUB para abrirla. El clic y la activación por teclado siguen disponibles al fijar la isla o al editar. Si hay un borrador pendiente en la biblioteca, cambiar mediante clic o teclado conserva la confirmación habitual.
+
+En **HUB → Apuntes** puedes escribir directamente en una hoja continua. Enter añade un salto de línea y la hoja conserva el texto, el cursor y el punto de desplazamiento. Mientras escribes con el editor enfocado, apartar el ratón mantiene el panel abierto. Puedes cambiar de sección o recoger ZEN. Si falla el guardado, el texto sigue disponible en el editor y puedes reintentar.
+
+**HUB → Pizarra** abre el lienzo listo para dibujar. Elige grosor, color o **Goma** y arrastra. Al elegir un grosor vuelves al último color del pincel. **Deshacer** o **Ctrl+Z** recupera el estado anterior al último gesto. **Reiniciar pizarra** pide confirmación antes de vaciarla. Al soltar, el dibujo se guarda y la isla reanuda su comportamiento habitual con el puntero.
 
 En **Traductor**, pega el texto y pulsa **Enter** desde Original o el botón **Traducir**. Usa **Mayús + Enter** para una nueva línea. **Intercambiar idiomas** cambia entre español e inglés. **Copiar** copia el resultado. ZEN recuerda la dirección de traducción y limpia los dos campos al salir. La clave se configura la primera vez y se puede cambiar o quitar desde **Configurar Azure**.
 

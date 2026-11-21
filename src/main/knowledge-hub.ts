@@ -1,10 +1,13 @@
 import {randomUUID} from 'node:crypto';
 import {closeSync, existsSync, fstatSync, openSync, readSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
+import type {ZodType} from 'zod';
 import {imageSize} from 'image-size';
 import {CompanionNotes} from './companion-notes';
 import {hubName} from '../shared/companion-navigation';
 import {discoveryBrief,discoveryLimits,type DiscoveryRecord} from '../shared/app-discovery';
+import {emptyQuickNotes, QuickNotes} from '../shared/quick-notes';
+import {emptyWhiteboard,WhiteboardDocument} from '../shared/whiteboard';
 import type {TemplateDraft, TemplateImage, TemplateRecord, TemplateRequest} from '../shared/knowledge-templates';
 import {
   changeTemplates, createTemplateTable, restoreTemplates, seedTemplates, templateBackup,
@@ -197,6 +200,25 @@ export class KnowledgeHub {
       if (value === null) db.exec("DELETE FROM hub_state WHERE key='draft'");
       else db.prepare("INSERT OR REPLACE INTO hub_state VALUES ('draft', ?)").run(JSON.stringify(HubDraft.parse(value)));
       return true as const;
+    });
+  }
+
+  quickNotes(value?: QuickNotes): QuickNotes {
+    return this.localSheet('quick-notes', QuickNotes, {...emptyQuickNotes}, value);
+  }
+
+  whiteboard(value?: WhiteboardDocument): WhiteboardDocument {
+    return this.localSheet('whiteboard', WhiteboardDocument, emptyWhiteboard(), value);
+  }
+
+  private localSheet<T>(key: 'quick-notes'|'whiteboard', schema: ZodType<T>, initial: T, value?: T): T {
+    return this.transaction(db => {
+      if (value !== undefined) {
+        db.prepare('INSERT OR REPLACE INTO hub_state VALUES (?, ?)').run(key, JSON.stringify(value));
+        return value;
+      }
+      const row = db.prepare('SELECT value FROM hub_state WHERE key=?').get(key);
+      return row ? schema.parse(JSON.parse(String(row.value))) : initial;
     });
   }
 

@@ -45,11 +45,17 @@ La navegación y Templates heredan el tema general de ZEN. El ajuste claro u osc
 
 Descubrimiento de apps reutiliza los paneles de HUB. Cada pregunta destaca el inglés y muestra debajo su apoyo en español. Los cuatro botones de bloque se ajustan al ancho y el formulario conserva un área de scroll propia.
 
+Apuntes usa el encabezado y los márgenes de HUB, un único campo de texto con foco accesible y scroll interno. En vacío el campo muestra «Escribe aquí…». El aviso y el botón de reintento aparecen si el almacenamiento falla.
+
+Pizarra reúne tres grosores, cinco colores, goma y Deshacer en una barra que se ajusta al ancho disponible. Reiniciar queda al extremo. La selección usa borde y fondo, y la muestra de color activa lleva una marca. El lienzo ocupa todo el ancho y alto bajo la barra. Al cambiar de tamaño, el dibujo conserva sus proporciones y sus trazos cercanos a los bordes. Los cinco colores tienen variantes claras y oscuras de alto contraste.
+
 Traductor reúne los idiomas, los campos de texto y las acciones en un panel de cristal de HUB. Original y traducción aparecen lado a lado cuando hay espacio y se apilan en ancho estrecho. La clave se introduce en un campo enmascarado.
 
 `--zen-surface` y `--zen-field` distinguen tarjetas y campos del fondo translúcido. El ámbar identifica acciones principales, el violeta identifica ZEN y Monocromo usa tonos neutros para los controles. Los estados de sesión conservan texto y un indicador de color. Las transiciones breves siguen el ajuste de movimiento y la preferencia del sistema.
 
 Los tokens de movimiento usan 90 ms para pulsar, 120 ms para realce, 160 ms para navegación y menús, 200 ms para paneles y 250 ms para la apertura de isla y apuntes. El giro entre Apps dura 480 ms y usa dos caras unidas que se mueven sobre el eje horizontal con perspectiva suave y desaceleración. La cápsula y el borde exterior quedan fijos. Las demás transiciones de navegación conservan su desplazamiento de 10 DIP cuando existe un orden. [Tokens de movimiento](../src/shared/companion-motion.ts)
+
+El menú de HUB comparte el giro de 480 ms. El sentido sigue el orden vertical y solo gira el panel de contenido. El menú permanece fijo y el cambio es instantáneo con movimiento reducido.
 
 Al usar la isla con el cursor, el panel se despliega y se recoge al ritmo de **600 ms** por transición. El movimiento nace del borde que comparte con la cápsula y el repliegue descubre el escritorio. Volver durante el repliegue restaura el panel desde la posición en la que estaba. Con movimiento reducido se aplica la posición final cuando concluye la espera.
 

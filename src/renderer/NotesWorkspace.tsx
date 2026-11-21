@@ -1,24 +1,32 @@
 import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
-import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, HardDrive, Menu, Plus, Search, Settings2, Star, Upload, X} from 'lucide-react';
+import {flushSync} from 'react-dom';
+import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, Menu, Plus, Search, Star, Upload, X} from 'lucide-react';
 import {noteLimits} from '../shared/companion-notes';
 import {hubName} from '../shared/companion-navigation';
 import type {AppearanceState} from '../shared/companion-appearance';
 import {singularLabels, hubContentError, libraryFolderLabel, libraryFolders, newFields, type HubAction, type HubData, type HubDraft, type HubEntry, type HubFields, type HubFileAction, type HubFolder} from '../shared/knowledge-hub';
 import {appearanceVars} from './AppearanceSettings';
 import {KnowledgeEditor} from './KnowledgeEditor';
+import {QuickNotesEditor} from './QuickNotesEditor';
+import {Whiteboard} from './Whiteboard';
 import {TemplatesWorkspace} from './TemplatesWorkspace';
 import {DiscoveryWorkspace} from './DiscoveryWorkspace';
 import {TranslatorWorkspace} from './TranslatorWorkspace';
 import {PasswordVault,concealVaultView} from './PasswordVault';
-import {motion} from '../shared/companion-motion';
-import {canAnimate,positionNoteMenu,visibleRect} from './companion-motion';
+import {motion,navigationHoverDelay} from '../shared/companion-motion';
+import {canAnimate,positionNoteMenu,startCubeTurn,visibleRect} from './companion-motion';
 import {interfaceAudio} from './companion-interface-audio';
 import {entryIcons, excerpt, HubSearch, matchText, sectionIcons, sectionLabels, type HubSection} from './KnowledgeNavigation';
 import './NotesWorkspace.css';
 
 type Mode = 'read' | 'edit' | 'preview';
 type Confirmation = {text: string; label: string; run: () => void};
-const workspace = ['prompt','passwords','templates','discovery','translator'] as const;
+const sidebarGroups: readonly {title:string;sections:readonly (keyof typeof sectionIcons)[]}[] = [
+  {title:'Espacio de trabajo',sections:['prompt','passwords','templates','discovery','translator']},
+  {title:'Sistema',sections:['settings','backup']},
+  {title:'Bloc personal',sections:['quickNotes','whiteboard']},
+];
+const sidebarSections = sidebarGroups.flatMap(group=>group.sections);
 const creatable = ['note','prompt'] as const;
 
 function editing(entry: HubEntry): HubDraft {
@@ -32,8 +40,8 @@ function validDraft(draft: HubDraft | undefined) {
   return kind !== 'resource' || /^https?:\/\//i.test(url) && URL.canParse(url);
 }
 
-export function NotesWorkspace({appearance, visible, surfaceVisible, animate, onAssess}: {
-  appearance: AppearanceState; visible:boolean; surfaceVisible:boolean; animate:boolean; onAssess:(text:string)=>Promise<void>;
+export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverEnabled,onAssess}: {
+  appearance:AppearanceState;visible:boolean;surfaceVisible:boolean;animate:boolean;hoverEnabled:boolean;onAssess:(text:string)=>Promise<void>;
 }) {
   const [data,setData] = useState<HubData>();
   const [section,setSection] = useState<HubSection>('prompt');
@@ -59,6 +67,10 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
   const lock = useRef(false);
   const draftWrite = useRef(0);
   const confirmRef = useRef<HTMLDialogElement>(null);
+  const main = useRef<HTMLElement>(null);
+  const cube = useRef<{next:HubSection;turn?:ReturnType<typeof startCubeTurn>}>(undefined);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hoverSelection = useRef<(next:HubSection)=>void>(undefined);
   const library = useRef<HTMLDivElement>(null);
   const listScroll = useRef(0);
   const origin = useRef<{card:DOMRect;title?:DOMRect}|undefined>(undefined);
@@ -110,6 +122,32 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
       if(dialog&&opener instanceof HTMLElement&&opener.isConnected)opener.focus({preventScroll:true});
     };
   },[confirmation,visible]);
+
+  function cancelHover() {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current=undefined;
+  }
+
+  function cancelCube() {
+    const previous=cube.current;
+    cube.current=undefined;
+    previous?.turn?.cancel();
+  }
+
+  useLayoutEffect(()=>{
+    if(!visible||!surfaceVisible||!hoverEnabled)cancelHover();
+    if(!visible||!surfaceVisible)cancelCube();
+    else if(!animate)cube.current?.turn?.cancel();
+  },[visible,surfaceVisible,animate,hoverEnabled]);
+
+  useEffect(()=>{
+    window.addEventListener('blur',cancelHover);
+    return ()=>{
+      window.removeEventListener('blur',cancelHover);
+      cancelHover();
+      cancelCube();
+    };
+  },[]);
 
   function error(message: string) {setFeedback({text:message,error:true});}
   const saved=data?.entries.find(item=>item.id===draft?.id);
@@ -246,7 +284,6 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
   },[visible,animate]);
 
   function showLocation(next: HubSection) {
-    if(section==='passwords')concealVaultView();
     if(next==='templates')setTemplatesOpened(true);
     if(next==='discovery')setDiscoveryOpened(true);
     listScroll.current=0;
@@ -259,10 +296,58 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
     setFolderForm(undefined);
   }
   function goto(next: HubSection) {
+    cancelHover();
+    if(cube.current?.next===next)return;
+    cancelCube();
+    if(next===section)return;
     guard(()=>{
-      showLocation(next);
-      if(section!==next)interfaceAudio.play('navigate');
+      if(section==='passwords')concealVaultView();
+      const commit=()=>{showLocation(next);interfaceAudio.play('navigate');};
+      const pane=main.current;
+      const from=sidebarSections.indexOf(section==='entry'?'prompt':section);
+      const to=sidebarSections.indexOf(next==='entry'?'prompt':next);
+      if(animate&&pane&&from!==to&&canAnimate(pane)&&!pane.parentElement?.closest('[hidden],[inert],[data-cube-direction]')){
+        const pending:NonNullable<typeof cube.current>={next};
+        cube.current=pending;
+        const turn=startCubeTurn(pane,to>from?'bottom':'top',()=>{
+          if(cube.current===pending)flushSync(commit);
+        });
+        if(turn){
+          pending.turn=turn;
+          const clean=()=>{if(cube.current===pending)cube.current=undefined;};
+          void turn.view.finished.then(clean,clean);
+          return;
+        }
+        cube.current=undefined;
+      }
+      commit();
     });
+  }
+
+  hoverSelection.current=next=>{
+    const pane=main.current;
+    const focus=document.activeElement;
+    if(!hoverEnabled||!visible||!surfaceVisible||document.hidden||dirty||lock.current||confirmation||showSearch||folderForm||
+      !pane||pane.querySelector('dialog[open],.hub-menu[open],[data-island-gesture]')||
+      (pane.contains(focus)&&focus?.matches(':read-write,select')))return;
+    goto(next);
+  };
+
+  function sidebarAction(next:HubSection) {
+    return {
+      onPointerEnter:(event:React.PointerEvent<HTMLButtonElement>)=>{
+        if(!hoverEnabled||event.pointerType!=='mouse'||event.buttons)return;
+        cancelHover();
+        const button=event.currentTarget;
+        hoverTimer.current=setTimeout(()=>{
+          hoverTimer.current=undefined;
+          if(button.matches(':hover'))hoverSelection.current?.(next);
+        },navigationHoverDelay);
+      },
+      onPointerLeave:cancelHover,
+      onPointerDown:cancelHover,
+      onClick:()=>goto(next),
+    };
   }
 
   function toggleSearch(open: boolean) {
@@ -356,7 +441,8 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
     return ()=>clearTimeout(timer);
   },[draft, dirty, valid, mode, busy, autoBlocked, draftBackedUp, confirmation, visible]);
 
-  const showLibraryTools = section!=='templates' && section!=='discovery' && section!=='passwords' && section!=='translator';
+  const independentSection = section==='quickNotes' || section==='whiteboard';
+  const showLibraryTools = !independentSection && section!=='templates' && section!=='discovery' && section!=='passwords' && section!=='translator';
   useEffect(()=>{
     if(!visible)return;
     function shortcuts(event:KeyboardEvent) {
@@ -433,19 +519,18 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
           <span><BookOpen size={18}/></span><strong>{hubName}</strong>
         </div>
         <nav>
-          <h2>Espacio de trabajo</h2>
-          {workspace.map(key=>{
-            const Icon=sectionIcons[key];
-            return <button type="button" key={key} aria-current={section===key?'page':undefined} onClick={()=>{if(section!==key)goto(key);}}>
-              <Icon size={16}/><span>{sectionLabels[key]}</span>
-            </button>;
-          })}
-          <h2>Sistema</h2>
-          <button type="button" aria-current={section==='settings'?'page':undefined} onClick={()=>goto('settings')}><Settings2 size={16}/>Configuración</button>
-          <button type="button" aria-current={section==='backup'?'page':undefined} onClick={()=>goto('backup')}><HardDrive size={16}/>Respaldo y exportación</button>
+          {sidebarGroups.map(({title,sections})=><React.Fragment key={title}>
+            <h2>{title}</h2>
+            {sections.map(key=>{
+              const Icon=sectionIcons[key];
+              return <button type="button" key={key} aria-current={section===key?'page':undefined} {...sidebarAction(key)}>
+                <Icon size={16}/><span>{sectionLabels[key]}</span>
+              </button>;
+            })}
+          </React.Fragment>)}
         </nav>
       </aside>
-      <main className="hub-main">
+      <main ref={main} className="hub-main" data-local-sheet={independentSection || undefined}>
         <header className="hub-top">
           <button type="button" className="hub-mobile-toggle" aria-label="Navegación" aria-expanded={showNav}
             onClick={()=>{setShowNav(!showNav);interfaceAudio.play(showNav?'close':'open');}}><Menu size={18}/></button>
@@ -469,10 +554,10 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
           <h1 id="notes-title">{subheading}</h1>
         </div>
 
-        {feedback && <div className="hub-feedback" role={feedback.error?'alert':'status'}>
+        {!independentSection && feedback && <div className="hub-feedback" role={feedback.error?'alert':'status'}>
           <span>{feedback.text}</span><button type="button" aria-label="Cerrar aviso" onClick={()=>setFeedback(undefined)}><X size={14}/></button>
         </div>}
-        {!data && (feedback?.error?<button type="button" onClick={()=>{setFeedback(undefined);setRetry(value=>value+1);}}>Volver a intentar</button>:
+        {!independentSection && !data && (feedback?.error?<button type="button" onClick={()=>{setFeedback(undefined);setRetry(value=>value+1);}}>Volver a intentar</button>:
           <div className="hub-skeleton" role="status" aria-label="Abriendo la biblioteca"><i/><i/><i/></div>)}
 
         {data && folderForm && <form className="hub-panel notes-folder-form" onSubmit={event=>{
@@ -512,6 +597,8 @@ export function NotesWorkspace({appearance, visible, surfaceVisible, animate, on
         </form>}
 
         {templatesOpened&&<TemplatesWorkspace key={`templates-${libraryRevision}`} visible={visible&&section==='templates'}/>}
+        <QuickNotesEditor visible={visible&&surfaceVisible&&section==='quickNotes'}/>
+        <Whiteboard visible={visible&&surfaceVisible&&section==='whiteboard'} dark={appearance.theme==='dark'} confirm={setConfirmation}/>
         {visible&&section==='passwords'&&<PasswordVault/>}
         {visible&&surfaceVisible&&section==='translator'&&<TranslatorWorkspace/>}
         {data&&discoveryOpened&&<DiscoveryWorkspace key={`discovery-${libraryRevision}`} visible={visible&&section==='discovery'}

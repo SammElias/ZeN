@@ -12,7 +12,7 @@ export const SectionPage=z.enum(sectionTargets);
 export type SectionPage=z.infer<typeof SectionPage>;
 export type SectionActivation={expanded:boolean;page:WorkspacePage;revision:number};
 export const HoverApp=z.enum(sectionPages);
-export const CapsuleHoverInput=z.object({app:HoverApp.optional(),inside:z.boolean(),blocked:z.boolean(),reduced:z.boolean()}).strict();
+export const CapsuleHoverInput=z.object({app:HoverApp.optional(),inside:z.boolean(),blocked:z.boolean(),holdOpen:z.boolean().optional(),reduced:z.boolean()}).strict();
 export type CapsuleHoverInput=z.infer<typeof CapsuleHoverInput>;
 export const LauncherOrder=z.preprocess(value=>{
  if(Array.isArray(value)&&value.length>=launcherPages.length-2){

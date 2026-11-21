@@ -210,8 +210,8 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await wait(()=>js(cap,"!!document.querySelector('.hub-library')"));
  check('hubSimplifiedNavigation',await js(cap,`(()=>{
   const nav=document.querySelector('.hub-sidebar nav');
-  const labels=[...nav?.querySelectorAll('button')??[]].map(button=>button.textContent.trim());
-  return labels.join('|')==='Biblioteca de prompts|Contraseñas|Templates|Descubrimiento de apps|Traductor|Configuración|Respaldo y exportación'&&
+  const labels=[...nav?.querySelectorAll('h2,button')??[]].map(item=>item.textContent.trim());
+  return labels.join('|')==='Espacio de trabajo|Biblioteca de prompts|Contraseñas|Templates|Descubrimiento de apps|Traductor|Sistema|Configuración|Respaldo y exportación|Bloc personal|Apuntes|Pizarra'&&
    nav.querySelector('[aria-current=page]')?.textContent.trim()==='Biblioteca de prompts';
  })()`));
  const noteFolder=await js(cap,"window.companion.notesChange({type:'folder',name:'AI ENGINER',group:'folder'})");
@@ -495,19 +495,42 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   if(!button||button.disabled)throw Error('Acción del HUB no disponible: '+${JSON.stringify(label)});
   button.click();
  })()`);
+ const boardFixture={version:1,width:5,color:'ink',strokes:[
+  {tool:'brush',width:12,color:'blue',points:[[192,320],[768,320]]},
+  {tool:'eraser',points:[[480,256],[480,384]]},
+ ]};
+ const whiteboardSeed=await js(cap,`window.companion.whiteboard({type:'save',value:${JSON.stringify(boardFixture)}})`);
+ if(!whiteboardSeed.ok)throw Error('No se pudo preparar la pizarra de prueba.');
  const hubSections=[
   ['Biblioteca de prompts','.hub-library'],
+  ['Apuntes','.hub-quick-notes'],
+  ['Pizarra','.hub-whiteboard'],
   ['Contraseñas','.password-vault'],
   ['Templates','.templates-view'],
   ['Descubrimiento de apps','.discovery-workspace'],
   ['Traductor','.translator-workspace'],
  ];
+ const sidebarSettings=await js(cap,"window.companion.status().then(result=>result.value.settings)");
+ await nav('settings');
+ if(!(await js(cap,`window.companion.save(${JSON.stringify({...sidebarSettings,motion:true})})`)).ok)throw Error('No se pudo habilitar el movimiento de prueba.');
+ await nav('notes');
+ await wait(()=>js(cap,"document.querySelector('.companion-capsule')?.dataset.motion==='true'"));
+ await clickLabel('.hub-sidebar','Biblioteca de prompts');
+ await wait(()=>js(cap,"document.querySelector('#notes-title')?.textContent==='Biblioteca de prompts'"));
+ await clickLabel('.hub-sidebar','Apuntes');
+ await wait(()=>js(cap,"document.querySelector('.hub-main[data-cube-direction=bottom]')&&document.querySelector('#notes-title')?.textContent==='Apuntes'"));
+ await clickLabel('.hub-sidebar','Biblioteca de prompts');
+ await wait(()=>js(cap,"document.querySelector('.hub-main[data-cube-direction=top]')&&document.querySelector('#notes-title')?.textContent==='Biblioteca de prompts'"));
+ check('hubSidebarCubeInBothDirections',true);
+ await nav('settings');
+ if(!(await js(cap,`window.companion.save(${JSON.stringify(sidebarSettings)})`)).ok)throw Error('No se pudo restaurar el movimiento de prueba.');
+ await nav('notes');
  for(let round=0;round<3;round++){
   for(const [label,activeView] of hubSections){
    await clickLabel('.hub-sidebar',label);
    await wait(()=>js(cap,`document.querySelector('.hub-sidebar [aria-current=page]')?.textContent.trim()===${JSON.stringify(label)}`));
    const exclusive=await js(cap,`(()=>{
-    const views=[...document.querySelectorAll('.knowledge-hub :is(.templates-view,.discovery-workspace,.translator-workspace,.password-vault,.hub-library)')];
+    const views=[...document.querySelectorAll('.knowledge-hub :is(.templates-view,.discovery-workspace,.translator-workspace,.password-vault,.hub-library,.hub-quick-notes,.hub-whiteboard)')];
     const visible=views.filter(view=>view.getClientRects().length>0);
     return visible.length===1&&visible[0].matches(${JSON.stringify(activeView)})&&
      ['.templates-view','.discovery-workspace'].every(selector=>{
@@ -519,6 +542,41 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   }
  }
  check('hubShowsOnlyActiveSection',true);
+ await clickLabel('.hub-sidebar','Apuntes');
+ await wait(()=>js(cap,"document.querySelector('.hub-quick-notes textarea')?.placeholder==='Escribe aquí…'"));
+ const sheet = 'Primera línea  \n\n  Segundo párrafo.';
+ await fill('.hub-quick-notes textarea',sheet);
+ await clickLabel('.hub-sidebar','Biblioteca de prompts');
+ await clickLabel('.hub-sidebar','Apuntes');
+ const quickNotesText = `document.querySelector('.hub-quick-notes textarea')?.value===${JSON.stringify(sheet)}`;
+ await wait(()=>js(cap,quickNotesText));
+ await compact();
+ await nav('notes');
+ await wait(()=>js(cap,quickNotesText));
+ check('quickNotesAutosaveAndCollapse',true);
+ await clickLabel('.hub-sidebar','Pizarra');
+ await wait(()=>js(cap,"!!document.querySelector('.hub-board-canvas')"));
+ check('whiteboardDefaultBrush',await js(cap,"document.querySelector('.hub-board-tools button[aria-pressed=true]')?.textContent.trim()==='Medio'"));
+ check('whiteboardFillsPanel',await js(cap,`(()=>{
+  const canvas=document.querySelector('.hub-board-canvas'),stage=canvas.parentElement;
+  return stage.clientHeight>110&&Math.abs(canvas.clientHeight-stage.clientHeight)<2&&Math.abs(canvas.clientWidth-stage.clientWidth)<2;
+ })()`));
+ const boardCount=(count:number)=>js(cap,`window.companion.whiteboard({type:'read'}).value?.strokes.length===${count}`);
+ const boardSamples=()=>js(cap,`(()=>{
+  const c=document.querySelector('.hub-board-canvas'),ctx=c.getContext('2d');
+  const scale=Math.min(c.width/960,c.height/640);
+  return [-192,0,192].map(x=>ctx.getImageData(Math.round(c.width/2+x*scale),Math.round(c.height/2),1,1).data[3]>0).join();
+ })()`);
+ await wait(async()=>await boardSamples()==='true,false,true');
+ await js(cap,"window.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,cancelable:true}))");
+ await wait(()=>boardCount(1));
+ await clickLabel('.hub-sidebar','Apuntes');
+ await clickLabel('.hub-sidebar','Pizarra');
+ await wait(async()=>await boardSamples()==='true,true,true');
+ await compact();
+ await nav('notes');
+ await wait(async()=>await boardSamples()==='true,true,true');
+ check('whiteboardPreciseEraseUndoAndCollapse',true);
  await clickLabel('.hub-sidebar','Configuración');
  await wait(()=>js(cap,"!!document.querySelector('.hub-switch[aria-label=\"Tema del lector\"]')"));
  await clickLabel('.hub-sidebar','Respaldo y exportación');

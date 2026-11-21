@@ -12,6 +12,8 @@
 | Métricas de Oura | Aplicación OAuth propia en Oura y almacén seguro de Windows | Navegación, consulta automática y desconexión con datos sintéticos. Queda la comprobación con una cuenta y un anillo reales. |
 | Sonido automático y controles por sesión | Sesiones publicadas por Windows | Observación, selección y comandos con sesiones simuladas. |
 | Knowledge Hub, Markdown y copia de datos y preferencias | SQLite, perfil local y selector de archivos | Se verificaron exportación, cancelación, recuperación e importación en el portable del 12 de noviembre de 2026. [Pruebas](TESTING.md) |
+| Apuntes rápidos en HUB | SQLite y perfil local | Hoja continua con autoguardado, scroll interno y recuperación de la posición de escritura. |
+| Pizarra en HUB | Canvas y SQLite local | Lienzo persistente con pinceles, goma de tramo, Deshacer y reinicio con confirmación. |
 | Descubrimiento de apps | SQLite de HUB y peticiones de Inicio | Cuestionario bilingüe, propuesta local y valoración opcional en Codex. |
 | Traductor dentro de HUB | Azure Translator Global y almacén seguro de Windows | Traducción en ambos sentidos, copia y uso en ancho estrecho. La validación automatizada usa un servicio simulado. |
 | Templates dentro de HUB | SQLite e imágenes administradas en el perfil | Treinta diseños empresariales en seis áreas de trabajo con prompts para Power Apps Canvas y React, personalización local, favoritos y edición. El recorrido aislado comprueba galería, detalle, filtros, scroll y borradores; las pruebas de datos cubren persistencia y respaldo. |

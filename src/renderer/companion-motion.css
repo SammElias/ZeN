@@ -35,28 +35,28 @@
   }
 }
 /* Both images are fixed to one rotating cuboid so their horizontal edges meet. */
-.workspace-content[data-cube-direction=bottom] { --cube-turn: -90deg; --cube-entry: 90deg; }
-.workspace-content[data-cube-direction=top] { --cube-turn: 90deg; --cube-entry: -90deg; }
-.workspace-content[data-cube-direction]::view-transition { pointer-events: none; }
-.workspace-content[data-cube-direction]::view-transition-group(root) {
+[data-cube-direction=bottom] { --cube-turn: -90deg; --cube-entry: 90deg; }
+[data-cube-direction=top] { --cube-turn: 90deg; --cube-entry: -90deg; }
+[data-cube-direction]::view-transition { pointer-events: none; }
+[data-cube-direction]::view-transition-group(root) {
   animation: none;
   perspective: max(1200px, calc(6 * var(--cube-depth)));
 }
-.workspace-content[data-cube-direction]::view-transition-image-pair(root) {
+[data-cube-direction]::view-transition-image-pair(root) {
   isolation: auto;
   transform-style: preserve-3d;
   animation: zen-app-cube var(--motion-appCube) ease-out both;
 }
-.workspace-content[data-cube-direction]::view-transition-old(root),
-.workspace-content[data-cube-direction]::view-transition-new(root) {
+[data-cube-direction]::view-transition-old(root),
+[data-cube-direction]::view-transition-new(root) {
   animation: none;
   backface-visibility: hidden;
   mix-blend-mode: normal;
   background-color: rgb(var(--glass-rgb) / .16);
   height: 100%;
 }
-.workspace-content[data-cube-direction]::view-transition-old(root) { transform: translateZ(var(--cube-depth)); }
-.workspace-content[data-cube-direction]::view-transition-new(root) { transform: rotateX(var(--cube-entry)) translateZ(var(--cube-depth)); }
+[data-cube-direction]::view-transition-old(root) { transform: translateZ(var(--cube-depth)); }
+[data-cube-direction]::view-transition-new(root) { transform: rotateX(var(--cube-entry)) translateZ(var(--cube-depth)); }
 @keyframes zen-app-cube {
   from { transform: translateZ(calc(-1 * var(--cube-depth))) rotateX(0deg); }
   to { transform: translateZ(calc(-1 * var(--cube-depth))) rotateX(var(--cube-turn)); }
