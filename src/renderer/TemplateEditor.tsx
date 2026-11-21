@@ -48,7 +48,11 @@ export function TemplateEditor({draft,original,busy,visible,onChange,onImage,onR
     <div className="hub-panel template-fields">
       <ListField label="Características del diseño · una por línea" separator="\n" limit={240} values={fields.features} onChange={features=>onChange({features})}/>
       <ListField label="Casos de uso · uno por línea" separator="\n" limit={240} values={fields.useCases} onChange={useCases=>onChange({useCases})}/>
-      <label>Prompt propuesto<textarea className="template-prompt-input" required rows={12} maxLength={48000} value={fields.prompt} onChange={e=>onChange({prompt:e.target.value})}/></label>
+      <label>{fields.reactPrompt?.trim()?'Prompt para Power Apps Canvas':'Prompt propuesto'}<textarea className="template-prompt-input" required rows={12} maxLength={48000} value={fields.prompt} onChange={e=>onChange({prompt:e.target.value})}/></label>
+      <details className="template-personalized">
+        <summary>Variante para React</summary>
+        <label>Prompt para React + TypeScript<textarea rows={10} maxLength={48000} value={fields.reactPrompt??''} onChange={e=>onChange({reactPrompt:e.target.value})}/></label>
+      </details>
       <div className="hub-tools">
         <button type="button" disabled={busy} onClick={onCancel}>Cancelar edición</button>
         <button type="submit" className="hub-primary" disabled={busy||!valid}><Save size={16}/>Guardar template</button>

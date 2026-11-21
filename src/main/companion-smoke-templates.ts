@@ -1,6 +1,8 @@
 import {dialog,type BrowserWindow} from 'electron';
 import {join} from 'node:path';
 import {writeFileSync} from 'node:fs';
+import {templateAreas} from '../shared/enterprise-template-catalog';
+import {templateSeeds} from './knowledge-template-seeds';
 
 export async function smokeTemplates({
   cap,js,wait,nav,shot,resize,selectPosition,profile,copiedText,
@@ -33,9 +35,9 @@ export async function smokeTemplates({
   await nav('notes');
   await button('Templates','.hub-sidebar');
   await resize(1024,760);
-  await expectState("document.querySelectorAll('.template-card').length===8");
+  await expectState("document.querySelectorAll('.template-card').length===30");
   report.templatesAllReferences=await run(`(async()=>{
-   const names=['Anime Editorial','Glass Desktop','Spatial Cinema','Creative Studio','Minimal Showcase','Bento Gallery','Workspace Dashboard','Atmospheric Analytics'];
+   const names=${JSON.stringify(templateSeeds.map(seed=>seed.name))};
    const cards=[...document.querySelectorAll('.template-card')];
    const images=await Promise.all(cards.map(async card=>{
     const thumbnail=card.querySelector('img');
@@ -46,18 +48,19 @@ export async function smokeTemplates({
    const {value}=await window.companion.templates({type:'list'});
    const records=await Promise.all(value.items.map(({id})=>window.companion.templates({type:'detail',id})));
    return cards.map(card=>card.querySelector('strong').textContent).join('|')===names.join('|')&&images.every(Boolean)&&
-    new Set(records.map(record=>record.value.item.prompt)).size===8&&records.every(record=>record.value.item.hasImage&&record.value.item.features.length===5);
+    new Set(records.map(record=>record.value.item.prompt)).size===30&&records.every(record=>record.value.item.hasImage&&record.value.item.features.length===5&&record.value.item.reactPrompt?.includes('Entrega para React + TypeScript'));
   })()`);
+  report.templateAreas=await run(`Array.from(document.querySelectorAll('optgroup[label="Áreas de trabajo"] option'), option=>option.value).join('|')===${JSON.stringify(Object.values(templateAreas).join('|'))}`);
   await shot(cap,'templates-gallery');
-  await change('[aria-label="Filtrar por estilo"]','Glassmorphism');
-  await expectState("document.querySelectorAll('.template-card').length===2");
-  await button('Favorito · Glass Desktop');
-  await expectState("document.querySelector('[aria-label=\"Favorito · Glass Desktop\"]').getAttribute('aria-pressed')==='true'");
+  await change('[aria-label="Filtrar por categoría"]','Compras y finanzas');
+  await expectState("document.querySelectorAll('.template-card').length===5");
+  await button('Favorito · Solicitud de compra');
+  await expectState("document.querySelector('[aria-label=\"Favorito · Solicitud de compra\"]').getAttribute('aria-pressed')==='true'");
   await button('Favoritos');
   await expectState("document.querySelectorAll('.template-card').length===1");
   report.templateFavoriteKeepsGallery=await run("!document.querySelector('.template-detail')");
-  await button('Abrir Glass Desktop');
-  await expectState("document.querySelector('.template-information h2')?.textContent==='Glass Desktop'");
+  await button('Abrir Solicitud de compra');
+  await expectState("document.querySelector('.template-information h2')?.textContent==='Solicitud de compra'");
   await expectState("document.querySelector('.template-figure img')?.naturalWidth>480");
   report.templateWideDetail=await run("getComputedStyle(document.querySelector('.template-detail-grid')).gridTemplateColumns.split(' ').length===2");
   await button('Ampliar referencia visual');
@@ -67,14 +70,20 @@ export async function smokeTemplates({
   const copyStart=copiedText.length;
   await button('Copiar prompt');
   await expectState("document.querySelector('.templates-view [role=status]')?.textContent.includes('Copiado.')");
+  await button('React + TypeScript');
+  await expectState("document.querySelector('.template-prompt pre')?.textContent.includes('Entrega para React + TypeScript')");
+  await button('Copiar prompt');
+  await expectState("document.querySelector('.templates-view [role=status]')?.textContent.includes('Copiado.')");
   await button('Copiar personalizado');
   await expectState("document.querySelector('.templates-view [role=status]')?.textContent.includes('Copiado.')");
-  report.templatePersonalizationKeepsBase=copiedText.length===copyStart+2&&copiedText[copyStart].includes('{{nombre_proyecto}}')&&
-    copiedText[copyStart+1].includes('Proyecto fixture')&&copiedText[copyStart+1].includes('{{objetivo}}');
+  report.templateCopiesBothPlatforms=copiedText.length===copyStart+3&&
+    copiedText[copyStart].includes('Entrega para Power Apps Canvas')&&copiedText[copyStart+1].includes('Entrega para React + TypeScript');
+  report.templatePersonalizationKeepsBase=copiedText[copyStart+1]?.includes('{{nombre_proyecto}}')&&
+    copiedText[copyStart+2]?.includes('Proyecto fixture')&&copiedText[copyStart+2]?.includes('{{objetivo}}');
   await run("window.companion.island(true)");
   await expectState("!!document.querySelector('.notes-retained[hidden]')");
   await nav('notes');
-  await expectState("document.querySelector('.template-variables input')?.value==='Proyecto fixture'");
+  await expectState("document.querySelector('.template-variables input')?.value==='Proyecto fixture'&&document.querySelector('.template-prompt pre')?.textContent.includes('Entrega para React + TypeScript')");
   report.templateDetailSurvivesCollapse=true;
   await shot(cap,'templates-detail');
   await resize(420,610);
@@ -84,20 +93,20 @@ export async function smokeTemplates({
   })()`);
   await shot(cap,'templates-narrow');
   await button('Volver a Templates');
-  await expectState("document.activeElement?.getAttribute('aria-label')==='Abrir Glass Desktop'");
-  report.templateReturnPreservesFilters=await run("document.querySelector('[aria-label=\"Filtrar por estilo\"]').value==='Glassmorphism'&&document.querySelectorAll('.template-card').length===1");
+  await expectState("document.activeElement?.getAttribute('aria-label')==='Abrir Solicitud de compra'");
+  report.templateReturnPreservesFilters=await run("document.querySelector('[aria-label=\"Filtrar por categoría\"]').value==='Compras y finanzas'&&document.querySelectorAll('.template-card').length===1");
   await run("document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true}))");
   report.templateKeyboardSearch=await run("document.activeElement?.getAttribute('aria-label')==='Buscar templates'");
   await change('[aria-label="Buscar templates"]','sin coincidencias');
   await expectState("document.querySelector('.template-empty')?.textContent.includes('No hay templates')");
   await button('Limpiar filtros');
-  await expectState("document.querySelectorAll('.template-card').length===8");
+  await expectState("document.querySelectorAll('.template-card').length===30");
   const galleryScroll=await run("(()=>{const gallery=document.querySelector('.templates-view');gallery.scrollTop=320;return gallery.scrollTop;})()");
   await expectState("document.querySelector('.templates-view').scrollTop>100");
-  await button('Abrir Anime Editorial');
-  await expectState("document.querySelector('.template-information h2')?.textContent==='Anime Editorial'");
+  await button('Abrir Mesa de servicio');
+  await expectState("document.querySelector('.template-information h2')?.textContent==='Mesa de servicio'");
   await button('Volver a Templates');
-  await expectState("document.activeElement?.getAttribute('aria-label')==='Abrir Anime Editorial'");
+  await expectState("document.activeElement?.getAttribute('aria-label')==='Abrir Mesa de servicio'");
   report.templateGalleryScrollRestored=await run(`Math.abs(document.querySelector('.templates-view').scrollTop-${galleryScroll})<=1`);
   await run("document.querySelector('.templates-view').scrollTop=0");
   await button('Nuevo template');
@@ -108,7 +117,7 @@ export async function smokeTemplates({
   const openDialog=dialog.showOpenDialog;
   const badFile=join(profile,'template-bad.jpg');
   writeFileSync(badFile,'invalid jpg');
-  const picture=join(__dirname,'renderer','hub-templates','bento-gallery.png');
+  const picture=join(__dirname,'renderer','hub-templates','portal-del-empleado.png');
   try {
     dialog.showOpenDialog=async()=>({canceled:false,filePaths:[badFile]});
     await button('Añadir imagen');
@@ -136,7 +145,7 @@ export async function smokeTemplates({
   await button('Eliminar');
   await expectState("!!document.querySelector('dialog[open][aria-label=\"Eliminar template\"]')");
   await button('Eliminar template');
-  await expectState("document.querySelectorAll('.template-card').length===9");
+  await expectState("document.querySelectorAll('.template-card').length===31");
   report.templateCrudAndCopyImage=await run(`(async()=>{
     const {value}=await window.companion.templates({type:'list'});
     return value.items.some(item=>item.name==='Template revisado'&&item.hasImage)&&

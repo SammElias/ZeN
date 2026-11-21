@@ -26,3 +26,13 @@ export const MediaNowPlaying=z.object({...metadata,playing:z.boolean()}).strict(
 export type MediaNowPlaying=z.infer<typeof MediaNowPlaying>;
 export const MediaCommand=z.object({id:z.string().uuid(),session:z.string().uuid(),action:z.enum(['play','pause','previous','next','shuffle','repeat']),value:z.enum(['on','off','all','one']).optional()}).strict().refine(v=>v.action==='shuffle'?v.value==='on'||v.value==='off':v.action==='repeat'?['off','all','one'].includes(v.value??''):v.value===undefined);
 export type MediaCommand=z.infer<typeof MediaCommand>;
+
+const volumeLevel = z.number().int().min(0).max(100);
+const audioEndpoint = z.string().regex(/^[a-f0-9]{64}$/);
+export const SystemVolumeState = z.object({endpoint:audioEndpoint,level:volumeLevel,muted:z.boolean()}).strict();
+export type SystemVolumeState = z.infer<typeof SystemVolumeState>;
+export const SystemVolumeAction = z.discriminatedUnion('type', [
+  z.object({type:z.literal('read')}).strict(),
+  z.object({type:z.literal('set'),endpoint:audioEndpoint,level:volumeLevel}).strict(),
+]);
+export type SystemVolumeAction = z.infer<typeof SystemVolumeAction>;

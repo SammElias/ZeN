@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {CompanionCalendar} from '../src/main/companion-calendar';
-import {CalendarDraft,CalendarEvent,calendarDraftEvent,calendarInstant,calendarGrid,calendarOverlaps,sourceKey} from '../src/shared/companion-calendar';
+import {CalendarDraft,CalendarEvent,calendarDraftEvent,calendarInstant,calendarGrid,calendarOverlaps,nextCalendarEvent,sourceKey} from '../src/shared/companion-calendar';
 
 const range={start:'2026-11-01',end:'2026-12-01',timeZone:'Europe/London'};
 const source={accountId:'fixture-account',id:'fixture-calendar',name:'Pruebas',writable:true};
@@ -27,6 +27,22 @@ const reply=(events:CalendarEvent[],complete=true,interval=range)=>({version:1,t
  coverage:[{accountId:source.accountId,calendarId:source.id,complete}],events});
 
 describe('calendar dates and civil times',()=>{
+ it('chooses the earliest future start regardless of order, cancellations and calendar month',()=>{
+  const event=timed(),past={...timed('already-started'),end:'2026-11-04T12:00:00Z'};
+  const nearest={...event,start:'2026-11-04T12:10:00+01:00',end:'2026-11-04T13:00:00+01:00'};
+  const later={...timed('later'),start:'2026-12-01T10:00:00Z',end:'2026-12-01T11:00:00Z'};
+  const cancelled={...timed('cancelled'),start:'2026-11-04T11:05:00Z',end:'2026-11-04T12:00:00Z',cancelled:true};
+  const events=[later,past,cancelled,nearest];
+  expect(nextCalendarEvent(events,new Date('2026-11-04T11:00:00Z'),range.timeZone)).toBe(nearest);
+  expect(nextCalendarEvent(events,new Date('2026-11-04T11:10:00Z'),range.timeZone)).toBe(later);
+  expect(nextCalendarEvent(events,new Date('2026-12-02T12:00:00Z'),range.timeZone)).toBeUndefined();
+ });
+ it('ranks future all-day events on the calendar view date in its selected time zone',()=>{
+  const allDay={...timed('all-day'),start:'2026-11-05',end:'2026-11-06',allDay:true};
+  const late={...timed('late'),start:'2026-11-05T04:00:00Z',end:'2026-11-05T05:00:00Z'};
+  expect(nextCalendarEvent([late,allDay],new Date('2026-11-04T22:00:00Z'),'Europe/Madrid')).toBe(allDay);
+  expect(nextCalendarEvent([late,allDay],new Date('2026-11-04T23:30:00Z'),'Europe/Madrid')).toBe(late);
+ });
  it('builds a Monday-first grid across month boundaries',()=>{
   const days=calendarGrid('2026-11-12');
   expect(days).toHaveLength(42);expect(days[0]).toBe('2026-10-26');expect(days[41]).toBe('2026-12-06');

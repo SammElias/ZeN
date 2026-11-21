@@ -1,5 +1,5 @@
 import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
-import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, Grid2X2, HardDrive, List, Menu, Plus, Search, Settings2, Star, Upload, X} from 'lucide-react';
+import {ArrowDown, ArrowUp, BookOpen, Download, FolderPlus, HardDrive, Menu, Plus, Search, Settings2, Star, Upload, X} from 'lucide-react';
 import {noteLimits} from '../shared/companion-notes';
 import {hubName} from '../shared/companion-navigation';
 import type {AppearanceState} from '../shared/companion-appearance';
@@ -7,15 +7,18 @@ import {singularLabels, hubContentError, libraryFolderLabel, libraryFolders, new
 import {appearanceVars} from './AppearanceSettings';
 import {KnowledgeEditor} from './KnowledgeEditor';
 import {TemplatesWorkspace} from './TemplatesWorkspace';
+import {DiscoveryWorkspace} from './DiscoveryWorkspace';
+import {TranslatorWorkspace} from './TranslatorWorkspace';
+import {PasswordVault,concealVaultView} from './PasswordVault';
 import {motion} from '../shared/companion-motion';
 import {canAnimate,positionNoteMenu,visibleRect} from './companion-motion';
 import {interfaceAudio} from './companion-interface-audio';
-import {aiFolderName, entryIcons, excerpt, findAiFolder, HubDashboard, HubSearch, matchText, sectionIcons, sectionLabels, type HubLocation} from './KnowledgeNavigation';
+import {entryIcons, excerpt, HubSearch, matchText, sectionIcons, sectionLabels, type HubSection} from './KnowledgeNavigation';
 import './NotesWorkspace.css';
 
 type Mode = 'read' | 'edit' | 'preview';
 type Confirmation = {text: string; label: string; run: () => void};
-const workspace = ['dashboard','all','prompt','ai','templates'] as const;
+const workspace = ['prompt','passwords','templates','discovery','translator'] as const;
 const creatable = ['note','prompt'] as const;
 
 function editing(entry: HubEntry): HubDraft {
@@ -29,13 +32,14 @@ function validDraft(draft: HubDraft | undefined) {
   return kind !== 'resource' || /^https?:\/\//i.test(url) && URL.canParse(url);
 }
 
-export type HubDestination = 'all' | 'new' | {noteId: string};
-
-export function NotesWorkspace({appearance, destination, visible, animate}: {appearance: AppearanceState; destination?: HubDestination; visible:boolean;animate:boolean}) {
+export function NotesWorkspace({appearance, visible, surfaceVisible, animate, onAssess}: {
+  appearance: AppearanceState; visible:boolean; surfaceVisible:boolean; animate:boolean; onAssess:(text:string)=>Promise<void>;
+}) {
   const [data,setData] = useState<HubData>();
-  const [location,setLocation] = useState<HubLocation>({section:'dashboard'});
+  const [section,setSection] = useState<HubSection>('prompt');
   const [templatesOpened,setTemplatesOpened] = useState(false);
-  const [templatesRevision,setTemplatesRevision] = useState(0);
+  const [discoveryOpened,setDiscoveryOpened] = useState(false);
+  const [libraryRevision,setLibraryRevision] = useState(0);
   const [draft,setDraft] = useState<HubDraft>();
   const [mode,setMode] = useState<Mode>('read');
   const [dirty,setDirty] = useState(false);
@@ -49,7 +53,6 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
   const [showSearch,setShowSearch] = useState(false);
   const [showNav,setShowNav] = useState(false);
   const [readerOpen,setReaderOpen] = useState(false);
-  const [list,setList] = useState(false);
   const [query,setQuery] = useState('');
   const [order,setOrder] = useState('recent');
   const [editorKey,setEditorKey] = useState(0);
@@ -70,7 +73,6 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     noteEffects.current.push(animation);
     return animation;
   }
-  const handledDestination = useRef<HubDestination|undefined>(undefined);
   const stateAtRead=useRef({data,draft,dirty});
   stateAtRead.current={data,draft,dirty};
 
@@ -89,21 +91,15 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
         setAutoBlocked(true);
         setMode('edit');
         setReaderOpen(true);
-        setLocation(recovered.fields.kind==='prompt'?{section:'prompt'}:{
-          section:'all', folderId:recovered.fields.kind==='note'?recovered.fields.folderId ?? undefined:undefined,
-        });
+        setSection(recovered.fields.kind==='prompt'?'prompt':'entry');
         setFeedback({text:'Borrador recuperado.'});
       }
-    }).catch(()=>{if(active)setFeedback({text:'No se pudo abrir la biblioteca.',error:true});});
+    }).catch(()=>{
+      if(!active)return;
+      setFeedback({text:'No se pudo abrir la biblioteca.',error:true});
+    });
     return ()=>{active=false;};
   },[retry,visible]);
-
-  useEffect(()=>{
-    if(!destination){handledDestination.current=undefined;return;}
-    if(!data||!visible||handledDestination.current===destination)return;
-    handledDestination.current=destination;
-    guard(()=>openDestination(destination,data));
-  },[destination,data,visible]);
 
   useEffect(()=>{
     const dialog=confirmRef.current;
@@ -118,9 +114,6 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
   function error(message: string) {setFeedback({text:message,error:true});}
   const saved=data?.entries.find(item=>item.id===draft?.id);
   const valid=validDraft(draft);
-  const section=location.section;
-  const aiFolder=data && findAiFolder(data.folders);
-  const activeFolder=section==='ai'?aiFolder:data?.folders.find(folder=>folder.id===location.folderId);
 
   function storeDraft(value: HubDraft | null) {
     const version=++draftWrite.current;
@@ -175,6 +168,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
   }
 
   function closeReader() {
+    if(section==='entry'){goto('prompt');return;}
     if(draft?.id)returning.current={id:draft.id,title:visibleRect(library.current?.querySelector('.notes-editor-heading h2')??null)};
     setReaderOpen(false);
     if(readerOpen)interfaceAudio.play('close');
@@ -251,21 +245,23 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     return ()=>{noteEffects.current.forEach(animation=>animation.cancel());noteEffects.current=[];};
   },[visible,animate]);
 
-  function showLocation(next: HubLocation) {
-    if(next.section==='templates')setTemplatesOpened(true);
+  function showLocation(next: HubSection) {
+    if(section==='passwords')concealVaultView();
+    if(next==='templates')setTemplatesOpened(true);
+    if(next==='discovery')setDiscoveryOpened(true);
     listScroll.current=0;
-    setLocation(next);
+    setSection(next);
     setDraft(undefined);
     setQuery('');
     setShowNav(false);
+    setShowSearch(false);
     setReaderOpen(false);
     setFolderForm(undefined);
   }
-  function goto(next: HubLocation) {
+  function goto(next: HubSection) {
     guard(()=>{
-      const changed=location.section!==next.section||location.folderId!==next.folderId;
       showLocation(next);
-      if(changed)interfaceAudio.play('navigate');
+      if(section!==next)interfaceAudio.play('navigate');
     });
   }
 
@@ -273,19 +269,6 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     if(showSearch===open)return;
     setShowSearch(open);
     interfaceAudio.play(open?'open':'close');
-  }
-
-  function openDestination(target: HubDestination, library: HubData) {
-    setFeedback(undefined);
-    showLocation({section:'all'});
-    if (target==='all') return;
-    if (target==='new') {
-      create('note',false);
-      return;
-    }
-    const entry=library.entries.find(item=>item.id===target.noteId && item.kind==='note');
-    if (entry) openEditor(editing(entry),'read');
-    else error('El apunte ya no está disponible.');
   }
 
   function choose(entry: HubEntry, fromSearch=false, card?:HTMLElement) {
@@ -301,8 +284,8 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     }
     guard(()=>{
       markOrigin();
-      if (fromSearch || ['dashboard','backup','settings'].includes(section)) {
-        setLocation({section:entry.kind==='prompt'?'prompt':'all'});
+      if (fromSearch) {
+        setSection(entry.kind==='prompt'?'prompt':'entry');
         setQuery('');
       }
       openEditor(editing(entry),'read');
@@ -310,14 +293,12 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     });
   }
 
-  function create(kind: typeof creatable[number], audible=true) {
+  function create(kind: typeof creatable[number]) {
     guard(()=>{
-      const folderId=kind==='note'?activeFolder?.id ?? null:null;
-      if (!folderId) setLocation({section:kind==='note'?'all':'prompt'});
-      setQuery('');
-      setShowNav(false);
+      const folderId=kind==='note'&&section==='entry'?draft?.fields.folderId ?? null:null;
+      showLocation(kind==='note'?'entry':'prompt');
       openEditor({fields:newFields(kind,folderId)},'edit');
-      if(audible)interfaceAudio.play('open');
+      interfaceAudio.play('open');
     });
   }
 
@@ -375,11 +356,12 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     return ()=>clearTimeout(timer);
   },[draft, dirty, valid, mode, busy, autoBlocked, draftBackedUp, confirmation, visible]);
 
+  const showLibraryTools = section!=='templates' && section!=='discovery' && section!=='passwords' && section!=='translator';
   useEffect(()=>{
     if(!visible)return;
     function shortcuts(event:KeyboardEvent) {
       const key=event.key.toLowerCase();
-      if(section==='templates'&&key!=='escape')return;
+      if(!showLibraryTools&&key!=='escape')return;
       if ((event.ctrlKey||event.metaKey) && key==='k' && data) {
         event.preventDefault();toggleSearch(!showSearch);return;
       }
@@ -410,8 +392,8 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
       const result=await window.companion.notesFile(action);
       if (!result.ok) {error(result.error);return;}
       if (result.value.type==='import') {
-        setTemplatesRevision(value=>value+1);
-        setData(result.value.data);setDraft(undefined);setDirty(false);setLocation({section:'dashboard'});
+        setLibraryRevision(value=>value+1);
+        setData(result.value.data);setDirty(false);showLocation('prompt');
         setFeedback({text:'Biblioteca restaurada.'});
       } else if (result.value.type==='image') image=result.value.image;
       else if (result.value.type==='done' && action.type!=='url') setFeedback({text:'Archivo exportado.'});
@@ -424,16 +406,9 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
     if(entry.folderId)map.set(entry.folderId,(map.get(entry.folderId)??0)+1);
     return map;
   },new Map<string,number>());
-  const items=(data?.entries ?? []).filter(entry=>{
-    if(section==='prompt') return entry.kind==='prompt';
-    if(entry.kind!=='note') return false;
-    if(section==='ai') return entry.folderId===aiFolder?.id;
-    return section==='all' && (!activeFolder || entry.folderId===activeFolder.id);
-  }).filter(entry=>matchText(entry,query)).sort((a,b)=>order==='name'?a.title.localeCompare(b.title,'es'):b.updatedAt-a.updatedAt);
-  const showLibrary=!['dashboard','settings','backup','templates'].includes(section);
-  const defaultKind=section==='prompt'?'prompt':'note';
-  const subheading=section==='ai'?aiFolderName:activeFolder?.name ?? sectionLabels[section];
-  const noteFolders=data?libraryFolders(data,'note',activeFolder?.id):[];
+  const items=section==='prompt'?(data?.entries ?? []).filter(entry=>entry.kind==='prompt'&&matchText(entry,query))
+    .sort((a,b)=>order==='name'?a.title.localeCompare(b.title,'es'):b.updatedAt-a.updatedAt):[];
+  const subheading=section==='entry'&&draft?singularLabels[draft.fields.kind]:sectionLabels[section];
   const sameGroup=data?.folders.filter(folder=>folder.group===folderForm?.group) ?? [];
   const folderIndex=sameGroup.findIndex(folder=>folder.id===folderForm?.id);
 
@@ -454,27 +429,27 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
   return <section className="notes-workspace knowledge-hub" data-hub-theme={appearance.theme==='dark'?'dark':'light'} aria-labelledby="notes-title">
     <div className="hub-shell">
       <aside className="hub-sidebar" data-mobile-open={showNav} aria-label={`Navegación de ${hubName}`}>
-          <button type="button" className="hub-brand" onClick={()=>{if(section!=='dashboard')goto({section:'dashboard'});}}>
+          <div className="hub-brand">
           <span><BookOpen size={18}/></span><strong>{hubName}</strong>
-        </button>
+        </div>
         <nav>
           <h2>Espacio de trabajo</h2>
           {workspace.map(key=>{
             const Icon=sectionIcons[key];
-            return <button type="button" key={key} aria-current={section===key?'page':undefined} onClick={()=>{if(section!==key||location.folderId)goto({section:key});}}>
+            return <button type="button" key={key} aria-current={section===key?'page':undefined} onClick={()=>{if(section!==key)goto(key);}}>
               <Icon size={16}/><span>{sectionLabels[key]}</span>
             </button>;
           })}
           <h2>Sistema</h2>
-          <button type="button" aria-current={section==='settings'?'page':undefined} onClick={()=>goto({section:'settings'})}><Settings2 size={16}/>Configuración</button>
-          <button type="button" aria-current={section==='backup'?'page':undefined} onClick={()=>goto({section:'backup'})}><HardDrive size={16}/>Respaldo y exportación</button>
+          <button type="button" aria-current={section==='settings'?'page':undefined} onClick={()=>goto('settings')}><Settings2 size={16}/>Configuración</button>
+          <button type="button" aria-current={section==='backup'?'page':undefined} onClick={()=>goto('backup')}><HardDrive size={16}/>Respaldo y exportación</button>
         </nav>
       </aside>
       <main className="hub-main">
         <header className="hub-top">
           <button type="button" className="hub-mobile-toggle" aria-label="Navegación" aria-expanded={showNav}
             onClick={()=>{setShowNav(!showNav);interfaceAudio.play(showNav?'close':'open');}}><Menu size={18}/></button>
-          {section!=='templates' && <><button type="button" className="hub-search-launch" disabled={!data} onClick={()=>toggleSearch(true)}>
+          {showLibraryTools && <><button type="button" className="hub-search-launch" disabled={!data} onClick={()=>toggleSearch(true)}>
             <Search size={17}/><span>Buscar en la biblioteca…</span><kbd>Ctrl K</kbd>
           </button>
             <details className="hub-menu hub-create" onToggle={event=>positionNoteMenu(event.currentTarget)}>
@@ -491,15 +466,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
         </header>
 
         <div className="hub-heading">
-          <h1 id="notes-title">{section==='dashboard'?hubName:subheading}</h1>
-          {section==='dashboard' && <div className="hub-tools">
-            <div className="hub-switch" aria-label="Vista de biblioteca">
-              <button type="button" aria-label="Vista de tarjetas" title="Tarjetas" aria-pressed={!list} onClick={()=>setList(false)}><Grid2X2 size={16}/></button>
-              <button type="button" aria-label="Vista de lista" title="Lista" aria-pressed={list} onClick={()=>setList(true)}><List size={16}/></button>
-            </div>
-            <button type="button" aria-label="Configuración" title="Configuración" onClick={()=>goto({section:'settings'})}><Settings2 size={16}/></button>
-          </div>}
-          {section==='all' && activeFolder && <button type="button" onClick={()=>setFolderForm(activeFolder)}><Settings2 size={16}/>Editar carpeta</button>}
+          <h1 id="notes-title">{subheading}</h1>
         </div>
 
         {feedback && <div className="hub-feedback" role={feedback.error?'alert':'status'}>
@@ -510,13 +477,19 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
 
         {data && folderForm && <form className="hub-panel notes-folder-form" onSubmit={event=>{
           event.preventDefault();
-          void mutate({type:'folder',...folderForm},(_,id)=>{
+          void mutate({type:'folder',...folderForm},()=>{
             setFolderForm(undefined);
-            if(id && !folderForm.id && !dirty) showLocation({section:'all',folderId:id});
             setFeedback({text:'Carpeta guardada.'});
           });
         }}>
           <div className="hub-fields">
+            {data.folders.length>0&&<label>Carpeta<select disabled={busy} value={folderForm.id??''} onChange={event=>{
+              const folder=data.folders.find(item=>item.id===event.target.value);
+              setFolderForm(folder??{name:'',group:'folder'});
+            }}>
+              <option value="">Nueva carpeta</option>
+              {libraryFolders(data,'note',folderForm.id).map(folder=><option key={folder.id} value={folder.id}>{libraryFolderLabel(folder)}</option>)}
+            </select></label>}
             <label>Nombre<input id="notes-folder-name" autoFocus maxLength={noteLimits.folder} required value={folderForm.name}
               onChange={event=>setFolderForm({...folderForm,name:event.target.value})}/></label>
           </div>
@@ -529,7 +502,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
               <button type="button" disabled={busy || Boolean(counts?.get(folderForm.id))} onClick={()=>{
                 const id=folderForm.id!;
                 guard(()=>setConfirmation({text:'¿Eliminar «'+folderForm.name+'»?',label:'Eliminar carpeta',run:()=>{
-                  void mutate({type:'removeFolder',id},()=>showLocation({section:'dashboard'}));
+                  void mutate({type:'removeFolder',id},()=>setFolderForm(undefined));
                 }}));
               }}>Eliminar carpeta</button>
             </>}
@@ -538,8 +511,11 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
           </div>
         </form>}
 
-        {data && section==='dashboard' && <HubDashboard data={data} navigate={goto} open={choose} list={list}/>}
-        {templatesOpened&&<TemplatesWorkspace key={templatesRevision} visible={visible&&section==='templates'}/>}
+        {templatesOpened&&<TemplatesWorkspace key={`templates-${libraryRevision}`} visible={visible&&section==='templates'}/>}
+        {visible&&section==='passwords'&&<PasswordVault/>}
+        {visible&&surfaceVisible&&section==='translator'&&<TranslatorWorkspace/>}
+        {data&&discoveryOpened&&<DiscoveryWorkspace key={`discovery-${libraryRevision}`} visible={visible&&section==='discovery'}
+          records={data.discoveries??[]} busy={busy} mutate={mutate} confirm={setConfirmation} onAssess={onAssess}/>}
         {data && section==='settings' && <div className="hub-panel">
           <h2>Tema del lector</h2>
           <p>El lector conserva su contraste claro u oscuro. La navegación y Templates usan la apariencia general de ZEN.</p>
@@ -557,26 +533,14 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
           </div>
         </div>}
 
-        {data && section==='ai' && !aiFolder && <div className="hub-panel">
-          <p>Esta sección muestra los apuntes de la carpeta {aiFolderName}.</p>
-          <button type="button" disabled={busy} onClick={()=>void mutate({type:'folder',name:aiFolderName,group:'folder'})}>
-            <FolderPlus size={16}/>Crear carpeta {aiFolderName}
-          </button>
-        </div>}
-        {data && showLibrary && (section!=='ai'||aiFolder) && <>
-          <div ref={library} className="hub-library" data-reader-open={readerOpen && Boolean(draft)}>
-            <aside className="hub-items" aria-label="Elementos de la sección">
+        {data && (section==='prompt'||section==='entry') &&
+          <div ref={library} className="hub-library" data-reader-open={readerOpen && Boolean(draft)} data-entry={section==='entry'}>
+            {section==='prompt'&&<aside className="hub-items" aria-label="Elementos de la sección">
               <div className="hub-toolbar">
                 <span>{items.length} {items.length===1?'elemento':'elementos'}</span>
-                <button type="button" aria-label={'Crear '+singularLabels[defaultKind].toLowerCase()} title={'Crear '+singularLabels[defaultKind].toLowerCase()}
-                  disabled={busy} onClick={()=>create(defaultKind)}><Plus size={17}/></button>
+                <button type="button" aria-label="Crear prompt" title="Crear prompt" disabled={busy} onClick={()=>create('prompt')}><Plus size={17}/></button>
               </div>
               <div className="hub-list-filters">
-                {section==='all' && noteFolders.length>0 && <select className="hub-folder-filter" aria-label="Filtrar por carpeta"
-                  value={activeFolder?.id ?? ''} onChange={event=>goto({section:'all',folderId:event.target.value || undefined})}>
-                  <option value="">Todas las carpetas</option>
-                  {noteFolders.map(folder=><option key={folder.id} value={folder.id}>{libraryFolderLabel(folder)}</option>)}
-                </select>}
                 <input type="search" aria-label="Filtrar sección" value={query} placeholder="Filtrar…" onChange={event=>setQuery(event.target.value)}/>
                 <select aria-label="Orden" value={order} onChange={event=>setOrder(event.target.value)}>
                   <option value="recent">Recientes</option><option value="name">A–Z</option>
@@ -591,7 +555,7 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
                 </button></li>;
               })}</ul>
               {!items.length && <p className="hub-muted">{query?'No hay coincidencias.':'Todavía no hay elementos.'}</p>}
-            </aside>
+            </aside>}
             {draft && <div className="hub-reader" data-reader-theme={theme} style={appearanceVars({...appearance,theme:glassTheme})}>
               <KnowledgeEditor key={editorKey} data={data} draft={draft} saved={saved} mode={mode} busy={busy}
                 back={closeReader}
@@ -603,7 +567,11 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
                   const entry=next.entries.find(item=>item.id===id);if(entry)openEditor(editing(entry),'read');
                 })}
                 remove={()=>saved&&setConfirmation({text:'¿Eliminar «'+saved.title+'»?',label:'Eliminar',run:()=>{
-                  void mutate({type:'remove',id:saved.id},()=>{setDraft(undefined);setReaderOpen(false);setFeedback({text:'Elemento eliminado.'});});
+                  void mutate({type:'remove',id:saved.id},()=>{
+                    if(section==='entry')showLocation('prompt');
+                    else {setDraft(undefined);setReaderOpen(false);}
+                    setFeedback({text:'Elemento eliminado.'});
+                  });
                 }})}
                 exportMarkdown={()=>saved&&void files({type:'markdown',id:saved.id})}
                 attach={()=>void files({type:'image'})}
@@ -612,10 +580,11 @@ export function NotesWorkspace({appearance, destination, visible, animate}: {app
               />
             </div>}
           </div>
-        </>}
+        }
       </main>
     </div>
-    {visible && data && showSearch && <HubSearch data={data} close={()=>toggleSearch(false)} choose={entry=>choose(entry,true)}/>}
+    {visible && data && showSearch && <HubSearch data={data}
+      close={()=>toggleSearch(false)} choose={entry=>choose(entry,true)}/>}
     {visible && confirmation && <dialog ref={confirmRef} className="hub-dialog hub-confirm" aria-label="Confirmación"
       onCancel={event=>{event.preventDefault();setConfirmation(undefined);}}>
       <p>{confirmation.text}</p>

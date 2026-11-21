@@ -1,7 +1,7 @@
 import {spawn,type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {z} from 'zod';
 import {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from '../shared/companion-media';
-type MediaMethod = 'list' | 'select' | 'read' | 'action' | 'nowPlaying' | 'snapshot';
+type MediaMethod = 'list' | 'select' | 'read' | 'action' | 'nowPlaying' | 'snapshot' | 'systemVolumeRead' | 'systemVolumeSet';
 export interface MediaRpc{request(method:MediaMethod,params?:Record<string,unknown>):Promise<unknown>;close():void;}
 type MediaQuery = <T>(method:MediaMethod,params:Record<string,unknown>,accept:(value:unknown)=>T)=>Promise<T>;
 /** Private, bounded line protocol to the fixed Windows helper. No shell and no retry. */
@@ -9,7 +9,7 @@ export class NativeMediaRpc implements MediaRpc{
  private child:ChildProcessWithoutNullStreams;private next=0;private pending?:{id:number;resolve:(v:unknown)=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>};private buffer='';private closed=false;
  constructor(executable:string){
   this.child=spawn(executable,[],{stdio:'pipe',windowsHide:true,shell:false});this.child.stderr.resume();this.child.stdin.on('error',()=>this.close());this.child.on('error',()=>this.close());this.child.on('close',()=>this.close());this.child.stdout.setEncoding('utf8');
-  this.child.stdout.on('data',(chunk:string)=>{this.buffer+=chunk;if(this.buffer.length>800000){this.close();return;}let cut;while((cut=this.buffer.indexOf('\n'))>=0){const line=this.buffer.slice(0,cut);this.buffer=this.buffer.slice(cut+1);try{const r=JSON.parse(line),p=this.pending;if(!p||r.id!==p.id)continue;clearTimeout(p.timer);this.pending=undefined;if(r.ok===true)p.resolve(r.result);else p.reject(Error(r.error==='stale'?'La sesión cambió. Elige de nuevo el reproductor.':r.error==='unsupported'?'Este control no está disponible en el reproductor.':'Windows no pudo completar la petición multimedia.'));}catch{this.close();return;}}});
+  this.child.stdout.on('data',(chunk:string)=>{this.buffer+=chunk;if(this.buffer.length>800000){this.close();return;}let cut;while((cut=this.buffer.indexOf('\n'))>=0){const line=this.buffer.slice(0,cut);this.buffer=this.buffer.slice(cut+1);try{const r=JSON.parse(line),p=this.pending;if(!p||r.id!==p.id)continue;clearTimeout(p.timer);this.pending=undefined;if(r.ok===true)p.resolve(r.result);else p.reject(Error(r.error==='stale'?'La sesión cambió. Elige de nuevo el reproductor.':r.error==='unsupported'?'Este control no está disponible en el reproductor.':r.error==='outputChanged'?'La salida de audio cambió.':'Windows no pudo completar la petición multimedia.'));}catch{this.close();return;}}});
  }
  request(method:MediaMethod,params:Record<string,unknown>={}){if(this.closed)return Promise.reject(Error('El reproductor se ha desconectado.'));if(this.pending)return Promise.reject(Error('Hay otra consulta multimedia en curso.'));return new Promise<unknown>((resolve,reject)=>{const id=++this.next,timer=setTimeout(()=>this.close(),6000);this.pending={id,resolve,reject,timer};this.child.stdin.write(JSON.stringify({id,method,...params})+'\n');});}
  close(){if(this.closed)return;this.closed=true;const p=this.pending;this.pending=undefined;if(p){clearTimeout(p.timer);p.reject(Error('El reproductor se ha desconectado. Comprueba de nuevo la sesión.'));}this.child.stdin.end();this.child.kill();}

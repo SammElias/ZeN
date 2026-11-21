@@ -1,20 +1,21 @@
 import type {CompanionStatus} from './codex-companion';
-import {hasCorrelatedResult} from './companion-codex-result';
+import {isLauncherPageSelected} from './companion-navigation';
 
 /** Redact at the main→renderer boundary, including hidden panels and IPC replies. */
 export function displayStatus(raw:CompanionStatus,revision:number,visible:boolean):CompanionStatus{
  const value=structuredClone(raw);value.revision=revision;
- const workspaceVisible=visible&&value.workspace?.expanded;
- const showActivity=workspaceVisible&&!value.settings.presentation&&!value.settings.paused&&value.workspace?.page==='codex'&&value.workspace.codexTab==='activity';
+ const privateView=visible&&!value.settings.presentation&&!value.settings.paused;
+ if(!privateView||!value.workspace?.expanded||value.workspace.page!=='metrics')delete value.oura;
+ if(!privateView||!value.workspace?.expanded||value.workspace.page!=='home')delete value.ouraHomeSleep;
+ if(!privateView||value.workspace?.expanded)delete value.ouraGlance;
+ const showActivity=visible&&value.workspace?.expanded&&isLauncherPageSelected(value.workspace.page,'codex')&&!value.settings.presentation&&!value.settings.paused;
  if(!showActivity)delete value.activitySessions;
- const showLatest=workspaceVisible&&!value.settings.presentation&&!value.settings.paused&&value.workspace?.page==='codex'&&value.workspace.codexTab==='summary';
- if(!workspaceVisible||value.workspace?.page!=='permissions'){
-  const pendingIds=new Set(value.approvals.map(approval=>approval.id));
-  for(const approval of value.approvals)approval.preview='';
-  for(const session of [...value.sessions,...value.activitySessions??[]])for(const step of session.steps)if(pendingIds.has(step.id))delete step.preview;
- }
+ if(!showActivity)for(const approval of value.approvals){approval.preview='';approval.tool='Acción de Codex';approval.label='Permiso pendiente';}
+ if(value.settings.paused||value.settings.presentation)value.approvalCount=0;
  for(const session of value.sessions){
-  if(!showLatest||hasCorrelatedResult(session.lastReply?.text))delete session.lastReply;
+  delete session.lastReply;
+  delete session.summary;
+  for(const step of session.steps)delete step.preview;
  }
  if(!value.settings.presentation)return value;
  if(value.appearance)value.appearance={...value.appearance,background:'aurora',imageUrl:undefined,imageName:undefined};

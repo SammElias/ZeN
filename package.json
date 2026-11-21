@@ -25,8 +25,10 @@
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
+    "hash-wasm": "4.13.0",
     "highlight.js": "^11.12.0",
     "image-size": "^2.0.4",
+    "kdbxweb": "2.1.1",
     "lucide-react": "^1.72.0",
     "openai": "7.25.0",
     "pdfjs-dist": "^6.3.289",
@@ -50,5 +52,11 @@
     "typescript": "7.0.2",
     "vite": "8.3.1",
     "vitest": "5.0.3"
+  },
+  "overrides": {
+    "kdbxweb": {
+      "@xmldom/xmldom": "0.8.15",
+      "fflate": "0.8.3"
+    }
   }
 }

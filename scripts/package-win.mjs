@@ -52,7 +52,7 @@ await applyWindowsIcon(executable);
 
 const appDirectory = join(destination, 'resources/app');
 await mkdir(join(appDirectory, 'dist'), { recursive: true });
-const paths = ['main.cjs', 'preload.cjs', 'renderer', helpers.hook.output, helpers.desktop.output, helpers.media.output];
+const paths = ['main.cjs', 'preload.cjs', 'renderer', helpers.hook.output, helpers.desktop.output, helpers.media.output, helpers.vaultClipboard.output, helpers.vaultHello.output];
 for (const path of paths) {
   await cp(join('dist', path), join(appDirectory, 'dist', path), {
     recursive: true, filter: source => extname(source).toLowerCase() !== '.pdb',

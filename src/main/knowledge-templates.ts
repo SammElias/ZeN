@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {DatabaseSync} from 'node:sqlite';
 import {imageSize} from 'image-size';
+import {enterpriseTemplateId,initialEnterpriseTemplateCount} from '../shared/enterprise-template-catalog';
 import {
   personalizeTemplate, templateVariables, TemplateDetail, TemplateDraft, TemplateFields, TemplateRecord, TemplateSummary, referenceBytes, templateLibraryBytes,
   templateLimit, type TemplateReply, type TemplateRequest, type TemplateImage,
@@ -60,19 +61,43 @@ function write(db: DatabaseSync, record: TemplateRecord) {
   return item;
 }
 
+const templateCollectionVersion='3';
+const initialEnterpriseIds=new Set(Array.from({length:initialEnterpriseTemplateCount},(_,index)=>enterpriseTemplateId(index+1)));
+
 function setInitialized(db: DatabaseSync) {
-  db.prepare("INSERT OR REPLACE INTO hub_state VALUES ('templates-initialized', '1')").run();
+  db.prepare("INSERT OR REPLACE INTO hub_state VALUES ('templates-initialized', ?)").run(templateCollectionVersion);
+}
+
+function withinCapacity(db: DatabaseSync) {
+  const result = db.prepare('SELECT count(*) AS count, coalesce(sum(length(CAST(value AS BLOB)) + coalesce(length(CAST(image AS BLOB)), 0)), 0) AS bytes FROM hub_templates').get()!;
+  // Leave space for the JSON array separators in the portable representation.
+  const count=Number(result.count);
+  return count<=templateLimit&&Number(result.bytes)+count+2<=templateLibraryBytes;
 }
 
 function checkCapacity(db: DatabaseSync) {
-  const result = db.prepare('SELECT count(*) AS count, coalesce(sum(length(CAST(value AS BLOB)) + coalesce(length(CAST(image AS BLOB)), 0)), 0) AS bytes FROM hub_templates').get()!;
-  // Leave space for the JSON array separators in the portable representation.
-  if (Number(result.count) > templateLimit || Number(result.bytes) + Number(result.count) + 2 > templateLibraryBytes) throw sizeError();
+  if(!withinCapacity(db))throw sizeError();
 }
 
 export function seedTemplates(db: DatabaseSync, seeds:()=>TemplateRecord[]) {
-  if (db.prepare("SELECT 1 FROM hub_state WHERE key='templates-initialized'").get()) return;
-  for (const record of seeds()) write(db, TemplateRecord.parse(record));
+  const initialized=db.prepare("SELECT value FROM hub_state WHERE key='templates-initialized'").get()?.value;
+  if (initialized===templateCollectionVersion) return;
+  const remove=db.prepare('DELETE FROM hub_templates WHERE id=?');
+  if (initialized==='1') {
+    // Replace the editorial collection once. Personal templates use independent IDs.
+    const legacy=Array.from({length:8},(_,index)=>`45b8c010-f3ba-479a-8d10-00000000000${index+1}`);
+    for(const id of legacy)remove.run(id);
+    const draft=readDraft(db);
+    if(draft?.id&&legacy.includes(draft.id))saveDraft(db,null);
+  }
+  const existing=db.prepare('SELECT 1 FROM hub_templates WHERE id=?');
+  for (const record of seeds()) {
+    if(initialized==='2'&&initialEnterpriseIds.has(record.id))continue;
+    if(existing.get(record.id))continue;
+    write(db,TemplateRecord.parse(record));
+    // During upgrade, personal records take priority over sample records at the library limit.
+    if(initialized!==undefined&&!withinCapacity(db))remove.run(record.id);
+  }
   checkCapacity(db);
   setInitialized(db);
 }

@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import {noteLimits} from './companion-notes';
 import {TemplateRecord, templateLimit, type TemplateDraft} from './knowledge-templates';
+import {DiscoveryFields,DiscoveryRecords} from './app-discovery';
 
 export const kinds = ['note', 'snippet', 'project', 'resource', 'prompt'] as const;
 export const languages = ['PowerShell', 'Bash', 'Python', 'C#', 'JavaScript', 'TypeScript', 'SQL', 'JSON', 'YAML', 'Azure CLI'] as const;
@@ -64,6 +65,7 @@ export const HubData = z.object({
   folders: z.array(HubFolder).max(150),
   entries: z.array(HubEntry).max(2500),
   templates: z.array(TemplateRecord).max(templateLimit).optional(),
+  discoveries: DiscoveryRecords.optional(),
 }).strict();
 export type HubData = z.infer<typeof HubData>;
 
@@ -84,6 +86,9 @@ export type HubDraft = z.infer<typeof HubDraft>;
 export type HubSession = {data: HubData; draft?: HubDraft; templateDraft?:TemplateDraft};
 
 export const HubAction = z.discriminatedUnion('type', [
+  z.object({type:z.literal('saveDiscovery'),id:id.optional(),expected:date.optional(),fields:DiscoveryFields}).strict(),
+  z.object({type:z.literal('removeDiscovery'),id,expected:date}).strict(),
+  z.object({type:z.literal('copyDiscovery'),fields:DiscoveryFields}).strict(),
   z.object({type: z.literal('save'), id: id.optional(), expected: date.optional(), fields: HubFields}).strict(),
   z.object({type: z.literal('duplicate'), id}).strict(),
   z.object({type: z.literal('favorite'), id}).strict(),

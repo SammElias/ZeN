@@ -116,6 +116,22 @@
 .companion-capsule .music-workspace { max-width: 1080px !important; }
 .companion-capsule .music-heading h2 { font-size: 26px; }
 .companion-capsule .music-heading .actions button { font-size: 12px; }
+.music-system-volume {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 12px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--zen-card-radius);
+  background: var(--zen-surface);
+}
+.music-system-volume-heading { display: flex; align-items: center; gap: 9px; color: var(--glass-text); }
+.music-system-volume-heading svg { flex: none; width: 17px; height: 17px; color: var(--zen-identity); }
+.music-system-volume-heading label { font-weight: 650; }
+.music-system-volume-heading output { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.music-system-volume input { width: 100%; min-width: 0; height: 25px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.music-system-volume input:disabled { cursor: default; }
+.music-system-volume p { margin: 0; color: var(--glass-secondary); font-size: var(--zen-meta); }
 .companion-capsule .music-player {
   --cover-size: clamp(108px, 17vw, 164px);
   grid-template-columns: var(--cover-size) minmax(0, 1fr);

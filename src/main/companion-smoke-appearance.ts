@@ -12,6 +12,7 @@ type Tools={
 const color=(value:string)=>value.startsWith('#')
  ?value.slice(1).match(/../g)!.slice(0,3).map(value=>parseInt(value,16))
  :value.match(/[\d.]+/g)!.slice(0,3).map(Number);
+const opacityOf=(value:string)=>value.startsWith('rgba(')?Number(value.match(/[\d.]+/g)!.at(-1)):1;
 const luminance=(rgb:number[])=>rgb.map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4)
  .reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
 function contrast(a:number[],b:number[]){const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
@@ -27,14 +28,18 @@ export async function smokeAppearance({cap,js,wait,nav,shot,selectPosition,compa
   const options={...original,...update};
   const result=await run(`window.companion.appearanceSave(${JSON.stringify(options)})`);
   if(!result.ok)throw Error(result.error);
-  await wait(()=>run(`document.querySelector('main').dataset.theme===${JSON.stringify(options.theme)}&&getComputedStyle(document.querySelector('main')).getPropertyValue('--glass-blur')===${JSON.stringify(options.blur+'px')}`));
+  await wait(()=>run(`(()=>{
+   const root=document.querySelector('main'),tokens=getComputedStyle(root);
+   return root.dataset.theme===${JSON.stringify(options.theme)}&&tokens.getPropertyValue('--glass-blur')===${JSON.stringify(options.blur+'px')}&&tokens.getPropertyValue('--glass-opacity').trim()===${JSON.stringify(String(options.opacity))};
+  })()`));
  };
  const style=()=>run(`(()=>{
   const surface=document.querySelector('.workspace-surface'),panel=document.querySelector('#capsule-content'),root=document.querySelector('main');
   const scene=getComputedStyle(surface,'::before'),glass=getComputedStyle(surface,'::after'),content=getComputedStyle(panel),tokens=getComputedStyle(root);
+  const capsule=getComputedStyle(document.querySelector('.compact-capsule'),'::before');
   return {scene:scene.backgroundImage,blur:glass.backdropFilter,tint:glass.backgroundColor,
    content:content.backgroundColor,contentBlur:content.backdropFilter,contentFilter:content.filter,
-   capsuleBlur:getComputedStyle(document.querySelector('.compact-capsule'),'::before').backdropFilter,
+   capsuleTint:capsule.backgroundColor,capsuleBlur:capsule.backdropFilter,
    ink:content.color,secondary:tokens.getPropertyValue('--glass-secondary').trim(),
    surface:surface.getBoundingClientRect().toJSON(),panel:panel.getBoundingClientRect().toJSON(),count:document.querySelectorAll('.workspace-surface').length};
  })()`);
@@ -56,9 +61,19 @@ export async function smokeAppearance({cap,js,wait,nav,shot,selectPosition,compa
  const blurred=await variation();
  report.glassPixels={sharp,blurred};
  check('glassBlurActuallyChangesWallpaper',sharp>=15&&blurred<sharp*.6);
+ for(const opacity of [glassOpacity.minimum,.42,glassOpacity.maximum]){
+  await apply({theme:'dark',background:'image',opacity,blur:24});
+  check('glassSlider-'+opacity,await run(`(()=>{
+   const input=document.querySelector('#preference-opacity');
+   return input?.min==='0'&&input.max==='100'&&input.valueAsNumber===${opacity*100};
+  })()`));
+  await nav('home');
+  const value=await style();
+  check('glassTint-'+opacity,opacityOf(value.tint)===opacity&&opacityOf(value.capsuleTint)===opacity&&value.scene.includes('zen-theme://background/'));
+ }
  const contrasts:Record<string,number>={};
  for(const theme of ['dark','light','monochrome'] as const){
-  await apply({theme,background:'image',opacity:glassOpacity.minimum,blur:24});
+  await apply({theme,background:'image',opacity:glassOpacity.initial,blur:24});
   let signature='';
   for(const page of sectionPages){
    await nav(page);
@@ -81,7 +96,7 @@ export async function smokeAppearance({cap,js,wait,nav,shot,selectPosition,compa
     panel.scrollTop=0;return unchanged&&scrolled;
    })()`));
   }
-  const value=await style(),tint=color(value.tint),alpha=Number(value.tint.match(/[\d.]+/g)!.at(-1));
+  const value=await style(),tint=color(value.tint),alpha=opacityOf(value.tint);
   const backgrounds=[0,255].map(level=>tint.map(channel=>channel*alpha+level*(1-alpha)));
   const minimum=Math.min(...backgrounds.flatMap(background=>[contrast(color(value.ink),background),contrast(color(value.secondary),background)]));
   contrasts[theme]=minimum;

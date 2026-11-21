@@ -31,6 +31,7 @@ const DraftFields = z.object({
   features: lines,
   useCases: lines,
   prompt: z.string().max(48_000),
+  reactPrompt: z.string().max(48_000).optional(),
   author: z.string().trim().max(120),
   sourceUrl: z.string().max(2048),
 }).strict();
@@ -64,7 +65,13 @@ const token = /\{\{([A-Za-z_][A-Za-z0-9_]{0,63})\}\}/g;
 export const templateVariableLabels: Record<string,string> = {
   nombre_proyecto:'Nombre del proyecto', tipo_aplicacion:'Tipo de aplicación', objetivo:'Objetivo',
   secciones:'Secciones', color_acento:'Color de acento', tecnologia:'Tecnología',
+  origen_datos:'Origen de datos',
 };
+export const TemplatePlatform = z.enum(['canvas','react']);
+export type TemplatePlatform = z.infer<typeof TemplatePlatform>;
+export function templatePrompt(item:Pick<TemplateFields,'prompt'|'reactPrompt'>, platform:TemplatePlatform = 'canvas') {
+  return platform==='react' ? item.reactPrompt?.trim() || undefined : item.prompt;
+}
 export function templateVariables(prompt: string) {
   return [...new Set(Array.from(prompt.matchAll(token), match => match[1]))];
 }
@@ -82,7 +89,7 @@ export const TemplateRequest = z.discriminatedUnion('type', [
   z.object({type:z.literal('duplicate'), id}).strict(),
   z.object({type:z.literal('image')}).strict(),
   z.object({type:z.literal('source'), id}).strict(),
-  z.object({type:z.literal('copy'), id, values:z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/),z.string().max(1024))}).strict(),
+  z.object({type:z.literal('copy'), id, platform:TemplatePlatform.optional(), values:z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/),z.string().max(1024))}).strict(),
 ]);
 export type TemplateRequest = z.infer<typeof TemplateRequest>;
 export type TemplateReply =

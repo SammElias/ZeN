@@ -2,19 +2,22 @@ import React, {useLayoutEffect, useRef, useState} from 'react';
 import {motion} from '../shared/companion-motion';
 import {canAnimate} from './companion-motion';
 import type {CompanionStatus} from '../shared/codex-companion';
-import {hubName, isLauncherPageSelected, launcherPages, type LauncherPage, type SectionPage} from '../shared/companion-navigation';
+import {capsulePages, hubName, isLauncherPageSelected, launcherPages, visibleLauncherPages, type LauncherPage, type SectionPage} from '../shared/companion-navigation';
 import {CompanionIcon} from './CompanionActions';
+import {ouraDuration} from '../shared/companion-oura';
 
 export const launcherName = {
   home: 'Home',
   codex: 'Codex',
-  spotify: 'Sonido',
+  spotify: 'Volumen',
   notes: hubName,
   calendar: 'Calendario',
+  metrics: 'Métricas',
   notices: 'Avisos',
 } satisfies Record<LauncherPage, string>;
 
 const launcherMime = 'application/x-zen-integration';
+const glanceDate=new Intl.DateTimeFormat('es',{day:'numeric',month:'short',timeZone:'UTC'});
 const launcherOrder = (status: CompanionStatus): readonly LauncherPage[] => status.workspace?.order ?? launcherPages;
 
 function moveLauncherPage(order: readonly LauncherPage[], from: LauncherPage, to: LauncherPage) {
@@ -39,11 +42,11 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
   const expanded = status.workspace?.expanded === true;
   const page = status.workspace?.page ?? 'home';
   const order = launcherOrder(status);
-  const visiblePages = order.filter((value): value is Exclude<LauncherPage,'notices'> => value !== 'notices');
-  const navigationPages = [...visiblePages, 'settings' as const];
+  const navigationPages = capsulePages(order);
   const activeSection = expanded ? navigationPages.find(value => isLauncherPageSelected(page, value)) : undefined;
-  const approvals = status.approvals.length;
-  const unread = status.notices.filter(notice=>!notice.read).length;
+  const approvals = status.approvalCount ?? status.approvals.length;
+  const unread = status.notices.filter(notice=>!notice.read&&notice.kind!=='permission').length;
+  const homeNotices=[approvals?approvals+' permisos por revisar':'',unread?unread+' avisos pendientes':''].filter(Boolean).join(' · ');
   useLayoutEffect(()=>{
     const root=nav.current,indicator=marker.current;
     if(!root||!indicator)return;
@@ -109,15 +112,17 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
     {navigationPages.map((value, index) => {
       const settings = value === 'settings';
       const name = settings ? 'Configuración' : launcherName[value];
-      const label = settings ? 'Ajustes' : name;
+      const label = name;
       const active = activeSection === value;
       const recent = !expanded && status.workspace?.recentSection === value;
-      const tooltip = (settings && active && !status.settings.windowLocked ? 'Ocultar ' : 'Abrir ') + label;
-      return <button key={value} type="button" data-page={value} data-section={value} data-hover-app={compact&&!settings?value:undefined} data-recent={recent || undefined}
-        aria-label={name} aria-description={recent ? 'Última sección usada' : undefined} aria-expanded={active} disabled={!ready}
+      const tooltip = 'Abrir ' + label;
+      const glance=compact&&!expanded&&value==='metrics'?status.ouraGlance:undefined;
+      const measured=glance?glanceDate.format(new Date(glance.day+'T12:00:00Z')):undefined;
+      const metric=glance?`Sueño · ${ouraDuration(glance.seconds)} · ${measured}`:undefined;
+      return <button key={value} type="button" data-page={value} data-section={value} data-hover-app={compact?value:undefined} data-recent={recent || undefined}
+        aria-label={name} aria-description={metric??(value==='home'&&homeNotices?homeNotices:recent?'Última sección usada':undefined)} aria-expanded={active} disabled={!ready}
         aria-controls="capsule-content"
-        title={value === 'codex' && approvals ? `${tooltip} · ${approvals} permisos pendientes` :
-          value==='home'&&unread?`${tooltip} · ${unread} avisos pendientes`:tooltip}
+        title={value==='home'&&homeNotices?`${tooltip} · ${homeNotices}`:metric??tooltip}
         aria-current={active ? 'page' : undefined} data-dragging={dragged === value}
         draggable={!compact&&!settings} onDragStart={compact||settings ? undefined : event => {
           setDragged(value);
@@ -148,16 +153,16 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
             openContext(value);
           } else if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
             event.preventDefault();
-            const target = visiblePages[index + (event.key === 'ArrowLeft' ? -1 : 1)];
-            if (target) reorder(value, target);
+            const target = navigationPages[index + (event.key === 'ArrowLeft' ? -1 : 1)];
+            if (target && target !== 'settings') reorder(value, target);
           }
         }} onClick={event=>{if(!dragged)onActivate(value,event.detail===0);}}>
         {value === 'home'
           ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>
-          : <CompanionIcon name={settings ? 'settings' : value === 'spotify' ? 'sound' : value === 'notes' ? 'notebook' : value==='calendar'?'calendar':'code'}/>}
+          : glance?<b className="oura-glance" aria-hidden="true"><small>{glance.current?'Sueño':measured}</small>{ouraDuration(glance.seconds,true)}</b>
+          : <CompanionIcon name={settings?'settings':value==='spotify'?'sound':value==='notes'?'notebook':value==='calendar'?'calendar':'metrics'}/>}
         <span>{label}</span>
-        {value === 'codex' && approvals > 0 && <b className="integration-badge permission-badge">{approvals}</b>}
-        {value === 'home' && unread > 0 && <b className="integration-badge">{unread>99?'99+':unread}</b>}
+        {value==='home'&&approvals+unread>0&&<b className={approvals?'integration-badge permission-badge':'integration-badge'} aria-hidden="true">{approvals+unread>99?'99+':approvals+unread}</b>}
       </button>;
     })}
   </nav>;
@@ -166,13 +171,14 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
 export function CapsuleMenu({status,context}:{status:CompanionStatus;context?:LauncherPage}){
  const [error,setError]=useState(''),order=launcherOrder(status);
  const run=async(p:Promise<{ok:boolean;error?:string}>)=>{const r=await p;setError(r.ok?'':r.error??'No se pudo completar la acción.');};
- const layout=status.workspace?.layout;
- const move=(offset:number)=>{if(!context)return;const to=order[order.indexOf(context)+offset];if(to)void run(window.companion.launcherOrder(moveLauncherPage(order,context,to)));};
+ const layout=status.workspace?.layout, visible=visibleLauncherPages(order);
+ const index=context?visible.findIndex(page=>page===context):-1;
+ const move=(offset:number)=>{if(!context||index<0)return;const to=visible[index+offset];if(to)void run(window.companion.launcherOrder(moveLauncherPage(order,context,to)));};
  return <section className="capsule-inline-menu" aria-label={context?'Acciones de '+launcherName[context]:'Distribución de ventana'}><h1>{context?launcherName[context]:'Ventana'}</h1>{context&&<div className="capsule-menu-grid">
   <button onClick={()=>void run(window.companion.navigate(context))}>Abrir {launcherName[context]}</button>
 
   {context==='codex'&&<><button onClick={()=>void run(window.companion.openCodex())}>Volver al chat fijado</button><button onClick={()=>void run(window.companion.navigate('permissions'))}>Revisar permisos</button></>}
-  <button disabled={order.indexOf(context)===0} onClick={()=>move(-1)}>← Mover a la izquierda</button><button disabled={order.indexOf(context)===order.length-1} onClick={()=>move(1)}>Mover a la derecha →</button>
+  {index>=0&&<><button disabled={index===0} onClick={()=>move(-1)}>← Mover a la izquierda</button><button disabled={index===visible.length-1} onClick={()=>move(1)}>Mover a la derecha →</button></>}
  </div>}
  {!context&&layout&&<details className="workspace-layout-menu">
   <summary>Distribución de ventana</summary>

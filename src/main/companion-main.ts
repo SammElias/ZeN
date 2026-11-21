@@ -1,5 +1,15 @@
 import {CompanionCalendar} from './companion-calendar';
 import {CalendarAction} from '../shared/companion-calendar';
+import {CompanionOura} from './companion-oura';
+import {authorizeOura} from './oura-oauth';
+import {OuraAction,ouraLegal} from '../shared/companion-oura';
+import {createSmokeOura} from './companion-smoke-oura';
+import {WeatherAction} from '../shared/companion-weather';
+import {CompanionWeather} from './companion-weather';
+import {createSmokeWeather} from './companion-smoke-weather';
+import {TranslatorAction} from '../shared/companion-translator';
+import {CompanionTranslator} from './companion-translator';
+import {smokeTranslatorResponse} from './companion-smoke-translator';
 import {CompanionAppearance} from './companion-appearance';
 import {AppearanceOptions} from '../shared/companion-appearance';
 import {registerProfileBackupIpc} from './companion-backup-ipc';
@@ -12,7 +22,7 @@ import {CompanionContext} from './companion-context';
 import {contextFile} from './companion-context-file';
 import {ContextInput} from '../shared/companion-context';
 import {CodexReferenceSelection} from '../shared/codex-result-document';
-import {app,BrowserWindow,Tray,Menu,Notification,screen,globalShortcut,shell,clipboard,dialog,protocol,nativeImage,systemPreferences} from 'electron';
+import {app,BrowserWindow,Tray,Menu,Notification,screen,globalShortcut,shell,clipboard,dialog,protocol,nativeImage,systemPreferences,safeStorage,powerMonitor} from 'electron';
 import {dirname,extname,isAbsolute,join} from 'node:path';
 import {execFile} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
@@ -30,19 +40,17 @@ import {inspectCodexCompanion} from './companion-codex-inspection';
 import {preferCompanionReply} from './companion-reply';
 import {registerCompanionShortcuts} from './companion-shortcuts';
 import {displayStatus} from '../shared/companion-privacy';
-import {CompanionSummaries} from './companion-summary';
-import {projectFile} from './companion-project-path';
 import {CompanionDesktop} from './companion-desktop';
 import {CompanionMedia,CompanionMediaObserver,NativeMediaRpc} from './companion-media';
-import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,CodexTab,SectionPage,CapsuleHoverInput,isLauncherPageSelected} from '../shared/companion-workspace';
+import {WorkspacePage,LauncherPage,LauncherOrder,CapsuleView,SectionPage,CapsuleHoverInput,isLauncherPageSelected} from '../shared/companion-workspace';
 import {CompanionLauncher} from './companion-launcher';
 import {KnowledgeHub} from './knowledge-hub';
-import {MediaCommand} from '../shared/companion-media';
+import {MediaCommand,SystemVolumeAction} from '../shared/companion-media';
+import {CompanionSystemVolume} from './companion-system-volume';
 import {mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
 import {CompanionWorkspaceWindow,compactIslandSize,edgeBounds,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
 import {EDGE_ISLAND,ISLAND_BLUR_MS} from '../shared/island';
 import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel} from './companion-capsule-layout';
-import {motion} from '../shared/companion-motion';
 import {CapsuleLocation,CapsuleMenuAnchor,WorkspaceLayoutAction,WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {capsuleMenuItems} from './companion-capsule-menu';
 import {companionIpc} from './companion-ipc';
@@ -50,6 +58,11 @@ import {companionChannel,companionInterfaceEffectChannel} from '../shared/compan
 import {surfaceSound,type InterfaceEffect} from '../shared/companion-interface-audio';
 import {nativeHelper} from './native-helper';
 import {CompanionHover} from './companion-hover';
+import {CompanionPanelTransition} from './companion-panel-transition';
+import {atomicVaultWrite,PasswordVault} from './password-vault';
+import {registerVaultIpc} from './companion-vault';
+import {copyVaultText} from './vault-clipboard';
+import {VaultHelloBinding,windowsVaultHello} from './vault-hello';
 protocol.registerSchemesAsPrivileged([{scheme:'zen-theme',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 const appUserModelId='com.zen.desktop';
 app.setName('ZEN');app.setAppUserModelId(appUserModelId);
@@ -78,7 +91,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    writeFileSync(join(profile,'companion-desktop-window.json'),'{"version":1,"mode":"app","bounds":{"x":5,"y":5,"width":1100,"height":900},"maximized":true}');
   }
   const appearance=new CompanionAppearance(profile,bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error();const size=image.getSize(),ratio=Math.min(1,2560/Math.max(size.width,size.height));if(ratio<1)image=image.resize({width:Math.max(1,Math.round(size.width*ratio)),height:Math.max(1,Math.round(size.height*ratio)),quality:'best'});return image.toPNG();});
-  let codexTab:CodexTab='activity';let contextPage:LauncherPage|undefined;
+  let contextPage:LauncherPage|undefined;
   let expanded=false,workspacePage:WorkspacePage=workspaceWindow.page??launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
   const renderer=join(__dirname,'renderer','index.html'),preload=join(__dirname,'preload.cjs'),icon=join(__dirname,'renderer','icons','zen.ico');
   const rendererQuery={view:'capsule'};
@@ -135,10 +148,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const surfaceVisible=()=>!cap.isDestroyed()&&cap.isVisible()&&!cap.isMinimized();
   let openDialogs=0,editing=false;
   let hoverInput:CapsuleHoverInput={inside:false,blocked:false,reduced:false};
-  let hoverClosing=false,panelOpening=false,nativeGeometryInteraction=false,fromApps=false;
-  let panelPaint:number|undefined,paintSequence=0;
-  let paintTimeout:ReturnType<typeof setTimeout>|undefined;
-  const cancelPanelPaint=()=>{clearTimeout(paintTimeout);panelPaint=undefined;};
+  let nativeGeometryInteraction=false,fromApps=false;
+  const animatePanel=()=>settings.motion&&!hoverInput.reduced;
+  const panelTransition=new CompanionPanelTransition({
+   visible:surfaceVisible,expanded:()=>expanded,quitting:()=>quitting,motionEnabled:animatePanel,
+   updateShape:()=>updateShape(),broadcast:()=>broadcast(),
+  });
   let blurTimer:ReturnType<typeof setTimeout>|undefined;
   const cancelAutoCollapse=()=>{clearTimeout(blurTimer);blurTimer=undefined;};
   const withWindowDialog=async <T,>(show:()=>Promise<T>)=>{
@@ -149,19 +164,33 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    finally{openDialogs--;hover.refresh();}
   };
   const workspaceVisible=(page?:WorkspacePage)=>surfaceVisible()&&expanded&&(page===undefined||workspacePage===page);
-  const summaryVisible=()=>workspaceVisible('codex')&&codexTab==='summary';
   const privateEffectsAllowed=()=>!settings.presentation&&!settings.paused;
-  const activityVisible=()=>workspaceVisible('codex')&&codexTab==='activity'&&privateEffectsAllowed();
+  const helloHelper=nativeHelper(__dirname,'vaultHello');
+  const helloOwner=()=>cap.getNativeWindowHandle().readBigUInt64LE().toString();
+  const helloBinding=process.platform==='win32'?new VaultHelloBinding(join(profile,'passwords-hello.json'),
+   windowsVaultHello(helloHelper,helloOwner,'prf'),atomicVaultWrite,windowsVaultHello(helloHelper,helloOwner,'passport')):undefined;
+  const vault=registerVaultIpc(companionIpc(cap,rendererUrl,()=>settings.presentation),cap,
+   new PasswordVault(join(profile,'passwords.kdbx'),atomicVaultWrite,helloBinding),
+   ()=>workspaceVisible('notes')&&!panelTransition.hoverClosing&&privateEffectsAllowed(),
+   text=>copyVaultText(nativeHelper(__dirname,'vaultClipboard'),text),withWindowDialog);
+  powerMonitor.on('lock-screen',vault.lock);
+  powerMonitor.on('suspend',vault.lock);
+  cap.webContents.on('render-process-gone',vault.lock);
+  app.on('before-quit',vault.lock);
+  const activityVisible=()=>workspaceVisible()&&isLauncherPageSelected(workspacePage,'codex')&&privateEffectsAllowed();
   const snapshot=()=>displayStatus({
    ...hub.status(),
+   oura:privateEffectsAllowed()&&workspaceVisible('metrics')?oura.snapshot():undefined,
+   ouraGlance:privateEffectsAllowed()&&!expanded&&surfaceVisible()?oura.glance():undefined,
+   ouraHomeSleep:privateEffectsAllowed()&&workspaceVisible('home')?oura.homeSleep():undefined,
    activitySessions:activityVisible()?hub.activitySessions():undefined,
    appearance:appearance.status(),
    workspace:{
     expanded,island:!expanded,islandSizing:false,islandControls:false,page:workspacePage,location:location(),geometry:currentLayout(),
-    surfaceVisible:surfaceVisible(),hoverClosing,panelOpening,panelPaint,fromApps,
+    surfaceVisible:surfaceVisible(),...panelTransition.status(),fromApps,
     islandStacked:compactIslandSize(isEdge()?dockDisplay().workArea:parked.area,isEdge()&&dock.side!=='top').stacked,
     edge:isEdge()?{side:dock.side,railTop:layout().capsule.y}:undefined,
-    codexTab,context:contextPage,...launcherPreferences.status(),recentSection:launcherPreferences.recentSection,compact:'status',
+    context:contextPage,...launcherPreferences.status(),recentSection:launcherPreferences.recentSection,compact:'status',
     nativeCaption,layout:workspaceWindow.preferences,canRestorePosition:!!workspaceWindow.previous,
    },
    desktop:desktop?.status(),
@@ -171,7 +200,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(!cap.isDestroyed()&&surfaceVisible())cap.webContents.send(companionInterfaceEffectChannel,effect);
   };
   function changeSurface(run:()=>void) {
-   const current=()=>({island:!expanded,expanded,page:workspacePage,tab:codexTab,
+   const current=()=>({island:!expanded,expanded,page:workspacePage,
     disclosure:workspacePage==='options'?'options':workspacePage==='shortcuts'?`shortcuts/${contextPage}`:undefined});
    const before=current();
    run();
@@ -179,11 +208,17 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(effect)playEffect(effect);
    return true;
   }
-  const activateNotice=async(n:CompanionNotice)=>{if(n.id==='test'){reveal();return;}await openExternal(noticeChatUrl(hub.status(),n));};
-  const notify=(n:CompanionNotice)=>{if(smoke||settings.presentation||isSilenced(settings)||!Notification.isSupported())return;const toast=new Notification({title:'ZEN · '+n.title,body:n.id==='test'?'Aviso de prueba de ZEN.':'Pulsa para volver a este chat en Codex.',silent:n.id==='test'||!settings.sounds||(cap.isVisible()&&!cap.isMinimized()),icon});toast.on('click',()=>{void activateNotice(n).catch(()=>{});});toast.show();};
-  const summaries=new CompanionSummaries(smoke?undefined:target,(id,key,value)=>hub.setSummary(id,key,value));
-  const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(event,session,reply)=>{
-   summaries.observe(event,session);
+  const observedChatUrl=(id:string)=>codexChatUrl({sessions:hub.activitySessions(),approvals:[],targetError:hub.targetError},id);
+  const activateNotice=async(n:CompanionNotice)=>{
+   if(n.id==='test'){reveal();return;}
+   const status=hub.status();
+   if(n.kind!=='permission'){await openExternal(noticeChatUrl(status,n));return;}
+   if(!privateEffectsAllowed()||!status.notices.some(notice=>notice.id===n.id))return;
+   if(status.approvals.some(approval=>approval.id===n.id)){reveal();changeSurface(()=>openWorkspace('permissions'));return;}
+   await openExternal(observedChatUrl(n.session));
+  };
+  const notify=(n:CompanionNotice)=>{if(smoke||settings.presentation||isSilenced(settings)||!Notification.isSupported())return;const toast=new Notification({title:'ZEN · '+n.title,body:n.id==='test'?'Aviso de prueba de ZEN.':n.kind==='permission'?'Pulsa para revisar la solicitud.':'Pulsa para volver a este chat en Codex.',silent:n.id==='test'||!settings.sounds||(cap.isVisible()&&!cap.isMinimized()),icon});toast.on('click',()=>{void activateNotice(n).catch(()=>{});});toast.show();};
+  const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(_event,session,reply)=>{
    if(reply){context.observeReply(session.id,session.cwd,reply);calendar.observe(session.id,session.cwd,reply.text);}
   });hub.targetError=targetError;
   const codexHome=smoke?join(profile,'codex-fixture'):process.env.CODEX_HOME??join(app.getPath('home'),'.codex');
@@ -206,6 +241,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const nativeMedia = () => new NativeMediaRpc(mediaHelper);
   const mediaObserver = new CompanionMediaObserver(smokeMedia?.observer ?? nativeMedia, mediaObservationAllowed);
   const media = new CompanionMedia(smokeMedia?.player ?? nativeMedia, mediaAllowed);
+  const systemVolume = new CompanionSystemVolume(smokeMedia?.systemVolume ?? nativeMedia,
+   () => mediaAllowed()&&!panelTransition.hoverClosing, () => cap.isFocused());
+  cap.webContents.on('render-process-gone',()=>systemVolume.close());
   let requestInFlight = false;
   const withRequest = async <T,>(send: () => Promise<T>) => {
    if (requestInFlight) throw Error('Ya hay una petición en curso.');
@@ -233,7 +271,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    });
   };
   const context=new CompanionContext({
-   policy:()=>({visible:summaryVisible(),presentation:settings.presentation,paused:settings.paused,target,targetError}),
+   policy:()=>({visible:workspaceVisible('codex'),presentation:settings.presentation,paused:settings.paused,target,targetError}),
    pick:async verify=>{
     let path:string|undefined;
     if(smoke){
@@ -258,11 +296,22 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    policy:()=>({visible:workspaceVisible('calendar'),allowed:privateEffectsAllowed(),target:targetError?undefined:target}),
    queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:broadcast,
   });
+  const smokeOura=smoke?createSmokeOura():undefined;
+  const oura=new CompanionOura(join(profile,'companion-oura.bin'),safeStorage,{
+   changed:broadcast,allowed:privateEffectsAllowed,
+   authorize:(clientId,signal)=>authorizeOura(clientId,url=>shell.openExternal(url),signal),
+   ...smokeOura?.dependencies,
+  });
+  const wakeOura=()=>oura.wake();
+  const weatherAllowed=()=>privateEffectsAllowed()&&workspaceVisible('home')&&!panelTransition.hoverClosing;
+  const weather=new CompanionWeather(join(profile,'companion-weather.bin'),safeStorage,{
+   allowed:weatherAllowed,...(smoke?createSmokeWeather():undefined),
+  });
+  const translator=new CompanionTranslator(join(profile,'companion-translator.bin'),safeStorage,
+   ()=>privateEffectsAllowed()&&workspaceVisible('notes')&&!panelTransition.hoverClosing,
+   smoke?smokeTranslatorResponse:undefined);
   let shapeSize='',captionInset=0,workspaceFrame=false;
   let hoverRegion:Area[]=[],capsuleRegion:Area[]=[];
-  let panelRetraction=0,retractionTimer:ReturnType<typeof setInterval>|undefined;
-  const resetRetraction=()=>{clearInterval(retractionTimer);panelRetraction=0;panelOpening=false;};
-  const animatePanel=()=>settings.motion&&!hoverInput.reduced;
   const desktopHelper=nativeHelper(__dirname,'desktop');
   const frameInsets=new Map<string,{x:number;y:number}>();
   const insetKey=(display:number,workspace=workspaceFrame)=>`${display}:${workspace}`;
@@ -275,12 +324,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const updateShape=()=>{
    const layout=currentLayout(),bounds=cap.getBounds();
    // Keep the new area clipped until the renderer has drawn its glass and content.
-   const geometry=panelPaint===undefined?layout:{...layout,panel:undefined};
+   const geometry=panelTransition.paintToken===undefined?layout:{...layout,panel:undefined};
    const display=screen.getDisplayMatching(bounds).id;
    const inset=(nativeCaption&&!cap.isMaximized()&&
     (frameInsets.get(insetKey(display))??frameInsets.get(insetKey(display,!workspaceFrame))))||{x:0,y:0};
    const side=isEdge()?dock.side:undefined;
-   const shown=retractCapsulePanel(geometry,side,panelRetraction);
+   const shown=retractCapsulePanel(geometry,side,panelTransition.retraction);
    const key=JSON.stringify([geometry,shown.panel,side,inset]);
    if(key===shapeSize)return;
    const offset=(rect:Area)=>({...rect,x:rect.x+inset.x,y:rect.y+inset.y});
@@ -291,36 +340,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    shapeSize=key;
    captionInset=nativeCaption?workspaceCaptionHeight:0;
   };
-  const animateRetraction=(closing:boolean)=>{
-   clearInterval(retractionTimer);
-   const from=panelRetraction,to=closing?1:0;
-   panelOpening=!closing&&from!==to;
-   if(from===to)return;
-   const start=performance.now();
-   retractionTimer=setInterval(()=>{
-    if(quitting||!expanded||!surfaceVisible()){resetRetraction();return;}
-    const t=animatePanel()?Math.min(1,(performance.now()-start)/motion.panelTransition):1;
-    panelRetraction=from+(to-from)*t*t*(3-2*t);
-    updateShape();
-    if(t===1){
-     clearInterval(retractionTimer);
-     if(panelOpening){panelOpening=false;broadcast();}
-    }
-   },16);
-  };
-  const finishPanelPaint=(token:number)=>{
-   if(token!==panelPaint||!expanded||!surfaceVisible())return false;
-   cancelPanelPaint();
-   if(!hoverClosing&&animatePanel()){
-    panelRetraction=1;
-    animateRetraction(false);
-   }
-   updateShape();
-   broadcast();
-   return true;
-  };
-  const revealPaintedPanel=async(token:number)=>{
-   if(token!==panelPaint||!surfaceVisible())return false;
+  const capturePanelFrame=async()=>{
    const panel=currentLayout().panel;
    if(!panel)return false;
    try{
@@ -329,7 +349,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     const point={x:panel.x+Math.floor(panel.width/2),y:panel.y+Math.floor(panel.height/2),width:1,height:1};
     await cap.webContents.capturePage(point,{stayAwake:true});
    }catch{return false;}
-   return finishPanelPaint(token);
+   return true;
   };
   const readFrameInset=()=>{
    if(!nativeCaption||cap.isDestroyed()||cap.isMaximized()||cap.isMinimized())return;
@@ -415,9 +435,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   cap.on('maximize',()=>{scheduleWorkspaceSave();broadcast();});
   const rememberRail=()=>workspaceWindow.save({mode:'capsule',page:workspacePage,current:parked,edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
   const leaveWorkspace=()=>{
+   vault.lock();
+   systemVolume.close();
+   weather.cancel();
+   translator.cancel();
    clearTimeout(savePositionTimer);
-   cancelPanelPaint();
-   resetRetraction();
+   panelTransition.reset();
    changingMode=true;
    if(cap.isMaximized())cap.unmaximize();
    expanded=false;
@@ -485,6 +508,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   });
   const invalidateContext=()=>{context.invalidate();replyEpoch++;};
   const openWorkspace=(page:WorkspacePage,byHover=false,fromLauncher=byHover)=>{
+   if(workspacePage!==page){vault.lock();systemVolume.close();weather.cancel();translator.cancel();}
    cancelAutoCollapse();
    if(!byHover)hover.selectExplicitly();
    if(expanded&&workspacePage===page){broadcast();return;}
@@ -496,23 +520,19 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(page==='notices')hub.markNoticesRead();
    visibility.invoke();
    if(!expanded){
-    if(byHover){
-     const token=panelPaint=++paintSequence;
-     // An occluded renderer can suspend frame callbacks. Bound the wait for it.
-     paintTimeout=setTimeout(()=>finishPanelPaint(token),250);
-    }
+    if(byHover)panelTransition.prepareHoverOpen();
     enterWorkspace(byHover);
    }
    syncVisibility();
    broadcast();
    if(!byHover)hover.refresh();
-   if(page==='codex'||page==='calendar')void refreshLastReply();
+   if(page==='calendar')void refreshLastReply();
   };
   const collapse=()=>{
    cancelAutoCollapse();
    if(openDialogs)return;
    endDrag();
-   if(expanded){invalidateContext();leaveWorkspace();hoverClosing=false;hover.collapsed();}
+   if(expanded){invalidateContext();leaveWorkspace();hover.collapsed();}
    broadcast();syncVisibility();
   };
   const showCapsule=(explicit=true)=>{
@@ -587,10 +607,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    open:page=>changeSurface(()=>openWorkspace(page,true)),
    close:()=>changeSurface(collapse),
    previewClose:closing=>{
-    hoverClosing=closing;
-    if(quitting||!surfaceVisible())return;
-    animateRetraction(closing);
-    broadcast();
+    if(closing){systemVolume.close();weather.cancel();translator.cancel();}
+    panelTransition.previewClose(closing,closing?vault.lockBeforeTransition():undefined);
    },
   });
   if(nativeCaption){
@@ -613,6 +631,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const canAutoCollapse=()=>!nativeCaption&&expanded&&settings.collapseOnBlur&&!settings.windowLocked&&!settings.keepExpanded&&
    !editing&&!dragTimer&&!moved&&!openDialogs&&!requestInFlight&&!quitting&&surfaceVisible();
   cap.on('blur',()=>{
+   vault.conceal();
    const eligible=canAutoCollapse();
    endDrag();
    hover.refresh();
@@ -636,7 +655,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    syncVisibility();
    broadcast();
   });
-  const hidePrivateContent=()=>{cancelPanelPaint();resetRetraction();hoverInput={reduced:hoverInput.reduced,inside:false,blocked:false};hover.reset();invalidateContext();mediaObserver.close();broadcast();};
+  const hidePrivateContent=()=>{vault.lock();panelTransition.reset();hoverInput={reduced:hoverInput.reduced,inside:false,blocked:false};hover.reset();invalidateContext();mediaObserver.close();systemVolume.close();weather.cancel();translator.cancel();broadcast();};
   cap.on('hide',hidePrivateContent);
   cap.on('minimize',()=>{setTaskbarHidden(false);hidePrivateContent();});
   const reposition=()=>{
@@ -671,7 +690,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const tray=new Tray(icon);tray.setToolTip('ZEN · Codex');tray.setContextMenu(Menu.buildFromTemplate([{label:'Abrir ZEN',click:()=>{reveal();if(!expanded)openWorkspace(workspacePage);}},{label:'Mostrar cápsula',click:()=>{if(expanded)collapse();reveal();}},{label:'Volver al chat de Codex',click:()=>void openCurrent()},{label:'Volver a mi aplicación',click:()=>void desktop?.restore().catch(()=>{})},{type:'separator'},{label:'Salir de ZEN',click:()=>app.quit()}]));tray.on('click',reveal);
   let shortcutIssue:string|undefined,checking:Promise<boolean>|undefined;
   let replyRead:Promise<void>|undefined;
-  const replyVisible=()=>!smoke&&!targetError&&(summaryVisible()||workspaceVisible('calendar')&&calendar.waiting)&&privateEffectsAllowed();
+  const replyVisible=()=>!smoke&&!targetError&&workspaceVisible('calendar')&&calendar.waiting&&privateEffectsAllowed();
   const refreshLastReply=()=>{
    const selected=target;
    if(!selected||!replyVisible()||replyRead)return replyRead;
@@ -691,6 +710,33 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    finally{rpc?.close();hub.checking=false;checking=undefined;broadcast();}
   })();
   const handle=companionIpc(cap,rendererUrl,()=>settings.presentation);
+  handle('translator',TranslatorAction,action=>translator.handle(action));
+  handle('weather',WeatherAction,async action=>{
+   if(!weatherAllowed())throw Error('Abre Home y desactiva Pausa o Presentación para consultar el clima.');
+   if(action.type==='provider'){await openExternal('https://openweathermap.org/');return weather.status();}
+   const result=action.type==='refresh'?await weather.refresh(action.force):await weather.configure(action);
+   if(!weatherAllowed())throw Error('La vista de Clima se cerró.');
+   return result;
+  });
+  handle('oura',OuraAction,async action=>{
+   if(!workspaceVisible('metrics')||!privateEffectsAllowed())throw Error('Abre Métricas y desactiva Pausa o Presentación.');
+   switch(action.type){
+    case 'refresh':await oura.refresh();break;
+    case 'connect':await oura.connect(action.clientId);break;
+    case 'cancel':oura.cancel();break;
+    case 'capsule':oura.setCapsule(action.mode);break;
+    case 'legal':await openExternal(ouraLegal[action.page]);break;
+    case 'disconnect':{
+     const answer=smoke?0:(await withWindowDialog(()=>dialog.showMessageBox(cap,{type:'question',title:'Desconectar Oura',
+      message:'¿Desconectar Oura?',detail:'ZEN eliminará la sesión y las métricas guardadas en este equipo. Conservará el Client ID para volver a conectar.',
+      buttons:['Desconectar','Cancelar'],defaultId:1,cancelId:1}))).response;
+     if(answer!==0)return false;
+     if(!workspaceVisible('metrics')||!privateEffectsAllowed())throw Error('Vuelve a Métricas para desconectar Oura.');
+     oura.disconnect();break;
+    }
+   }
+   return true;
+  });
   const none=z.undefined();
   const setLocation=(next:CapsuleLocation)=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para elegir su ubicación.');
@@ -729,9 +775,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('check',none,()=>smoke?true:check());
   handle('openCodex',z.string().max(160).optional(),async id=>{
    const status=hub.status();
-   const source=id&&activityVisible()&&id!==status.target?.session
-    ?{sessions:hub.activitySessions(),approvals:[],targetError:status.targetError}:status;
-   await openExternal(codexChatUrl(source,id));
+   const observedNotice=id&&privateEffectsAllowed()&&workspaceVisible('notices')&&status.notices.some(n=>n.kind==='permission'&&n.session===id);
+   await openExternal(id&&(activityVisible()||observedNotice)&&id!==status.target?.session?observedChatUrl(id):codexChatUrl(status,id));
    return true;
   });
   handle('returnApp',none,()=>{if(!desktop)throw Error('Control de ventanas no disponible.');return desktop.restore();});
@@ -770,13 +815,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   registerNotesIpc(handle, {
    notes, window: cap, requireWorkspace, privateEffectsAllowed, withWindowDialog, copy: copyText, openExternal,
   });
-  handle('codexTab',CodexTab,tab=>changeSurface(()=>{if(codexTab!==tab){invalidateContext();codexTab=tab;}openWorkspace('codex');}));
   handle('togglePage',SectionPage,page=>{
    if(!surfaceVisible()||openDialogs)throw Error('Vuelve a la cápsula para cambiar de sección.');
-   changeSurface(()=>{
-    if(page==='settings'&&expanded&&workspacePage===page&&!settings.windowLocked)collapse();
-    else openWorkspace(expanded&&isLauncherPageSelected(workspacePage,page)?workspacePage:page,false,page!=='settings');
-   });
+   changeSurface(()=>openWorkspace(expanded&&isLauncherPageSelected(workspacePage,page)?workspacePage:page,false,true));
    return {expanded,page:workspacePage,revision};
   });
   handle('togglePanel',none,()=>{
@@ -795,12 +836,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    hover.pointer(input.inside?input.app:undefined);
    return true;
   });
-  handle('panelPainted',z.number().int().positive(),revealPaintedPanel);
+  handle('panelPainted',z.number().int().positive(),token=>panelTransition.confirmPaint(token,capturePanelFrame));
   handle('compact',CapsuleView,view=>changeSurface(()=>{if(view==='status')collapse();else openWorkspace(view);visibility.invoke();syncVisibility();broadcast();}));
   handle('launcherOrder',LauncherOrder,order=>{launcherPreferences.reorder(order);broadcast();return true;});
   handle('options',none,()=>changeSurface(()=>openWorkspace('options')));
   handle('launcherContext',LauncherPage,page=>changeSurface(()=>{contextPage=page;openWorkspace('shortcuts');}));
   handle('mediaCurrent',none,()=>media.current());
+  handle('systemVolume',SystemVolumeAction,action=>systemVolume.request(action));
   handle('mediaSnapshot',z.literal(true).optional(),followSystem=>media.snapshot(followSystem));
   handle('mediaList',none,()=>media.list());
   handle('mediaSelect',z.uuid(),id=>media.select(id));
@@ -817,8 +859,10 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('contextHandoff',z.uuid(),id=>context.handoff(id));
   handle('contextResult',none,()=>context.result());
   handle('contextSource',CodexReferenceSelection,selection=>context.source(selection));
-  handle('locate',z.object({session:z.string().max(160),path:z.string().max(4096)}).strict(),async v=>{if(settings.presentation)throw Error('Desactiva Presentación para ver ubicaciones.');const s=hub.status().sessions.find(s=>s.id===v.session);if(!s||s.state!=='finished'||!s.summary?.files.some(f=>f.path===v.path))throw Error('Este archivo no pertenece al resumen actual.');try{const p=await projectFile(s.cwd,v.path,true);if(p.missing)await shell.openPath(p.folder);else shell.showItemInFolder(p.file);return true;}catch{throw Error('La ubicación ya no está disponible dentro del proyecto.');}});
-  handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),value=>{requireWorkspace('permissions');hub.decide(value.id,value.decision);return true;});
+  handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),value=>{
+   if(!activityVisible())throw Error('Abre Actividad de Codex para revisar el permiso.');
+   hub.decide(value.id,value.decision);return true;
+  });
   handle('install',none,async()=>{requireWorkspace('settings');await integration.install();if(!smoke)void check();return true;});
   const persist=(v:CompanionSettings)=>{
    if(v.shortcut.toLowerCase()===v.returnShortcut.toLowerCase())throw Error('Usa atajos diferentes para la cápsula y el chat.');
@@ -832,16 +876,17 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(lockChanged&&v.windowLocked)endDrag();
    if(workspaceFrame&&lockChanged)cap.setMovable(!v.windowLocked);
    if(lockChanged||!v.collapseOnBlur||v.keepExpanded)cancelAutoCollapse();
+   const ouraPolicyChanged=v.paused!==settings.paused||v.presentation!==settings.presentation;
    settings=v;
+   if(ouraPolicyChanged)oura.policyChanged();
    if(lockChanged){
     // The panel is still clipped here, so locking the visible capsule cancels the reveal.
-    if(v.windowLocked&&panelPaint!==undefined)collapse();
+    if(v.windowLocked&&panelTransition.paintToken!==undefined)collapse();
     hover.lockChanged();
    }
-   if(v.paused)summaries.clear();
    if(changed){shortcutIssue=undefined;hub.error=undefined;}
    hub.update(v);
-   if(v.presentation||v.paused){context?.clear();replyEpoch++;media?.close();mediaObserver?.close();}
+   if(v.presentation||v.paused){vault.lock();context?.clear();replyEpoch++;media?.close();mediaObserver?.close();systemVolume.close();weather.cancel();translator.cancel();}
    syncVisibility();
    hover.refresh();
    return true;
@@ -906,6 +951,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     previousApp:desktop?.status()??{available:false},setLocation,move:moveCapsule,
     update:value=>persist({...settings,...value}),layout:()=>changeSurface(()=>openWorkspace('options')),
     appearance:()=>changeSurface(()=>openWorkspace('settings')),openChat:openCurrent,
+    openNotices:()=>{if(privateEffectsAllowed())changeSurface(()=>openWorkspace('notices'));},
     restoreApp:()=>desktop?.restore(),hide,quit:()=>app.quit(),run:action=>{
      selected=true;
      if(surfaceVisible())void Promise.resolve().then(action).catch(error=>{dialog.showErrorBox('ZEN',String(error));});
@@ -936,15 +982,15 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   });
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');copyText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
-  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;cancelPanelPaint();resetRetraction();hover.reset();clearInterval(ticker);clearInterval(replyTicker);cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();summaries.clear();media?.close();mediaObserver?.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
+  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);powerMonitor.removeListener('resume',wakeOura);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
   await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
   setCaptionTheme();
   if(workspaceWindow.startupMode==='workspace')enterWorkspace();
   else positionSurface();
   await readFrameInset();
   setTopmost(settings.alwaysOnTop);
-  surfaceReady=true;showCapsule(false);if(!smoke)void check();
+  surfaceReady=true;showCapsule(false);if(!smoke){powerMonitor.on('resume',wakeOura);wakeOura();void check();}
   if(hoverSmoke)return;
-  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture:smokeMedia.state,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
+  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});
 }

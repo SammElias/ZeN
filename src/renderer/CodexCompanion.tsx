@@ -5,7 +5,8 @@ import {activeSession} from '../shared/companion-presentation';
 import {defaultAppearance, type AppearanceState} from '../shared/companion-appearance';
 import type {LauncherPage, SectionActivation, SectionPage, WorkspacePage} from '../shared/companion-workspace';
 import {CAPSULE_POSITION, EDGE_ISLAND, ISLAND_LAYOUT} from '../shared/island';
-import {appCubeDirection, hubName, launcherPages, type AppPage} from '../shared/companion-navigation';
+import {appCubeDirection, capsulePages, hubName} from '../shared/companion-navigation';
+import {concealVaultView} from './PasswordVault';
 import {canAnimate,motionStyle} from './companion-motion';
 import {motion} from '../shared/companion-motion';
 import type {ContextDraft} from './CodexContext';
@@ -19,8 +20,9 @@ import {CompanionHome} from './CompanionHome';
 import {CompanionMusic, useMediaPlayer, useNowPlaying} from './CompanionMusic';
 import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
-import type {HubDestination} from './NotesWorkspace';
+import {CodexRequest} from '../shared/companion-request';
 import {CompanionCalendar} from './CompanionCalendar';
+import {CompanionMetrics} from './CompanionMetrics';
 import {DynamicIsland} from './DynamicIsland';
 import {defaultNeon} from '../shared/companion-neon';
 import {NeonBorder} from './NeonBorder';
@@ -63,6 +65,8 @@ function useCompanion(panel: React.RefObject<HTMLElement|null>) {
   function update(value: CompanionStatus) {
    if((latest.revision??-1)>(value.revision??0))return;
    latest=value;
+   if(shown.workspace?.page!==value.workspace?.page||!value.workspace?.expanded||value.workspace?.hoverClosing||
+     !value.workspace?.surfaceVisible||value.settings.paused||value.settings.presentation)concealVaultView();
    const element=panel.current as CubePanel|null;
    const next=value.workspace;
    const canTurn=element&&!element.hidden&&next?.expanded&&next.surfaceVisible&&next.panelPaint===undefined&&
@@ -76,8 +80,7 @@ function useCompanion(panel: React.RefObject<HTMLElement|null>) {
    stopCube();
    if(canTurn&&next.fromApps&&element.startViewTransition){
     const before=element.dataset.page as WorkspacePage|undefined;
-    const buttons=element.closest('main')?.querySelectorAll<HTMLElement>('.capsule-launcher [data-hover-app]:enabled');
-    const order=Array.from(buttons??[]).filter(button=>button.getClientRects().length).map(button=>button.dataset.hoverApp as AppPage);
+    const order=capsulePages(shown.workspace?.order);
     const direction=before&&appCubeDirection(order,before,next.page);
     if(direction){
      const pending:NonNullable<typeof cube>={element,page:next.page,committed:false};
@@ -173,6 +176,7 @@ export function CodexCompanion(){
  const panelPaint=status.workspace?.panelPaint;
  const actions=useRef<Promise<unknown>>(Promise.resolve());
  const [homeDraft,setHomeDraft]=useState('');
+ const [assessmentDraft,setAssessmentDraft]=useState<string>();
  const contextKey=JSON.stringify([status.target?.session,status.target?.cwd,status.targetError,status.settings.paused,status.settings.presentation]);
  const contextMemory=useMemo<{current?:ContextDraft}>(()=>({}),[contextKey]);
  const [notesOpened,setNotesOpened]=useState(false);
@@ -182,7 +186,6 @@ export function CodexCompanion(){
  const [sectionFocus,setSectionFocus]=useState<(SectionActivation&{section:SectionPage})>();
  const menuOpener=useRef<HTMLElement|null>(null);
  const [themePreview,setThemePreview]=useState<AppearanceState>();
- const [notesDestination,setNotesDestination]=useState<HubDestination>();
  const notesVisible=page==='notes'&&!status.settings.presentation&&!status.settings.paused;
  const safeNotes=!status.settings.presentation&&!status.settings.paused;
  useEffect(()=>{if(notesVisible&&expanded)setNotesOpened(true);},[notesVisible,expanded]);
@@ -192,9 +195,7 @@ export function CodexCompanion(){
   return ()=>document.removeEventListener('visibilitychange',clearWhenHidden);
  },[contextMemory]);
  useEffect(()=>{if(status.settings.presentation||status.settings.paused)setHomeDraft('');},[status.settings.presentation,status.settings.paused]);
- useEffect(()=>{
-  if(notesVisible)return()=>setNotesDestination(undefined);
- },[notesVisible]);
+ useEffect(()=>{if(!safeNotes&&assessmentDraft!==undefined)setAssessmentDraft(undefined);},[safeNotes,assessmentDraft]);
  const savedAppearance = status.appearance ?? defaultAppearance;
  const appearance: AppearanceState = status.settings.presentation
   ? {...savedAppearance, background: 'aurora', imageUrl: undefined, imageName: undefined}
@@ -205,13 +206,14 @@ export function CodexCompanion(){
  useCompanionAudio(status,ready);
  useEffect(()=>{const q=matchMedia('(prefers-reduced-motion: reduce)'),fn=()=>setReduced(q.matches);q.addEventListener('change',fn);return()=>q.removeEventListener('change',fn);},[]);
  const navigate=(v:WorkspacePage)=>void window.companion.navigate(v).then(r=>{if(!r.ok)setError(r.error);});
+ async function prepareAssessment(text:string) {
+  if(!safeNotes||!CodexRequest.safeParse(text).success)throw Error('No se puede preparar esta valoración para Codex.');
+  if(assessmentDraft&&assessmentDraft!==text)throw Error('Ya hay una valoración pendiente en Inicio. Revísala o vuelve a la petición habitual antes de preparar otra.');
+  const result=await window.companion.navigate('home');
+  if(!result.ok)throw Error(result.error);
+  setAssessmentDraft(text);
+ }
  const returnFromSettings=()=>navigate(previousSettingsPage.current);
- const navigateNotes=(destination:HubDestination)=>{
-  setNotesDestination(destination);
-  void window.companion.navigate('notes').then(result=>{
-   if(!result.ok){setNotesDestination(undefined);setError(result.error);}
-  });
- };
  function settlePanel(element:HTMLElement){
   const {opacity,translate}=getComputedStyle(element);
   viewAnimation.current?.cancel();
@@ -239,8 +241,7 @@ export function CodexCompanion(){
   focusDestination.current=false;
   setSectionFocus(undefined);
   try {
-   const closesSettings=section==='settings'&&page==='settings'&&expanded&&!status.settings.windowLocked;
-   const result=closesSettings?await runPanelAction(()=>window.companion.togglePage(section),true):await window.companion.togglePage(section);
+   const result=await window.companion.togglePage(section);
    if(attempt!==activationAttempt.current)return;
    if(!result.ok){setError(result.error);return;}
    setError('');
@@ -267,9 +268,9 @@ export function CodexCompanion(){
    root.current?.querySelector<HTMLElement>('.capsule-launcher [aria-current=page],.zen-island-trigger')?.focus({preventScroll:true});
   }
   if(!canAnimate(element)||opening||before===page||panelPaint!==undefined||status.workspace?.fromApps)return;
-  const order=status.workspace?.order??launcherPages;
-  const index=(value?:WorkspacePage)=>order.findIndex(item=>item===value);
-  const direction=index(before)<0||index(page)<0||before==='notices'||page==='notices'?0:Math.sign(index(page)-index(before));
+  const order=capsulePages(status.workspace?.order);
+  const fromIndex=order.findIndex(item=>item===before), toIndex=order.findIndex(item=>item===page);
+  const direction=fromIndex<0||toIndex<0?0:Math.sign(toIndex-fromIndex);
   const axis=status.workspace?.edge?.side==='left'||status.workspace?.edge?.side==='right'?'Y':'X';
   const computed=getComputedStyle(element);
   const running=viewAnimation.current?.playState==='running';
@@ -291,7 +292,9 @@ export function CodexCompanion(){
   if(!focusDestination.current)return;
   focusDestination.current=false;
   const section=status.workspace?.recentSection;
-  const target=expanded?panel.current:root.current?.querySelector<HTMLElement>(section?`.capsule-launcher [data-page="${section}"]`:'.zen-island-trigger');
+  const target=expanded?panel.current:
+   (section&&root.current?.querySelector<HTMLElement>(`.capsule-launcher [data-page="${section}"]`))||
+   root.current?.querySelector<HTMLElement>('.zen-island-trigger');
   target?.focus({preventScroll:true});
  },[expanded]);
  useLayoutEffect(()=>{
@@ -386,24 +389,29 @@ export function CodexCompanion(){
    <section ref={panel} id="capsule-content" className="workspace-content" data-page={page} tabIndex={-1} hidden={!expanded} inert={!expanded}
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
     {(openedPages.includes('home')||page==='home')&&<div hidden={!expanded||page!=='home'} inert={!expanded||page!=='home'}>
-     <CompanionHome status={status} ready={ready} visible={expanded&&page==='home'} draft={homeDraft} setDraft={setHomeDraft} nowPlaying={nowPlaying} onNavigate={navigate} onOpenNotes={navigateNotes}/>
+     <CompanionHome status={status} ready={ready} visible={expanded&&page==='home'} weatherVisible={expanded&&page==='home'&&surfaceVisible&&!hoverClosing}
+      draft={assessmentDraft??homeDraft} setDraft={assessmentDraft===undefined?setHomeDraft:setAssessmentDraft}
+      onDismissAssessment={assessmentDraft===undefined?undefined:()=>setAssessmentDraft(undefined)}
+      nowPlaying={nowPlaying} onNavigate={navigate}/>
     </div>}
     {safeNotes&&(openedPages.includes('calendar')||page==='calendar')&&<div hidden={!expanded||page!=='calendar'} inert={!expanded||page!=='calendar'}>
      <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision}/>
     </div>}
+    {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura}/>}
+    {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}
     {(openedPages.includes('spotify')||page==='spotify')&&<div hidden={!expanded||page!=='spotify'} inert={!expanded||page!=='spotify'}>
-     <CompanionMusic status={status} player={mediaPlayer}/>
+     <CompanionMusic status={status} player={mediaPlayer} volumeVisible={expanded&&page==='spotify'&&surfaceVisible&&!hoverClosing}/>
     </div>}
     {page==='notes'&&!safeNotes&&<div className="companion-empty"><h2>{hubName} oculto</h2><p role="status">Desactiva la pausa o Presentación para abrir la biblioteca.</p></div>}
     {page==='notices'&&<><div className="workspace-section-heading"><h1>Avisos</h1></div><CompanionNotices status={status}/></>}
     {(page==='options'||page==='shortcuts')&&<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>}
     {(openedPages.some(value=>value==='codex'||value==='permissions')||page==='codex'||page==='permissions')&&
      <div hidden={!expanded||page!=='codex'&&page!=='permissions'} inert={!expanded||page!=='codex'&&page!=='permissions'}>
-      <CodexWorkspace status={status} visible={expanded&&(page==='codex'||page==='permissions')} memory={contextMemory} monochrome={appearance.theme==='monochrome'}/>
+      <CodexWorkspace status={status} visible={expanded&&(page==='codex'||page==='permissions')} memory={contextMemory}/>
      </div>}
     {(settingsOpened||page==='settings')&&<div className="preferences-retained" hidden={!expanded||page!=='settings'} inert={!expanded||page!=='settings'}>
      <CompanionSettings status={status} visible={expanded&&page==='settings'} onBack={returnFromSettings}
-      onBackupImported={()=>{setNotesRevision(value=>value+1);setNotesDestination(undefined);}} onLayout={()=>{
+      onBackupImported={()=>setNotesRevision(value=>value+1)} onLayout={()=>{
       previousOptionsPage.current='settings';navigate('options');
      }} onPreview={setThemePreview} onCategoryChange={()=>{
       scroll.current.settings=0;
@@ -411,7 +419,7 @@ export function CodexCompanion(){
      }}/>
     </div>}
     {safeNotes&&(notesOpened||notesVisible&&expanded)&&<div className="notes-retained" hidden={!notesVisible||!expanded} inert={!notesVisible||!expanded}>
-     <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} destination={notesDestination} visible={notesVisible&&expanded} animate={status.settings.motion&&!reduced}/></Suspense>
+     <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} visible={notesVisible&&expanded} surfaceVisible={surfaceVisible} animate={status.settings.motion&&!reduced} onAssess={prepareAssessment}/></Suspense>
     </div>}
    </section>
    <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible} animation={neonAnimation}/>

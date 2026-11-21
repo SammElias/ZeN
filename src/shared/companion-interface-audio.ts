@@ -18,7 +18,7 @@ export function interfaceSoundEnabled(settings: Pick<CompanionSettings, 'interfa
   return settings.interfaceSounds ?? settings.sounds;
 }
 
-type Surface = {island:boolean; expanded:boolean; page:string; tab:string; disclosure?:string};
+type Surface = {island:boolean; expanded:boolean; page:string; tab?:string; disclosure?:string};
 
 export function surfaceSound(before: Surface, after: Surface): InterfaceEffect | undefined {
   if (before.island !== after.island) return after.island ? 'collapse' : 'expand';

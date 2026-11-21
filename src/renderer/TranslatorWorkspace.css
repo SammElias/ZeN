@@ -1,0 +1,21 @@
+.translator-workspace { container: translator / inline-size; padding: clamp(12px, 2vw, 20px); }
+.translator-service, .translator-service > span, .translator-footer { display: flex; align-items: center; gap: 8px; }
+.translator-service, .translator-footer { justify-content: space-between; flex-wrap: wrap; }
+.translator-service > span { color: var(--hub-muted); font-size: 12px; font-weight: 650; }
+.translator-service > span svg { color: var(--hub-accent); }
+.translator-direction { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 650; }
+.translator-direction > span { border: 1px solid var(--hub-line); background: var(--hub-soft); border-radius: 8px; padding: 6px 10px; }
+.translator-workspace .translator-direction button, .translator-workspace .translator-service button { min-width: 36px; padding-inline: 8px; }
+.translator-form, .translator-key { display: grid; gap: 10px; margin-top: 12px; }
+.translator-key { padding: 12px 0; border-block: 1px solid var(--hub-line); }
+.translator-key-controls { display: flex; flex-wrap: wrap; gap: 7px; }
+.translator-workspace .translator-key input { flex: 1 1 15rem; min-width: 0; }
+.translator-editors { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.translator-editors > label { display: grid; gap: 5px; min-width: 0; }
+.translator-workspace .translator-editors textarea { width: 100%; min-height: 120px; resize: vertical; }
+.translator-workspace .translator-editors textarea[readonly] { background: var(--hub-soft); }
+.translator-workspace > .hub-feedback { margin: 10px 0 0; }
+@container translator (max-width: 420px) {
+  .translator-editors { grid-template-columns: minmax(0,1fr); }
+  .translator-workspace .translator-editors textarea { min-height: 96px; }
+}

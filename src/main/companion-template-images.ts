@@ -1,5 +1,4 @@
 import {nativeImage} from 'electron';
-import {existsSync} from 'node:fs';
 import {basename, join} from 'node:path';
 import {imageSize} from 'image-size';
 import {referenceBytes, TemplateImage, type TemplateRecord} from '../shared/knowledge-templates';
@@ -35,15 +34,9 @@ export function loadTemplateSeeds(folder:string):TemplateRecord[] {
   const createdAt=Date.now();
   return templateSeeds.map(({file,...fields})=>{
     let image:TemplateImage|undefined;
-    const local=join(folder,file.replace(/\.png$/,'.jpg'));
-    let author='';
-    if(existsSync(local))try {
-      image=readTemplateImage(local);
-      author=fields.author;
-    }catch { /* Use the packaged preview if the local reference is unreadable. */ }
-    if(!image)try { image=readTemplateImage(join(folder,file)); }
-    catch { /* An unavailable reference leaves the editorial record usable. */ }
-    return {...fields,author,image,favorite:false,createdAt,updatedAt:createdAt};
+    try { image=readTemplateImage(join(folder,file)); }
+    catch { /* Keep the prompt usable if the preview is unavailable. */ }
+    return {...fields,image,favorite:false,createdAt,updatedAt:createdAt};
   });
 }
 

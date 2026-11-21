@@ -1,8 +1,9 @@
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {z} from 'zod';
 import {LauncherOrder,LauncherPage,type WorkspacePage} from '../shared/companion-workspace';
-import {isLauncherPageSelected,sectionPages,type SectionPage} from '../shared/companion-navigation';
+import {isLauncherPageSelected,launcherPages,sectionTargets,type SectionPage} from '../shared/companion-navigation';
 const retiredPage = (page: unknown) => page === 'gmail';
+const previousDefault = 'home,codex,spotify,notes,calendar,metrics';
 const Preferences=z.object({order:LauncherOrder.default(()=>[...LauncherPage.options]),last:LauncherPage.default('home')}).strict();
 /** Only navigation preferences persist. */
 export class CompanionLauncher{
@@ -18,11 +19,15 @@ export class CompanionLauncher{
     }
     if (!raw.order.includes('notes')) raw.order.push('notes');
     if (!raw.order.includes('calendar')) raw.order.push('calendar');
+    const previousVisible=raw.order.filter((page:unknown)=>page!=='notices');
+    if(!previousVisible.includes('metrics'))previousVisible.push('metrics');
+    if(previousVisible.join()===previousDefault)raw.order=[...launcherPages];
    }
    if (retiredPage(raw.last)) raw.last = 'home';
+   if (raw.last === 'passwords') raw.last = 'notes';
    this.value = Preferences.parse(raw);
   } catch { /* Missing or invalid preferences use the defaults. */ }
-  this.section=sectionPages.find(section=>isLauncherPageSelected(this.value.last,section));
+  this.section=sectionTargets.find(section=>isLauncherPageSelected(this.value.last,section));
  }
  get recentSection(){return this.section;}
  status(){return structuredClone(this.value);}
@@ -31,7 +36,7 @@ export class CompanionLauncher{
  visit(page:WorkspacePage){
   const last=LauncherPage.safeParse(page==='permissions'?'codex':page);
   if(last.success&&last.data!==this.value.last)this.save({...this.value,last:last.data});
-  const section=sectionPages.find(section=>isLauncherPageSelected(page,section));
+  const section=sectionTargets.find(section=>isLauncherPageSelected(page,section));
   if(section)this.section=section;
  }
 }

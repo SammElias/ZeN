@@ -10,4 +10,6 @@ async function visit(name,from=require){
 await visit('image-size');
 await visit('react-markdown');
 await visit('remark-gfm');
+await visit('kdbxweb');
+await visit('hash-wasm');
 await mkdir('public/licenses',{recursive:true});await writeFile('public/licenses/companion-dependencies.txt',sections.sort().join('\n\n--------------------\n\n').replace(/[ \t]+$/gm,'').trimEnd()+'\n');

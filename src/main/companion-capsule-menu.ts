@@ -10,7 +10,7 @@ type Context = {
  previousApp:{available:boolean;name?:string};
  setLocation:(location:CapsuleLocation)=>unknown; move:(alignment:CapsuleAlignment)=>unknown;
  update:(settings:Partial<CompanionSettings>)=>unknown;
- layout:Action; appearance:Action; openChat:Action; restoreApp:Action; hide:Action; quit:Action;
+ layout:Action; appearance:Action; openChat:Action; openNotices:Action; restoreApp:Action; hide:Action; quit:Action;
  run:(action:Action)=>void;
 };
 
@@ -31,6 +31,7 @@ export function capsuleMenuItems(c:Context):MenuItemConstructorOptions[] {
  return [
   item('Volver a '+(!settings.presentation&&c.previousApp.name||'mi aplicación'),c.restoreApp,c.previousApp.available),
   item('Volver al chat fijado',c.openChat),
+  item('Ver avisos',c.openNotices,!settings.presentation&&!settings.paused),
   {type:'separator'},
   {label:'Ajustar posición',enabled:!settings.windowLocked,submenu:[
    item('Mover al extremo izquierdo',()=>c.move('left')),

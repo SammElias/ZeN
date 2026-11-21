@@ -2,6 +2,7 @@ import {CopyVisible} from './WorkspaceTools';
 import React,{useEffect,useRef,useState} from 'react';
 import type {CompanionStatus} from '../shared/codex-companion';
 import type {MediaSnapshot,MediaCommand,MediaNowPlaying,MediaTrack} from '../shared/companion-media';
+import {SystemVolumeSlider} from './SystemVolumeSlider';
 
 function MusicIcon({name}:{name:string}){const p:Record<string,string>={play:'m9 5 11 7-11 7z',pause:'M8 5v14M16 5v14',previous:'M5 5v14m14-14L8 12l11 7z',next:'M19 5v14M5 5l11 7L5 19z',shuffle:'M3 5h3c5 0 7 14 12 14h3m-4-4 4 4-4 4M3 19h3c2 0 4-3 5-6m2-4c2-3 3-4 5-4h3m-4-4 4 4-4 4',repeat:'m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3',music:'M9 18V5l12-2v13M9 9l12-2M9 18a3 3 0 1 1-3-3c2 0 3 1 3 3m12-2a3 3 0 1 1-3-3c2 0 3 1 3 3'};return <svg viewBox="0 0 24 24" fill={name==='play'?'currentColor':'none'} stroke="currentColor" strokeWidth={name==='pause'?4:1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={p[name]??p.music}/></svg>;}
 const time=(ms:number)=>{const n=Math.max(0,Math.floor(ms/1000));return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');};
@@ -162,7 +163,7 @@ export function useMediaPlayer(status: CompanionStatus, surface: 'workspace' | '
  return {sessions: snapshot?.sessions ?? [], track:visible&&!blocked?track:undefined, manual: snapshot?.manual ?? false, busy, notice, blocked, select, followSystem, command, setNotice};
 }
 
-export function CompanionMusic({status,player}:{status:CompanionStatus;player:ReturnType<typeof useMediaPlayer>}){
+export function CompanionMusic({status,player,volumeVisible}:{status:CompanionStatus;player:ReturnType<typeof useMediaPlayer>;volumeVisible:boolean}){
  const {sessions,track,manual,busy,notice,blocked,select,followSystem,command,setNotice}=player;
  async function showMusic() {
   const result = await window.companion.presentation(false);
@@ -175,6 +176,7 @@ export function CompanionMusic({status,player}:{status:CompanionStatus;player:Re
  return <section className="music-workspace" aria-busy={busy}>
   <div className="music-heading"><h2>Sonido</h2><div className="actions">{!blocked&&track?.source==='Spotify'&&<button onClick={()=>void open()}>Abrir Spotify ↗</button>}</div></div>
   {blocked?<div className="companion-card music-blocked"><h2>{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</h2>{status.settings.presentation&&<button className="primary" onClick={()=>void showMusic()}>Salir de presentación y mostrar sonido</button>}{status.settings.paused&&<button onClick={()=>void window.companion.navigate('settings')}>Abrir preferencias para reanudar ZEN</button>}</div>:<>
+   {volumeVisible&&<SystemVolumeSlider/>}
    {(sessions.length>1||manual||!track&&sessions.length>0)&&<div className="media-sources" role="group" aria-label="Reproductores de Windows">
     <button aria-pressed={!manual} disabled={busy} onClick={()=>void followSystem()}>Automático</button>
     {sessions.map((s,i)=><button key={s.id} data-session={s.id} aria-pressed={manual&&track?.session===s.id} disabled={busy} onClick={()=>void select(s.id)}><MusicIcon name="music"/>{s.name}{sessions.filter(v=>v.name===s.name).length>1?' · '+(i+1):''}{s.browser&&<small>Navegador</small>}</button>)}

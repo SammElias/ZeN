@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {imageSize} from 'image-size';
 import {CompanionNotes} from './companion-notes';
 import {hubName} from '../shared/companion-navigation';
+import {discoveryBrief,discoveryLimits,type DiscoveryRecord} from '../shared/app-discovery';
 import type {TemplateDraft, TemplateImage, TemplateRecord, TemplateRequest} from '../shared/knowledge-templates';
 import {
   changeTemplates, createTemplateTable, restoreTemplates, seedTemplates, templateBackup,
@@ -67,7 +68,10 @@ export function validateHubBackup(raw: unknown) {
   if (!parsed.success) throw Error(`El archivo no es un respaldo válido del ${hubName}.`);
   const data = parsed.data;
   if (new Set(data.folders.map(folder => folder.id)).size !== data.folders.length ||
-      new Set(data.entries.map(entry => entry.id)).size !== data.entries.length) throw Error('El respaldo tiene identificadores duplicados.');
+      new Set(data.entries.map(entry => entry.id)).size !== data.entries.length ||
+      data.discoveries && new Set(data.discoveries.map(item=>item.id)).size!==data.discoveries.length) {
+    throw Error('El respaldo tiene identificadores duplicados.');
+  }
   for (const [index, folder] of data.folders.entries()) {
     if (data.folders.slice(0, index).some(other => folder.group === other.group && namesMatch(folder.name, other.name))) {
       throw Error('El respaldo tiene carpetas duplicadas.');
@@ -125,6 +129,7 @@ export class KnowledgeHub {
     db.prepare("INSERT INTO hub_state VALUES ('theme', ?)").run(data.theme);
     this.writeFolders(db, data.folders);
     for (const entry of data.entries) this.writeEntry(db, entry);
+    if(data.discoveries!==undefined)this.writeDiscoveries(db,data.discoveries);
   }
 
   private writeFolders(db: DatabaseSync, folders: HubFolder[]) {
@@ -137,11 +142,16 @@ export class KnowledgeHub {
     db.prepare('INSERT OR REPLACE INTO hub_entries VALUES (?, ?)').run(entry.id, JSON.stringify(entry));
   }
 
+  private writeDiscoveries(db:DatabaseSync, records:DiscoveryRecord[]) {
+    db.prepare("INSERT OR REPLACE INTO hub_state VALUES ('app-discoveries', ?)").run(JSON.stringify(records));
+  }
+
   private snapshot(db: DatabaseSync): HubData {
     const theme = db.prepare("SELECT value FROM hub_state WHERE key='theme'").get()?.value;
     const folders = db.prepare('SELECT value FROM hub_folders ORDER BY position').all().map(row => JSON.parse(String(row.value)));
     const entries = db.prepare('SELECT value FROM hub_entries').all().map(row => JSON.parse(String(row.value)));
-    return HubData.parse({version: 2, theme, folders, entries});
+    const discoveries=db.prepare("SELECT value FROM hub_state WHERE key='app-discoveries'").get()?.value;
+    return HubData.parse({version:2,theme,folders,entries,...(discoveries===undefined?{}:{discoveries:JSON.parse(String(discoveries))})});
   }
 
   read(includeTemplates = false): HubSession {
@@ -152,7 +162,7 @@ export class KnowledgeHub {
       if (!includeTemplates) return session;
       this.prepareTemplates(db);
       const {templates,templateDraft} = templateBackup(db);
-      return {...session, data:{...data, templates}, templateDraft};
+      return {...session, data:{...data, templates, discoveries:data.discoveries??[]}, templateDraft};
     });
   }
 
@@ -239,6 +249,25 @@ export class KnowledgeHub {
       const folder = 'id' in action && data.folders.find(item => item.id === action.id) || undefined;
       let id: string | undefined;
       switch (action.type) {
+        case 'saveDiscovery': {
+          const records=data.discoveries??[];
+          const previous=records.find(item=>item.id===action.id);
+          if(action.id&&(!previous||previous.updatedAt!==action.expected))throw Error('La ficha cambió. Vuelve a abrir la versión guardada.');
+          if(!previous&&records.length>=discoveryLimits.records)throw Error('HUB admite hasta 100 fichas de descubrimiento.');
+          id=previous?.id??randomUUID();
+          const saved={...action.fields,id,updatedAt:Math.max(Date.now(),(previous?.updatedAt??0)+1)};
+          this.writeDiscoveries(db,[...records.filter(item=>item.id!==id),saved]);
+          break;
+        }
+        case 'removeDiscovery': {
+          const records=data.discoveries??[];
+          if(!records.some(item=>item.id===action.id&&item.updatedAt===action.expected))throw Error('La ficha cambió o ya no está disponible.');
+          this.writeDiscoveries(db,records.filter(item=>item.id!==action.id));
+          break;
+        }
+        case 'copyDiscovery':
+          textToCopy=discoveryBrief(action.fields);
+          break;
         case 'save': {
           if (action.id && (!entry || entry.updatedAt !== action.expected || entry.kind !== action.fields.kind)) {
             throw Error('El elemento cambió. Reabre la biblioteca para revisar la versión guardada.');

@@ -1,6 +1,7 @@
 import {describe,it,expect,vi} from 'vitest';
 import {CompanionMedia,CompanionMediaObserver} from '../src/main/companion-media';
-import {MediaCommand,MediaNowPlaying,MediaSource} from '../src/shared/companion-media';
+import {CompanionSystemVolume} from '../src/main/companion-system-volume';
+import {MediaCommand,MediaNowPlaying,MediaSource,SystemVolumeAction} from '../src/shared/companion-media';
 const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
 const track={session:id,source:'Spotify',browser:false,title:'Private title',artist:'Artist',album:'Album',artwork:null,playing:true,shuffle:null,repeat:null,positionMs:1000,durationMs:200000,controls:{play:true,pause:true,previous:true,next:true,shuffle:false,repeat:false}};
 function fixture(){let allowed=true;const request=vi.fn(async(method:string):Promise<unknown>=>method==='list'?{sessions:[{id,name:'Spotify',browser:false}]}:method==='action'?{accepted:true}:structuredClone(track)),close=vi.fn(),factory=vi.fn(()=>({request,close})),media=new CompanionMedia(factory,()=>allowed);return{media,request,close,factory,block:()=>{allowed=false;}};}
@@ -48,6 +49,57 @@ describe('direct media session authority',()=>{
 });
 
 const playing={source:'Video player',browser:false,title:'Published media title',artist:'Published artist',album:'',artwork:null,playing:true as const};
+
+describe('Windows system volume', () => {
+ const endpoint = 'a'.repeat(64);
+
+ function volumeFixture() {
+  const state = {visible:true,focused:false};
+  const request = vi.fn(async (_method:string,_params?:Record<string,unknown>):Promise<unknown> => ({endpoint,level:42,muted:false}));
+  const close = vi.fn();
+  const factory = vi.fn(() => ({request,close}));
+  const volume = new CompanionSystemVolume(factory,() => state.visible,() => state.focused);
+  return {volume,state,request,factory,close};
+ }
+
+ it('reads the output without playback or focus and limits writes to 0–100 on that output',async()=>{
+  const {volume,state,request}=volumeFixture();
+  expect(await volume.request({type:'read'})).toEqual({endpoint,level:42,muted:false});
+  await expect(volume.request({type:'set',endpoint,level:0})).rejects.toThrow('Activa ZEN');
+  state.focused=true;
+  for(const level of [0,100]){
+   request.mockResolvedValueOnce({endpoint,level,muted:true});
+   expect(await volume.request({type:'set',endpoint,level})).toEqual({endpoint,level,muted:true});
+   expect(request).toHaveBeenLastCalledWith('systemVolumeSet',{endpoint,level});
+  }
+  for(const level of [-1,101,12.4])expect(SystemVolumeAction.safeParse({type:'set',endpoint,level}).success).toBe(false);
+  expect(SystemVolumeAction.safeParse({type:'set',endpoint:'speaker',level:50}).success).toBe(false);
+ });
+
+ it('rejects hidden reads and writes before spawning the native helper',async()=>{
+  const {volume,state,factory}=volumeFixture();
+  state.visible=false;
+  await expect(volume.request({type:'read'})).rejects.toThrow('Abre Sonido');
+  await expect(volume.request({type:'set',endpoint,level:20})).rejects.toThrow('Abre Sonido');
+  expect(factory).not.toHaveBeenCalled();
+ });
+
+ it('ignores a response from a closed view and never retries an output change',async()=>{
+  const {volume,state,request,close}=volumeFixture();
+  let resolve!: (value:unknown)=>void;
+  request.mockImplementationOnce(()=>new Promise(complete=>{resolve=complete;}));
+  const pending=volume.request({type:'read'});
+  volume.close();
+  resolve({endpoint,level:42,muted:false});
+  await expect(pending).rejects.toThrow('cerró');
+  expect(close).toHaveBeenCalledOnce();
+  state.focused=true;
+  request.mockRejectedValueOnce(Error('La salida de audio cambió.'));
+  await expect(volume.request({type:'set',endpoint,level:10})).rejects.toThrow('cambió');
+  expect(request.mock.calls.map(([method])=>method)).toEqual(['systemVolumeRead','systemVolumeSet']);
+ });
+});
+
 function observationFixture(){
  let allowed=true;
  const request=vi.fn(async()=>({track:structuredClone(playing)} as {track:unknown})),close=vi.fn(),factory=vi.fn(()=>({request,close}));

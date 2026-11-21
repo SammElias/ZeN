@@ -5,7 +5,7 @@ import {CompanionAppearance,wallpaperBytes} from '../src/main/companion-appearan
 const png=readFileSync('public/icons/zen-16.png');
 function fixture(){const root=mkdtempSync(join(tmpdir(),'zen-design-'));return{root,dispose:()=>rmSync(root,{recursive:true,force:true})};}
 describe('local glass appearance and bounded wallpapers',()=>{
- it('loads older low opacity at the readable minimum and accepts a fully opaque setting',()=>{
+ it('preserves previously saved opacity and persists either endpoint',()=>{
   const f=fixture();
   try{
    const path=join(f.root,'companion-appearance.json');
@@ -16,10 +16,12 @@ describe('local glass appearance and bounded wallpapers',()=>{
    const previous=JSON.stringify({options,image});
    writeFileSync(path,previous);
    const appearance=new CompanionAppearance(f.root,bytes=>bytes);
-   expect(appearance.status()).toMatchObject({...options,opacity:.62,imageName:image.name});
+   expect(appearance.status()).toMatchObject({...options,imageName:image.name});
    expect(readFileSync(path,'utf8')).toBe(previous);
-   appearance.save({...options,opacity:1});
-   expect(new CompanionAppearance(f.root,bytes=>bytes).status()).toMatchObject({...options,opacity:1,imageName:image.name});
+   for(const opacity of [0,1]){
+    appearance.save({...options,opacity});
+    expect(new CompanionAppearance(f.root,bytes=>bytes).status()).toMatchObject({...options,opacity,imageName:image.name});
+   }
   }finally{f.dispose();}
  });
  it('persists glass settings across restarts separately from account files',()=>{const f=fixture();try{writeFileSync(join(f.root,'gmail-oauth.bin'),'ENCRYPTED_ACCOUNT');const s=new CompanionAppearance(f.root,b=>b),options={theme:'light',accent:'amber',opacity:.83,blur:17,background:'dusk'};s.save(options);expect(new CompanionAppearance(f.root,b=>b).status()).toEqual(options);expect(readFileSync(join(f.root,'gmail-oauth.bin'),'utf8')).toBe('ENCRYPTED_ACCOUNT');}finally{f.dispose();}});
@@ -42,5 +44,5 @@ describe('local glass appearance and bounded wallpapers',()=>{
    expect(readdirSync(join(f.root,'appearance'))).toEqual([imageId+'.png']);
   }finally{f.dispose();}
  });
- it('rejects invalid opacity, blur and corrupt stored filenames with a safe default',()=>{const f=fixture();try{const s=new CompanionAppearance(f.root,b=>b),before=s.status();for(const change of [{opacity:0},{opacity:1.1},{blur:100},{blur:NaN},{theme:'script'}])expect(()=>s.save({...before,...change})).toThrow();writeFileSync(join(f.root,'companion-appearance.json'),JSON.stringify({options:before,image:{id:'../../gmail-oauth.bin',name:'x'}}));expect(new CompanionAppearance(f.root,b=>b).status()).toEqual(before);}finally{f.dispose();}});
+ it('rejects invalid opacity, blur and corrupt stored filenames with a safe default',()=>{const f=fixture();try{const s=new CompanionAppearance(f.root,b=>b),before=s.status();for(const change of [{opacity:-.01},{opacity:1.1},{blur:100},{blur:NaN},{theme:'script'}])expect(()=>s.save({...before,...change})).toThrow();writeFileSync(join(f.root,'companion-appearance.json'),JSON.stringify({options:before,image:{id:'../../gmail-oauth.bin',name:'x'}}));expect(new CompanionAppearance(f.root,b=>b).status()).toEqual(before);}finally{f.dispose();}});
 });

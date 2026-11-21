@@ -11,7 +11,8 @@ export default defineConfig({
       await mkdir('dist/renderer',{recursive:true});
       for(const name of ['icons','licenses','hub-templates'])await cp('public/'+name,'dist/renderer/'+name,{
         recursive:true,
-        filter:path=>!['coucou-source.png','orbital'].includes(basename(path)),
+        filter:path=>!['coucou-source.png','orbital'].includes(basename(path))&&
+          (name!=='hub-templates'||!path.toLowerCase().endsWith('.jpg')),
       });
     },
   }],

@@ -17,6 +17,19 @@ import {DesktopObservation} from '../src/main/companion-desktop';
 const disposals:(()=>unknown)[]=[];afterEach(async()=>{for(const fn of disposals.splice(0))await fn();});
 function fixture(){const notices:any[]=[];const hub=new CompanionHub(CompanionSettingsSchema.parse({}),()=>{},n=>notices.push(n),()=>1000,{session:'fixed',cwd:'C:\\Private',title:'Secret title'});disposals.push(()=>hub.dispose());const event=(event:string,extra:any={})=>{const id=randomUUID(),reply=vi.fn();hub.accept({id,event,session:'fixed',turn:'t1',cwd:'C:\\Private',...extra},reply);return{id,reply};};return{hub,event,notices};}
 describe('presentation is enforced before IPC and decisions',()=>{
+ it('keeps the sleep summary in visible Home and removes it from other surfaces and privacy modes',()=>{
+  const f=fixture();
+  const raw:CompanionStatus={...f.hub.status(),workspace:{expanded:true,page:'home'},
+   ouraHomeSleep:{state:'connected',today:'2026-11-20',latest:{day:'2026-11-20',seconds:27120,score:88}}};
+  expect(displayStatus(raw,1,true).ouraHomeSleep).toEqual(raw.ouraHomeSleep);
+  expect(displayStatus(raw,2,false).ouraHomeSleep).toBeUndefined();
+  for(const workspace of [{expanded:true,page:'metrics'},{expanded:false,page:'home'}] as const){
+   expect(displayStatus({...raw,workspace},3,true).ouraHomeSleep).toBeUndefined();
+  }
+  for(const mode of ['paused','presentation'] as const){
+   expect(displayStatus({...raw,settings:{...raw.settings,[mode]:true}},4,true).ouraHomeSleep).toBeUndefined();
+  }
+ });
  it('redacts every detail while preserving exact chat routing and activity',()=>{
   const f=fixture();f.event('PreToolUse',{tool:'SecretTool',preview:'PRIVATE COMMAND'});f.event('PermissionRequest',{tool:'SecretTool',preview:'PRIVATE PERMISSION'});f.hub.update({...f.hub.settings,presentation:true});
   const raw={...f.hub.status(),desktop:{available:true,name:'PrivateApp',error:'private path'}};
@@ -28,24 +41,38 @@ describe('presentation is enforced before IPC and decisions',()=>{
   const f=fixture(),p=f.event('PermissionRequest',{preview:'write'});f.hub.update({...f.hub.settings,presentation:true});
   expect(()=>f.hub.decide(p.id,'allow')).toThrow('Presentación');expect(()=>f.hub.decide(p.id,'deny')).toThrow('Presentación');expect(p.reply).not.toHaveBeenCalled();f.hub.decide(p.id,'pass');expect(p.reply).toHaveBeenCalledWith('pass');
  });
- it('only exposes the pending approval preview when Permissions is visible',()=>{
+ it('only exposes pending approval details in visible Activity and keeps them out of history',()=>{
   const f=fixture();
   f.event('PermissionRequest',{preview:'PRIVATE PERMISSION'});
   const raw:CompanionStatus={...f.hub.status(),workspace:{expanded:true,page:'permissions'}};
   expect(displayStatus(raw,1,true).approvals[0].preview).toBe('PRIVATE PERMISSION');
   expect(JSON.stringify(displayStatus(raw,2,false))).not.toContain('PRIVATE PERMISSION');
-  expect(JSON.stringify(displayStatus({...raw,workspace:{expanded:true,page:'codex'}},3,true))).not.toContain('PRIVATE PERMISSION');
-  expect(raw.sessions[0].steps[0].preview).toBe('PRIVATE PERMISSION');
+  expect(displayStatus({...raw,workspace:{expanded:true,page:'codex'}},3,true).approvals[0].preview).toBe('PRIVATE PERMISSION');
+  expect(JSON.stringify(displayStatus({...raw,workspace:{expanded:true,page:'home'}},4,true))).not.toContain('PRIVATE PERMISSION');
+  expect(raw.sessions[0].steps[0].preview).toBeUndefined();
  });
- it('exposes the observed sessions only on the visible Activity tab',()=>{
-  const f=fixture();f.event('PreToolUse',{session:'elsewhere',cwd:'C:\\Elsewhere',tool:'exec_command',preview:'OTHER PRIVATE COMMAND'});
-  const raw:CompanionStatus={...f.hub.status(),activitySessions:f.hub.activitySessions(),workspace:{expanded:true,page:'codex',codexTab:'activity'}};
+ it('exposes commands only in visible Activity and limits commands from other chats',()=>{
+  const f=fixture();f.event('PreToolUse',{session:'elsewhere',cwd:'C:\\Elsewhere',tool:'functions.exec_command',preview:'git status -- OTHER PRIVATE COMMAND'});
+  f.event('PreToolUse',{tool:'exec_command',preview:'git status -- PINNED PRIVATE ARGUMENT'});
+  const raw:CompanionStatus={...f.hub.status(),activitySessions:f.hub.activitySessions(),workspace:{expanded:true,page:'codex'}};
   const shown=displayStatus(raw,1,true);
-  expect(shown.activitySessions?.map(session=>session.id)).toEqual(['elsewhere']);
+  expect(shown.activitySessions?.find(s=>s.id==='elsewhere')?.steps.at(-1)).toMatchObject({kind:'command',preview:'git status'});
+  expect(shown.activitySessions?.find(s=>s.id==='fixed')?.steps.at(-1)?.preview).toBe('git status -- PINNED PRIVATE ARGUMENT');
   expect(JSON.stringify(shown)).not.toContain('OTHER PRIVATE COMMAND');
   expect(displayStatus(raw,2,false).activitySessions).toBeUndefined();
-  expect(displayStatus({...raw,workspace:{expanded:true,page:'codex',codexTab:'summary'}},3,true).activitySessions).toBeUndefined();
+  const home=displayStatus({...raw,workspace:{expanded:true,page:'home'}},3,true);
+  expect(home.activitySessions).toBeUndefined();expect(JSON.stringify(home)).not.toContain('PINNED PRIVATE ARGUMENT');
   for(const mode of ['paused','presentation'] as const)expect(displayStatus({...raw,settings:{...raw.settings,[mode]:true}},4,true).activitySessions).toBeUndefined();
+ });
+ it('signals an observed permission in another chat while leaving its decision in Codex',()=>{
+  const f=fixture(),other={session:'other',cwd:'C:\\Other',preview:'PRIVATE OPERATION'};
+  const {id,reply}=f.event('PermissionRequest',other);f.event('PermissionRequest',other);
+  expect(f.notices).toHaveLength(1);expect(f.notices[0]).toMatchObject({id,session:'other',kind:'permission'});
+  expect(f.hub.status().approvalCount).toBe(1);expect(f.hub.status().approvals).toHaveLength(0);
+  expect(reply).toHaveBeenCalledExactlyOnceWith('pass');expect(()=>f.hub.decide(id,'allow')).toThrow();
+  expect(f.hub.activitySessions().find(s=>s.id==='other')?.state).toBe('approval');
+  expect(JSON.stringify(f.hub.activitySessions())).not.toContain('PRIVATE OPERATION');
+  f.event('PostToolUse',other);expect(f.hub.status().approvalCount).toBe(0);
  });
  it('keeps notices and reception without external notifications or replay on exit',()=>{
   const f=fixture();f.hub.update({...f.hub.settings,presentation:true});f.event('UserPromptSubmit');f.event('Stop');expect(f.notices).toHaveLength(0);expect(f.hub.status().notices).toHaveLength(1);expect(f.hub.status().notices[0].audible).toBe(false);f.hub.update({...f.hub.settings,presentation:false});expect(f.notices).toHaveLength(0);expect(f.hub.status().notices[0].audible).toBe(false);expect(f.hub.settings).toMatchObject({sounds:true,notifications:true,paused:false});

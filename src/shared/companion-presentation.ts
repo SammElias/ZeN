@@ -42,10 +42,21 @@ export function toolActivity(tool?:string):{label:string;kind?:'command'|'file'}
  if(/cua_repl|computer_use/i.test(tool))return {label:'Control visual'};
  if(/browser|chrome|playwright/i.test(tool))return {label:'Navegador'};
  if(/apply_patch|^edit$|^write$/i.test(tool))return {label:'Edición de archivos',kind:'file'};
- if(/^bash$|exec_command/i.test(tool))return {label:'Comando',kind:'command'};
+ if(/(?:^|[.:]|__)(?:bash|shell|shell_command|exec_command|local_shell)$/i.test(tool))return {label:'Comando',kind:'command'};
  const label=tool.length>55?tool.slice(0,52)+'…':tool;
  const kind=/comando/i.test(label)?'command':/archivos/i.test(label)?'file':undefined;
  return {label,kind};
+}
+/** Only recognizable executable and operation names may leave an unpinned chat. */
+export function observedCommand(preview?:string):string|undefined {
+ const prefix=preview?.trimStart().match(/^(git|npm(?:\.cmd)?|pnpm(?:\.cmd)?|dotnet|rg|Get-Content|Get-ChildItem|Get-Item|Test-Path|node|python(?:3)?)\b(?=\s|$)(?:\s+([a-z-]+)(?=\s|$))?/i);
+ if(!prefix)return undefined;
+ const executable=prefix[1].toLowerCase();
+ const verb=prefix[2]?.toLowerCase();
+ const verbs=executable==='git'?['status','diff','log','show','branch','switch','add','commit','fetch','pull','push','rev-parse']:
+  /^(npm|pnpm)/.test(executable)?['run','test','install','ci','build']:
+  executable==='dotnet'?['build','test','publish','restore']:[];
+ return verb&&verbs.includes(verb)?`${executable} ${verb}`:executable;
 }
 export function connectionLabel(status:Pick<CompanionStatus,'settings'|'connection'|'lastEventAt'>,now=Date.now()){
  if(status.settings.paused)return 'Avisos en pausa';

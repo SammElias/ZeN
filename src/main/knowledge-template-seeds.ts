@@ -1,85 +1,127 @@
-import type {TemplateFields} from '../shared/knowledge-templates';
+import {enterpriseTemplateId,initialEnterpriseTemplateCount} from '../shared/enterprise-template-catalog';
+import {templateExpansion,type EnterpriseDesign} from './enterprise-template-expansion';
 
-type SeedContent = Pick<TemplateFields, 'name' | 'description' | 'tags' | 'features' | 'useCases'> & {author?:string};
+function seed(slot: number, file: string, design: EnterpriseDesign) {
+  const {palette,layout,workflow,canvas,react,...fields}=design;
+  const base=`# ${fields.name}
 
-function seed(slot: number, file: string, content: SeedContent, instructions: string) {
-  const id = '45b8c010-f3ba-479a-8d10-' + String(slot).padStart(12, '0');
-  const {author='', ...fields} = content;
+Crea la interfaz de {{nombre_proyecto}} para este objetivo de negocio: {{objetivo}}. Usa {{origen_datos}} si está definido. Si los marcadores siguen vacíos, implementa el caso descrito con registros ficticios identificados como demostración. Si ya existe una app, integra la pantalla con sus componentes, navegación y permisos.
+
+## Diseño
+${layout}
+Usa esta paleta para la vista inicial. ${palette}
+
+## Flujo
+${workflow}
+
+## Criterios de aceptación
+Adapta la composición a escritorio, tableta y móvil. Incluye carga, colección vacía, filtros sin resultados y error con reintento cuando apliquen. Usa etiquetas claras, contraste suficiente y estados con texto e icono, además del color. En escritorio permite operar por teclado y muestra el foco. Proporciona datos de muestra y un recorrido reproducible. Implementa las acciones de la interfaz con esos datos. Si hay backend real, comprueba permisos y transiciones ahí.`;
+
   return {
-    id, file, ...fields, author, sourceUrl:'',
-    prompt: `Diseña {{nombre_proyecto}}, una interfaz para {{tipo_aplicacion}}. Objetivo: {{objetivo}}. Organiza {{secciones}}. Adapta el acento a {{color_acento}} y usa {{tecnologia}}. Si no se indica tecnología, inspecciona y respeta el stack, los componentes y las convenciones del proyecto.
+    id:enterpriseTemplateId(slot),
+    file,...fields,author:'',sourceUrl:'',
+    prompt:`${base}
 
-${instructions}
+## Entrega para Power Apps Canvas
+Diseña una app Canvas. Entrega el árbol de pantallas y controles con nombres, propiedades clave y fórmulas Power Fx por control y evento. Usa contenedores de diseño automático, una galería para colecciones y formularios donde encajen. Documenta la configuración adaptable, las tablas y los campos asumidos, y comprueba la delegación según el conector. Usa colecciones locales para la demostración.
+${canvas}
+Indica cómo montar y probar la interfaz en Power Apps Studio. Si puedes implementar sobre un proyecto Canvas existente, aplica los cambios allí.`,
+    reactPrompt:`${base}
 
-Usa la referencia para entender la composición. Selecciona imágenes, textos e identidad del proyecto de destino. Respeta movimiento reducido, contraste, etiquetas accesibles y foco visible. Conecta las acciones a capacidades reales del producto.`,
+## Entrega para React + TypeScript
+Implementa la interfaz con React y TypeScript. Reutiliza el sistema visual y el enrutamiento existentes. En un proyecto vacío, entrega componentes reutilizables, estilos con variables CSS y un adaptador de datos con fixtures tipados. Implementa la disposición con Grid y Flexbox y utiliza controles HTML semánticos.
+${react}
+Incluye el comando de arranque y pasos para probar el recorrido principal con teclado y a 360 px de ancho.`,
   };
 }
 
-export const templateSeeds = [
-  seed(1,'anime-editorial.png',{
-    name:'Anime Editorial', description:'Una portada editorial con imagen protagonista, ritmo asimétrico y un acento rojo cálido.',
-    tags:['Editorial','Anime','Oscuro'],
-    features:['Imagen protagonista','Paneles oscuros cálidos','Acento rojo','Bloques asimétricos','Jerarquía tipográfica fuerte'],
-    useCases:['Portada de una publicación visual','Micrositio para una colección o estreno'],
-  },`Sitúa primero el titular sobre una imagen protagonista y coloca a su lado una barra estrecha de navegación y un módulo de fecha, edición o información vigente. Reserva la esquina inferior para una acción principal y una pieza secundaria con imagen. Usa carbón cálido, gris arcilla y rojo para estados activos, con una capa oscura localizada bajo el texto. Elige una sans condensada para los titulares y una sans de lectura para el cuerpo. Agrupa con espacios de 12, 24 y 40 px y radios amplios que enmarquen la composición.
-
-En pantallas estrechas, lleva la navegación a una fila compacta y coloca la información secundaria tras la acción principal. Permite enfocar y activar cada acción con teclado. Usa un fundido breve al cambiar de pieza. Si falta una imagen muestra el titular y un bloque de color, con estado de carga y reintento cuando corresponda. Verifica que el foco de la imagen, el texto y la acción se distingan a 360 px y que el orden de tabulación siga la lectura.`),
-  seed(2,'glass-desktop.png',{
-    name:'Glass Desktop', description:'Un escritorio con fondo personalizable, widgets compactos y un dock flotante.',
-    tags:['Glassmorphism','Escritorio','Widgets'],
-    features:['Fondo personalizado','Cristal translúcido','Widgets compactos','Dock flotante','Contraste protegido'],
-    useCases:['Inicio de un asistente de escritorio','Panel personal con accesos y estado'],
-  },`Organiza la interfaz con un panel de contexto central, una columna de widgets compactos y un dock independiente. Usa un fondo personalizable y superficies de cristal frío con desenfoque moderado, bordes interiores finos y un relleno suficiente para mantener contraste. Usa numerales tabulares para reloj y métricas, y una sans de sistema para etiquetas. Emplea una retícula de 8 px y separa dock y panel para que cada uno tenga un área de interacción clara.
-
-En una ventana estrecha, coloca los widgets debajo del panel principal y permite envolver el dock sin tapar contenido. Distingue foco, selección y estado inactivo con icono y texto accesible. Usa transiciones breves al abrir un widget. Si faltan datos, muestra la última actualización o una explicación junto a la acción disponible. Verifica contraste sobre fondos claros y oscuros, zoom de texto y acceso por teclado a todos los controles.`),
-  seed(3,'spatial-cinema.png',{
-    name:'Spatial Cinema', description:'Un catálogo multimedia con una pieza destacada, contenido reciente y profundidad de cristal.',
-    tags:['Catálogo','Glassmorphism','Editorial'],
-    features:['Hero destacado','Catálogo de tarjetas','Navegación y búsqueda','Contenido reciente','Profundidad moderada'],
-    useCases:['Catálogo de contenido audiovisual','Biblioteca de recursos visuales'],
-  },`Da prioridad a una pieza destacada con título, breve descripción y acción disponible. Sitúa la búsqueda y las categorías arriba, una lista de recientes al lado y una cuadrícula debajo. Mantén las imágenes de portada diferenciadas de las acciones. Combina grafito, gris humo y un acento puntual con superficies translúcidas de profundidad media. Usa 24 px entre regiones y 12 px dentro de tarjetas, tipografía sans con contraste claro de tamaños y un degradado bajo el texto sobre imagen.
-
-Al reducir el ancho, coloca la pieza destacada primero, sigue con el catálogo y deja recientes en una lista accesible debajo. Conserva posición y filtros al volver de un detalle. Usa indicadores de carga por tarjeta, estados de catálogo vacío, resultados sin coincidencias y reintento si falla la carga. Prueba búsqueda, lectura con teclado y foco sobre imágenes brillantes. Muestra reproducción o historial únicamente si el producto dispone de esas funciones.`),
-  seed(4,'creative-studio.png',{
-    name:'Creative Studio', description:'Un espacio creativo monocromo con un lienzo amplio y módulos de herramientas compactos.',
-    tags:['Monocromo','Editor','Bento'],
-    features:['Imagen central amplia','Navegación lateral estrecha','Paneles modulares','Acento puntual','Controles agrupados'],
-    useCases:['Editor creativo con previsualización','Explorador de estilos y variantes'],
-    author:'bee_uiux',
-  },`Construye un lienzo principal con mucho espacio para inspeccionar el material y un lateral para variantes relacionadas. Coloca selección de estilos y herramientas de edición en módulos propios. Usa una navegación estrecha con iconos etiquetados y reúne la acción principal con los controles que la afectan. Elige blanco roto, antracita y un acento corto para selección. Aplica tipografía sans legible, cuerpos de 14–16 px, márgenes de 16–24 px, radios comunes y bordes nítidos.
-
-En anchos estrechos muestra primero el lienzo y después las herramientas; usa grupos plegables con estados anunciados. Evita movimiento durante la edición y conserva selección y enfoque al cambiar de variante. Diseña un lienzo vacío con una acción disponible, un estado mientras carga el recurso y recuperación de error sin perder el trabajo. Verifica que los controles estén agrupados por tarea, que las miniaturas no desplacen el lienzo y que el editor funcione sin ratón.`),
-  seed(5,'minimal-showcase.png',{
-    name:'Minimal Showcase', description:'Una presentación de producto con geometría marcada, espacio negativo y una tarjeta superpuesta.',
-    tags:['Minimal','Producto','Wireframe'],
-    features:['Presentación de producto','Espacio negativo','Geometría distintiva','Pocos controles','Superposición legible'],
-    useCases:['Portada de un producto','Ficha de una pieza de portfolio'],
-  },`Dedica la mayor superficie a una imagen o vista del producto. Ubica el título y una descripción corta en un margen generoso, con una tarjeta de datos superpuesta donde la imagen tenga espacio libre. Usa un único botón principal con su estado de foco. Elige una paleta neutra de alto contraste, una sans con titular grande y texto cómodo, y espacios de 24, 40 y 64 px. Combina un contorno geométrico con radios modestos y sombra corta en la tarjeta.
-
-En móvil, convierte la tarjeta superpuesta en un bloque normal debajo de la imagen y reduce márgenes sin ocultar el título. Usa transiciones discretas al cambiar la imagen o abrir una ficha. Si faltan recursos visuales, conserva la estructura textual y ofrece reintento si la carga falla. Verifica que la tarjeta nunca cubra detalles esenciales, que el contraste sea suficiente y que las acciones se puedan alcanzar en el orden de lectura.`),
-  seed(6,'bento-gallery.png',{
-    name:'Bento Gallery', description:'Una galería de tarjetas encajadas con tamaños variados y un recorrido de lectura claro.',
-    tags:['Bento','Catálogo','Wireframe'],
-    features:['Cuadrícula de tamaños variados','Radios coherentes','Tarjetas encajadas','Jerarquía por superficie','Orden de lectura adaptable'],
-    useCases:['Galería de proyectos','Biblioteca de referencias o recursos'],
-  },`Diseña una cuadrícula con tres entradas pares en la primera fila y un bloque destacado más ancho junto a una tarjeta contextual en la siguiente. Usa proporciones consistentes para las miniaturas y deja el título y la interacción en una franja sólida que no tape la imagen. Define tres niveles de tamaño para la cuadrícula. Emplea grises neutros y el acento para selección y acciones, fuentes sans con títulos de una o dos líneas, separaciones de 12–16 px y radios de familia común.
-
-Pasa de tres columnas a dos y luego a una respetando el orden del DOM. Abrir una tarjeta debe tener el mismo resultado por clic o teclado y conservar la posición al regresar. Usa tarjetas esqueleto al cargar y distingue galería vacía, búsqueda sin coincidencias y fallos. Verifica que trasladar un bloque de tamaño no reordene el foco, que las miniaturas con proporciones distintas se entiendan y que los títulos largos se adapten.`),
-  seed(7,'workspace-dashboard.png',{
-    name:'Workspace Dashboard', description:'Un panel de trabajo protagonista con navegación persistente y contexto al alcance.',
-    tags:['Dashboard','Productividad','Wireframe'],
-    features:['Área de trabajo protagonista','Panel contextual derecho','Módulos inferiores','Navegación persistente','Densidad equilibrada'],
-    useCases:['Workspace para proyectos','Panel de seguimiento de operaciones'],
-    author:'bee_uiux',
-  },`Da al flujo principal la superficie más amplia. Sitúa navegación persistente a la izquierda y un panel contextual a la derecha con detalles de la selección. Usa la franja inferior para módulos auxiliares priorizados por frecuencia de uso. Reserva los tonos más claros para superficies de trabajo y el acento para estados interactivos. Usa títulos compactos, etiquetas consistentes y una escala de 8 px. Separa módulos con bordes de bajo contraste y evita acumular sombras.
-
-Bajo un ancho medio, mueve el contexto debajo de la tarea activa y permite plegar la navegación con un botón etiquetado. Mantén historial de selección cuando se cierre el contexto. Indica carga por módulo, un estado sin selección y errores junto al bloque correspondiente. Verifica lectura y teclado, persistencia al cambiar de módulo y ausencia de scroll horizontal. Usa los permisos, datos y acciones que existan en el proyecto.`),
-  seed(8,'atmospheric-analytics.png',{
-    name:'Atmospheric Analytics', description:'Un dashboard oscuro con gráficos legibles, navegación clara y un paisaje discreto.',
-    tags:['Analítica','Dashboard','Oscuro'],
-    features:['Métricas agrupadas','Visualizaciones legibles','Fondo ambiental discreto','Navegación clara','Acentos cálidos'],
-    useCases:['Seguimiento de métricas de producto','Informes de salud operativa'],
-  },`Agrupa indicadores de estado y tendencia, reserva el bloque principal para la serie temporal y coloca comparativas o desgloses debajo. Usa una columna clara para navegación y filtros. Coloca el paisaje en una capa ambiental fuera de etiquetas, tramas y leyendas. Elige azul carbón, blanco cálido y naranja para resaltar una serie, con formas y texto para distinguir las demás. Usa números tabulares, ejes y unidades legibles, espacios de 16–24 px y paneles de borde fino.
-
-En pantallas estrechas, apila los indicadores, el gráfico principal y los desgloses, con filtros plegables que indiquen su estado. Ofrece resumen textual y tabla accesible para gráficas, interacción por teclado y transiciones discretas al variar filtros. Distingue datos ausentes, carga y error por panel. Usa fuentes reales del proyecto o marca los datos de demostración y su procedencia. Verifica unidades, escalas, fecha de actualización, contraste y lectura al ampliar texto.`),
+export const templateSeeds=[
+  seed(1,'mesa-de-servicio.png',{
+    name:'Mesa de servicio',
+    description:'Una cola de incidencias con prioridad, vencimientos SLA y el historial de cada ticket.',
+    tags:['Soporte','Cola de trabajo','SLA'],
+    features:['Cola con búsqueda y vistas guardadas','Indicadores de respuesta','Detalle junto a la lista','Historial cronológico','Asignación y resolución'],
+    useCases:['Soporte de TI','Incidencias internas','Atención posventa'],
+    palette:'Lienzo azul tinta #101B34, tarjetas #172844, texto #F1F6FF y acento cobalto #91BCFF.',
+    layout:'Pon una barra lateral compacta y abre la vista con tres cifras: pendientes, próximos a vencer y fuera de SLA. Dedica el centro a una tabla de tickets y el lateral derecho al historial y la acción del registro seleccionado. En móvil muestra la cola y el detalle como vistas consecutivas.',
+    workflow:'Filtra por prioridad, responsable y estado. Abre un ticket, consulta su vencimiento, asígnalo y añade una nota interna antes de resolverlo. Distingue nota interna de respuesta al solicitante. Conserva filtros al regresar a la cola y etiqueta fechas con su zona horaria.',
+    canvas:'Usa una galería de tickets, una segunda galería de historial y un formulario de actualización. Calcula el indicador de vencimiento desde la fecha almacenada y muestra hora, estado y responsable.',
+    react:'Usa una tabla con navegación y filtros, un detalle con historial y validación en el formulario de resolución. Conserva la selección mientras el registro siga visible.',
+  }),
+  seed(2,'bandeja-de-aprobaciones.png',{
+    name:'Bandeja de aprobaciones',
+    description:'Una bandeja centrada en revisar una solicitud y decidir con su contexto a la vista.',
+    tags:['Aprobaciones','Compras','Finanzas'],
+    features:['Lista agrupada por estado','Importe y solicitante visibles','Resumen de cambios y evidencias','Motivo y confirmación de decisión','Historial de decisiones'],
+    useCases:['Aprobación de compras','Gastos y dietas','Solicitudes de acceso'],
+    palette:'Fondo lavanda #F4F0FA, panel blanco #FFFFFF, texto ciruela #251B3E y acento #6946B7.',
+    layout:'Usa una bandeja dividida con lista a la izquierda y detalle amplio a la derecha. En el detalle, sitúa importe o alcance junto al título, seguidos de las partidas, evidencias y actividad. Mantén las acciones de aprobación al final del detalle y lleva el historial debajo en pantallas estrechas.',
+    workflow:'Selecciona una solicitud pendiente, inspecciona su documentación y aprueba o devuelve. Pide motivo al devolver y confirma la decisión antes de guardarla. Refresca el registro si otro revisor ya decidió y mantiene visibles el autor y la hora de cada decisión.',
+    canvas:'Implementa galería maestra, formulario de lectura, contenedor de confirmación y campo para el motivo. Controla el resultado de la acción con IfError y refresca el registro tras un cambio.',
+    react:'Crea la bandeja y el detalle como componentes coordinados por el identificador de la solicitud. Gestiona el foco al abrir y cerrar la confirmación y conserva el motivo si falla el guardado.',
+  }),
+  seed(3,'inspecciones-de-campo.png',{
+    name:'Inspecciones de campo',
+    description:'Una lista de comprobación móvil con progreso, observaciones y evidencias por puesto.',
+    tags:['Operaciones','Móvil','Calidad'],
+    features:['Progreso de tareas','Controles táctiles amplios','Evidencias por hallazgo','Resumen antes de enviar','Recuperación del borrador'],
+    useCases:['Inspección de instalaciones','Control de calidad','Mantenimiento preventivo'],
+    palette:'Fondo crema #FAF4E8, tarjetas marfil #FFFCF5, tinta #382A1B y acento terracota #A54823.',
+    layout:'Diseña primero para teléfono. Coloca en la cabecera el lugar, el turno y el progreso. Agrupa preguntas en tarjetas con respuestas Conforme, Incidencia y No aplica. En tableta, añade a la derecha un resumen de hallazgos y evidencias.',
+    workflow:'Marca cada comprobación, añade observación y foto a un hallazgo cuando permita el origen de datos, revisa los pendientes y completa la inspección. Conserva el borrador al volver de un detalle. Si se requiere trabajo sin conexión, declara la estrategia de persistencia y muestra el estado de sincronización.',
+    canvas:'Usa una galería de comprobaciones y una colección para el borrador. Explica qué control de evidencias admite el origen de datos. Si planteas persistencia local, indica plataformas compatibles y simula explícitamente los casos de sincronización.',
+    react:'Usa grupos de radio para las respuestas, validación por sección y previsualización de archivos locales. Separa guardado de borrador de envío y prueba volver a un paso anterior.',
+  }),
+  seed(4,'agenda-de-recursos.png',{
+    name:'Agenda de recursos',
+    description:'Una planificación semanal para asignar personas, espacios o equipos sin solapamientos.',
+    tags:['Planificación','Reservas','Recursos'],
+    features:['Vista semanal y agenda móvil','Filtros de disponibilidad','Selección de franjas','Conflictos explicados','Formulario de reserva contextual'],
+    useCases:['Reservas de salas','Planificación de turnos','Asignación de técnicos'],
+    palette:'Fondo hielo #EFF6FF, panel blanco #FFFFFF, texto azul noche #142A44 y acento índigo #244CB7.',
+    layout:'Usa una barra superior con semana y selector de recurso. En pantallas amplias muestra los días en columnas y las reservas como bloques con hora y recurso. En móvil muestra una agenda de un día con navegación de fecha. Muestra disponibilidad con texto y patrón.',
+    workflow:'Elige fecha y recurso, selecciona una franja, confirma zona horaria y guarda. Explica los solapamientos antes de guardar y vuelve a comprobar el horario en el origen de datos. Ofrece reasignación desde el formulario y acceso por teclado a las franjas.',
+    canvas:'Usa galerías de franjas de duración acotada y un formulario de reserva. En móvil cambia a una galería diaria. Modela inicio y fin de forma consistente y documenta la validación de solapamientos del servicio.',
+    react:'Construye una cuadrícula semanal y una lista diaria a partir de las mismas reservas tipadas. Permite reservar con botones y teclado, y valida solapamientos al confirmar.',
+  }),
+  seed(5,'inventario-y-activos.png',{
+    name:'Inventario y activos',
+    description:'Un catálogo tabular con stock por almacén, movimientos y acciones sobre el activo.',
+    tags:['Inventario','Almacén','Activos'],
+    features:['Búsqueda por nombre o código','Existencias por ubicación','Stock mínimo visible','Panel lateral de movimientos','Validación de entradas y salidas'],
+    useCases:['Gestión de equipamiento','Control de existencias','Recepción de materiales'],
+    palette:'Fondo verde grisáceo #EDF5F0, tarjetas #FFFFFF, texto bosque #12332A y acentos #13684C y #D7F4A0.',
+    layout:'Pon búsqueda, filtros y almacén en una única cabecera. Usa tabla con código, artículo, ubicación, disponible y mínimo. Abre una ficha lateral con movimientos y un resumen de existencias. En móvil cambia las filas por fichas de dos líneas y conserva detalle y filtros.',
+    workflow:'Busca un artículo, selecciona el almacén, inspecciona stock y registra entrada, salida o traslado. Muestra cantidad, unidad y ubicación de origen y destino según la acción. Avisa si se supera la disponibilidad y comprueba la cantidad en el origen de datos al confirmar.',
+    canvas:'Usa una galería con plantilla de columnas, controles de filtro delegables si el conector lo permite y un formulario de movimiento con validación y fecha.',
+    react:'Usa tabla, filtros, paginación y una ficha de detalle con historial. Modela entrada, salida y traslado con tipos distintos para validar los campos de cada acción.',
+  }),
+  seed(6,'portal-del-empleado.png',{
+    name:'Portal del empleado',
+    description:'Un portal de autoservicio con catálogo, solicitudes propias y próximos pasos.',
+    tags:['Autoservicio','RR. HH.','Catálogo'],
+    features:['Búsqueda global de servicios','Categorías visuales','Solicitudes propias','Formularios por servicio','Acceso según el rol'],
+    useCases:['Onboarding','Solicitudes a recursos humanos','Catálogo de servicios internos'],
+    palette:'Fondo rosa casi blanco #FCF3F5, tarjetas #FFFFFF, texto #392034 y acentos frambuesa #9B2E59.',
+    layout:'Abre con un buscador amplio y una acción clara para ver solicitudes. Muestra servicios en una cuadrícula de tarjetas con icono y descripción. Reserva una columna para las solicitudes en curso. En móvil coloca el seguimiento antes del catálogo cuando haya tareas pendientes.',
+    workflow:'Encuentra un servicio por nombre o categoría, abre requisitos y plazo estimado si está disponible, completa la solicitud y revisa su estado. Conserva los campos tras un error y muestra el identificador de confirmación. Carga las solicitudes visibles por usuario desde una fuente autorizada.',
+    canvas:'Usa galería adaptable para el catálogo y formulario por tipo de solicitud. Reutiliza cabecera y tarjeta como componentes y usa la pantalla Mis solicitudes para mostrar el seguimiento.',
+    react:'Usa rutas para catálogo, servicio y mis solicitudes. Mantén navegación de vuelta y filtros. Implementa formularios accesibles, con etiquetas y errores vinculados.',
+  }),
+  seed(7,'radar-de-indicadores.png',{
+    name:'Radar de indicadores',
+    description:'Un tablero ejecutivo que conecta métricas, tendencias y el detalle que explica cada variación.',
+    tags:['Analítica','Dirección','KPI'],
+    features:['Métricas con objetivo y unidad','Comparación de periodos','Tendencia con alternativa tabular','Desglose con evidencia','Fecha de actualización'],
+    useCases:['Seguimiento comercial','Cuadro de mando operativo','Control de nivel de servicio'],
+    palette:'Fondo grafito #171A20, tarjetas #252932, texto marfil #FFF6E5 y acento ámbar #FFCA70.',
+    layout:'Muestra periodo y unidad de negocio arriba. Alinea cuatro KPI, una serie temporal grande y un desglose ordenado a la derecha. En pantallas estrechas conserva el resumen encima de la serie y el desglose debajo. Usa una escala común para valores comparables.',
+    workflow:'Cambia el periodo y revisa qué unidad y definición usa cada métrica. Abre el detalle de un indicador para consultar su desglose. Distingue cero, dato ausente y fuente desactualizada. Incluye resumen textual y tabla con los datos del gráfico.',
+    canvas:'Usa tarjetas con componentes, controles de filtro y gráficos compatibles con Canvas cuando aporten claridad. Para datos grandes, pide agregados al origen en lugar de calcular sobre colecciones parciales.',
+    react:'Usa tarjetas con unidades y tendencia, y un gráfico responsive con tabla accesible. Mantén filtros y resultados sincronizados, y evita que una respuesta antigua sustituya la selección actual.',
+  }),
+  ...templateExpansion.map(({file,colors:[background,surface,text,accent],...design},index)=>
+    seed(initialEnterpriseTemplateCount+index+1,file,{
+      ...design,palette:`Fondo ${background}, superficies ${surface}, texto ${text} y acento ${accent}.`,
+    })),
 ];

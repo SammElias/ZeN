@@ -95,7 +95,7 @@
   margin: 0;
   padding: 13px 6px 8px;
   border-radius: 13px;
-  background: rgb(237 237 239 / var(--glass-panel-opacity));
+  background: rgb(237 237 239 / var(--glass-opacity));
   backdrop-filter: blur(var(--glass-blur));
 }
 

@@ -116,3 +116,18 @@ export function calendarOverlaps(event:CalendarEvent,range:CalendarRange) {
  const start=calendarDayStart(range.start,range.timeZone),end=calendarDayStart(range.end,range.timeZone);
  return start<end&&Date.parse(event.start)<end&&Date.parse(event.end)>start;
 }
+
+export function nextCalendarEvent(events:readonly CalendarEvent[],now:Date,timeZone:string):CalendarEvent|undefined {
+ const today=calendarDateInZone(now,timeZone);
+ let timed:CalendarEvent|undefined,allDay:CalendarEvent|undefined,nearest=Infinity;
+ for(const event of events){
+  if(event.cancelled)continue;
+  if(event.allDay){
+   if(event.start>today&&(!allDay||event.start<allDay.start))allDay=event;
+   continue;
+  }
+  const start=Date.parse(event.start);
+  if(start>+now&&start<nearest){timed=event;nearest=start;}
+ }
+ return allDay&&calendarDayStart(allDay.start,timeZone)<=nearest?allDay:timed;
+}

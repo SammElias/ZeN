@@ -5,7 +5,7 @@ import {dialog, nativeImage, type BrowserWindow} from 'electron';
 import {z} from 'zod';
 import {hubName} from '../shared/companion-navigation';
 import {HubAction, HubDraft, HubFileAction, type HubFileResult, type HubImage} from '../shared/knowledge-hub';
-import {TemplateRequest, type TemplateReply} from '../shared/knowledge-templates';
+import {TemplateRequest, templatePrompt, type TemplateReply} from '../shared/knowledge-templates';
 import {readTemplateImage} from './companion-template-images';
 import {copyTemplatePrompt} from './knowledge-templates';
 import {entryMarkdown, fileStem} from '../shared/knowledge-markdown';
@@ -73,7 +73,7 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
       const {library, complete} = readLibraryBackup(picked.filePaths[0]);
       const {response} = await withWindowDialog(() => dialog.showMessageBox(window, {
         type: 'warning', message: `¿Restaurar la biblioteca del ${hubName}?`,
-        detail: `La copia contiene ${library.entries.length} elementos${library.templates ? ' y '+library.templates.length+' templates' : ''}. Sustituirá los datos de la biblioteca incluidos en la copia.` +
+        detail: `La copia contiene ${library.entries.length} elementos${library.templates ? ', '+library.templates.length+' templates' : ''}${library.discoveries ? ' y '+library.discoveries.length+' fichas de descubrimiento' : ''}. Sustituirá los datos de la biblioteca incluidos en la copia.` +
           (complete ? '\n\nAquí se restaura solo la biblioteca. Para recuperar también el borrador y los ajustes, usa Ajustes → Datos y configuración → Importar copia.' : ''),
         buttons: ['Cancelar', 'Restaurar biblioteca'], defaultId: 0, cancelId: 0, noLink: true,
       }));
@@ -121,7 +121,9 @@ export function registerNotesIpc(handle: CompanionIpcHandler, {
         if(!detail.item.sourceUrl)throw Error('El template no tiene enlace de origen.');
         await openExternal(detail.item.sourceUrl);
       }else{
-        copyTemplatePrompt(detail.item.prompt,action.values,copy);
+        const prompt=templatePrompt(detail.item,action.platform);
+        if(!prompt)throw Error('El template no tiene un prompt para React.');
+        copyTemplatePrompt(prompt,action.values,copy);
       }
       return {type:'done'};
     }

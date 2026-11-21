@@ -24,7 +24,7 @@ ZEN Métricas mantiene las mediciones en tu PC. Las excluye de los prompts de Co
 
 Al actualizar la copia con datos nuevos, ZEN recorta las mediciones al intervalo de los últimos 60 días. Mientras la sesión esté vigente, un fallo temporal de conexión puede dejar visible la última copia con sus fechas. Cuando la sesión caduca o la siguiente consulta recibe un rechazo de acceso de Oura, ZEN oculta y elimina la copia y la sesión del equipo.
 
-En **Métricas → Desconectar Oura**, ZEN detiene las consultas y elimina las credenciales y la copia de las métricas en ese equipo. Puedes revocar la autorización concedida al cliente en tu cuenta de Oura. Para borrar inmediatamente la copia sin esperar a la siguiente consulta, usa **Desconectar Oura** en cada PC conectado. Estas acciones conservan el historial que ya tenga Oura en su servicio.
+En **Métricas → Desconectar Oura**, ZEN detiene las consultas y elimina el token y la copia de las métricas en ese equipo. Conserva el identificador público de la aplicación (Client ID) para poder reconectar. Puedes revocar la autorización concedida al cliente en tu cuenta de Oura. Para borrar inmediatamente la copia sin esperar a la siguiente consulta, usa **Desconectar Oura** en cada PC conectado. Estas acciones conservan el historial que ya tenga Oura en su servicio.
 
 ## Tus derechos
 

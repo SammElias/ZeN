@@ -73,10 +73,10 @@ describe('latest confirmed answer stays independent from activity and permission
   expect(f.hub.status().sessions[0].lastReply).toEqual(original);
  });
  it('blocks private capture while paused or presenting and strips every hidden IPC reply',()=>{
-  const f=fixture();f.hub.setLastReply(target.session,target.cwd,f.restored);const visible={expanded:true,page:'codex' as const,codexTab:'summary' as const};
-  expect(displayStatus({...f.hub.status(),workspace:visible},1,true).sessions[0].lastReply).toEqual(f.restored);
+  const f=fixture();f.hub.setLastReply(target.session,target.cwd,f.restored);const visible={expanded:true,page:'codex' as const};
+  expect(displayStatus({...f.hub.status(),workspace:visible},1,true).sessions[0].lastReply).toBeUndefined();
   expect(displayStatus({...f.hub.status(),workspace:visible},1,false).sessions[0].lastReply).toBeUndefined();
-  for(const workspace of [undefined,{...visible,expanded:false},{...visible,page:'home' as const},{...visible,codexTab:'activity' as const},{...visible,codexTab:undefined}])expect(displayStatus({...f.hub.status(),workspace},2,true).sessions[0].lastReply).toBeUndefined();
+  for(const workspace of [undefined,{...visible,expanded:false},{...visible,page:'home' as const},{...visible,page:'permissions' as const}])expect(displayStatus({...f.hub.status(),workspace},2,true).sessions[0].lastReply).toBeUndefined();
   f.hub.update({...f.hub.settings,presentation:true});f.event('Stop',{lastAssistantMessage:'Hidden new answer'});expect(f.hub.setLastReply(target.session,target.cwd,{...f.restored,text:'Local hidden'})).toBe(false);expect(f.hub.status().sessions[0].lastReply).toEqual(f.restored);
   expect(JSON.stringify(displayStatus({...f.hub.status(),workspace:visible},3,true))).not.toContain(f.restored.text);
   f.hub.update({...f.hub.settings,presentation:false,paused:true});expect(displayStatus({...f.hub.status(),workspace:visible},4,true).sessions[0].lastReply).toBeUndefined();expect(f.hub.setLastReply(target.session,target.cwd,f.restored)).toBe(false);

@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CalendarDraft,addCalendarDays,calendarDateInZone,calendarGrid,calendarOverlaps,sourceKey,eventKey,
+import {CalendarDraft,addCalendarDays,calendarDateInZone,calendarGrid,calendarOverlaps,nextCalendarEvent,sourceKey,eventKey,
  type CalendarEvent,type CalendarRange,type CalendarSnapshot} from '../shared/companion-calendar';
 import {CompanionIcon} from './CompanionActions';
 import './companion-calendar.css';
@@ -16,6 +16,7 @@ function initialDay(){
 
 export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:number}){
  const [selected,setSelected]=useState(initialDay),[month,setMonth]=useState(()=>selected.slice(0,7)+'-01');
+ const [now,setNow]=useState(Date.now);
  const [data,setData]=useState<CalendarSnapshot>(empty),[sources,setSources]=useState<string[]|null>(null);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [draft,setDraft]=useState<CalendarDraft>(),[saving,setSaving]=useState(false),[feedback,setFeedback]=useState('');
@@ -35,6 +36,13 @@ export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:
   }catch{if(version===readVersion.current)setError('No se pudo leer la copia local.');}
  }
  useEffect(()=>{if(visible)void read();return()=>{readVersion.current++;};},[visible,revision]);
+ useEffect(()=>{
+  if(!visible)return;
+  const update=()=>setNow(Date.now());
+  update();
+  const timer=setInterval(update,30_000);
+  return()=>clearInterval(timer);
+ },[visible]);
  useEffect(()=>{try{localStorage.setItem('zen-calendar-selected',selected);}catch{}},[selected]);
  useEffect(()=>{if(draft&&visible)createDialog.current?.show();else createDialog.current?.close();},[!!draft,visible]);
  useEffect(()=>{if(detail&&visible)detailDialog.current?.show();else detailDialog.current?.close();},[!!detail,visible]);
@@ -63,7 +71,9 @@ export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:
  const events=useMemo(()=>data.events.filter(event=>event.accountId==='zen-local'||sources===null||sources.includes(sourceKey({accountId:event.accountId,id:event.calendarId}))),[data.events,sources]);
  const agenda=useMemo(()=>events.filter(event=>calendarOverlaps(event,{start:selected,end:addCalendarDays(selected,1),timeZone:systemZone}))
   .sort((a,b)=>Number(b.allDay)-Number(a.allDay)||(a.allDay?a.start.localeCompare(b.start):Date.parse(a.start)-Date.parse(b.start))||a.title.localeCompare(b.title)),[events,selected]);
- const today=calendarDateInZone(new Date(),systemZone);
+ const today=calendarDateInZone(new Date(now),systemZone);
+ const upcoming=useMemo(()=>nextCalendarEvent(events,new Date(now),systemZone),[events,now]);
+ const upcomingDay=upcoming&&(upcoming.allDay?upcoming.start:calendarDateInZone(new Date(upcoming.start),systemZone));
  const lastUpdate=coverage.length?Math.max(...coverage.map(item=>item.at)):undefined;
  function choose(value:string){setSelected(value);if(value.slice(0,7)!==month.slice(0,7))setMonth(value.slice(0,7)+'-01');}
  function moveMonth(offset:number){
@@ -117,23 +127,35 @@ export function CompanionCalendar({visible,revision}:{visible:boolean;revision?:
     <button disabled={busy||waiting||!data.canRequest||sources?.length===0} onClick={()=>void refresh()}><CompanionIcon name="calendar"/>{busy||waiting?'Actualizando…':'Actualizar'}</button>
    </div>
   </header>
-  <p className="calendar-sync" role="status">{sync}{lastUpdate&&' · '+new Date(lastUpdate).toLocaleString(locale)}
-   <small>{dateLabel(range.start,{day:'numeric',month:'short'})+' – '+dateLabel(addCalendarDays(range.end,-1),{day:'numeric',month:'short'})+' · '+systemZone}</small>
-  </p>
-  {!data.canRequest&&<p className="calendar-connect">Puedes crear eventos en «Solo en ZEN». Fija un chat de Codex en Ajustes para consultar tus calendarios.</p>}
-  {data.canRequest&&!data.sources.length&&<p className="calendar-connect">Actualizar solicitará los datos al conector de calendario del chat fijado. La conexión se confirma al recibir un resultado válido.</p>}
-  {(error||failed?.message)&&<p role="alert">{error||failed?.message} La copia anterior sigue disponible.</p>}
-  {data.operations.filter(item=>item.type==='created').map(item=><p className="calendar-connect" key={item.id}>
-   {item.status==='waiting'?'Creación pendiente de confirmación.':item.message??'Resultado de creación incierto.'}
-   {' '}<button onClick={()=>void window.companion.openCodex()}>Comprobar en Codex</button>
-  </p>)}
-  {data.sources.length>0&&<details className="calendar-sources"><summary>Calendarios · {sources?.length??data.sources.length}</summary>
-   {data.sources.map(source=><label key={sourceKey(source)}><input type="checkbox" checked={sources===null||sources.includes(sourceKey(source))}
-    onChange={event=>setSources(current=>{
-     const active=current??data.sources.map(sourceKey);
-     return event.target.checked?[...new Set([...active,sourceKey(source)])]:active.filter(value=>value!==sourceKey(source));
-    })}/>{source.name}<small>{source.writable?'Lectura y escritura':'Solo lectura'}</small></label>)}
-  </details>}
+  <div className="calendar-overview">
+   <div className="calendar-summary">
+    <p className="calendar-sync" role="status">{sync}{lastUpdate&&' · '+new Date(lastUpdate).toLocaleString(locale)}
+     <small>{dateLabel(range.start,{day:'numeric',month:'short'})+' – '+dateLabel(addCalendarDays(range.end,-1),{day:'numeric',month:'short'})+' · '+systemZone}</small>
+    </p>
+    {!data.canRequest&&<p className="calendar-connect">Puedes crear eventos en «Solo en ZEN». Fija un chat de Codex en Ajustes para consultar tus calendarios.</p>}
+    {data.canRequest&&!data.sources.length&&<p className="calendar-connect">Actualizar solicitará los datos al conector de calendario del chat fijado. La conexión se confirma al recibir un resultado válido.</p>}
+    {(error||failed?.message)&&<p role="alert">{error||failed?.message} La copia anterior sigue disponible.</p>}
+    {data.operations.filter(item=>item.type==='created').map(item=><p className="calendar-connect" key={item.id}>
+     {item.status==='waiting'?'Creación pendiente de confirmación.':item.message??'Resultado de creación incierto.'}
+     {' '}<button onClick={()=>void window.companion.openCodex()}>Comprobar en Codex</button>
+    </p>)}
+    {data.sources.length>0&&<details className="calendar-sources"><summary>Calendarios · {sources?.length??data.sources.length}</summary>
+     {data.sources.map(source=><label key={sourceKey(source)}><input type="checkbox" checked={sources===null||sources.includes(sourceKey(source))}
+      onChange={event=>setSources(current=>{
+       const active=current??data.sources.map(sourceKey);
+       return event.target.checked?[...new Set([...active,sourceKey(source)])]:active.filter(value=>value!==sourceKey(source));
+      })}/>{source.name}<small>{source.writable?'Lectura y escritura':'Solo lectura'}</small></label>)}
+    </details>}
+   </div>
+   <section className="calendar-next" aria-labelledby="calendar-next-title">
+    <h2 id="calendar-next-title"><CompanionIcon name="calendar"/>Próximo evento</h2>
+    {upcoming&&upcomingDay?<button type="button" className="calendar-next-link" onClick={()=>choose(upcomingDay)}
+     aria-label={'Ir al día de '+upcoming.title}>
+     <span><strong>{upcoming.title}</strong><small>{dateLabel(upcomingDay,{weekday:'short',day:'numeric',month:'short'})} · {times(upcoming)}</small></span>
+     <CompanionIcon name="arrow"/>
+    </button>:<p>Sin eventos próximos en la agenda disponible.</p>}
+   </section>
+  </div>
   <section className="calendar-month" aria-label="Calendario mensual">
    <div className="calendar-selected"><span>{dateLabel(selected,{weekday:'long'})}</span><strong>{Number(selected.slice(-2))}</strong>
     <small>{dateLabel(selected,{month:'long',year:'numeric'})}</small></div>

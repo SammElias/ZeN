@@ -1,7 +1,8 @@
 import type {MediaRpc} from './companion-media';
 
 export function createSmokeMedia() {
-  const state = {playing: false, paused: false, source: 'Spotify', title: 'Contenido multimedia automático', playerAvailable: false, playerSource: 'Spotify'};
+  const state = {playing: false, paused: false, source: 'Spotify', title: 'Contenido multimedia automático', playerAvailable: false, playerSource: 'Spotify',
+    systemLevel: 42, systemMuted: false, systemOutput: 'a'.repeat(64), systemVolumeWrites: [] as number[]};
   const sessions = [
     {id: '11111111-1111-4111-8111-111111111111', name: 'Spotify', browser: false},
     {id: '22222222-2222-4222-8222-222222222222', name: 'Google Chrome', browser: true},
@@ -70,7 +71,22 @@ export function createSmokeMedia() {
     };
   }
 
-  return {state, observer, player};
+  function systemVolume(): MediaRpc {
+    return {
+      close: () => {},
+      async request(method, params) {
+        if (method === 'systemVolumeSet') {
+          if (params?.endpoint !== state.systemOutput) throw Error('La salida de audio cambió.');
+          if (typeof params.level !== 'number') throw Error('Volumen de prueba no válido.');
+          state.systemLevel = params.level;
+          state.systemVolumeWrites.push(params.level);
+        } else if (method !== 'systemVolumeRead') throw Error('Método de volumen de prueba desconocido.');
+        return {level:state.systemLevel,muted:state.systemMuted,endpoint:state.systemOutput};
+      },
+    };
+  }
+
+  return {state, observer, player, systemVolume};
 }
 
 export type SmokeMediaState = ReturnType<typeof createSmokeMedia>['state'];

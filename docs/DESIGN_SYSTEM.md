@@ -1,5 +1,7 @@
 # Sistema de diseño de ZEN
 
+Contraseñas reutiliza la navegación, paneles, menús, botones y tokens de HUB. Una sola pantalla compacta contiene buscador, proyectos plegables y filas de cuentas. Los controles de copia y visibilidad permanecen en cada fila con nombres accesibles; el menú secundario agrupa edición y eliminación. La máscara fija no comunica la longitud de la clave. El formulario de desbloqueo no muestra metadatos. En ancho estrecho las acciones pasan a la siguiente línea.
+
 ## 01 · Identidad y superficies ![](assets/violeta.svg)
 
 La cápsula pequeña reúne el emblema de ZEN, un indicador de estado, seis accesos, ubicación, candado y agarre. El emblema mantiene su orientación. Los nombres de los accesos están disponibles mediante tooltips y etiquetas accesibles. Al desplegar, la cabecera permanece sobre el contenido de la sección. HUB organiza la biblioteca, la lista y el lector con los colores del tema de ZEN.
@@ -8,13 +10,13 @@ La interfaz, el favicon, la ventana, la bandeja y el ejecutable usan el mismo em
 
 La isla usa los mismos tokens, fondo y emblema que la cápsula. Las posiciones laterales miden **48 × 472 DIP** en compacto. Arriba y Flotante muestran una isla de **472 × 50 DIP**. Si el área útil es menor en ese eje, los controles se agrupan en dos columnas de **89 × 282 DIP** o dos filas de **282 × 89 DIP**. Los seis iconos de navegación tienen objetivos de **30 × 30 DIP**, nombres accesibles e información al pasar el cursor. El emblema controla la presentación general. El selector de posición y el candado junto al agarre ocupan su propio grupo. La región nativa recorta las curvas del contorno y deja pasar clics fuera de la silueta. [Dimensiones](../src/shared/island.ts) · [Geometría](../src/main/companion-workspace-window.ts)
 
-Los accesos comparten una paleta. Home usa azul, Codex violeta, Sonido menta, HUB ámbar, Calendario rosa y Ajustes gris azulado. Monocromo usa tonos neutros. Una raya recuerda la última sección y el marcador de selección identifica un panel visible.
+Los accesos comparten una paleta. Home usa azul, HUB ámbar, Calendario rosa, Métricas verde, Volumen menta y Configuración gris azulado. Monocromo usa tonos neutros. Una raya recuerda la última sección y el marcador de selección identifica un panel visible.
 
 La cápsula mantiene sus dimensiones y anclaje al mostrar u ocultar el panel. La superficie del panel se sitúa debajo, a la derecha o a la izquierda según la ubicación. Flotante utiliza el lado con espacio disponible. La región Win32 contiene únicamente la silueta pequeña y el panel.
 
 El candado indica modo automático cuando está abierto y modo fijado cuando está cerrado. El mismo botón mantiene su posición junto al agarre y muestra su estado en la etiqueta emergente. El emblema permite recoger el panel fijado.
 
-El grupo Apps admite apertura por cursor en Home, Codex, Sonido, HUB y Calendario. El marcador de la sección permanece activo al pasar al contenido. Los controles de ubicación, Ajustes y el candado siguen ocupando sus posiciones y responden a su activación habitual.
+Los seis accesos admiten apertura por cursor, clic y teclado. El marcador de la sección permanece activo al pasar al contenido. Los controles de ubicación y el candado siguen ocupando sus posiciones y responden a su activación habitual.
 
 La cápsula y el panel desplegado comparten un borde luminoso de **2,5 DIP** y un halo interior de hasta **5 DIP**. Ámbar solar es la paleta inicial, con intensidad del **60 %** y un tramo luminoso que abarca el **18 %** del recorrido. La vuelta normal dura **6 s**, la lenta **9 s** y la rápida **4 s**. El color es independiente del acento de ZEN y el movimiento se usa como decoración silenciosa.
 
@@ -31,15 +33,19 @@ En los bordes acoplados, los remates se funden dentro de los hombros de la silue
 | Estado de Inicio | Trabajo `#67B4FF`, permiso `#EEB96A`, turno terminado `#85CFA9`, error `#FB858D`. |
 | Tipografía | Segoe UI Variable con Segoe UI de reserva. Etiquetas de 13 px y metadatos de 11 px en el espacio de trabajo. |
 | Controles | Botones generales del panel de 34 px como mínimo, radio de 9 px en controles y 14 px en tarjetas. Separaciones de 8 px entre controles y 16 px entre secciones como base. |
-| Cristal | Monocromo, oscuro y claro. Opacidad del 62 al 100 % con 78 % inicial. Desenfoque de 0 a 40 px. Fondos Aurora, Atardecer o imagen local. |
+| Cristal | Monocromo, oscuro y claro. Opacidad del 0 al 100 % en pasos de 1 %, con 78 % inicial. El 0 % quita el tinte de la cápsula y del panel. Desenfoque de 0 a 40 px. Fondos Aurora, Atardecer o imagen local. |
 
 Usar `--glass-*` y el fondo del tema para respetar preferencias. La cabecera recogida tiene su propio contorno y evita el marco y la sombra nativa exterior. Las superficies de edición favorecen el contraste.
 
 Todas las secciones comparten una superficie de cristal fuera del contenido desplazable. La escena se dibuja detrás de una capa con la opacidad y el desenfoque configurados. Inicio, Codex, Sonido, HUB, Calendario y Ajustes conservan ese fondo al navegar y hacer scroll. El filtro afecta al fondo; el texto, las portadas y las referencias visuales permanecen nítidos. La preferencia del sistema de reducir transparencia vuelve opaca la superficie y desactiva el desenfoque.
 
-Templates usa las superficies de HUB y miniaturas de proporción fija que conservan la composición completa. La galería adapta las columnas al espacio disponible. El detalle separa la referencia y el contenido en paneles anchos, y los apila cuando falta espacio. El texto del prompt se puede seleccionar y mantiene su legibilidad sobre el fondo del usuario.
+Templates usa las superficies de HUB y miniaturas de proporción fija que conservan la composición completa. La galería adapta las columnas al espacio disponible. El detalle separa la referencia y el contenido en paneles anchos, y los apila cuando falta espacio. El selector de plataforma y la acción de copiar aparecen antes de la vista previa. El texto del prompt se puede seleccionar y mantiene su legibilidad sobre el fondo del usuario.
 
 La navegación y Templates heredan el tema general de ZEN. El ajuste claro u oscuro guardado por HUB se conserva como **Tema del lector** para apuntes y prompts. Sus campos y superficies de lectura mantienen más opacidad para facilitar el contraste.
+
+Descubrimiento de apps reutiliza los paneles de HUB. Cada pregunta destaca el inglés y muestra debajo su apoyo en español. Los cuatro botones de bloque se ajustan al ancho y el formulario conserva un área de scroll propia.
+
+Traductor reúne los idiomas, los campos de texto y las acciones en un panel de cristal de HUB. Original y traducción aparecen lado a lado cuando hay espacio y se apilan en ancho estrecho. La clave se introduce en un campo enmascarado.
 
 `--zen-surface` y `--zen-field` distinguen tarjetas y campos del fondo translúcido. El ámbar identifica acciones principales, el violeta identifica ZEN y Monocromo usa tonos neutros para los controles. Los estados de sesión conservan texto y un indicador de color. Las transiciones breves siguen el ajuste de movimiento y la preferencia del sistema.
 
@@ -52,8 +58,12 @@ Los tonos de interfaz duran de 38 a 165 ms. Un toque acompaña los controles dir
 ## 03 · Componentes ![](assets/azul.svg)
 
 - **Botones.** Primario para la acción de la vista. Secundario para copiar, cambiar de pestaña o navegar. Los botones solo con icono conservan nombre accesible.
-- **Campos y tarjetas.** Mantener etiquetas, foco y mensajes de error próximos. Home agrupa el editor, el chat de destino y los atajos sobre el cristal compartido. Codex, HUB y Sonido usan píldoras con icono y estado. Actividad y Avisos ocupan la altura de su contenido. Las barras de Sonido se animan cuando hay reproducción y el movimiento está habilitado.
-- **Navegación.** La cápsula usa iconos de 18 px sin etiquetas permanentes. Cada sección conserva su color, nombre accesible y tooltip. El acceso activo tiene fondo, borde e indicador; la última sección recordada usa una señal distinta cuando su panel está oculto. Monocromo conserva tonos neutros. Codex mantiene **Actividad** y **Resumen**.
+- **Campos y tarjetas.** Mantener etiquetas, foco y mensajes de error próximos. En Home, Clima, Hoy, Sueño y las píldoras de Codex, HUB y Sonido preceden al editor de peticiones. El editor agrupa el chat de destino y los atajos sobre el cristal compartido. Las barras de Sonido se animan cuando hay reproducción y el movimiento está habilitado.
+- **Navegación.** La cápsula usa iconos de 18 px sin etiquetas permanentes. Cada sección conserva su color, nombre accesible y tooltip. El acceso activo tiene fondo, borde e indicador; la última sección recordada usa una señal distinta cuando su panel está oculto. Monocromo conserva tonos neutros. Codex abre **Actividad** con selector de chat y cronología. El contador ámbar del icono indica permisos por revisar.
+- **Métricas.** Tres tarjetas seleccionables sobre cristal muestran medida, día y última consulta correcta. El historial usa una fila por día y un hueco para cada valor ausente. Home muestra una tarjeta compacta de sueño junto a Hoy. La cápsula puede mostrar la duración en el espacio del icono de Métricas.
+- **Hoy.** En Home, la fecha abre Calendario desde una tarjeta sobre el mismo cristal. En ancho suficiente se muestra junto a Sueño. En una ventana estrecha las tarjetas se apilan.
+- **Clima.** En Home, un panel sobre el mismo cristal reúne temperatura actual, condición, máxima, mínima y lluvia prevista. El pronóstico identifica el período y muestra la atribución a OpenWeather. El cambio de ciudad y clave se abre dentro del panel.
+- **Volumen del sistema.** Sonido muestra el porcentaje sobre el deslizador de ancho completo. El control comparte el acento del tema y mantiene el foco del teclado visible.
 - **Supervisor de Codex.** Lista estrecha de chats y una cronología sobre cristal. El estado combina color y texto. Si falta ancho, la lista se recoge en el selector **Chats** y puede abrirse con teclado.
 - **Confirmaciones.** Mostrar la acción concreta y una salida de cancelación. El análisis y los permisos se revisan en ZEN. Importar un respaldo usa diálogo nativo.
 
@@ -69,3 +79,5 @@ Fuentes visuales: [tokens y estilos del panel](../src/renderer/workspace-polish.
 
 
 Calendario combina una fecha destacada con una cuadrícula de siete columnas. En anchuras estrechas se apilan. La agenda tiene su propio scroll. Los estados de actualización usan texto y las etiquetas **Local**, **Sincronizado** y **Pendiente** explican el origen.
+
+La tarjeta **Próximo evento** ocupa el espacio junto al estado de sincronización. En paneles estrechos aparece sobre la cuadrícula. Muestra el título, la fecha y la hora o la etiqueta **Todo el día**.

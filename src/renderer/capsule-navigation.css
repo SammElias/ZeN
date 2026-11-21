@@ -1,21 +1,20 @@
 .companion-capsule[data-theme=dark] .capsule-launcher {
   --capsule-home: #a6d4ff;
-  --capsule-codex: #d7c4ff;
   --capsule-sound: #8be3cf;
   --capsule-hub: #ffd08f;
   --capsule-settings: #c3cce3;
   --capsule-calendar: #f5b7da;
+  --capsule-metrics: #b8dc96;
 }
 .companion-capsule[data-theme=light] .capsule-launcher {
   --capsule-home: #265383;
-  --capsule-codex: #583892;
   --capsule-sound: #146153;
   --capsule-hub: #794608;
   --capsule-settings: #4a5676;
   --capsule-calendar: #883566;
+  --capsule-metrics: #395b23;
 }
 .capsule-launcher > [data-section=home] { --capsule-app-ink: var(--capsule-home, var(--glass-text)); }
-.capsule-launcher > [data-section=codex] { --capsule-app-ink: var(--capsule-codex, var(--glass-text)); }
 .capsule-launcher > [data-section=spotify] { --capsule-app-ink: var(--capsule-sound, var(--glass-text)); }
 .capsule-launcher > [data-section=notes] { --capsule-app-ink: var(--capsule-hub, var(--glass-text)); }
 .capsule-launcher > [data-section=settings] { --capsule-app-ink: var(--capsule-settings, var(--glass-text)); }
@@ -74,3 +73,6 @@
 .capsule-position-error, .zen-island-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .capsule-launcher > [data-section=calendar] { --capsule-app-ink: var(--capsule-calendar, var(--glass-text)); }
+.capsule-launcher > [data-section=metrics] { --capsule-app-ink: var(--capsule-metrics, var(--glass-text)); }
+.oura-glance { display:grid;gap:1px;font-size:8.5px;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums; }
+.oura-glance small { font-size:7px;color:inherit; }

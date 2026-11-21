@@ -26,6 +26,7 @@ export function KnowledgeEditor(props: Props) {
   const fields = draft.fields;
   const {kind, title, description, code, related, images, tags, language} = fields;
   const isPrompt = kind === 'prompt';
+  const backLabel = isPrompt ? 'Volver a la lista' : 'Volver a la biblioteca de prompts';
   const [beforeFormat, setBeforeFormat] = useState<{text: string; version?: number}>();
   const [promptView, setPromptView] = useState<'markdown' | 'text'>('markdown');
   const [formatTooLong, setFormatTooLong] = useState(false);
@@ -136,7 +137,7 @@ export function KnowledgeEditor(props: Props) {
         </p>}
       </div>
       <div className="hub-tools">
-        <button type="button" className="hub-reader-back" aria-label="Volver a la lista" title="Volver a la lista" onClick={props.back}><ArrowLeft size={16}/></button>
+        <button type="button" className="hub-reader-back" aria-label={backLabel} title={backLabel} onClick={props.back}><ArrowLeft size={16}/></button>
         {saved && <button type="button" title="Favorito" aria-label="Favorito" aria-pressed={saved.favorite}
           disabled={busy || dirty} onClick={props.favorite}><Star size={16} fill={saved.favorite?'currentColor':'none'}/></button>}
         <button type="button" onClick={() => reading ? setMode('edit') : preview()} disabled={busy}>

@@ -1,12 +1,15 @@
 import type {CalendarAction,CalendarSnapshot,CalendarEvent,CalendarOperation} from './companion-calendar';
+import type {OuraAction,OuraGlance,OuraHomeSleep,OuraStatus} from './companion-oura';
+import type {WeatherAction,WeatherStatus} from './companion-weather';
+import type {TranslatorAction,TranslatorReply} from './companion-translator';
 import type {CodexRequestReceipt} from './companion-request';
 import type {AppearanceOptions,AppearanceState} from './companion-appearance';
 import type {ContextInput,ContextPreview,ContextFile} from './companion-context';
 import type {CodexReferenceSelection} from './codex-result-document';
 import type {CodexResultState} from './companion-codex-result';
 import {z} from 'zod';
-import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot} from './companion-media';
-import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,CodexTab,SectionActivation,SectionPage,CapsuleHoverInput} from './companion-workspace';
+import type {MediaSession,MediaTrack,MediaCommand,MediaNowPlaying,MediaSnapshot,SystemVolumeAction,SystemVolumeState} from './companion-media';
+import type {WorkspaceState,WorkspacePage,LauncherPage,CapsuleView,SectionActivation,SectionPage,CapsuleHoverInput} from './companion-workspace';
 import type {CapsuleAlignment} from './overlay-position';
 import type {CapsuleLocation,WorkspaceLayoutAction, WorkspaceLayoutPreferences} from './workspace-layout';
 import type {HubAction, HubDraft, HubFileAction, HubFileResult, HubResult, HubSession, RecentHubNote} from './knowledge-hub';
@@ -45,14 +48,18 @@ export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:Com
 export type CompanionApproval={id:string;session:string;turn:string;label:string;tool:string;preview:string;expiresAt:number};
 export type CompanionNotice={id:string;session:string;title:string;kind:'permission'|'finished'|'error';read:boolean;audible?:boolean;at:number};
 export type CompanionConnection={state:'unchecked'|'missing'|'review'|'disabled'|'ready'|'unavailable';checkedAt?:number;total:number;trusted:number;enabled:number};
-export type CompanionStatus={appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
+export type CompanionStatus={oura?:OuraStatus;ouraGlance?:OuraGlance;ouraHomeSleep?:OuraHomeSleep;appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvalCount?:number;approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
+ vault(action:import('./password-vault').VaultRequest):Promise<CompanionResult<import('./password-vault').VaultReply>>;
+ onVaultSignal(callback:(signal:import('./password-vault').VaultSignal)=>void):()=>void;
+ oura(action:OuraAction):Promise<CompanionResult<boolean>>;
+ weather(action:WeatherAction):Promise<CompanionResult<WeatherStatus>>;
+ translator(action:TranslatorAction):Promise<CompanionResult<TranslatorReply>>;
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;
  profileBackup(action:'export'|'import'):Promise<CompanionResult<'exported'|'imported'|'cancelled'>>;
  openRequest(text:string):Promise<CompanionResult<CodexRequestReceipt>>;
  openSpotify():Promise<CompanionResult<boolean>>;
- codexTab(tab:CodexTab):Promise<CompanionResult<boolean>>;
  contextStatus():Promise<CompanionResult<ContextFile|null>>;contextChoose():Promise<CompanionResult<ContextFile|null>>;contextPrepare(input:ContextInput):Promise<CompanionResult<ContextPreview>>;contextCancel(id:string):Promise<CompanionResult<boolean>>;contextHandoff(id:string):Promise<CompanionResult<{queued:true}>>;contextResult():Promise<CompanionResult<CodexResultState>>;
  contextSource(selection:CodexReferenceSelection):Promise<CompanionResult<string>>;
  mediaNowPlaying():Promise<CompanionResult<MediaNowPlaying|null>>;mediaObservationClose():Promise<CompanionResult<boolean>>;
@@ -75,6 +82,7 @@ export interface CompanionBridge{
  keepExpanded(enabled:boolean):Promise<CompanionResult<boolean>>;
  launcherOrder(order:LauncherPage[]):Promise<CompanionResult<boolean>>;launcherContext(page:LauncherPage):Promise<CompanionResult<boolean>>;options():Promise<CompanionResult<boolean>>;compact(view:CapsuleView):Promise<CompanionResult<boolean>>;
  mediaCurrent():Promise<CompanionResult<MediaTrack|null>>;
+ systemVolume(action:SystemVolumeAction):Promise<CompanionResult<SystemVolumeState>>;
  mediaSnapshot(followSystem?:true):Promise<CompanionResult<MediaSnapshot>>;
  mediaList():Promise<CompanionResult<MediaSession[]>>;mediaSelect(id:string):Promise<CompanionResult<MediaTrack>>;mediaRead(id:string):Promise<CompanionResult<MediaTrack>>;mediaCommand(value:MediaCommand):Promise<CompanionResult<{accepted:boolean}>>;mediaClose(surface?:'workspace'|'compact'):Promise<CompanionResult<boolean>>;
  calendar(action:CalendarAction):Promise<CompanionResult<CalendarSnapshot|{event?:CalendarEvent;local?:boolean;operation?:CalendarOperation}>>;
@@ -85,7 +93,7 @@ export interface CompanionBridge{
  decide(id:string,decision:'allow'|'deny'|'pass'):Promise<CompanionResult<boolean>>;clearNotices():Promise<CompanionResult<boolean>>;
  copy(text:string):Promise<CompanionResult<boolean>>;
  sound(enabled:boolean):Promise<CompanionResult<boolean>>;silence(minutes:0|30):Promise<CompanionResult<boolean>>;testNotice():Promise<CompanionResult<boolean>>;
- presentation(enabled:boolean):Promise<CompanionResult<boolean>>;returnApp():Promise<CompanionResult<boolean>>;locate(session:string,path:string):Promise<CompanionResult<boolean>>;
+ presentation(enabled:boolean):Promise<CompanionResult<boolean>>;returnApp():Promise<CompanionResult<boolean>>;
  hide():Promise<CompanionResult<boolean>>;drag(action:'start'|'end'):Promise<CompanionResult<boolean>>;
  pinWindow(enabled:boolean):Promise<CompanionResult<boolean>>;
  moveCapsule(alignment:CapsuleAlignment):Promise<CompanionResult<boolean>>;

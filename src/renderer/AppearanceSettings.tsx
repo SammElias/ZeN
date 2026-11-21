@@ -126,7 +126,7 @@ export function AppearanceSettings({value,visible,motion,reset,onPreview}:{value
      {draft.background==='image'&&<button type="button" onClick={()=>stage({background:'aurora'})}>Quitar de la vista</button>}
     </div>
    </PreferenceRow>
-   <PreferenceRow title="Opacidad del cristal" controlId="preference-opacity" description="Regula cuánto se ve el fondo de ZEN a través del cristal.">
+   <PreferenceRow title="Opacidad del cristal" controlId="preference-opacity" description="Elige cuánto se tiñe el fondo. Al 0 % desaparece el tinte del cristal.">
     <div className="preference-range"><input id="preference-opacity" aria-label="Opacidad del cristal" aria-valuetext={`${Math.round(draft.opacity*100)} %`} type="range" min={glassOpacity.minimum*100} max={glassOpacity.maximum*100} value={Math.round(draft.opacity*100)} onChange={e=>stage({opacity:e.currentTarget.valueAsNumber/100})}/><output htmlFor="preference-opacity">{Math.round(draft.opacity*100)} %</output></div>
    </PreferenceRow>
    <PreferenceRow title="Desenfoque" controlId="preference-blur" description="Suaviza el fondo interno bajo las superficies de cristal.">

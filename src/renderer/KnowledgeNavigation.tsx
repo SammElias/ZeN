@@ -1,21 +1,14 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {ArrowRight, BookOpen, BrainCircuit, Code2, FolderKanban, House, Layers3, Link2, MessageSquareText, Search, X} from 'lucide-react';
-import {kindLabels, kinds, languages, singularLabels, type HubData, type HubEntry} from '../shared/knowledge-hub';
+import {ArrowRight, BookOpen, ClipboardList, Code2, FolderKanban, KeyRound, Languages, Layers3, Link2, MessageSquareText, Search, X} from 'lucide-react';
+import {kindLabels, kinds, languages, type HubData, type HubEntry} from '../shared/knowledge-hub';
 
 export const entryIcons = {note:BookOpen, snippet:Code2, project:FolderKanban, resource:Link2, prompt:MessageSquareText};
-export const sectionIcons = {dashboard:House, all:BookOpen, prompt:MessageSquareText, ai:BrainCircuit, templates:Layers3};
-export type HubSection = keyof typeof sectionIcons | 'settings' | 'backup';
-export type HubLocation = {section: HubSection; folderId?: string};
+export const sectionIcons = {prompt:MessageSquareText, passwords:KeyRound, templates:Layers3, discovery:ClipboardList, translator:Languages};
+export type HubSection = keyof typeof sectionIcons | 'settings' | 'backup' | 'entry';
 export const sectionLabels: Record<HubSection,string> = {
-  dashboard:'Inicio', all:'Todos los apuntes', prompt:'Biblioteca de prompts', ai:'Conocimiento de IA', templates:'Templates',
-  settings:'Configuración', backup:'Respaldo y exportación',
+  prompt:'Biblioteca de prompts', passwords:'Contraseñas', templates:'Templates', discovery:'Descubrimiento de apps', translator:'Traductor',
+  settings:'Configuración', backup:'Respaldo y exportación', entry:'Apunte',
 };
-
-export const aiFolderName = 'AI ENGINER';
-export function findAiFolder(folders: HubData['folders']) {
-  const matches=folders.filter(folder=>folder.name.trim().toUpperCase()===aiFolderName);
-  return matches.find(folder=>folder.group==='folder') ?? matches[0];
-}
 
 const normalize = (text: string) => text.normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('es');
 export const matchText = (entry: HubEntry, query: string, folderName = '') => {
@@ -30,9 +23,11 @@ export function excerpt(text: string) {
   return text.replace(/^\s*(?:#{1,6}\s+|[-*+]\s+|>\s*)/gm,'').replace(/[*`]/g,'').trim().replace(/\s+/g,' ');
 }
 
-export function HubSearch({data, close, choose}: {data:HubData; close:()=>void; choose:(entry:HubEntry)=>void}) {
+export function HubSearch({data, close, choose, initialKind}: {
+  data:HubData; close:()=>void; choose:(entry:HubEntry)=>void; initialKind?:'note';
+}) {
   const [query,setQuery] = useState('');
-  const [kind,setKind] = useState('');
+  const [kind,setKind] = useState<string>(initialKind??'');
   const [language,setLanguage] = useState('');
   const [active,setActive] = useState(0);
   const modal = useRef<HTMLDialogElement>(null);
@@ -92,37 +87,4 @@ export function HubSearch({data, close, choose}: {data:HubData; close:()=>void; 
       {!results.length&&<p className="hub-muted">No hay resultados.</p>}
     </div>
   </dialog>;
-}
-
-export function HubDashboard({data, navigate, open, list}: {
-  data:HubData; navigate:(location:HubLocation)=>void; open:(entry:HubEntry)=>void; list:boolean;
-}) {
-  const {entries,folders}=data;
-  const notes=entries.filter(entry=>entry.kind==='note');
-  const aiFolder=findAiFolder(folders);
-  const cards = [
-    {section:'all', title:sectionLabels.all, description:'Notas y carpetas', count:notes.length},
-    {section:'prompt', title:sectionLabels.prompt, description:'Plantillas reutilizables', count:entries.filter(entry=>entry.kind==='prompt').length},
-    {section:'ai', title:sectionLabels.ai, description:aiFolderName, count:notes.filter(entry=>entry.folderId===aiFolder?.id).length},
-  ] as const;
-  const recent=notes.sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,4);
-  return <div className="hub-dashboard">
-    <div className={'hub-cards'+(list?' hub-list-view':'')}>
-      {cards.map(card=>{
-        const Icon=sectionIcons[card.section];
-        return <button type="button" className="hub-card" key={card.section} onClick={()=>navigate({section:card.section})}>
-          <span className="hub-card-icon"><Icon size={19}/></span><span><strong>{card.title}</strong><small>{card.description}</small></span>
-          <span className="hub-count">{card.count}</span>
-        </button>;
-      })}
-    </div>
-    <div className="hub-activity">
-      <section>
-        <h2>Apuntes recientes</h2>
-        {recent.length?recent.map(entry=><button type="button" key={entry.id} onClick={()=>open(entry)} title={singularLabels.note}>
-          <BookOpen size={15}/><span>{entry.title}</span>
-        </button>):<p className="hub-muted">Aparecerán los apuntes que edites.</p>}
-      </section>
-    </div>
-  </div>;
 }

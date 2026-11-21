@@ -4,7 +4,7 @@ using Windows.Media.Control;
 using Windows.Storage.Streams;
 using Windows.Graphics.Imaging;
 
-// Windows media sessions only. No browser DOM, window titles, keys, focus, URLs or credentials.
+// Windows media sessions and the default audio output. No browser DOM, window titles, keys, focus, URLs or credentials.
 if(args.Length==1&&args[0]=="--self-test"){NowPlayingSelection.VerifyFixtures();return;}
 var json=new JsonSerializerOptions { PropertyNamingPolicy=JsonNamingPolicy.CamelCase };
 GlobalSystemMediaTransportControlsSessionManager? manager=null;
@@ -102,6 +102,12 @@ while(await Console.In.ReadLineAsync() is string line){
  int id=0;
  try{
   if(line.Length>2048)break;using var doc=JsonDocument.Parse(line);var req=doc.RootElement;id=req.GetProperty("id").GetInt32();var method=req.GetProperty("method").GetString();
+  if(method is "systemVolumeRead" or "systemVolumeSet"){
+   var volume=method=="systemVolumeRead"?SystemVolume.Read():SystemVolume.Set(req.GetProperty("level").GetInt32(),req.GetProperty("endpoint").GetString()!);
+   Console.WriteLine(JsonSerializer.Serialize(new{id,ok=true,result=volume},json));
+   Console.Out.Flush();
+   continue;
+  }
   manager??=await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
   if(!subscribed){manager.SessionsChanged+=(_,__)=>Interlocked.Increment(ref generation);subscribed=true;}
   object result;
@@ -131,7 +137,7 @@ while(await Console.In.ReadLineAsync() is string line){
    }
   }else throw new InvalidOperationException("invalid");
   Console.WriteLine(JsonSerializer.Serialize(new{id,ok=true,result},json));
- }catch(InvalidOperationException e)when(new[]{"stale","unsupported","invalid"}.Contains(e.Message)){Console.WriteLine(JsonSerializer.Serialize(new{id,ok=false,error=e.Message}));}
+ }catch(InvalidOperationException e)when(e.Message is "stale" or "unsupported" or "invalid" or "outputChanged"){Console.WriteLine(JsonSerializer.Serialize(new{id,ok=false,error=e.Message}));}
  catch{Console.WriteLine(JsonSerializer.Serialize(new{id,ok=false,error="unavailable"}));}
  Console.Out.Flush();
 }

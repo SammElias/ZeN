@@ -1,8 +1,8 @@
-import {app,screen,BrowserWindow,Menu} from 'electron';
+import {app,screen,BrowserWindow,Menu,safeStorage} from 'electron';
 import type {CompanionHub} from './companion-hub';
 import type {CompanionIntegration} from './companion-integration';
-import {spawn} from 'node:child_process';
-import {mkdirSync,readFileSync} from 'node:fs';
+import {spawn,spawnSync} from 'node:child_process';
+import {existsSync,mkdirSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {writeEvidence} from './evidence-file';
@@ -14,8 +14,12 @@ import {sectionPages} from '../shared/companion-navigation';
 import {smokeTemplates} from './companion-smoke-templates';
 import {smokeAppearance} from './companion-smoke-appearance';
 import type {CompanionCalendar} from './companion-calendar';
-import {calendarGrid,addCalendarDays,sourceKey} from '../shared/companion-calendar';
-export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,observationFixture,dismissOnOutsideClick}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void}){
+import {calendarDateInZone,calendarGrid,addCalendarDays,sourceKey} from '../shared/companion-calendar';
+import type {createSmokeOura} from './companion-smoke-oura';
+import {emptyOuraCache} from '../shared/companion-oura';
+import {nativeHelper} from './native-helper';
+import {PasswordVault} from './password-vault';
+export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void}){
 
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
  mkdirSync(screenshots,{recursive:true});
@@ -94,6 +98,11 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   await selectPosition(side);
   await compact();
   const before=await screenRect();
+  check('capsuleMenuOrder-'+side,await js(cap,`(()=>{
+   const buttons=[...document.querySelectorAll('.capsule-launcher button')];
+   return buttons.map(button=>button.dataset.hoverApp).join(',')===${JSON.stringify(sectionPages.join(','))}&&
+    buttons.map(button=>button.getAttribute('aria-label')).join(',')==='Home,HUB,Calendario,Métricas,Volumen,Configuración';
+  })()`));
   check('keyboard-'+side,await js(cap,`(()=>{
    const buttons=[...document.querySelectorAll('.capsule-launcher button')];
    const last=buttons.at(-1);last.focus();
@@ -108,10 +117,8 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
    check('fixedCapsule-'+side+'-'+section,sameRect(before,await screenRect()));
    check('oneNavigation-'+side+'-'+section,await js(cap,"document.querySelectorAll('.capsule-launcher').length===1&&!document.querySelector('.companion-bar,.capsule-media-block,.capsule-single-row')"));
    await clickSection(section);
-   if(section!=='settings'){
-    check('currentAppStaysOpen-'+side+'-'+section,await js(cap,`window.companion.status().then(r=>r.value.workspace.expanded&&r.value.workspace.page===${JSON.stringify(section)})`));
-    await js(cap,"document.querySelector('.zen-island-trigger').click()");
-   }
+   check('currentAppStaysOpen-'+side+'-'+section,await js(cap,`window.companion.status().then(r=>r.value.workspace.expanded&&r.value.workspace.page===${JSON.stringify(section)})`));
+   await js(cap,"document.querySelector('.zen-island-trigger').click()");
    await wait(()=>js(cap,"!document.querySelector('.workspace-content:not([hidden])')"));
    check('hiddenFocus-'+side+'-'+section,await js(cap,`document.activeElement?.dataset.page===${JSON.stringify(section)}&&document.querySelector('#capsule-content').inert`));
   }
@@ -150,7 +157,46 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   return !!editor?.getClientRects().length&&!!home.querySelector('.home-composer-heading #home-request-destination')&&
     names.join(',')==='Codex,HUB,Sonido'&&widgets.every(widget=>widget.getClientRects().length&&getComputedStyle(widget).borderRadius==='999px');
  })()`));
+ check('homeShowsLocalDate',await js(cap,`(()=>{
+  const time=document.querySelector('.home-date time');
+  const now=new Date(), part=value=>String(value).padStart(2,'0');
+  const localDay=[now.getFullYear(),part(now.getMonth()+1),part(now.getDate())].join('-');
+  const label=new Intl.DateTimeFormat('es',{dateStyle:'full'}).format(now);
+  return time?.getClientRects().length&&time.dateTime===localDay&&time.textContent===label;
+ })()`));
+ await wait(()=>js(cap,"!!document.querySelector('.home-weather > button')"));
+ check('weatherDefaultsToDublin',await js(cap,"document.querySelector('.home-weather-heading p')?.textContent==='Dublín'"));
+ await js(cap,"document.querySelector('.home-weather > button').click()");
+ const weatherKey='1'.repeat(32);
+ await fill('.home-weather-settings input[type=password]',weatherKey);
+ await js(cap,"document.querySelector('.home-weather-settings button[type=submit]').click()");
+ await wait(()=>js(cap,"document.querySelector('.home-weather-rain')?.textContent.includes('78 %')&&document.querySelector('.home-weather-footer img').naturalWidth>0"));
+ check('weatherHomeForecast',await js(cap,"document.querySelector('.home-weather-current strong')?.textContent==='9°C'&&document.querySelector('.home-weather-range')?.textContent.includes('11°')&&document.querySelector('.home-weather-range')?.textContent.includes('6°')&&document.querySelector('.home-weather-footer img').naturalWidth>0"));
+ check('weatherKeyEncryptedAndPrivate',!readFileSync(join(profile,'companion-weather.bin')).includes(weatherKey)&&
+  await js(cap,`window.companion.weather({type:'refresh'}).then(result=>result.ok&&!JSON.stringify(result.value).includes(${JSON.stringify(weatherKey)}))`));
+ await shot(cap,'home-clima-dublin');
+ await js(cap,"document.querySelector('.home-weather [aria-label=\"Configurar clima\"]').click()");
+ await fill('.home-weather-settings input:not([type=password])','Madrid, ES');
+ await js(cap,"document.querySelector('.home-weather-settings button[type=submit]').click()");
+ await wait(()=>js(cap,"document.querySelector('.home-weather-heading p')?.textContent==='Madrid · ES'"));
+ check('weatherLocationCanChange',await js(cap,"document.querySelector('.home-weather-rain')?.textContent==='Sin lluvia prevista'&&document.querySelector('.home-weather-range')?.textContent.includes('25°')"));
+ check('homeSummaryAboveComposer',await js(cap,`(()=>{
+  const home=document.querySelector('.home-status');
+  const request=home.querySelector('.codex-request-form');
+  return request===home.lastElementChild&&
+   !!home.querySelector('.home-weather')&&!!home.querySelector('.home-date')&&!!home.querySelector('.home-sleep')&&
+   !home.querySelector('.home-continue,.home-notices,#home-notes-title,#home-activity-title');
+ })()`));
  await shot(cap,'home-widgets');
+ await js(cap,"document.querySelector('.home-status-grid button.home-module').click()");
+ await wait(()=>js(cap,"document.querySelector('#capsule-content:not([hidden])')?.dataset.page==='codex'"));
+ check('codexStillOpensFromHome',true);
+ check('weatherRestrictedToHome',await js(cap,"window.companion.weather({type:'refresh',force:true}).then(result=>!result.ok&&!document.querySelector('.home-weather'))"));
+ await nav('home');
+ await js(cap,"document.querySelector('.home-date').click()");
+ await wait(()=>js(cap,"document.querySelector('#capsule-content:not([hidden])')?.dataset.page==='calendar'"));
+ check('homeDateOpensCalendar',true);
+ await nav('home');
  await fill('#codex-request','Borrador conservado al replegar');
  await compact();
  await nav('home');
@@ -161,11 +207,30 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await wait(async()=>queuedRequests.length===beforeRequest+1);
  check('requestDeliveredOnce',queuedRequests[beforeRequest].text==='Petición sintética de ZEN.'&&queuedRequests[beforeRequest].thread==='native-test');
  await nav('notes');
- const saved=await js(cap,`window.companion.notesChange({type:'save',fields:${JSON.stringify({...newFields('note'),title:'Apunte de continuidad',description:'Descripción sintética'})}})`);
- check('noteSaved',saved.ok);
- await wait(()=>js(cap,"document.querySelector('.knowledge-hub')"));
- await js(cap,"document.querySelector('.hub-sidebar [data-section=all]')?.click()");
- const beforeNotes=await js(cap,"document.querySelector('.knowledge-hub')");
+ await wait(()=>js(cap,"!!document.querySelector('.hub-library')"));
+ check('hubSimplifiedNavigation',await js(cap,`(()=>{
+  const nav=document.querySelector('.hub-sidebar nav');
+  const labels=[...nav?.querySelectorAll('button')??[]].map(button=>button.textContent.trim());
+  return labels.join('|')==='Biblioteca de prompts|Contraseñas|Templates|Descubrimiento de apps|Traductor|Configuración|Respaldo y exportación'&&
+   nav.querySelector('[aria-current=page]')?.textContent.trim()==='Biblioteca de prompts';
+ })()`));
+ const noteFolder=await js(cap,"window.companion.notesChange({type:'folder',name:'AI ENGINER',group:'folder'})");
+ check('noteFolderSaved',noteFolder.ok&&noteFolder.value.id);
+ const saved=await js(cap,`window.companion.notesChange({type:'save',fields:${JSON.stringify({...newFields('note',noteFolder.value.id),title:'Apunte de continuidad',description:'Descripción sintética'})}})`);
+ check('noteSaved',saved.ok&&saved.value.id);
+ await nav('home');
+ await js(cap,"document.querySelector('.home-status-grid [data-home-card=notes]').click()");
+ await wait(()=>js(cap,"!!document.querySelector('#capsule-content[data-page=notes]:not([hidden]) .hub-search-launch:enabled')"));
+ await js(cap,"document.querySelector('.hub-search-launch').click()");
+ const standaloneNote="document.querySelector('.hub-library[data-entry=true] .notes-editor-heading h2')?.textContent==='Apunte de continuidad'&&!document.querySelector('.hub-items')";
+ await wait(()=>js(cap,"!!document.querySelector('.hub-search[open] input')"));
+ await fill('.hub-search input','AI ENGINER');
+ await wait(()=>js(cap,"document.querySelector('.hub-search .hub-results strong')?.textContent==='Apunte de continuidad'"));
+ await js(cap,"document.querySelector('.hub-search .hub-results button').click()");
+ await wait(()=>js(cap,standaloneNote));
+ await js(cap,"document.querySelector('.hub-reader-back').click()");
+ await wait(()=>js(cap,"document.querySelector('#notes-title')?.textContent==='Biblioteca de prompts'"));
+ check('hubSearchFindsExistingNoteFolders',true);
  await compact();
  await nav('notes');
  check('hubStaysMounted',await js(cap,"!!document.querySelector('.knowledge-hub')"));
@@ -195,6 +260,21 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await js(cap,"window.companion.pinWindow(false)");
  await selectPosition('floating');
 
+ await nav('spotify');
+ await wait(()=>js(cap,"document.querySelector('#system-volume:enabled')?.value==='42'"));
+ check('systemVolumeWithoutPlayback',await js(cap,"!!document.querySelector('.music-empty')&&document.querySelector('#system-volume').max==='100'"));
+ cap.focus();
+ await fill('#system-volume','68');
+ await wait(async()=>observationFixture.systemLevel===68);
+ check('systemVolumeSliderSendsLevel',observationFixture.systemVolumeWrites.length===1&&observationFixture.systemVolumeWrites[0]===68);
+ observationFixture.systemLevel=24;
+ observationFixture.systemMuted=true;
+ await wait(()=>js(cap,"document.querySelector('#system-volume')?.value==='24'&&document.querySelector('#system-volume-status')?.textContent==='Silenciado en Windows'"));
+ check('systemVolumeReflectsWindows',observationFixture.systemVolumeWrites.length===1);
+ await nav('home');
+ check('systemVolumeRestrictedToSound',await js(cap,`window.companion.systemVolume({type:'set',endpoint:${JSON.stringify(observationFixture.systemOutput)},level:19}).then(result=>!result.ok&&!document.querySelector('#system-volume'))`));
+ observationFixture.systemMuted=false;
+
  observationFixture.playing=true;
  observationFixture.playerAvailable=true;
  await nav('spotify');
@@ -214,20 +294,36 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('homeUsesPausedMedia',await js(cap,"document.querySelector('.home-song-title')?.textContent==='Contenido multimedia automático'&&!document.querySelector('.home-playing-bars')"));
  observationFixture.paused=false;
 
+ await integration.install(); // This integration and its Codex home are inside the smoke profile.
+ const relay=(name:string,cmd:string)=>new Promise<any>((resolve,reject)=>{
+  const child=spawn(integration.executable,['--zen-companion'],{windowsHide:true,stdio:'pipe'});
+  let output='';
+  child.stdout.on('data',data=>output+=data);
+  child.stderr.resume();child.stdin.on('error',reject);child.once('error',reject);
+  child.once('close',code=>{try{if(code!==0)throw Error('Synthetic hook failed');resolve(JSON.parse(output));}catch(error){reject(error);}});
+  child.stdin.end(JSON.stringify({hook_event_name:name,session_id:'native-test',cwd:'C:\\fixture',turn_id:'capsule-turn',tool_name:'functions.exec_command',tool_input:{cmd}}));
+ });
  hub.accept({id:randomUUID(),event:'UserPromptSubmit',session:'native-test',cwd:'C:\\fixture',turn:'capsule-turn'},()=>{});
- hub.accept({id:randomUUID(),event:'PermissionRequest',session:'native-test',cwd:'C:\\fixture',turn:'capsule-turn',tool:'shell',preview:'Synthetic reviewed action'},()=>{});
+ await relay('PreToolUse','git status --short');
  await compact();
- await wait(()=>js(cap,"!!document.querySelector('.capsule-launcher [data-page=codex] .permission-badge')"));
+ const decision=relay('PermissionRequest','npm test -- --run');
+ void decision.catch(()=>{});
+ await wait(()=>js(cap,"!!document.querySelector('.capsule-launcher [data-page=home] .permission-badge')"));
  const permission=hub.status().approvals[0];
  check('openingPermissionNeverApproves',!!permission);
- await nav('permissions');
- check('permissionDetailsAccessible',hub.status().approvals.length===1&&await js(cap,"!!document.querySelector('.approval-card')"));
- if(permission)hub.decide(permission.id,'deny');
+ check('permissionBlockedOnIsland',await js(cap,`window.companion.decide(${JSON.stringify(permission.id)},'allow').then(r=>!r.ok)`));
+ await nav('codex');
+ await wait(()=>js(cap,"document.querySelector('.approval-card')?.textContent.includes('npm test -- --run')"));
+ check('permissionDetailsAccessible',hub.status().approvals.length===1&&await js(cap,"!document.querySelector('.codex-page [role=tablist]')"));
+ check('monitorCommandVisibleWithoutExpansion',await js(cap,"document.querySelector('.codex-command-line')?.textContent==='git status --short'"));
+ await shot(cap,'codex-permission');
+ await js(cap,"Array.from(document.querySelectorAll('.approval-card button')).find(button=>button.textContent==='Rechazar').click()");
+ check('denialReturnsOnceToNativeHook',(await decision).hookSpecificOutput?.decision?.behavior==='deny'&&hub.status().approvals.length===0);
 
  const otherChat={session:'other-test',cwd:'C:\\Calendario de prueba',turn:'other-turn'};
  hub.accept({id:randomUUID(),event:'PreToolUse',tool:'mcp__codex_apps__google_calendar__list_events',...otherChat},()=>{});
  hub.setTitle(otherChat.session,'Agenda del mes');
- await js(cap,"window.companion.codexTab('activity')");
+ await nav('codex');
  await wait(()=>js(cap,"document.querySelector('.codex-chat-row[data-chat-id=other-test]')"));
  await js(cap,"document.querySelector('.codex-chat-row[data-chat-id=other-test]').click()");
  await wait(()=>js(cap,"document.querySelector('.codex-chat-detail h2')?.textContent==='Agenda del mes'"));
@@ -236,6 +332,13 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await js(cap,"document.querySelector('.codex-monitor-actions button').click()");
  await wait(async()=>openedTargets.at(-1)==='codex://threads/other-test');
  check('monitorOpensSelectedChat',openedTargets.at(-1)==='codex://threads/other-test');
+ hub.accept({id:randomUUID(),event:'PermissionRequest',tool:'shell',preview:'Contenido privado de otro chat',...otherChat},()=>{});
+ await wait(()=>js(cap,"document.querySelector('.codex-monitor-actions button')?.textContent.includes('Revisar permiso en Codex')"));
+ check('foreignPermissionIsVisibleWithoutArguments',await js(cap,"!!document.querySelector('.permission-badge')&&!document.querySelector('.approval-card')&&!document.querySelector('.codex-page').textContent.includes('Contenido privado de otro chat')"));
+ const notice=hub.status().notices.find(item=>item.kind==='permission'&&item.session===otherChat.session)!;
+ await activateNotice(notice);
+ check('foreignPermissionNoticeOpensExactChat',openedTargets.at(-1)==='codex://threads/other-test');
+ hub.accept({id:randomUUID(),event:'PostToolUse',tool:'shell',...otherChat},()=>{});
  await shot(cap,'codex-activity');
  const monitorBounds=cap.getBounds();
  await resizeForFixture(590,monitorBounds.height);
@@ -247,9 +350,16 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
 
  const originalPopup=Menu.prototype.popup;
  let menuLabels:string[]=[];
- Menu.prototype.popup=function(options:any){menuLabels=this.items.map(item=>item.label);options.callback?.();};
+ Menu.prototype.popup=function(options:any){
+  menuLabels=this.items.map(item=>item.label);
+  const notices=this.items.find(item=>item.label==='Ver avisos'&&item.enabled);
+  notices?.click(notices,cap,{} as Electron.KeyboardEvent);
+  options.callback?.();
+ };
  try{await js(cap,"window.companion.capsuleLocationMenu()");}finally{Menu.prototype.popup=originalPopup;}
- check('allSecondaryActionsAccessible',['Minimizar ZEN','Salir de ZEN','Siempre encima','Apariencia y preferencias','Distribución de ventana'].every(name=>menuLabels.includes(name)));
+ check('allSecondaryActionsAccessible',['Minimizar ZEN','Salir de ZEN','Siempre encima','Apariencia y preferencias','Distribución de ventana','Ver avisos'].every(name=>menuLabels.includes(name)));
+ await wait(()=>js(cap,"!!document.querySelector('#capsule-content[data-page=notices]:not([hidden]) .notice-tools')"));
+ check('noticesAccessibleFromCapsuleMenu',true);
 
  await nav('home');
  check('monitorCannotOpenOtherChatFromHome',await js(cap,"window.companion.openCodex('other-test').then(result=>!result.ok)"));
@@ -306,9 +416,211 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await wait(()=>js(cap,"!document.querySelector('.calendar-dialog[open]')"));
  await wait(()=>js(cap,"[...document.querySelectorAll('.calendar-event')].some(event=>event.textContent.includes('Copia local tras petición externa')&&event.textContent.includes('Solo en ZEN'))"));
  check('calendarExplicitLocalFallback',queuedRequests.length===remoteRequests&&calendar.snapshot().operations.some(item=>item.type==='created'));
+ const restoreFixtureEvents=calendar.restoreLocal({version:1,events:[]});
+ try {
+  await wait(()=>js(cap,"document.querySelector('.calendar-next p')?.textContent.includes('Sin eventos próximos')"));
+  const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const upcomingDay=addCalendarDays(calendarDateInZone(new Date(),timeZone),1);
+  await calendar.create({id:randomUUID(),title:'Próximo evento de prueba',date:upcomingDay,endDate:upcomingDay,
+   start:'09:00',end:'10:00',allDay:true,timeZone,destination:'local',description:'',location:''});
+  await wait(()=>js(cap,"document.querySelector('.calendar-next-link')?.textContent.includes('Próximo evento de prueba')"));
+  check('calendarUpcomingAllDay',await js(cap,"document.querySelector('.calendar-next-link')?.textContent.includes('Todo el día')"));
+  await resizeForFixture(940,850);
+  await shot(cap,'calendar-next-event');
+  await js(cap,"document.querySelector('.calendar-next-link').click()");
+  await wait(()=>js(cap,`localStorage.getItem('zen-calendar-selected')===${JSON.stringify(upcomingDay)}`));
+  check('calendarUpcomingOpensDay',await js(cap,"document.querySelector('.calendar-agenda .calendar-event')?.textContent.includes('Próximo evento de prueba')"));
+ } finally {restoreFixtureEvents();}
+ await nav('metrics');
+ await wait(()=>js(cap,"document.querySelector('#oura-client-id')"));
+ const metricsToday=await js(cap,"window.companion.status().then(r=>r.value.oura.today)");
+ const recentNight=addCalendarDays(metricsToday,-1);
+ const connectOura=()=>js(cap,"window.companion.oura({type:'connect',clientId:'test-oura-app'})");
+ ouraFixture.state.authorizationError='Oura no concedió el acceso. Aviso de prueba.';
+ await connectOura();
+ await compact();
+ await clickSection('metrics');
+ await wait(()=>js(cap,"document.querySelector('.oura-message')?.textContent.includes('Aviso de prueba.')"));
+ check('ouraAuthorizationErrorSurvivesReopen',await js(cap,"document.querySelector('#oura-client-id')?.value==='test-oura-app'"));
+ ouraFixture.state.authorizationError='';
+ await connectOura();
+ await wait(()=>js(cap,`document.querySelector('[data-oura-card=sleep]')?.dataset.day===${JSON.stringify(recentNight)}`));
+ check('ouraCachedMorningAndTodayActivity',await js(cap,`document.querySelector('[data-oura-card=sleep]').dataset.day===${JSON.stringify(recentNight)}&&document.querySelector('[data-oura-card=activity]').dataset.day===${JSON.stringify(metricsToday)}`));
+ await nav('home');
+ await wait(()=>js(cap,"document.querySelector('.home-sleep')?.textContent.includes('Anoche pendiente de sincronizar')"));
+ check('homeSleepDatesPreviousNight',await js(cap,`document.querySelector('.home-sleep time')?.dateTime===${JSON.stringify(recentNight)}&&document.querySelector('.home-sleep')?.textContent.includes('7 h 0 min')`));
+ const openMetricsFromHome=()=>js(cap,"document.querySelector('.home-sleep button').click()");
+ await openMetricsFromHome();
+ await wait(()=>js(cap,"document.querySelector('#capsule-content:not([hidden])')?.dataset.page==='metrics'"));
+ await js(cap,"window.companion.oura({type:'capsule',mode:'sleep'})");
+ await compact();
+ await wait(()=>js(cap,"document.querySelector('[data-page=metrics] .oura-glance')?.textContent.includes('7h00')"));
+ ouraFixture.state.synced=true;
+ await wait(()=>js(cap,"document.querySelector('[data-page=metrics] .oura-glance')?.textContent.includes('7h32')"));
+ check('ouraAutoUpdatesCompactFromPoll',ouraFixture.state.requests.filter(row=>row==='sleep').length>=2);
+ check('ouraPrivateCacheHiddenOnIsland',await js(cap,"window.companion.status().then(r=>r.value.oura===undefined&&r.value.ouraGlance.seconds===27120)"));
+ const requestsBeforeOuraNav=ouraFixture.state.requests.length;
+ await clickSection('metrics');
+ await wait(()=>js(cap,"document.querySelector('[data-oura-card=sleep]')?.textContent.includes('7 h 32 min')"));
+ check('ouraChartSevenUniqueDays',await js(cap,`document.querySelectorAll('.oura-week tbody tr').length===7&&document.querySelectorAll('.oura-week [data-day="${metricsToday}"]').length===1&&document.querySelectorAll('.oura-week [data-missing=true]').length>0`));
+ await js(cap,"document.querySelector('[data-oura-card=activity]').click()");
+ check('ouraChartsAndNavigationReadCache',ouraFixture.state.requests.length===requestsBeforeOuraNav&&await js(cap,"document.querySelector('.oura-week').dataset.metric==='activity'"));
+ await shot(cap,'metrics-oura-fixture');
+ await nav('home');
+ await wait(()=>js(cap,"document.querySelector('.home-sleep')?.textContent.includes('7 h 32 min')"));
+ check('homeSleepUsesOnlySummary',await js(cap,"window.companion.status().then(r=>r.value.oura===undefined&&r.value.ouraGlance===undefined&&r.value.ouraHomeSleep.latest.score===88)"));
+ await shot(cap,'home-sleep-fixture');
+ const sleepBounds=cap.getBounds();
+ await resizeForFixture(470,sleepBounds.height);
+ check('weatherFitsNarrow',await js(cap,`(()=>{const card=document.querySelector('.home-weather');return card.clientWidth>=card.scrollWidth-1&&!!card.querySelector('.home-weather-outlook')?.getClientRects().length;})()`));
+ check('homeDateFitsNarrow',await js(cap,`(()=>{const card=document.querySelector('.home-date'),sleep=document.querySelector('.home-sleep');return card.clientWidth>=card.scrollWidth-1&&card.getBoundingClientRect().bottom<=sleep.getBoundingClientRect().top;})()`));
+ check('homeSleepFitsNarrow',await js(cap,`(()=>{const card=document.querySelector('.home-sleep'),button=card.querySelector('button');return card.clientWidth>=card.scrollWidth-1&&button.getBoundingClientRect().right<=card.getBoundingClientRect().right;})()`));
+ await resizeForFixture(sleepBounds.width,sleepBounds.height);
+ await openMetricsFromHome();
+ await wait(()=>js(cap,"document.querySelector('#capsule-content:not([hidden])')?.dataset.page==='metrics'"));
+ check('homeSleepOpensMetricsWithoutFetching',ouraFixture.state.requests.length===requestsBeforeOuraNav&&await js(cap,"window.companion.status().then(r=>r.value.oura?.state==='connected'&&r.value.ouraHomeSleep===undefined)"));
+ await js(cap,"window.companion.oura({type:'disconnect'})");
+ await wait(()=>js(cap,"document.querySelector('#oura-client-id')?.value==='test-oura-app'"));
+ const disconnectedOura=JSON.parse(safeStorage.decryptString(readFileSync(join(profile,'companion-oura.bin'))));
+ check('ouraDisconnectClearsProtectedSession',disconnectedOura.token===undefined&&JSON.stringify(disconnectedOura.cache)===JSON.stringify(emptyOuraCache()));
+ check('ouraDisconnectRemembersClientId',disconnectedOura.clientId==='test-oura-app');
+
  await nav('home');
  await fill('#codex-request','');
  Object.assign(report,await smokeTemplates({cap,js,wait,nav,shot,resize:resizeForFixture,selectPosition,profile,copiedText}));
+ await fill('#codex-request','Borrador habitual de prueba');
+ await nav('notes');
+ const clickLabel=(root:string,label:string)=>js(cap,`(()=>{
+  const button=Array.from(document.querySelectorAll(${JSON.stringify(root+' button')})).find(item=>item.textContent.trim()===${JSON.stringify(label)});
+  if(!button||button.disabled)throw Error('Acción del HUB no disponible: '+${JSON.stringify(label)});
+  button.click();
+ })()`);
+ const hubSections=[
+  ['Biblioteca de prompts','.hub-library'],
+  ['Contraseñas','.password-vault'],
+  ['Templates','.templates-view'],
+  ['Descubrimiento de apps','.discovery-workspace'],
+  ['Traductor','.translator-workspace'],
+ ];
+ for(let round=0;round<3;round++){
+  for(const [label,activeView] of hubSections){
+   await clickLabel('.hub-sidebar',label);
+   await wait(()=>js(cap,`document.querySelector('.hub-sidebar [aria-current=page]')?.textContent.trim()===${JSON.stringify(label)}`));
+   const exclusive=await js(cap,`(()=>{
+    const views=[...document.querySelectorAll('.knowledge-hub :is(.templates-view,.discovery-workspace,.translator-workspace,.password-vault,.hub-library)')];
+    const visible=views.filter(view=>view.getClientRects().length>0);
+    return visible.length===1&&visible[0].matches(${JSON.stringify(activeView)})&&
+     ['.templates-view','.discovery-workspace'].every(selector=>{
+      const retained=views.filter(view=>view.matches(selector));
+      return retained.length<=1&&retained.every(view=>view===visible[0]?!view.inert:view.hidden&&view.inert);
+     });
+   })()`);
+   if(!exclusive)throw Error('El HUB muestra vistas superpuestas o duplicadas en '+label);
+  }
+ }
+ check('hubShowsOnlyActiveSection',true);
+ await clickLabel('.hub-sidebar','Configuración');
+ await wait(()=>js(cap,"!!document.querySelector('.hub-switch[aria-label=\"Tema del lector\"]')"));
+ await clickLabel('.hub-sidebar','Respaldo y exportación');
+ await wait(()=>js(cap,"[...document.querySelectorAll('.hub-main button')].some(button=>button.textContent==='Restaurar biblioteca')"));
+ check('hubSystemActionsAvailable',true);
+ await clickLabel('.hub-sidebar','Traductor');
+ await wait(()=>js(cap,"!!document.querySelector('#translator-key[type=password]:enabled')"));
+ await fill('#translator-key','zen-translator-test-key');
+ await clickLabel('.translator-key','Guardar clave');
+ await wait(()=>js(cap,"!!document.querySelector('.translator-service button')&&!document.querySelector('#translator-key')"));
+ check('translatorKeyProtected',await js(cap,"window.companion.translator({type:'status'}).then(r=>r.ok&&r.value.configured&&Object.keys(r.value).length===2)")&&
+  !readFileSync(join(profile,'companion-translator.bin')).includes(Buffer.from('zen-translator-test-key')));
+ await fill('#translator-original','¿Quién aprueba las solicitudes?');
+ await clickLabel('.translator-form','Traducir');
+ await wait(()=>js(cap,"document.querySelector('#translator-result')?.value==='Who approves the requests?'"));
+ await clickLabel('.translator-form','Copiar');
+ await wait(async()=>copiedText.at(-1)==='Who approves the requests?');
+ await js(cap,"document.querySelector('.translator-direction button').click()");
+ await fill('#translator-original','The manager approves the requests.');
+ check('translatorEnterShortcut',await js(cap,`(()=>{
+  const original=document.querySelector('#translator-original');
+  const press=options=>original.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,...options}));
+  return press({shiftKey:true})&&press({isComposing:true})&&!press({});
+ })()`));
+ await wait(()=>js(cap,"document.querySelector('#translator-result')?.value==='El gestor aprueba las solicitudes.'"));
+ check('translatorBothDirections',true);
+ await shot(cap,'hub-translator');
+ const translatorBounds=cap.getBounds();
+ await resizeForFixture(440,translatorBounds.height);
+ check('translatorFitsNarrow',await js(cap,`(()=>{
+  const editor=document.querySelector('.translator-workspace');
+  const source=document.querySelector('#translator-original').getBoundingClientRect();
+  const target=document.querySelector('#translator-result').getBoundingClientRect();
+  return editor.scrollWidth<=editor.clientWidth+1&&target.top>=source.bottom;
+ })()`));
+ await resizeForFixture(translatorBounds.width,translatorBounds.height);
+ await nav('home');
+ check('translatorRequiresHub',await js(cap,"window.companion.translator({type:'translate',from:'es',text:'Un ejemplo'}).then(r=>!r.ok)"));
+ await nav('notes');
+ await wait(()=>js(cap,"!!document.querySelector('.translator-service button')"));
+ check('translatorRemembersOnlyDirection',await js(cap,"document.querySelector('#translator-original').lang==='en'&&!document.querySelector('#translator-original').value&&!document.querySelector('#translator-result').value"));
+ const helloProbe=spawnSync(nativeHelper(__dirname,'vaultHello'),['probe'],{windowsHide:true,stdio:'ignore',timeout:5000});
+ check('vaultHelloNativeProbe',[0,2].includes(helloProbe.status??-1));
+ report.vaultHelloPlatformAvailable=helloProbe.status===0;
+ const vaultFixture=new PasswordVault(join(profile,'passwords.kdbx'));
+ await vaultFixture.create('ZEN vault fixture','ZEN vault fixture');
+ vaultFixture.lock();
+ check('vaultOnlyInHub',await js(cap,"window.companion.navigate('passwords').then(r=>!r.ok)"));
+ await clickLabel('.hub-sidebar','Contraseñas');
+ await wait(()=>js(cap,"!!document.querySelector('.hub-main .vault-unlock input:enabled')"));
+ cap.focus();
+ await fill('.vault-unlock input','ZEN vault fixture');
+ await clickLabel('.vault-unlock','Desbloquear');
+ await wait(()=>js(cap,"!!document.querySelector('.hub-main .vault-toolbar')"));
+ await nav('home');
+ await nav('notes');
+ await clickLabel('.hub-sidebar','Contraseñas');
+ await wait(()=>js(cap,"!!document.querySelector('.hub-main .vault-unlock input:enabled')"));
+ check('hubVaultLocksOnNavigation',true);
+ check('vaultHelloOptIn',await js(cap,"!document.querySelector('.vault-unlock button[type=button]')"));
+ cap.focus();
+ await fill('.vault-unlock input','ZEN vault fixture');
+ await wait(()=>js(cap,"!!document.querySelector('.vault-unlock button[type=submit]:enabled')"));
+ await clickLabel('.vault-unlock','Desbloquear');
+ await wait(()=>js(cap,"!!document.querySelector('.vault-heading button[aria-expanded]')"));
+ await clickLabel('.vault-heading','Windows Hello');
+ await fill('.vault-form input[type=password]','incorrecta');
+ await clickLabel('.vault-form','Activar Windows Hello');
+ await wait(()=>js(cap,"document.querySelector('.password-vault [role=status]')?.textContent.includes('contraseña maestra no es correcta')"));
+ check('vaultHelloValidatesMaster',!existsSync(join(profile,'passwords-hello.json')));
+ await clickLabel('.hub-sidebar','Descubrimiento de apps');
+ await wait(()=>js(cap,"!!document.querySelector('.discovery-workspace:not([hidden])')"));
+ await clickLabel('.discovery-workspace','Nueva ficha');
+ check('discoveryBilingual',await js(cap,"document.querySelector('[for=discovery-objective][lang=en]')?.textContent.includes('What problem')&&document.querySelector('#discovery-es-objective')?.textContent.includes('¿Qué problema')"));
+ await fill('.discovery-project input','Help desk pilot');
+ await fill('#discovery-objective','Reduce the time to resolve support tickets.');
+ await shot(cap,'discovery-interview');
+ await clickLabel('.discovery-workspace','Guardar ficha');
+ await wait(()=>js(cap,"document.querySelector('.discovery-status [role=status]')?.textContent==='Ficha guardada.'"));
+ await clickLabel('.discovery-workspace','Volver a las fichas');
+ await js(cap,"document.querySelector('.discovery-records button').click()");
+ check('discoveryReopensAnswers',await js(cap,"document.querySelector('#discovery-objective')?.value==='Reduce the time to resolve support tickets.'"));
+ const queueBeforeDiscovery=queuedRequests.length,copyBeforeDiscovery=copiedText.length;
+ await clickLabel('.discovery-workspace','Generar propuesta');
+ check('discoveryLocalIdea',await js(cap,"document.querySelector('.discovery-idea strong')?.textContent==='Service desk'"));
+ await clickLabel('.discovery-workspace','Copiar resumen');
+ await wait(async()=>copiedText.length===copyBeforeDiscovery+1);
+ check('discoveryBriefToClipboard',copiedText.at(-1)?.includes('Application discovery · Help desk pilot'));
+ await wait(()=>js(cap,"document.querySelector('.discovery-status [role=status]')?.textContent==='Resumen copiado.'"));
+ await clickLabel('.discovery-steps','Datos, integración y licencias');
+ await fill('#discovery-licences','Confirm seat assignments with IT');
+ await js(cap,"document.querySelector('[aria-label=\"Por confirmar · Licences\"]').click()");
+ await clickLabel('.discovery-workspace','Valorar en Codex');
+ await wait(()=>js(cap,"document.querySelector('.workspace-content')?.dataset.page==='home'&&document.querySelector('#codex-request')?.value.includes('Licences · To confirm (Confirm seat assignments with IT)')"));
+ check('discoveryStagesWithoutSending',queuedRequests.length===queueBeforeDiscovery);
+ await js(cap,"document.querySelector('.codex-request-form').requestSubmit()");
+ await wait(()=>js(cap,"document.querySelector('#codex-request')?.value==='Borrador habitual de prueba'"));
+ check('discoveryUsesExistingRequest',queuedRequests.length===queueBeforeDiscovery+1&&queuedRequests.at(-1)?.text.includes('Help desk pilot'));
+ await nav('notes');
+ check('discoveryAssessmentSaves',await js(cap,"window.companion.notesRead().then(result=>result.ok&&result.value.data.discoveries?.[0]?.answers.licences?.pending===true)"));
+ await nav('home');
+ await fill('#codex-request','');
  Object.assign(report,await smokeAppearance({cap,js,wait,nav,shot,selectPosition,compact,resize:resizeForFixture}));
  check('noDuplicateWindow',BrowserWindow.getAllWindows().length===1);
  check('noOldBarAtAnyEntry',await js(cap,"!document.querySelector('.companion-bar,.capsule-single-row')"));

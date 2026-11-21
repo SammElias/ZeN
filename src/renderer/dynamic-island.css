@@ -24,7 +24,7 @@
 }
 .workspace-surface::before { background:var(--zen-panel-scene);filter:var(--zen-scene-filter,none); }
 .workspace-surface::after {
- background:rgb(var(--glass-rgb) / var(--glass-panel-opacity));
+ background:rgb(var(--glass-rgb) / var(--glass-opacity));
  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.15);
  backdrop-filter:blur(var(--glass-blur)) saturate(1.15);
 }

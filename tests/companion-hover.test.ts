@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CompanionHover } from '../src/main/companion-hover';
 import { motion } from '../src/shared/companion-motion';
-import { appCubeDirection, type AppPage, type WorkspacePage } from '../src/shared/companion-navigation';
+import { appCubeDirection, sectionPages, type AppPage, type WorkspacePage } from '../src/shared/companion-navigation';
 
 function fixture() {
   const state = { visible:true, expanded:false, page:'home' as WorkspacePage, overCapsule:false, overWorkspace:false, blocked:false, locked:false, animate:false };
@@ -72,6 +72,18 @@ describe('the Windows capsule hover', () => {
     capsule(false);
     vi.advanceTimersByTime(450);
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the standard hover dwell for Calendario and Configuración', () => {
+    const {state, capsule, open} = fixture();
+    capsule(true, 'calendar');
+    vi.advanceTimersByTime(150);
+    expect(state.page).toBe('calendar');
+    capsule(true, 'settings');
+    vi.advanceTimersByTime(149);
+    expect(state.page).toBe('calendar');
+    vi.advanceTimersByTime(1);
+    expect(open.mock.calls).toEqual([['calendar'], ['settings']]);
   });
 
   it('lets explicit navigation cancel a pending app without a new pointer entry', () => {
@@ -273,6 +285,8 @@ describe('the app cube direction', () => {
     expect(appCubeDirection(['home','codex','spotify','notes'], 'codex', 'notes')).toBe('bottom');
     expect(appCubeDirection(['home','codex','spotify','notes'], 'notes', 'codex')).toBe('top');
     expect(appCubeDirection(['home','notes','calendar','codex','spotify'], 'permissions', 'notes')).toBe('top');
+    expect(appCubeDirection(sectionPages, 'calendar', 'settings')).toBe('bottom');
+    expect(appCubeDirection(sectionPages, 'settings', 'calendar')).toBe('top');
   });
 
   it('skips the cube on repeats and when a view does not have a visible app icon', () => {

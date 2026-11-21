@@ -40,5 +40,9 @@ companion-launcher.json
 companion-placement.json
 companion-notes.json
 knowledge-hub.sqlite*
+*.kdbx
+*.kdbx.*.tmp
 *.zen-backup.json
 codex-companion/bridge.json
+/public/icons/openweather-dark.png
+/public/icons/openweather-light.png

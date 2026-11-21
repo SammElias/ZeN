@@ -1,8 +1,12 @@
 # Arquitectura de ZEN
 
+**Contraseñas en HUB.** `PasswordVault` guarda una base KeePass KDBX 4 independiente en `passwords.kdbx`, con AES-256, autenticación KDBX y Argon2id (64 MiB, tres iteraciones). `kdbxweb` y `hash-wasm` se empaquetan en main; el renderer recibe metadatos solo con la bóveda desbloqueada y una contraseña únicamente al pulsar el ojo. Las escrituras usan archivo temporal cifrado, flush y sustitución atómica. Bloquear revoca también las operaciones asíncronas pendientes. El auxiliar `Zen.VaultClipboard` recibe la copia por stdin y conserva su temporizador de 30 segundos separado de la ventana. Antes del repliegue nativo se espera un frame sin valores revelados. [Formato KDBX](https://keepass.info/help/kb/kdbx.html).
+
+`Zen.VaultHello` usa el proveedor Microsoft Passport de CNG para las nuevas activaciones y conserva WebAuthn PRF para abrir o revocar configuraciones anteriores. Devuelve a main la clave simétrica una vez verificada la identidad. `VaultHelloBinding` cifra y autentica el componente de contraseña del KDBX en el archivo local de Windows Hello. El proceso nativo usa el HWND de ZEN como propietario del diálogo. El IPC reutiliza la sesión de Contraseñas y la protección de diálogos de la cápsula.
+
 ## 01 · Sistema activo ![](assets/violeta.svg)
 
-ZEN es un compañero local de Codex para Windows. Una sola ventana Electron muestra el estado en una cápsula y abre Inicio, Codex, Sonido, HUB, Calendario y Ajustes en el panel. Codex conserva la cuenta, los chats y la ejecución. Windows publica las sesiones multimedia. ZEN gestiona la interfaz, las preferencias y la biblioteca local.
+ZEN es un compañero local de Codex para Windows. Una sola ventana Electron muestra el estado en una cápsula y abre Home, HUB, Calendario, Métricas, Volumen y Configuración en el panel. HUB incluye Contraseñas y Home también abre Codex. Codex conserva la cuenta, los chats y la ejecución. Windows publica las sesiones multimedia. ZEN gestiona la interfaz, las preferencias y la biblioteca local.
 
 Main notifica los cambios de superficie aceptados con un evento semántico. El renderer prepara un `AudioContext` compartido en inactividad y sintetiza cada tono local al primer uso. Los efectos se sustituyen o descartan según el intervalo, y el dispositivo se libera durante la inactividad. Esta salida es independiente de las sesiones multimedia de Windows. [Audio de interfaz](../src/renderer/companion-interface-audio.ts)
 
@@ -25,19 +29,28 @@ flowchart LR
     IPC <-->|"Entradas validadas y estado filtrado"| Main["Electron main"]
     Main -->|"Cola al chat fijado"| Codex["Codex local"]
     Codex -->|"Hooks por pipe local"| Main
-    Main -->|"Lectura acotada en Resumen"| History["Índice y sesión de Codex"]
+    Main -->|"Títulos y resultados de análisis"| History["Índice y sesión de Codex"]
     Main <-->|"SQLite y JSON"| Profile["Perfil de ZEN"]
     Main <-->|"Auxiliares .NET"| Windows["Sesiones multimedia y ventanas"]
+    Main -->|"Lectura de métricas diarias"| Oura["Oura Cloud V2"]
 ```
 
 ## 03 · Flujo de datos ![](assets/turquesa.svg)
 
 1. **Petición.** Main comprueba la vista y el destino. Con chat fijado, el CLI ejecuta `queue --thread`. Tras validar el recibo, ZEN solicita a Codex de escritorio que reactive ese mismo chat mediante `codex://threads/wake/<id>`. El enlace contiene solo el identificador. Sin destino, se prepara un borrador en Codex o se copia el texto cuando el enlace supera el límite. El turno se observa por separado.
-2. **Actividad y respuesta.** El puente recoge eventos de Codex. Actividad supervisa los chats observados y permite abrir el chat seleccionado. Main envía esa lista únicamente con Actividad visible y recupera los títulos ausentes del índice local de solo lectura. El chat fijado define las respuestas de Resumen, los permisos interactivos y las notificaciones. Analizar agrega una revisión de un uso y una referencia para correlacionar el resultado.
-3. **Sonido.** Un observador lee automáticamente la sesión en reproducción o en pausa que publica Windows. Un controlador separado actúa sobre la sesión seleccionada con un gesto explícito desde Sonido. Al ocultar el panel se detienen sus consultas periódicas y se conserva la selección. Ocultar no envía órdenes al reproductor.
-4. **HUB.** La biblioteca se lee y escribe en el perfil local. Inicio recibe hasta cuatro apuntes recientes con metadatos de navegación. El [IPC del HUB](../src/main/companion-notes-ipc.ts) gestiona la vista y sus archivos. El [IPC de respaldo](../src/main/companion-backup-ipc.ts) gestiona desde Preferencias la copia portable de la biblioteca y de los ajustes.
+2. **Actividad de Codex.** Main envía la cronología del supervisor con Actividad visible y recupera los títulos del índice local de solo lectura. El puente identifica los comandos a partir de los argumentos recibidos. Main expone la vista del comando del chat autorizado y un nombre de comando reconocido en otros chats. Los permisos revisables aparecen junto a su cronología. Los demás avisos de permiso abren el chat exacto en Codex. El análisis conserva su revisión de un uso y la referencia de correlación.
+3. **Sonido.** Un observador lee automáticamente la sesión en reproducción o en pausa que publica Windows. Un controlador separado actúa sobre la sesión seleccionada con un gesto explícito desde Sonido. Otro canal del mismo auxiliar usa Core Audio para consultar y ajustar el volumen de la salida predeterminada, incluso sin una sesión multimedia. Al ocultar el panel se detienen las consultas y se conserva la selección. Ocultar no envía órdenes al reproductor.
+4. **HUB.** La biblioteca se lee y escribe en el perfil local. Desde Home se accede al HUB con su píldora. El [IPC del HUB](../src/main/companion-notes-ipc.ts) gestiona la vista y sus archivos. El [IPC de respaldo](../src/main/companion-backup-ipc.ts) gestiona desde Preferencias la copia portable de la biblioteca y de los ajustes.
 
-Templates usa registros separados en el mismo SQLite. La lista devuelve metadatos ligeros y el detalle carga el prompt completo cuando se abre. Las referencias se guardan con su original y una miniatura, y se sirven bajo demanda por el protocolo local mientras HUB está visible. Una marca de inicialización evita reinsertar ejemplos borrados. El respaldo incluye ambos tipos de registros y sus borradores en la copia completa. [Almacenamiento de Templates](../src/main/knowledge-templates.ts)
+Templates usa registros separados en el mismo SQLite. La lista devuelve metadatos ligeros y el detalle carga los prompts de las plataformas disponibles cuando se abre. Las referencias se guardan con su original y una miniatura, y se sirven bajo demanda por el protocolo local mientras HUB está visible. La versión de la colección permite sustituir una sola vez los ejemplos editoriales por los empresariales. La ampliación agrega las 23 fichas nuevas una sola vez y conserva las ediciones, favoritos y borradores. La marca de versión evita reinsertar ejemplos borrados. La migración reconoce los identificadores originales y conserva las plantillas personales. El respaldo incluye ambos tipos de registros y sus borradores en la copia completa. [Almacenamiento de Templates](../src/main/knowledge-templates.ts)
+
+**Descubrimiento de apps** guarda fichas bilingües en el SQLite de HUB y las incluye en el respaldo. El renderer construye la propuesta inicial con reglas locales y prepara una petición separada del borrador normal de Inicio. El envío pasa por el mismo IPC y la misma comprobación de destino que las demás peticiones de Inicio.
+
+**Métricas.** Main abre la autorización de Oura en el navegador del sistema y recibe el retorno de un solo uso en loopback. Si el retorno válido no enumera `daily`, Main comprueba el acceso al recurso de sueño diario con Oura Cloud antes de guardar la sesión. Guarda las series diarias y sus horas de consulta. El panel de Métricas recibe las series mientras está visible. Home recibe solo la última medición de sueño de la caché. La cápsula recibe la duración y el día del último sueño si se eligió esa opción.
+
+**Clima.** Main consulta las condiciones actuales y la previsión de tres horas de OpenWeather con la clave cifrada de cada instalación. Agrupa los tramos por fecha local de la ciudad y conserva el último resultado en memoria si la consulta falla. Home usa ese resumen y solicita novedades como máximo cada quince minutos en condiciones normales. [Cliente OpenWeather](../src/main/openweather-api.ts)
+
+**Traductor.** [El cliente de Azure en main](../src/main/companion-translator.ts) usa el endpoint Global de traducción de texto v3 y conserva la clave cifrada en `companion-translator.bin`. El IPC admite español e inglés y limita cada texto a 5000 caracteres. El panel de HUB mantiene el texto y el resultado durante la visita a Traductor.
 
 ## 04 · Persistencia y decisiones ![](assets/verde.svg)
 
@@ -47,6 +60,7 @@ Templates usa registros separados en el mismo SQLite. La lista devuelve metadato
 | Preferencias y aspecto | JSON local y fondo normalizado. La posición se guarda por monitor. El respaldo portable reúne solo los datos descritos en [Despliegue](DEPLOYMENT.md). |
 | Última respuesta | Índice SQLite y sesión JSONL de Codex, de solo lectura para ZEN. |
 | Actividad, avisos y revisiones | Estado acotado de la sesión en memoria. |
+| Oura | Client ID, sesión y caché en `companion-oura.bin`, cifrados con el almacén de Windows. El Client ID se guarda al iniciar la autorización. |
 
 La autoridad sobre los efectos queda en main. Una ventana contiene una cápsula pequeña y un panel opcional. Las operaciones de navegación convergen en abrir, cambiar u ocultar el panel. Los comandos antiguos de presentación se adaptan a estas operaciones. Los estados guardados de cápsula y Workspace conservan su presentación y añaden la sección visible.
 
@@ -56,9 +70,9 @@ En el renderer, `workspace-surface` contiene la escena y su capa de cristal, y `
 
 En Windows, `companion-hover` mide la permanencia en cada icono de Apps y el tiempo fuera de la región que comparten la cápsula y el panel. El renderer identifica el icono y comunica las interacciones que aplazan el temporizador. Main valida la sección, la posición del cursor y el candado antes de actuar mediante la navegación existente. Las dos presentaciones comparten el área de dibujo de la ventana. El recorte deja visible la cápsula hasta que el compositor prepara el panel. Al hacer clic se activa la ventana y se habilitan sus controles nativos.
 
-Main abre gradualmente la región nativa desde la cápsula cuando el panel ya está dibujado. En el repliegue automático, la región se reduce hacia el mismo borde. La superficie de dibujo permanece fija y el escritorio queda accesible en la parte descubierta. El área original sigue contando para detectar el regreso del cursor y revertir el repliegue.
+La [transición del panel](../src/main/companion-panel-transition.ts) coordina la espera de pintado, el progreso del recorte y su cancelación. Main aporta la captura de Electron y aplica la geometría nativa. Al abrir, la región se amplía desde la cápsula una vez dibujado el panel. Al replegar, se reduce hacia el mismo borde y el escritorio queda accesible en la parte descubierta. El área original sigue contando para detectar el regreso del cursor y revertir el repliegue.
 
-Al cambiar desde Apps con el panel abierto, el renderer usa el orden de los iconos visibles para decidir el sentido del giro. Una transición acotada al elemento de contenido usa las capturas saliente y entrante como caras del cubo. La sección sigue usando su árbol React y su estado habituales. Si llega otro destino, se prioriza esa selección.
+El menú y las animaciones derivan el orden visible de la misma [regla de navegación](../src/shared/companion-navigation.ts). Con el panel abierto, el cambio desde Apps usa las capturas saliente y entrante como caras del cubo y conserva el estado de la sección. Si llega otro destino, se prioriza esa selección.
 
 La X minimiza la ventana de ZEN y la conserva en la barra de tareas. Al restaurar vuelven la misma vista y el borrador de Inicio mantenido en memoria. Al minimizar, main sigue revocando el contexto de revisión y los accesos que requieren una vista visible. **Salir de ZEN** ejecuta el cierre de Electron y libera el bloqueo de instancia.
 

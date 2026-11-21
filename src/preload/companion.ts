@@ -2,12 +2,22 @@ import {contextBridge, ipcRenderer, type IpcRendererEvent} from 'electron';
 import type {CompanionBridge, CompanionStatus} from '../shared/codex-companion';
 import {companionChannel, companionInterfaceEffectChannel, type CompanionCommand} from '../shared/companion-ipc';
 import type {InterfaceEffect} from '../shared/companion-interface-audio';
+import {vaultSignalChannel,type VaultSignal} from '../shared/password-vault';
 
 function call<Command extends CompanionCommand>(name: Command, input?: unknown): ReturnType<CompanionBridge[Command]> {
   return ipcRenderer.invoke(companionChannel(name), input) as ReturnType<CompanionBridge[Command]>;
 }
 
 const bridge: CompanionBridge = {
+  vault: action => call('vault',action),
+  onVaultSignal: callback => {
+    const listener=(_event:IpcRendererEvent,signal:VaultSignal)=>callback(signal);
+    ipcRenderer.on(vaultSignalChannel,listener);
+    return ()=>{ipcRenderer.removeListener(vaultSignalChannel,listener);};
+  },
+  oura: action => call('oura',action),
+  weather: action => call('weather',action),
+  translator: action => call('translator',action),
   calendar: action => call('calendar',action),
   status: () => call('status'),
   onStatus: callback => {
@@ -26,7 +36,6 @@ const bridge: CompanionBridge = {
   appearanceSave: options => call('appearanceSave', options),
   appearanceChoose: () => call('appearanceChoose'),
   profileBackup: action => call('profileBackup', action),
-  codexTab: tab => call('codexTab', tab),
   contextStatus: () => call('contextStatus'),
   contextChoose: () => call('contextChoose'),
   contextPrepare: input => call('contextPrepare', input),
@@ -56,6 +65,7 @@ const bridge: CompanionBridge = {
   mediaNowPlaying: () => call('mediaNowPlaying'),
   mediaObservationClose: () => call('mediaObservationClose'),
   mediaCurrent: () => call('mediaCurrent'),
+  systemVolume: action => call('systemVolume', action),
   mediaSnapshot: followSystem => call('mediaSnapshot', followSystem),
   mediaList: () => call('mediaList'),
   mediaSelect: id => call('mediaSelect', id),
@@ -74,7 +84,6 @@ const bridge: CompanionBridge = {
   testNotice: () => call('testNotice'),
   presentation: enabled => call('presentation', enabled),
   returnApp: () => call('returnApp'),
-  locate: (session, path) => call('locate', {session, path}),
   hide: () => call('hide'),
   pinWindow: enabled => call('pinWindow', enabled),
   drag: action => call('drag', action),

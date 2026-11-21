@@ -1,8 +1,9 @@
 import React, {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {ArrowLeft,Copy,ExternalLink,Layers3,Maximize2,Pencil,Plus,Search,Star,Trash2,X} from 'lucide-react';
+import {enterpriseTemplateArea,templateAreas} from '../shared/enterprise-template-catalog';
 import {
-  emptyTemplate,personalizeTemplate,templateVariableLabels,templateVariables,TemplateFields,
-  type TemplateDetail,type TemplateDraft,type TemplateReply,type TemplateRequest,type TemplateSummary,
+  emptyTemplate,personalizeTemplate,templatePrompt,templateVariableLabels,templateVariables,TemplateFields,
+  type TemplateDetail,type TemplateDraft,type TemplatePlatform,type TemplateReply,type TemplateRequest,type TemplateSummary,
 } from '../shared/knowledge-templates';
 import {interfaceAudio} from './companion-interface-audio';
 import {TemplateEditor} from './TemplateEditor';
@@ -76,6 +77,7 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
   const [style,setStyle]=useState('');
   const [favorites,setFavorites]=useState(false);
   const [values,setValues]=useState<Record<string,string>>({});
+  const [platform,setPlatform]=useState<TemplatePlatform>('canvas');
   const [busy,setBusy]=useState(false);
   const [retry,setRetry]=useState(0);
   const [loadError,setLoadError]=useState<string>();
@@ -145,7 +147,7 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
   function show(detail:TemplateDetail, resetValues = true) {
     scroll.current.detail=0;
     setItem(detail);
-    if(resetValues)setValues({});
+    if(resetValues){setValues({});setPlatform('canvas');}
   }
 
   function returnToGallery() {
@@ -163,7 +165,7 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
     if(lock.current)return;
     rememberGalleryScroll();
     const fields=item?TemplateFields.parse({
-      name:item.name,description:item.description,prompt:item.prompt,tags:item.tags,
+      name:item.name,description:item.description,prompt:item.prompt,reactPrompt:item.reactPrompt,tags:item.tags,
       author:item.author,sourceUrl:item.sourceUrl,features:item.features,useCases:item.useCases,
     }):emptyTemplate();
     scroll.current.editor=0;
@@ -200,33 +202,46 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
     setModal(undefined);
   }
 
-  const styles=[...new Set((items??[]).flatMap(entry=>entry.tags))].sort((a,b)=>a.localeCompare(b,'es'));
+  const areas=Object.values(templateAreas).filter(area=>items?.some(entry=>enterpriseTemplateArea(entry.id)===area||entry.tags.includes(area)));
+  const categories=[...new Set((items??[]).flatMap(entry=>entry.tags))].filter(tag=>!areas.some(area=>area===tag)).sort((a,b)=>a.localeCompare(b,'es'));
   const terms=clean(query.trim()).split(/\s+/).filter(Boolean);
   const results=items?.filter(entry=>{
-    if((favorites&&!entry.favorite)||(style&&!entry.tags.includes(style)))return false;
-    const searchable=clean([entry.name,entry.description,...entry.tags].join(' '));
+    const area=enterpriseTemplateArea(entry.id);
+    if((favorites&&!entry.favorite)||(style&&style!==area&&!entry.tags.includes(style)))return false;
+    const searchable=clean([entry.name,entry.description,area,...entry.tags].join(' '));
     return terms.every(term=>searchable.includes(term));
   });
-  const variables=item?templateVariables(item.prompt):[];
-  const adapted=item?personalizeTemplate(item.prompt,values):'';
+  const prompt=item?templatePrompt(item,platform)??item.prompt:'';
+  const variables=templateVariables(prompt);
+  const adapted=personalizeTemplate(prompt,values);
+  function copyPrompt(personalized:boolean) {
+    if(!item)return;
+    const substitutions=personalized?Object.fromEntries(variables.map(key=>[key,values[key]??''])):{};
+    void act(async()=>{
+      await request({type:'copy',id:item.id,platform:item.reactPrompt?.trim()?platform:undefined,values:substitutions},'done');
+      setFeedback({text:'Copiado.'});
+    });
+  }
   const openReference = (detail:TemplateDetail) => visible?storedReference(detail):undefined;
 
-  return <section ref={scroller} className="templates-view" hidden={!visible} aria-label="Templates"
+  return <section ref={scroller} className="templates-view" hidden={!visible} inert={!visible} aria-label="Templates"
     onScroll={event=>{if(visible)scroll.current[view]=event.currentTarget.scrollTop;}}>
     {feedback&&<div className="hub-feedback" role={feedback.error?'alert':'status'}>
       <span>{feedback.text}</span><button type="button" aria-label="Cerrar aviso" onClick={()=>setFeedback(undefined)}><X size={14}/></button>
     </div>}
     <div className="template-gallery" hidden={view!=='gallery'}>
       <div className="template-intro">
-        <p>Referencias visuales y prompts para tus interfaces</p>
+        <p>Interfaces empresariales para Power Apps Canvas y React</p>
         <button type="button" className="hub-primary" onClick={edit} disabled={!items||busy||Boolean(loadError)}><Plus size={17}/>Nuevo template</button>
       </div>
       <div className="template-filters">
         <label className="template-search"><Search size={17}/><input ref={search} type="search" aria-label="Buscar templates"
-          placeholder="Buscar por nombre, descripción o estilo" value={query} onChange={event=>setQuery(event.target.value)}/></label>
-        <select aria-label="Filtrar por estilo" value={style} onChange={event=>setStyle(event.target.value)}>
-          <option value="">Todos los estilos</option>{style&&!styles.includes(style)&&<option value={style}>{style}</option>}
-          {styles.map(tag=><option key={tag} value={tag}>{tag}</option>)}
+          placeholder="Buscar por nombre, descripción o etiqueta" value={query} onChange={event=>setQuery(event.target.value)}/></label>
+        <select aria-label="Filtrar por categoría" value={style} onChange={event=>setStyle(event.target.value)}>
+          <option value="">Todas las categorías</option>
+          {style&&!areas.some(area=>area===style)&&!categories.includes(style)&&<option value={style}>{style}</option>}
+          {areas.length>0&&<optgroup label="Áreas de trabajo">{areas.map(area=><option key={area} value={area}>{area}</option>)}</optgroup>}
+          {categories.length>0&&<optgroup label="Etiquetas">{categories.map(tag=><option key={tag} value={tag}>{tag}</option>)}</optgroup>}
         </select>
         <button type="button" aria-pressed={favorites} onClick={()=>setFavorites(!favorites)}><Star size={16} fill={favorites?'currentColor':'none'}/>Favoritos</button>
       </div>
@@ -266,6 +281,13 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
           <button type="button" disabled={busy} onClick={()=>setModal('delete')}><Trash2 size={16}/>Eliminar</button>
         </div>
       </div>
+      <div className="template-copy-bar hub-panel">
+        {item.reactPrompt?.trim()&&<div className="template-platforms" role="group" aria-label="Plataforma del prompt">
+          <button type="button" aria-pressed={platform==='canvas'} disabled={busy} onClick={()=>setPlatform('canvas')}>Power Apps Canvas</button>
+          <button type="button" aria-pressed={platform==='react'} disabled={busy} onClick={()=>setPlatform('react')}>React + TypeScript</button>
+        </div>}
+        <button type="button" className="hub-primary" disabled={busy} onClick={()=>copyPrompt(false)}><Copy size={16}/>Copiar prompt</button>
+      </div>
       <div className="template-detail-grid">
         <figure className="template-figure hub-panel">
           <figcaption>Referencia visual</figcaption>
@@ -285,10 +307,8 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
         </div>
       </div>
       <section className="hub-panel template-prompt">
-        <header><h3>Prompt propuesto</h3><button type="button" disabled={busy} onClick={()=>void act(async()=>{
-          await request({type:'copy',id:item.id,values:{}},'done');setFeedback({text:'Copiado.'});
-        })}><Copy size={16}/>Copiar prompt</button></header>
-        <pre>{item.prompt}</pre>
+        <h3>Prompt propuesto</h3>
+        <pre>{prompt}</pre>
       </section>
       {variables.length>0&&<section className="hub-panel template-adapt">
         <h3>Adaptar a mi proyecto</h3>
@@ -297,9 +317,7 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
             <input maxLength={1024} placeholder={`{{${key}}}`} value={values[key]??''} onChange={event=>setValues({...values,[key]:event.target.value})}/></label>)}
         </div>
         <details className="template-personalized"><summary>Ver prompt personalizado</summary><pre>{adapted}</pre></details>
-        <button type="button" className="hub-primary" disabled={busy} onClick={()=>void act(async()=>{
-          await request({type:'copy',id:item.id,values},'done');setFeedback({text:'Copiado.'});
-        })}><Copy size={16}/>Copiar personalizado</button>
+        <button type="button" className="hub-primary" disabled={busy} onClick={()=>copyPrompt(true)}><Copy size={16}/>Copiar personalizado</button>
       </section>}
     </article>}
     {draft&&<TemplateEditor key={draft.id??'new'} draft={draft} original={items?.find(entry=>entry.id===draft.id)} busy={busy}
@@ -313,7 +331,7 @@ export function TemplatesWorkspace({visible}:{visible:boolean}) {
       onSave={()=>void act(async()=>{
         const saved=await request({type:'save',draft},'detail');
         draftRevision.current++;
-        setDraft(undefined);include(saved.item);show(saved.item,item?.id!==saved.item.id);
+        setDraft(undefined);include(saved.item);show(saved.item,item?.id!==saved.item.id||!saved.item.reactPrompt?.trim());
         setFeedback({text:'Template guardado.'});
       })}/>}
     {modal&&<TemplateModal kind={modal} item={item} visible={visible} busy={busy} onClose={()=>setModal(undefined)}

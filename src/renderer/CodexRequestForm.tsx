@@ -14,10 +14,13 @@ const quickRequests = [
   },
 ] as const;
 
-export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string;draft:string;setDraft:(value:string)=>void}) {
+export function CodexRequestForm({fixedChat,draft,setDraft,onDismissAssessment}: {
+  fixedChat?:string;draft:string;setDraft:(value:string)=>void;onDismissAssessment?:()=>void;
+}) {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{text: string; error?: boolean}>();
   const inFlight = useRef(false);
+  const resetDraft=()=>onDismissAssessment?onDismissAssessment():setDraft('');
 
 
   async function submit(text: string, clearDraft = false) {
@@ -34,7 +37,7 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
       }
       if (result.value.mode === 'queued') {
         interfaceAudio.play('success');
-        if (clearDraft) setDraft('');
+        if (clearDraft) resetDraft();
         setFeedback({text: 'En cola en el chat fijado de Codex.'});
         return;
       }
@@ -43,7 +46,7 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
         setFeedback({text: 'Petición copiada. Abre Codex, pégala con Ctrl+V y pulsa Enviar.', error: true});
         return;
       }
-      if (clearDraft) setDraft('');
+      if (clearDraft) resetDraft();
       interfaceAudio.play('success');
       setFeedback({text: result.value.mode === 'clipboard'
         ? 'Petición copiada. Pégala con Ctrl+V y pulsa Enviar en Codex.'
@@ -60,7 +63,7 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
   return <form className="codex-request-form" aria-labelledby="home-composer-title" onSubmit={event => {event.preventDefault(); void submit(draft, true);}}>
     <div className="home-composer-heading">
       <label id="home-composer-title" className="home-composer-title" htmlFor="codex-request">
-        <CompanionIcon name="code"/>Petición para Codex
+        <CompanionIcon name="code"/>{onDismissAssessment?'Valoración de la app en Codex':'Petición para Codex'}
       </label>
       <small id="home-request-destination" title={fixedChat}>
         {fixedChat && <CompanionIcon name="pin"/>}
@@ -78,7 +81,9 @@ export function CodexRequestForm({fixedChat,draft,setDraft}: {fixedChat?: string
       }}/>
     <div className="codex-request-actions">
       <div className="codex-quick-requests" role="group" aria-label="Atajos de Codex">
-        {quickRequests.map(({id, icon, label, detail, prompt}) => <button key={id} type="button" disabled={busy}
+        {onDismissAssessment?<button type="button" disabled={busy} onClick={()=>{onDismissAssessment();setFeedback(undefined);}}>
+          Volver a la petición habitual
+        </button>:quickRequests.map(({id, icon, label, detail, prompt}) => <button key={id} type="button" disabled={busy}
           data-quick-request={id} title={detail} onClick={() => void submit(prompt)}>
           <CompanionIcon name={icon}/>{label}
         </button>)}

@@ -16,6 +16,8 @@ try {
  var input=JsonNode.Parse(raw.ToString())!.AsObject();
  stage="parsed";shape=input["tool_input"] is JsonObject?"object":input["tool_input"] is JsonArray?"array":input["tool_input"] is JsonValue?"value":"none";
  string Str(string key)=>input[key]?.GetValue<string>()??"";
+ static string? CommandArgument(JsonObject fields, string key)=>
+  fields[key] is JsonValue v&&v.TryGetValue<string>(out var value)&&!string.IsNullOrWhiteSpace(value)?value:null;
  var name=Str("hook_event_name");var session=Str("session_id");
  var events=new[]{"SessionStart","UserPromptSubmit","PreToolUse","PermissionRequest","PostToolUse","Stop","SubagentStart","SubagentStop","Interrupt","SessionEnd"};
  if(!events.Contains(name)||session.Length==0||session.Length>160){Console.WriteLine("{}");return;}
@@ -28,12 +30,12 @@ try {
   e["lastAssistantMessage"]=answerText.Length>64000?answerText[..64000]:answerText;e["lastAssistantMessageTruncated"]=answerText.Length>64000;
  }
  // Only the requested operation is retained when needed for an explicit review.
- if(name=="PermissionRequest"&&input["tool_input"] is JsonNode tool){var preview=tool.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping});if(tool is JsonObject fields&&fields["command"] is JsonValue commandValue&&commandValue.TryGetValue<string>(out var commandText)){var remaining=fields.DeepClone().AsObject();remaining.Remove("command");preview=commandText+(remaining.Count>0?"\n\nParámetros adicionales:\n"+remaining.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping}):"");}e["truncated"]=preview.Length>64000;e["preview"]=preview.Length>64000?"Propuesta demasiado grande: revísala íntegra en Codex.":preview;}
+ if(name=="PermissionRequest"&&input["tool_input"] is JsonNode tool){var preview=tool.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping});if(tool is JsonObject fields){var key=CommandArgument(fields,"command") is not null?"command":"cmd";if(CommandArgument(fields,key) is string commandText){var remaining=fields.DeepClone().AsObject();remaining.Remove(key);preview=commandText+(remaining.Count>0?"\n\nParámetros adicionales:\n"+remaining.ToJsonString(new(){WriteIndented=true,Encoder=JavaScriptEncoder.UnsafeRelaxedJsonEscaping}):"");}}e["truncated"]=preview.Length>64000;e["preview"]=preview.Length>64000?"Propuesta demasiado grande: revísala íntegra en Codex.":preview;}
  else if(name is "PreToolUse" or "PostToolUse"){
    // Local function and code-mode hooks can pass any JSON value, including a string.
    // Preserve the event even when there is no command object; never forward that raw input.
    string? command=null;
-   if(input["tool_input"] is JsonObject toolFields&&toolFields["command"] is JsonValue value&&value.TryGetValue<string>(out var commandString))command=commandString;
+   if(input["tool_input"] is JsonObject toolFields)command=CommandArgument(toolFields,"command")??CommandArgument(toolFields,"cmd");
    if(command is not null)e["preview"]=command.Length>12000?command[..12000]+"\n… Vista recortada; abre Codex para el detalle completo.":command;
  }
  if(name=="PostToolUse") {var response=input["tool_response"];e["failed"]=response is JsonObject o && (o["is_error"]?.ToString()=="true"||int.TryParse(o["exit_code"]?.ToString(),out var code)&&code!=0);}

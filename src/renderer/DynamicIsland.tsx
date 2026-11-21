@@ -19,7 +19,7 @@ export function DynamicIsland({status,ready,open,onActivate,onError,error}:{stat
   const timeout=setTimeout(()=>setExpired(finishedAt),Math.max(0,finishedAt+ISLAND_FINISH_MS-Date.now()));
   return ()=>clearTimeout(timeout);
  },[finishedAt]);
- const visual=state==='paused'?'paused':state==='approval'?'attention':error||status.notices.some(n=>n.kind==='error'&&!n.read)?'error':
+ const visual=state==='paused'?'paused':(status.approvalCount??status.approvals.length)>0?'attention':error||status.notices.some(n=>n.kind==='error'&&!n.read)?'error':
   state==='thinking'||state==='working'?'working':
   state==='finished'&&finishedAt!==undefined&&expired!==finishedAt&&Date.now()<finishedAt+ISLAND_FINISH_MS?'finished':'idle';
  const label=labels[visual];

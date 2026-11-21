@@ -100,6 +100,19 @@
 .codex-chat-timeline li + li { border-block-start: 1px solid var(--line); }
 .codex-chat-timeline time, .codex-chat-current time { color: var(--glass-secondary); font-size: 11px; font-variant-numeric: tabular-nums; }
 .codex-chat-timeline code { display: block; margin: 8px 0; overflow-wrap: anywhere; color: var(--glass-secondary); }
+.codex-chat-timeline .codex-command-line { margin: 4px 0 0 13px; color: var(--glass-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.codex-monitor .codex-inline-approval { margin: 8px 0 12px; padding: 12px; background: var(--zen-surface, var(--chat-tint)); border-color: color-mix(in srgb, var(--chat-permission) 60%, transparent); }
+.codex-inline-approval>header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.codex-inline-approval>header>svg { color: var(--chat-permission); }
+.codex-inline-approval>header>small { margin-top: 0; }
+.codex-inline-approval .actions { flex-wrap: wrap; }
+.codex-monitor .code-preview>div { color: var(--glass-secondary); padding-inline: 8px; }
+.codex-monitor .code-preview pre { background: var(--zen-field, var(--chat-tint)); color: var(--glass-text); }
+[data-theme=light] .codex-monitor .code-preview .diff-add { color: #185340; }
+[data-theme=light] .codex-monitor .code-preview .diff-remove { color: #842832; }
+[data-theme=light] .codex-monitor .code-preview .diff-header { color: #5c4780; }
+.codex-analysis { margin-top: 12px; }
+.codex-analysis summary { color: var(--glass-secondary); padding: 8px 0; }
 .codex-monitor summary { cursor: pointer; }
 .codex-activity-filters > summary { width: max-content; padding-block: 5px; color: var(--glass-secondary); font-size: 11px; }
 .codex-activity-filters > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 4px 8px; }
