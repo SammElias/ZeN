@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {mkdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
+import {isDeepStrictEqual} from 'node:util';
 import type {CompanionAppearance} from './companion-appearance';
 import type {CompanionLauncher} from './companion-launcher';
 import {type KnowledgeHub, hubMaximumBytes, readHubFile, validateHubBackup} from './knowledge-hub';
@@ -89,22 +90,31 @@ export function writeBackup(path:string,backup:CompanionBackup) {
 
 export function restoreBackup(
   profile:string,sources:BackupSources,backup:CompanionBackup,saveSettings:(value:CompanionSettings)=>unknown,
+  sync?: {previous: CompanionBackup; first: boolean},
 ) {
-  const previous=snapshotBackup(sources);
+  const previous=sync?.previous??snapshotBackup(sources);
   const folder=join(profile,'backups');
-  const recoveryName='ZEN-anterior-'+randomUUID()+backupSuffix;
+  const recoveryName=(sync&&!sync.first?'ZEN-anterior-sincronizacion':'ZEN-anterior-'+randomUUID())+backupSuffix;
   mkdirSync(folder,{recursive:true});
   writeBackup(join(folder,recoveryName),previous);
 
   const undo:(()=>unknown)[]=[];
   try {
-    undo.push(sources.appearance.restoreBackup(backup.appearance));
-    sources.launcher.reorder(backup.order);
-    undo.push(()=>sources.launcher.reorder(previous.order));
-    saveSettings({...sources.settings,...backup.settings});
-    undo.push(()=>saveSettings(sources.settings));
-    if(backup.calendar&&sources.calendar)undo.push(sources.calendar.restoreLocal(backup.calendar));
-    sources.notes.restore(backup.library,backup.draft,backup.templateDraft);
+    if(!sync||!isDeepStrictEqual(previous.appearance,backup.appearance)) {
+      undo.push(sources.appearance.restoreBackup(backup.appearance));
+    }
+    if(!sync||!isDeepStrictEqual(previous.order,backup.order)) {
+      sources.launcher.reorder(backup.order);
+      undo.push(()=>sources.launcher.reorder(previous.order));
+    }
+    if(!sync||!isDeepStrictEqual(previous.settings,backup.settings)) {
+      saveSettings({...sources.settings,...backup.settings});
+      undo.push(()=>saveSettings(sources.settings));
+    }
+    if(!sync&&backup.calendar&&sources.calendar)undo.push(sources.calendar.restoreLocal(backup.calendar));
+    if(!sync||!isDeepStrictEqual(previous.library,backup.library)) {
+      sources.notes.restore(backup.library,backup.draft,backup.templateDraft);
+    }
   }catch(error) {
     const recovery=join('backups',recoveryName);
     let restored=true;

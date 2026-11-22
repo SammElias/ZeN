@@ -36,6 +36,7 @@ const bridge: CompanionBridge = {
   appearanceSave: options => call('appearanceSave', options),
   appearanceChoose: () => call('appearanceChoose'),
   profileBackup: action => call('profileBackup', action),
+  profileSync: action => call('profileSync', action),
   contextStatus: () => call('contextStatus'),
   contextChoose: () => call('contextChoose'),
   contextPrepare: input => call('contextPrepare', input),

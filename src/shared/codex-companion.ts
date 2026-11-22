@@ -60,6 +60,7 @@ export interface CompanionBridge{
  translator(action:TranslatorAction):Promise<CompanionResult<TranslatorReply>>;
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;
  profileBackup(action:'export'|'import'):Promise<CompanionResult<'exported'|'imported'|'cancelled'>>;
+ profileSync(action:import('./profile-sync').ProfileSyncAction):Promise<CompanionResult<import('./profile-sync').ProfileSyncStatus>>;
  openRequest(text:string):Promise<CompanionResult<CodexRequestReceipt>>;
  openSpotify():Promise<CompanionResult<boolean>>;
  contextStatus():Promise<CompanionResult<ContextFile|null>>;contextChoose():Promise<CompanionResult<ContextFile|null>>;contextPrepare(input:ContextInput):Promise<CompanionResult<ContextPreview>>;contextCancel(id:string):Promise<CompanionResult<boolean>>;contextHandoff(id:string):Promise<CompanionResult<{queued:true}>>;contextResult():Promise<CompanionResult<CodexResultState>>;

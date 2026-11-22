@@ -61,6 +61,8 @@ El filtro de apuntes y el editor ofrecen las mismas carpetas. Las categorías de
 
 El respaldo de **Ajustes → Datos y configuración** traslada la biblioteca y la configuración portable. **HUB → Respaldo y exportación → Restaurar biblioteca** admite los dos formatos y muestra qué recuperará antes de confirmar. El recorrido y la recuperación están en [Despliegue](DEPLOYMENT.md).
 
+En **Preferencias → Datos y configuración → Sincronización entre equipos**, crea un perfil compartido en tu carpeta de Syncthing o vincula el equipo con el código de otro ZEN. Desde esa sección puedes sincronizar, elegir una versión en conflicto y activar el intercambio de la bóveda cifrada. [Guía](PERSONAL_SYNC.md)
+
 En **HUB → Templates**, busca por nombre, descripción o etiqueta, filtra por área de trabajo o etiqueta o elige **Favoritos**. Abre una tarjeta, elige **Power Apps Canvas** o **React + TypeScript** y pulsa **Copiar prompt**. Puedes ampliar la **Referencia visual** y consultar el prompt de la plataforma seleccionada. **Adaptar a mi proyecto** sustituye localmente los campos que rellenes y conserva las variables pendientes entre llaves. Puedes copiar el original o el texto adaptado. La galería recupera sus filtros y su posición al volver del detalle.
 
 **Nuevo template** y **Editar** permiten guardar el texto, las etiquetas, una referencia de hasta 4 MB y la atribución disponible. Puedes duplicar el registro para crear una variante. El editor guarda el borrador aparte y pide confirmación antes de descartarlo o de eliminar un template.

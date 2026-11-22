@@ -12,6 +12,7 @@
 | Métricas de Oura | Aplicación OAuth propia en Oura y almacén seguro de Windows | Navegación, consulta automática y desconexión con datos sintéticos. Queda la comprobación con una cuenta y un anillo reales. |
 | Sonido automático y controles por sesión | Sesiones publicadas por Windows | Observación, selección y comandos con sesiones simuladas. |
 | Knowledge Hub, Markdown y copia de datos y preferencias | SQLite, perfil local y selector de archivos | Se verificaron exportación, cancelación, recuperación e importación en el portable del 12 de noviembre de 2026. [Pruebas](TESTING.md) |
+| Perfil compartido entre equipos | Syncthing y Tailscale, almacén seguro de Windows, KDBX opcional | Pruebas con dos perfiles aislados para vinculación, conflictos y conservación de dos ediciones de una contraseña. [Instalación](PERSONAL_SYNC.md) |
 | Apuntes rápidos en HUB | SQLite y perfil local | Hoja continua con autoguardado, scroll interno y recuperación de la posición de escritura. |
 | Pizarra en HUB | Canvas y SQLite local | Lienzo persistente con pinceles, goma de tramo, Deshacer y reinicio con confirmación. |
 | Descubrimiento de apps | SQLite de HUB y peticiones de Inicio | Cuestionario bilingüe, propuesta local y valoración opcional en Codex. |

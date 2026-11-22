@@ -1,0 +1,58 @@
+// Reglas iniciales del servidor personal. Conservar los archivos sync-conflict.
+(?i).cache
+(?i)cache
+(?i)caches
+(?i)tmp
+(?i)temp
+(?i)*.tmp
+(?i)*.temp
+(?i)*.swp
+(?i)*.part
+(?i)*.crdownload
+(?i)~$*
+(?i).git
+(?i)node_modules
+(?i)__pycache__
+(?i)sessions
+(?i)session
+(?i)Session Storage
+(?i)IndexedDB
+(?i)Local Storage
+(?i)Service Worker
+(?i)*.db
+(?i)*.db-*
+(?i)*.sqlite*
+(?i)*.ldb
+(?i)*.mdb
+(?i)Cookies*
+(?i)Login Data*
+(?i)Web Data*
+(?i)tokens
+(?i)*.token
+(?i)credentials
+(?i)credentials.*
+(?i)secret
+(?i)secret.*
+(?i)secrets
+(?i)secrets.*
+(?i).env
+(?i).env.*
+(?i).netrc
+(?i).ssh
+(?i).aws
+(?i).gnupg
+(?i).azure
+(?i).kube
+(?i).npmrc
+(?i).pypirc
+(?i)*.pfx
+(?i)*.p12
+(?i)*.pem
+(?i)*.key
+(?i)*.kdbx
+(?i)*.keystore
+(?i)id_rsa*
+(?i)id_ed25519*
+(?i)Thumbs.db
+(?i)Desktop.ini
+(?i).DS_Store

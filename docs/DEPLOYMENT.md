@@ -9,6 +9,8 @@ Contraseñas usa los auxiliares .NET 10 `Zen.VaultClipboard` y `Zen.VaultHello`,
 3. Ejecuta `ZEN.exe`. Busca el icono en la bandeja de Windows o pulsa `Ctrl+Alt+Z` con el atajo inicial.
 4. Para observar actividad, abre **Preferencias → Conexión y diagnóstico de Codex → Preparar integración**. Revisa los hooks de ZEN con `/hooks` en el CLI de Codex.
 
+Para conectar otro Windows al servidor personal de la Raspberry, sigue la [guía de instalación de Syncthing](PERSONAL_SYNC.md).
+
 ## 02 · Compilar desde GitHub ![](assets/azul.svg)
 
 Necesitas Windows x64, Git, PowerShell 7, Node.js 22.12 o posterior y .NET SDK 10. El lockfile fija las dependencias.

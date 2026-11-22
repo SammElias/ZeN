@@ -13,6 +13,9 @@ import {smokeTranslatorResponse} from './companion-smoke-translator';
 import {CompanionAppearance} from './companion-appearance';
 import {AppearanceOptions} from '../shared/companion-appearance';
 import {registerProfileBackupIpc} from './companion-backup-ipc';
+import {restoreBackup,snapshotBackup} from './companion-backup';
+import {ProfileSync} from './profile-sync';
+import {profileFingerprint,registerProfileSyncIpc} from './profile-sync-ipc';
 import {registerNotesIpc} from './companion-notes-ipc';
 import {decodeTemplateBackupImage, loadTemplateSeeds} from './companion-template-images';
 import {createSmokeMedia} from './companion-smoke-media';
@@ -173,8 +176,16 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const helloOwner=()=>cap.getNativeWindowHandle().readBigUInt64LE().toString();
   const helloBinding=process.platform==='win32'?new VaultHelloBinding(join(profile,'passwords-hello.json'),
    windowsVaultHello(helloHelper,helloOwner,'prf'),atomicVaultWrite,windowsVaultHello(helloHelper,helloOwner,'passport')):undefined;
+  let linkedProfile: ProfileSync|undefined;
   const vault=registerVaultIpc(companionIpc(cap,rendererUrl,()=>settings.presentation),cap,
-   new PasswordVault(join(profile,'passwords.kdbx'),atomicVaultWrite,helloBinding),
+   new PasswordVault(join(profile,'passwords.kdbx'),atomicVaultWrite,helloBinding,{
+    active: () => privateEffectsAllowed() && Boolean(linkedProfile?.vaultActive()),
+    hasCopies: () => privateEffectsAllowed() && Boolean(linkedProfile?.hasVaultCopies()),
+    copies: () => privateEffectsAllowed() ? linkedProfile?.vaultCopies() ?? [] : [],
+    adopted: bytes => {if(privateEffectsAllowed()) linkedProfile?.adoptedVault(bytes);},
+    publish: () => {if(privateEffectsAllowed()) linkedProfile?.syncVault();},
+    report: error => linkedProfile?.vaultReport(error),
+   }),
    ()=>workspaceVisible('notes')&&!panelTransition.hoverClosing&&privateEffectsAllowed(),
    text=>copyVaultText(nativeHelper(__dirname,'vaultClipboard'),text),withWindowDialog);
   powerMonitor.on('lock-screen',vault.lock);
@@ -946,6 +957,27 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    getSources: () => ({appearance, launcher: launcherPreferences, notes, settings,calendar}), saveSettings: persist,
    broadcast: () => {setCaptionTheme();broadcast();},
   });
+  const syncSources = () => ({appearance, launcher: launcherPreferences, notes, settings, calendar});
+  const profileSync = new ProfileSync(profile, safeStorage, {
+   fingerprint: () => profileFingerprint(profile),
+   snapshot: () => snapshotBackup(syncSources()),
+   apply: (next, previous, first) => {
+    restoreBackup(profile, syncSources(), next, persist, {previous, first});
+    setCaptionTheme();broadcast();
+   },
+  });
+  linkedProfile = profileSync;
+  registerProfileSyncIpc(handle, {
+   window: cap, sync: profileSync, requireSettings: () => requireWorkspace('settings'),
+   privateEffectsAllowed, withWindowDialog,
+   copyPrivate: text => copyVaultText(nativeHelper(__dirname,'vaultClipboard'),text),
+  });
+  const profileSyncTicker = setInterval(() => {
+   if (quitting || !privateEffectsAllowed()) return;
+   profileSync.syncVault();
+   if (!workspaceVisible('notes') && !workspaceVisible('settings')) profileSync.run(false);
+  }, 12_000);
+  app.once('before-quit', () => clearInterval(profileSyncTicker));
   handle('pinWindow',z.boolean(),enabled=>{
    if(!surfaceVisible())throw Error('Muestra ZEN para cambiar el candado.');
    return enabled===settings.windowLocked||persist({...settings,windowLocked:enabled});

@@ -5,6 +5,7 @@ import {connectionLabel, isSilenced} from '../shared/companion-presentation';
 import {interfaceSoundEnabled} from '../shared/companion-interface-audio';
 import {AppearanceSettings} from './AppearanceSettings';
 import {BackupSettings} from './BackupSettings';
+import {ProfileSyncSettings} from './ProfileSyncSettings';
 import {CapsulePosition} from './CapsulePosition';
 import {CompanionIcon, OpenCodex, Quiet, Signal} from './CompanionActions';
 import {PreferenceRow,PreferenceSave,PreferenceSwitch,type PreferenceFeedback} from './PreferencesControls';
@@ -200,6 +201,10 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
     {saveBar}
    </div>}
    {category==='data'&&<div className="preferences-page">
+    <ProfileSyncSettings disabled={status.settings.presentation||status.settings.paused} onApplied={()=>{
+     setChanges({});setFeedback({});setBackupRevision(value=>value+1);
+     onBackupImported();
+    }}/>
     <BackupSettings disabled={status.settings.presentation||status.settings.paused} onImported={()=>{
      setChanges({});setFeedback({});setBackupRevision(value=>value+1);
      onBackupImported();

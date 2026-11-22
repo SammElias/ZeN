@@ -66,6 +66,8 @@ Templates usa registros separados en el mismo SQLite. La lista devuelve metadato
 | Actividad, avisos y revisiones | Estado acotado de la sesión en memoria. |
 | Oura | Client ID, sesión y caché en `companion-oura.bin`, cifrados con el almacén de Windows. El Client ID se guarda al iniciar la autorización. |
 
+**Perfil entre equipos.** Main reutiliza el formato portable para extraer datos guardados y aplica los cambios con recuperación local. Cada equipo escribe su propio archivo cifrado en una carpeta de Syncthing. Las revisiones por objeto conservan el contexto de la última versión aplicada para distinguir cambios sucesivos de ediciones simultáneas. Solo se aplican al perfil local los grupos que cambiaron. La bóveda tiene un flujo separado de copias KDBX cifradas que se combinan al desbloquear.
+
 La autoridad sobre los efectos queda en main. Una ventana contiene una cápsula pequeña y un panel opcional. Las operaciones de navegación convergen en abrir, cambiar u ocultar el panel. Los comandos antiguos de presentación se adaptan a estas operaciones. Los estados guardados de cápsula y Workspace conservan su presentación y añaden la sección visible.
 
 La geometría de [cápsula y panel](../src/main/companion-capsule-layout.ts) calcula sus rectángulos y la unión de sus regiones interactivas. La cápsula conserva su tamaño. El panel aprovecha el espacio interior y el redimensionado nativo. El fondo de las zonas excluidas deja pasar clics. El candado controla el arrastre y la apertura por cursor en Windows. Siempre encima conserva su propia preferencia.
