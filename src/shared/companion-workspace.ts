@@ -15,9 +15,9 @@ export const HoverApp=z.enum(sectionPages);
 export const CapsuleHoverInput=z.object({app:HoverApp.optional(),inside:z.boolean(),blocked:z.boolean(),holdOpen:z.boolean().optional(),reduced:z.boolean()}).strict();
 export type CapsuleHoverInput=z.infer<typeof CapsuleHoverInput>;
 export const LauncherOrder=z.preprocess(value=>{
- if(Array.isArray(value)&&value.length>=launcherPages.length-2){
+ if(Array.isArray(value)&&value.length>=launcherPages.length-3){
   const order=value.filter(page=>page!=='passwords');
-  return [...order,...(['calendar','metrics'] as const).filter(page=>!order.includes(page))];
+  return [...order,...(['calendar','metrics','officina'] as const).filter(page=>!order.includes(page))];
  }
  return value;
 },z.array(LauncherPage).length(launcherPages.length).refine(v=>new Set(v).size===launcherPages.length));

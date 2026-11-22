@@ -15,14 +15,14 @@
 .companion-capsule.expanded::after{top:var(--capsule-header-height);background:var(--zen-panel-scene)}
 .companion-capsule.expanded .workspace-content{position:relative;flex:1;min-height:0;margin:5px;padding:16px 20px;border:1px solid var(--line);border-radius:13px;background:rgb(var(--glass-rgb) / var(--glass-opacity));backdrop-filter:blur(var(--glass-blur)) saturate(1.15);scrollbar-width:thin;scrollbar-color:rgb(var(--glass-accent-rgb) / .25) transparent;user-select:text}
 .companion-capsule .workspace-section-heading{gap:18px;align-items:center;margin-bottom:28px}.companion-capsule .workspace-section-heading h1{font-size:28px;font-weight:600;letter-spacing:-.9px;color:var(--glass-text)}
-.companion-capsule .workspace-content :is(h1,h2,h3,strong):not(:where(.knowledge-hub *)){color:var(--glass-text)}
-.companion-capsule .workspace-content :is(p,small,label,dt,dd):not(:where(.knowledge-hub *)){color:var(--glass-secondary)}
-.companion-capsule .workspace-content button:not(:where(.knowledge-hub *)){color:var(--glass-text);background:rgb(var(--glass-rgb) / .3);border:1px solid var(--line);box-shadow:inset 0 1px rgb(255 255 255 / .06);font-size:12px;border-radius:12px;transition:background 160ms,border-color 160ms,box-shadow 160ms}
-.companion-capsule .workspace-content button:hover:not(:disabled):not(:where(.knowledge-hub *)){background:rgb(var(--glass-accent-rgb) / .11);border-color:rgb(var(--glass-accent-rgb) / .30);box-shadow:inset 0 1px rgb(255 255 255 / .10)}
+.companion-capsule .workspace-content :is(h1,h2,h3,strong):not(:where(.knowledge-hub *, .officina *)){color:var(--glass-text)}
+.companion-capsule .workspace-content :is(p,small,label,dt,dd):not(:where(.knowledge-hub *, .officina *)){color:var(--glass-secondary)}
+.companion-capsule .workspace-content button:not(:where(.knowledge-hub *, .officina *)){color:var(--glass-text);background:rgb(var(--glass-rgb) / .3);border:1px solid var(--line);box-shadow:inset 0 1px rgb(255 255 255 / .06);font-size:12px;border-radius:12px;transition:background 160ms,border-color 160ms,box-shadow 160ms}
+.companion-capsule .workspace-content button:hover:not(:disabled):not(:where(.knowledge-hub *, .officina *)){background:rgb(var(--glass-accent-rgb) / .11);border-color:rgb(var(--glass-accent-rgb) / .30);box-shadow:inset 0 1px rgb(255 255 255 / .10)}
 .companion-capsule .workspace-content .primary{background:rgb(var(--glass-accent-rgb) / .90);color:#171421;border-color:transparent;font-weight:600}
-.companion-capsule .workspace-content button:focus-visible:not(:where(.knowledge-hub *)){outline:2px solid var(--accent);outline-offset:3px}
-.companion-capsule .workspace-content :is(input:not([type=range]):not([type=checkbox]),select,textarea):not(:where(.knowledge-hub *)){background:rgb(var(--glass-rgb) / .45);color:var(--glass-text);border:1px solid var(--line);border-radius:12px;font-size:13px}
-.companion-capsule .workspace-content :is(input,select,textarea):not(:where(.knowledge-hub *))::placeholder{color:var(--glass-secondary)}.companion-capsule .timeline details{border-color:var(--line)}.companion-capsule .code-preview{border-color:var(--line);background:rgb(var(--glass-rgb) / .6)}
+.companion-capsule .workspace-content button:focus-visible:not(:where(.knowledge-hub *, .officina *)){outline:2px solid var(--accent);outline-offset:3px}
+.companion-capsule .workspace-content :is(input:not([type=range]):not([type=checkbox]),select,textarea):not(:where(.knowledge-hub *, .officina *)){background:rgb(var(--glass-rgb) / .45);color:var(--glass-text);border:1px solid var(--line);border-radius:12px;font-size:13px}
+.companion-capsule .workspace-content :is(input,select,textarea):not(:where(.knowledge-hub *, .officina *))::placeholder{color:var(--glass-secondary)}.companion-capsule .timeline details{border-color:var(--line)}.companion-capsule .code-preview{border-color:var(--line);background:rgb(var(--glass-rgb) / .6)}
 @media(max-width:440px){.companion-capsule .workspace-section-heading{flex-wrap:wrap}.companion-capsule .workspace-section-heading>.actions{flex-wrap:wrap}}
 @media(prefers-reduced-transparency:reduce){.companion-capsule,.companion-capsule .knowledge-hub{--glass-opacity:1!important;--glass-blur:0px!important}}
 @media(prefers-reduced-motion:reduce){.companion-capsule *{animation-duration:.001ms!important;transition:none!important}}

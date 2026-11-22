@@ -84,6 +84,44 @@ describe('latest confirmed answer stays independent from activity and permission
 });
 
 describe('bounded read-only local answer recovery',()=>{
+ it('observes only the Codex turn carrying the exact Officina job and recognizes its completion',async()=>{
+  const identity={run:randomUUID(),project:randomUUID(),task:randomUUID(),role:'analyst' as const};
+  const accepted=json('event_msg',{type:'item_completed',thread_id:target.session,turn_id:'office-turn',item:{
+   type:'UserMessage',content:[{type:'text',text:'Encargo\n'+JSON.stringify({identity})}]}});
+  const unrelated=json('event_msg',{type:'task_complete',turn_id:'other-turn'});
+  const f=await local(header()+accepted+unrelated),reader=new CodexReplyReader(f.home);
+  const at=Date.parse('2026-10-25T10:00:00Z');
+  expect(await reader.readOfficinaTurn(target,identity,at)).toEqual({turn:'office-turn',state:'working',at});
+  expect(await reader.readOfficinaTurn(target,{...identity,role:'tester'},at)).toBeUndefined();
+  expect(await reader.readOfficinaTurn(target,identity,at+1)).toBeUndefined();
+  expect(await reader.readOfficinaTurn({...target,cwd:target.cwd+'-other'},identity,at)).toBeUndefined();
+  await appendFile(f.file,json('event_msg',{type:'task_started',turn_id:'other-turn'}));
+  expect(await reader.readOfficinaTurn(target,identity,at)).toBeUndefined();
+  await appendFile(f.file,json('event_msg',{type:'task_complete',turn_id:'office-turn'}));
+  expect(await reader.readOfficinaTurn(target,identity,at)).toEqual({turn:'office-turn',state:'finished',at});
+ });
+ it('verifies the saved Officina root and distinguishes absent chats from moved or archived chats',async()=>{
+  const f=await local(),reader=new CodexReplyReader(f.home),db=new DatabaseSync(join(f.home,'state_5.sqlite'));
+  try{
+   db.exec(`ALTER TABLE threads ADD COLUMN archived INTEGER DEFAULT 0;
+    ALTER TABLE threads ADD COLUMN project_id TEXT;
+    CREATE TABLE projects(id TEXT PRIMARY KEY);
+    CREATE TABLE project_roots(project_id TEXT,path TEXT);
+    INSERT INTO projects VALUES ('officina');`);
+   db.prepare('INSERT INTO project_roots VALUES (?,?)').run('officina',target.cwd);
+   expect(await reader.hasOfficinaProject('officina',target.cwd)).toBe(true);
+   expect(await reader.hasDedicatedThread(target,'officina')).toBe(true);
+   expect(await reader.hasDedicatedThread(target,'other')).toBe(false);
+   expect(await reader.missingOfficinaThread('officina',target.cwd,'missing')).toBe(true);
+   expect(await reader.missingOfficinaThread('officina',target.cwd+'-other','missing')).toBe(false);
+   db.prepare('UPDATE threads SET project_id=?').run('other');
+   expect(await reader.hasDedicatedThread(target,'officina')).toBe(false);
+   expect(await reader.missingOfficinaThread('officina',target.cwd,target.session)).toBe(false);
+   db.exec("UPDATE threads SET project_id='officina',archived=1");
+   expect(await reader.hasDedicatedThread(target,'officina')).toBe(false);
+   expect(await reader.missingOfficinaThread('officina',target.cwd,target.session)).toBe(false);
+  }finally{db.close();}
+ });
  it('reads the exact indexed chat and requires a completed assistant final with a matching cwd',async()=>{
   const f=await local();const value=await f.read();expect(value).toEqual({text:'Real final',at:Date.parse('2026-10-25T10:00:00Z'),source:'local',turn:'t1',truncated:false});
   expect(await f.read({...target,session:'other-chat'})).toBeUndefined();

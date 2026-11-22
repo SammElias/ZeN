@@ -16,6 +16,7 @@
 | Apuntes rápidos en HUB | SQLite y perfil local | Hoja continua con autoguardado, scroll interno y recuperación de la posición de escritura. |
 | Pizarra en HUB | Canvas y SQLite local | Lienzo persistente con pinceles, goma de tramo, Deshacer y reinicio con confirmación. |
 | Descubrimiento de apps | SQLite de HUB y peticiones de Inicio | Cuestionario bilingüe, propuesta local y valoración opcional en Codex. |
+| Officina | Cápsula, tablero local y puente de Codex | Chat global, seguimiento y cierre de encargos, traspasos versionados, QA y aprobaciones en Codex. La carpeta del proyecto se puede añadir desde Proyectos de Codex. |
 | Traductor dentro de HUB | Azure Translator Global y almacén seguro de Windows | Traducción en ambos sentidos, copia y uso en ancho estrecho. La validación automatizada usa un servicio simulado. |
 | Templates dentro de HUB | SQLite e imágenes administradas en el perfil | Treinta diseños empresariales en seis áreas de trabajo con prompts para Power Apps Canvas y React, personalización local, favoritos y edición. El recorrido aislado comprueba galería, detalle, filtros, scroll y borradores; las pruebas de datos cubren persistencia y respaldo. |
 

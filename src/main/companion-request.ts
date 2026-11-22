@@ -3,7 +3,7 @@ import {existsSync} from 'node:fs';
 import {isAbsolute, join} from 'node:path';
 import {promisify} from 'node:util';
 import {CodexRequest, type CodexRequestReceipt} from '../shared/companion-request';
-import {codexEnvironment, findCodex} from './codex-rpc';
+import {codexEnvironment, findCodex, type CodexTransport} from './codex-rpc';
 
 const newChat = 'codex://threads/new';
 // Electron's Windows shell.openExternal limit applies after percent encoding.
@@ -12,7 +12,7 @@ const exec = promisify(execFile);
 const uuid = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 const unknownDelivery = 'No se pudo confirmar el envío. Revisa el chat fijado en Codex antes de reintentar.';
 
-async function desktopCodex(): Promise<string> {
+export async function desktopCodex(): Promise<string> {
   if (process.platform === 'win32') {
     const powershell = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     try {
@@ -61,6 +61,23 @@ export async function queueCodexRequest(
   // The CLI persists the message. The desktop handler wakes its own app-server.
   try { await wake(`codex://threads/wake/${thread}`); }
   catch { throw Error('La petición quedó en cola, pero no se pudo avisar a Codex. Abre el chat fijado y revisa la cola antes de reintentar.'); }
+}
+
+export async function queueCodexBrowserRequest(
+  rpc: Pick<CodexTransport, 'request'>, thread: string, id: string, text: string, browserName: string | undefined,
+  verify: () => void | Promise<void>, wake: (url: string) => Promise<void>,
+) {
+  if (!uuid.test(thread) || !uuid.test(id)) throw Error('No se pudo identificar el encargo de navegador.');
+  const input = [
+    {type: 'mention', name: browserName ?? 'Extensión de ChatGPT', path: 'plugin://chrome@openai-bundled'},
+    {type: 'text', text: CodexRequest.parse(text), text_elements: []},
+  ];
+  await verify();
+  const {queuedSubmission} = await rpc.request('thread/queue/add', {threadId: thread, clientUserMessageId: id, input});
+  if (queuedSubmission?.clientUserMessageId !== id || !uuid.test(queuedSubmission?.id ?? '')) {
+    throw Error('Codex no confirmó el encargo de navegador.');
+  }
+  await wake(`codex://threads/wake/${thread}`);
 }
 
 export async function openCodexRequest(

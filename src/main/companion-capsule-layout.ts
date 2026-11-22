@@ -14,12 +14,18 @@ export const simpleWorkspacePanels:Partial<Record<WorkspacePage,PanelSize>>={
  metrics:{width:520,height:325},
  spotify:{width:490,height:260},
  codex:{width:550,height:340},
- permissions:{width:550,height:360},
+ permissions:{width:350,height:238},
  settings:{width:560,height:370},
  notices:{width:480,height:240},
  options:{width:510,height:330},
  shortcuts:{width:500,height:300},
 };
+
+export function permissionPanelSize(preview='',pending=0):PanelSize {
+ const base=simpleWorkspacePanels.permissions!;
+ const lines=preview.split(/\r?\n/,12).reduce((total,line)=>total+Math.max(1,Math.ceil(line.length/46)),0);
+ return {width:base.width,height:Math.min(306,base.height+12*Math.max(0,lines-2)+(pending>1?28:0))};
+}
 
 /** Join the fixed capsule and its panel without filling the transparent space between them. */
 export function capsuleLayout(area:Area,anchor:Area,desired:Area,side:IslandSide|undefined,open:boolean,reserve:number,simple?:PanelSize):CapsuleLayout {
@@ -67,7 +73,7 @@ export function retractCapsulePanel(layout:CapsuleLayout,side:IslandSide|undefin
 }
 
 /** Native resize and Snap keep the capsule small while changing the available panel space. */
-export function resizeCapsuleLayout(layout:CapsuleLayout,bounds:Area,side:IslandSide|undefined,simple=false):CapsuleLayout {
+export function resizeCapsuleLayout(layout:CapsuleLayout,bounds:Area,side:IslandSide|undefined,compact=false):CapsuleLayout {
  if(!layout.panel)return layout;
  const capsule={...layout.capsule,
   x:clamp(layout.bounds.x+layout.capsule.x-bounds.x,0,Math.max(0,bounds.width-layout.capsule.width)),
@@ -78,9 +84,10 @@ export function resizeCapsuleLayout(layout:CapsuleLayout,bounds:Area,side:Island
  const vertical=side==='left'||side==='right';
  const above=!side&&layout.panel.y<layout.capsule.y;
  // The native bounds include the full rail, even where it extends beyond the simple panel.
- const height=vertical&&simple?clamp(layout.panel.height+bounds.height-layout.bounds.height,1,bounds.height):bounds.height;
+ const height=vertical&&compact?clamp(layout.panel.height+bounds.height-layout.bounds.height,1,bounds.height):bounds.height;
+ const width=!vertical&&compact?clamp(layout.panel.width+bounds.width-layout.bounds.width,1,bounds.width):bounds.width;
  const panel=vertical
   ?{x:side==='left'?capsule.width:0,y:clamp(Math.round(capsule.y+(capsule.height-height)/2),0,bounds.height-height),width:bounds.width-capsule.width,height}
-  :{x:0,y:above?0:capsule.y+capsule.height,width:bounds.width,height:above?capsule.y:bounds.height-capsule.y-capsule.height};
+  :{x:clamp(Math.round(capsule.x+(capsule.width-width)/2),0,bounds.width-width),y:above?0:capsule.y+capsule.height,width,height:above?capsule.y:bounds.height-capsule.y-capsule.height};
  return {bounds,capsule,panel};
 }

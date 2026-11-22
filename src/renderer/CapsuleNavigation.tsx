@@ -13,6 +13,7 @@ export const launcherName = {
   notes: hubName,
   calendar: 'Calendario',
   metrics: 'Métricas',
+  officina: 'Officina',
   notices: 'Avisos',
 } satisfies Record<LauncherPage, string>;
 
@@ -160,7 +161,7 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
         {value === 'home'
           ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg>
           : glance?<b className="oura-glance" aria-hidden="true"><small>{glance.current?'Sueño':measured}</small>{ouraDuration(glance.seconds,true)}</b>
-          : <CompanionIcon name={settings?'settings':value==='spotify'?'sound':value==='notes'?'notebook':value==='calendar'?'calendar':'metrics'}/>}
+          : <CompanionIcon name={settings?'settings':value==='spotify'?'sound':value==='notes'?'notebook':value==='calendar'?'calendar':value==='officina'?'office':'metrics'}/>}
         <span>{label}</span>
         {value==='home'&&approvals+unread>0&&<b className={approvals?'integration-badge permission-badge':'integration-badge'} aria-hidden="true">{approvals+unread>99?'99+':approvals+unread}</b>}
       </button>;

@@ -8,6 +8,10 @@ import {WeatherAction} from '../shared/companion-weather';
 import {CompanionWeather} from './companion-weather';
 import {createSmokeWeather} from './companion-smoke-weather';
 import {TranslatorAction} from '../shared/companion-translator';
+import {OfficinaAction} from '../shared/companion-officina';
+import {CompanionOfficina} from './companion-officina';
+import {OfficinaProvisioning} from './companion-officina-provision';
+import {makeOfficinaSmokeTeam} from './companion-officina-smoke';
 import {CompanionTranslator} from './companion-translator';
 import {smokeTranslatorResponse} from './companion-smoke-translator';
 import {CompanionAppearance} from './companion-appearance';
@@ -19,7 +23,7 @@ import {profileFingerprint,registerProfileSyncIpc} from './profile-sync-ipc';
 import {registerNotesIpc} from './companion-notes-ipc';
 import {decodeTemplateBackupImage, loadTemplateSeeds} from './companion-template-images';
 import {createSmokeMedia} from './companion-smoke-media';
-import {openCodexRequest,queueCodexRequest} from './companion-request';
+import {desktopCodex,openCodexRequest,queueCodexBrowserRequest,queueCodexRequest} from './companion-request';
 import {CodexRequest} from '../shared/companion-request';
 import {CompanionContext} from './companion-context';
 import {contextFile} from './companion-context-file';
@@ -53,7 +57,7 @@ import {CompanionSystemVolume} from './companion-system-volume';
 import {mergeShape,overlaps,CapsuleVisibility} from './companion-placement';
 import {CompanionWorkspaceWindow,compactIslandSize,edgeBounds,edgeWorkspaceMinimum,fitWorkspace,islandBounds,placeWorkspaceRail,railFromIsland,restoreWorkspace,workspaceCaptionHeight,workspaceLayout,workspaceMinimum,type EdgeDock,type WorkspaceGeometry} from './companion-workspace-window';
 import {EDGE_ISLAND,ISLAND_BLUR_MS} from '../shared/island';
-import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from './companion-capsule-layout';
+import {capsuleLayout,capsuleLayoutShape,permissionPanelSize,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from './companion-capsule-layout';
 import {CapsuleLocation,CapsuleMenuAnchor,WorkspaceLayoutAction,WorkspaceLayoutPreferences} from '../shared/workspace-layout';
 import {capsuleMenuItems} from './companion-capsule-menu';
 import {companionIpc} from './companion-ipc';
@@ -70,7 +74,8 @@ protocol.registerSchemesAsPrivileged([{scheme:'zen-theme',privileges:{standard:t
 const appUserModelId='com.zen.desktop';
 app.setName('ZEN');app.setAppUserModelId(appUserModelId);
 const hoverSmoke=process.argv.includes('--zen-hover-smoke');
-const smoke=hoverSmoke||process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+process.pid);mkdirSync(p,{recursive:true});app.setPath('userData',p);}
+const officinaSmokeProfile=hoverSmoke?process.argv.find(arg=>/^--zen-officina-profile=[a-f0-9-]{36}$/.test(arg))?.split('=')[1]:undefined;
+const smoke=hoverSmoke||process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+(officinaSmokeProfile??process.pid));mkdirSync(p,{recursive:true});app.setPath('userData',p);}
 const copiedRequests:string[]=[];const queuedRequests:{thread:string;text:string}[]=[];const copiedText:string[]=[];const openedTargets:string[]=[];const openExternal=(url:string)=>smoke?(openedTargets.push(url),Promise.resolve()):shell.openExternal(url);
 const copyText = (text: string) => { if (smoke) copiedText.push(text); else clipboard.writeText(text); };
 let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
@@ -95,10 +100,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   }
   const appearance=new CompanionAppearance(profile,bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error();const size=image.getSize(),ratio=Math.min(1,2560/Math.max(size.width,size.height));if(ratio<1)image=image.resize({width:Math.max(1,Math.round(size.width*ratio)),height:Math.max(1,Math.round(size.height*ratio)),quality:'best'});return image.toPNG();});
   let contextPage:LauncherPage|undefined;
-  let expanded=false,workspacePage:WorkspacePage=workspaceWindow.page??launcherPreferences.status().last,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
+  const savedPage=workspaceWindow.page??launcherPreferences.status().last;
+  let expanded=false,workspacePage:WorkspacePage=savedPage==='permissions'?'codex':savedPage,quitting=false,dragTimer:ReturnType<typeof setInterval>|undefined,dragLimit:ReturnType<typeof setTimeout>|undefined,moved=false;
+  let permissionReturnPage:WorkspacePage=workspacePage;
+  let permissionPanel=permissionPanelSize();
   let simpleMode=false;
   let fullFrame:{geometry:WorkspaceGeometry;anchor:Area;location:CapsuleLocation}|undefined;
-  const simplePanel=(page=workspacePage)=>simpleMode?simpleWorkspacePanels[page]:undefined;
+  const compactPanel=(page=workspacePage)=>page==='permissions'?permissionPanel:simpleMode?simpleWorkspacePanels[page]:undefined;
   const renderer=join(__dirname,'renderer','index.html'),preload=join(__dirname,'preload.cjs'),icon=join(__dirname,'renderer','icons','zen.ico');
   const rendererQuery={view:'capsule'};
   const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
@@ -123,7 +131,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const surfaceBounds=()=>isEdge()?edgeBounds(dockDisplay().workArea,dock,true,nativeCaption):islandBounds(parked,nativeCaption);
   const layout=(open=expanded)=>{
    const area=isEdge()?dockDisplay().workArea:parked.area;
-   const view=capsuleLayout(area,surfaceBounds(),parked.bounds,isEdge()?dock.side:undefined,open||nativeCaption,nativeCaption?workspaceCaptionHeight:0,simplePanel());
+   const view=capsuleLayout(area,surfaceBounds(),parked.bounds,isEdge()?dock.side:undefined,open||nativeCaption,nativeCaption?workspaceCaptionHeight:0,compactPanel());
    // On Windows keep the compositor viewport in place between hover states.
    // The native region still exposes only the compact silhouette when closed.
    return open?view:{...view,panel:undefined};
@@ -134,7 +142,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    backgroundColor:'#101116',hasShadow:false,maximizable:false,minimizable:false,show:false,skipTaskbar:taskbarHidden,
    alwaysOnTop:false,resizable:false,movable:false,icon,webPreferences:{autoplayPolicy:'no-user-gesture-required',preload,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true}});
   const currentLayout=()=>expanded?resizeCapsuleLayout(layout(),cap.getBounds(),isEdge()?dock.side:undefined,
-   !!simplePanel()&&!cap.isMaximized()&&!(nativeCaption&&cap.isSnapped())):layout();
+   !!compactPanel()&&!cap.isMaximized()&&!(nativeCaption&&cap.isSnapped())):layout();
   const setTaskbarHidden=(hidden:boolean)=>{
    if(taskbarHidden===hidden)return;
    cap.setSkipTaskbar(hidden);
@@ -152,6 +160,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   }
   let desktop:CompanionDesktop|undefined,revision=0,surfaceReady=false,replyEpoch=0;
   const visibility=new CapsuleVisibility();
+  let automaticPermissionReview=!smoke,desktopLocked=false;
+  let priorityReview:{expanded:boolean;hidden:boolean;minimized:boolean}|undefined;
+  let priorityNotice:CompanionNotice|undefined,priorityTimer:ReturnType<typeof setTimeout>|undefined;
   const surfaceVisible=()=>!cap.isDestroyed()&&cap.isVisible()&&!cap.isMinimized();
   let openDialogs=0,editing=false;
   let hoverInput:CapsuleHoverInput={inside:false,blocked:false,reduced:false};
@@ -188,13 +199,14 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    }),
    ()=>workspaceVisible('notes')&&!panelTransition.hoverClosing&&privateEffectsAllowed(),
    text=>copyVaultText(nativeHelper(__dirname,'vaultClipboard'),text),withWindowDialog);
-  powerMonitor.on('lock-screen',vault.lock);
+  powerMonitor.on('lock-screen',()=>{desktopLocked=true;priorityNotice=undefined;finishPermissionReview(true);vault.lock();});
+  powerMonitor.on('unlock-screen',()=>{desktopLocked=false;});
   powerMonitor.on('suspend',vault.lock);
   cap.webContents.on('render-process-gone',vault.lock);
   app.on('before-quit',vault.lock);
   const activityVisible=()=>workspaceVisible()&&isLauncherPageSelected(workspacePage,'codex')&&privateEffectsAllowed();
-  const snapshot=()=>displayStatus({
-   ...hub.status(),
+  const snapshot=(status=hub.status())=>displayStatus({
+   ...status,
    oura:privateEffectsAllowed()&&workspaceVisible('metrics')?oura.snapshot():undefined,
    ouraGlance:privateEffectsAllowed()&&!expanded&&surfaceVisible()?oura.glance():undefined,
    ouraHomeSleep:privateEffectsAllowed()&&workspaceVisible('home')?oura.homeSleep():undefined,
@@ -210,7 +222,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    },
    desktop:desktop?.status(),
   },++revision,surfaceVisible());
-  const broadcast=()=>{if(!cap.isDestroyed())cap.webContents.send(companionChannel('status'),snapshot());if(activityVisible()&&!smoke)void refreshActivityTitles();};
+  const broadcast=()=>{
+   if(cap.isDestroyed())return;
+   const status=hub.status();
+   cap.webContents.send(companionChannel('status'),snapshot(status));
+   if(priorityReview&&(!status.approvalCount||!privateEffectsAllowed()))schedulePermissionReview();
+   if(activityVisible()&&!smoke)void refreshActivityTitles();
+  };
   const playEffect=(effect:InterfaceEffect)=>{
    if(!cap.isDestroyed()&&surfaceVisible())cap.webContents.send(companionInterfaceEffectChannel,effect);
   };
@@ -232,10 +250,10 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(status.approvals.some(approval=>approval.id===n.id)){reveal();changeSurface(()=>openWorkspace('permissions'));return;}
    await openExternal(observedChatUrl(n.session));
   };
-  const notify=(n:CompanionNotice)=>{if(smoke||settings.presentation||isSilenced(settings)||!Notification.isSupported())return;const toast=new Notification({title:'ZEN · '+n.title,body:n.id==='test'?'Aviso de prueba de ZEN.':n.kind==='permission'?'Pulsa para revisar la solicitud.':'Pulsa para volver a este chat en Codex.',silent:n.id==='test'||!settings.sounds||(cap.isVisible()&&!cap.isMinimized()),icon});toast.on('click',()=>{void activateNotice(n).catch(()=>{});});toast.show();};
+  const notify=(n:CompanionNotice)=>{if(smoke||settings.presentation||isSilenced(settings)||!Notification.isSupported()||n.kind==='permission'&&automaticPermissionReview&&nativeCaption)return;const toast=new Notification({title:'ZEN · '+n.title,body:n.id==='test'?'Aviso de prueba de ZEN.':n.kind==='permission'?'Pulsa para revisar la solicitud.':'Pulsa para volver a este chat en Codex.',silent:n.id==='test'||!settings.sounds||(cap.isVisible()&&!cap.isMinimized()),icon});toast.on('click',()=>{void activateNotice(n).catch(()=>{});});toast.show();};
   const hub=new CompanionHub(settings,broadcast,notify,undefined,target,(_event,session,reply)=>{
    if(reply){context.observeReply(session.id,session.cwd,reply);calendar.observe(session.id,session.cwd,reply.text);}
-  });hub.targetError=targetError;
+  },queuePermissionReview);hub.targetError=targetError;
   const codexHome=smoke?join(profile,'codex-fixture'):process.env.CODEX_HOME??join(app.getPath('home'),'.codex');
   const replyReader=new CodexReplyReader(codexHome);
   let nextTitleCheck=0;
@@ -311,6 +329,46 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    policy:()=>({visible:workspaceVisible('calendar'),allowed:privateEffectsAllowed(),target:targetError?undefined:target}),
    queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:broadcast,
   });
+  const officinaAllowed=()=>!quitting&&!desktopLocked&&privateEffectsAllowed()&&workspaceVisible('officina')&&!panelTransition.hoverClosing;
+  const connectOfficina=async()=>{
+   const rpc=new CodexRpc(30000,{binary:await desktopCodex(),codexHome});
+   try{
+    await rpc.initialize(true);
+    const {account}=await rpc.request('account/read',{refreshToken:false});
+    if(account?.type!=='chatgpt')throw Error('Inicia sesión en Codex con ChatGPT.');
+    return rpc;
+   }catch(error){rpc.close();throw error;}
+  };
+  const officinaProvisioning=new OfficinaProvisioning(join(profile,'officina-projects'),connectOfficina,
+   (id,cwd,name)=>replyReader.officinaProjectThreads(id,cwd,name));
+  const officina=new CompanionOfficina(join(profile,'officina.sqlite'),{
+   allowed:officinaAllowed,
+   verify:binding=>binding.thread===target?.session.toLowerCase()?Promise.resolve(false):
+    replyReader.hasDedicatedThread({session:binding.thread,cwd:binding.cwd,title:'Officina'},binding.projectId),
+   provision:(...args)=>officinaProvisioning.ensure(...args),
+   missingThread:(projectId,cwd,thread)=>replyReader.missingOfficinaThread(projectId,cwd,thread),
+   verifyProject:(projectId,cwd)=>replyReader.hasOfficinaProject(projectId,cwd),
+   openChat:thread=>openExternal('codex://threads/'+thread),
+   openProject:cwd=>openExternal('codex://new?path='+encodeURIComponent(cwd)),
+   copyProjectPath:copyText,
+   queue:(thread,text,verify,browser)=>withRequest(async()=>{
+    const wake=(url:string)=>{
+     if(!officinaAllowed())throw Error('La vista de Officina cambió.');
+     return openExternal(url);
+    };
+    if(!browser)return queueCodexRequest(thread,text,codexHome,verify,wake);
+    const rpc=await connectOfficina();
+    try{return await queueCodexBrowserRequest(rpc,thread,browser.id,text,browser.name,verify,wake);}
+    finally{rpc.close();}
+   }),
+   read:selected=>replyReader.read(selected),
+   readTurn:(selected,identity,since)=>replyReader.readOfficinaTurn(selected,identity,since),
+   needsPermission:(selected,turn)=>hub.turnNeedsPermission(selected,turn),
+   ...(officinaSmokeProfile?makeOfficinaSmokeTeam():undefined),
+  });
+  powerMonitor.on('lock-screen',()=>officina.suspend(true));
+  powerMonitor.on('suspend',()=>officina.suspend(true));
+  cap.webContents.on('render-process-gone',()=>officina.suspend(true));
   const smokeOura=smoke?createSmokeOura():undefined;
   const oura=new CompanionOura(join(profile,'companion-oura.bin'),safeStorage,{
    changed:broadcast,allowed:privateEffectsAllowed,
@@ -407,7 +465,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const rememberWorkspace=()=>{
    clearTimeout(savePositionTimer);
    if(expanded&&!cap.isMinimized()){
-    if(simplePanel()){
+    if(workspacePage==='permissions')return;
+    if(compactPanel()){
      workspaceWindow.save({mode:'workspace',page:workspacePage,edgeDock:dock});
      return;
     }
@@ -442,7 +501,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   };
   const setWorkspaceMinimum=()=>{
    const area=isEdge()?dockDisplay().workArea:parked.area;
-   const compact=simplePanel();
+   const compact=compactPanel();
    const height=compact?Math.max(surfaceBounds().height,Math.min(workspaceMinimum.height,compact.height)):workspaceMinimum.height;
    cap.setMinimumSize(Math.min(workspaceMinimum.width,area.width),Math.min(height,area.height));
   };
@@ -463,7 +522,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    rememberWorkspace();
   };
   cap.on('maximize',()=>{scheduleWorkspaceSave();broadcast();});
-  const rememberRail=()=>workspaceWindow.save({mode:'capsule',page:workspacePage,current:parked,edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
+  const rememberRail=()=>workspaceWindow.save({mode:'capsule',page:workspacePage==='permissions'?permissionReturnPage:workspacePage,current:parked,edgeDock:dock,...(!isEdge()?{floating:parked}:{})});
   const leaveWorkspace=()=>{
    vault.lock();
    systemVolume.close();
@@ -506,11 +565,49 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(action==='restore'&&previous){parked={...previous,bounds:restoreWorkspace(previous,displays,monitor)};positionSurface();}
    rememberWorkspace();broadcast();
   };
-  const setTopmost=(next:boolean)=>{
+  const setTopmost=()=>{
+   const next=settings.alwaysOnTop||!!priorityReview;
    // Electron's default level inserts the window behind the taskbar HWND on Windows.
    // That can clear topmost when the taskbar is in the normal z-order band.
    if(cap.isAlwaysOnTop()!==next)cap.setAlwaysOnTop(next,nativeCaption?'pop-up-menu':undefined);
   };
+  function queuePermissionReview(notice:CompanionNotice){
+   if(!automaticPermissionReview||!nativeCaption||!privateEffectsAllowed()||desktopLocked||quitting)return;
+   priorityNotice=notice;
+   schedulePermissionReview();
+  }
+  function schedulePermissionReview(delay=0){
+   if(priorityTimer||quitting)return;
+   priorityTimer=setTimeout(()=>{
+    priorityTimer=undefined;
+    if(cap.isDestroyed()||quitting)return;
+    if(!privateEffectsAllowed()||desktopLocked){priorityNotice=undefined;finishPermissionReview(true);return;}
+    if(priorityReview&&!hub.status().approvalCount)finishPermissionReview(true);
+    const notice=priorityNotice;
+    if(!notice||!hub.isPendingPermission(notice)){priorityNotice=undefined;return;}
+    if(!surfaceReady||openDialogs||dragTimer||nativeGeometryInteraction){schedulePermissionReview(100);return;}
+    priorityNotice=undefined;
+    priorityReview??={expanded:expanded&&workspacePage!=='permissions',hidden:visibility.hidden,minimized:cap.isMinimized()};
+    changeSurface(()=>openWorkspace('permissions'));
+    setTopmost();
+    if(!surfaceVisible())cap.showInactive();
+    cap.moveTop();
+    broadcast();
+   },delay);
+  }
+  function finishPermissionReview(restore:boolean){
+   const previous=priorityReview;
+   if(!previous)return false;
+   priorityReview=undefined;
+   setTopmost();
+   if(restore){
+    if(previous.expanded)openWorkspace(permissionReturnPage);
+    else collapse();
+    if(previous.minimized)hide();
+    else if(previous.hidden){visibility.hide();cap.hide();}
+   }
+   return true;
+  }
   const fullscreenHere=()=>{const r=desktop?.observation?.fullscreen;return !!(settings.respectFullscreen&&r&&overlaps(screen.screenToDipRect(null,r),screen.getDisplayMatching(cap.getBounds()).bounds));};
   const syncVisibility=()=>{
    if(!surfaceReady||cap.isDestroyed()||visibility.hidden||cap.isMinimized())return;
@@ -548,15 +645,22 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     (Object.keys(anchor) as (keyof Area)[]).every(key=>anchor[key]===fullFrame?.anchor[key]))return fullFrame.geometry;
   };
   const openWorkspace=(page:WorkspacePage,byHover=false,fromLauncher=byHover)=>{
-   if(workspacePage!==page){vault.lock();systemVolume.close();weather.cancel();translator.cancel();}
+   if(page!=='permissions')finishPermissionReview(false);
+   if(workspacePage!==page){officina.suspend();vault.lock();systemVolume.close();weather.cancel();translator.cancel();}
    cancelAutoCollapse();
    if(!byHover)hover.selectExplicitly();
    if(expanded&&workspacePage===page){broadcast();return;}
    endDrag();
-   const before=simplePanel(),next=simplePanel(page);
+   const before=compactPanel();
+   if(page==='permissions'){
+    const status=hub.status();
+    permissionPanel=permissionPanelSize(status.approvals[0]?.preview,status.approvalCount);
+   }
+   const next=compactPanel(page);
    const resize=before!==next;
    if(expanded&&resize&&!before)rememberFullFrame();
-   launcherPreferences.visit(page);
+   if(page==='permissions')permissionReturnPage=workspacePage;
+   else launcherPreferences.visit(page);
    if(workspacePage!==page)invalidateContext();
    workspacePage=page;
    fromApps=fromLauncher;
@@ -564,7 +668,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    visibility.invoke();
    if(!expanded||resize){
     if(!expanded&&byHover)panelTransition.prepareHoverOpen();
-    enterWorkspace(byHover,simpleMode&&!next?savedFullFrame():undefined);
+    enterWorkspace(byHover,!next&&(before||simpleMode)?savedFullFrame():undefined);
    }
    syncVisibility();
    broadcast();
@@ -572,13 +676,14 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(page==='calendar')void refreshLastReply();
   };
   const toggleSimpleMode=()=>{
-   const before=simplePanel();
+   if(workspacePage==='permissions'){simpleMode=!simpleMode;broadcast();return;}
+   const before=compactPanel();
    if(!simpleMode&&expanded&&workspacePage!=='notes')rememberFullFrame();
    simpleMode=!simpleMode;
    const restore=!simpleMode?savedFullFrame():undefined;
    if(!simpleMode)fullFrame=undefined;
    if(!expanded&&simpleMode){changeSurface(()=>openWorkspace(workspacePage));return;}
-   if(expanded){if(before||simplePanel())enterWorkspace(false,restore);}
+   if(expanded){if(before||compactPanel())enterWorkspace(false,restore);}
    else positionSurface();
    broadcast();
    hover.refresh();
@@ -586,8 +691,14 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const collapse=()=>{
    cancelAutoCollapse();
    if(openDialogs)return;
+   if(finishPermissionReview(true))return;
    endDrag();
-   if(expanded){invalidateContext();leaveWorkspace();hover.collapsed();}
+   if(expanded){
+    officina.suspend();
+    invalidateContext();
+    if(workspacePage==='permissions')workspacePage=permissionReturnPage;
+    leaveWorkspace();hover.collapsed();
+   }
    broadcast();syncVisibility();
   };
   const showCapsule=(explicit=true)=>{
@@ -657,13 +768,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
      cursor.y>=bounds.y+rect.y&&cursor.y<bounds.y+rect.y+rect.height));
     return {visible,expanded,page:workspacePage,overCapsule:over(capsuleRegion),overWorkspace:expanded&&over(hoverRegion),
      blocked:!!(openDialogs||dragTimer||nativeGeometryInteraction||hoverInput.blocked),
-     holdOpen:!!(hoverInput.holdOpen&&(simplePanel()||workspacePage==='notes')&&cap.isFocused()),
-     locked:settings.windowLocked,animate:animatePanel()};
+     holdOpen:!!(hoverInput.holdOpen&&(compactPanel()||workspacePage==='notes'||workspacePage==='officina')&&cap.isFocused()),
+     locked:settings.windowLocked||!!priorityReview,animate:animatePanel()};
    },
    open:page=>changeSurface(()=>openWorkspace(page,true)),
    close:()=>changeSurface(collapse),
    previewClose:closing=>{
-    if(closing){systemVolume.close();weather.cancel();translator.cancel();}
+    if(closing){officina.suspend();systemVolume.close();weather.cancel();translator.cancel();}
     panelTransition.previewClose(closing,closing?vault.lockBeforeTransition():undefined);
    },
   });
@@ -671,7 +782,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    cap.hookWindowMessage(0x0231,()=>{nativeGeometryInteraction=true;hover.refresh();}); // WM_ENTERSIZEMOVE
    cap.hookWindowMessage(0x0232,()=>{nativeGeometryInteraction=false;hover.refresh();}); // WM_EXITSIZEMOVE
   }
-  const hide=()=>{rememberWorkspace();cancelAutoCollapse();endDrag();media.close();visibility.hide();setTaskbarHidden(false);cap.minimize();};
+  const hide=()=>{finishPermissionReview(false);rememberWorkspace();cancelAutoCollapse();endDrag();media.close();visibility.hide();setTaskbarHidden(false);cap.minimize();};
   const dismissOnOutsideClick=()=>{
    if(!expanded&&settings.dismissCapsuleOnOutsideClick&&surfaceReady&&!quitting&&!visibility.hidden&&!openDialogs&&!dragTimer&&surfaceVisible())hide();
   };
@@ -684,7 +795,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    event.preventDefault();
    hide();
   });
-  const canAutoCollapse=()=>!nativeCaption&&expanded&&settings.collapseOnBlur&&!settings.windowLocked&&!settings.keepExpanded&&
+  const canAutoCollapse=()=>!nativeCaption&&expanded&&settings.collapseOnBlur&&!settings.windowLocked&&!settings.keepExpanded&&!priorityReview&&
    !editing&&!dragTimer&&!moved&&!openDialogs&&!requestInFlight&&!quitting&&surfaceVisible();
   cap.on('blur',()=>{
    vault.conceal();
@@ -711,7 +822,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    syncVisibility();
    broadcast();
   });
-  const hidePrivateContent=()=>{vault.lock();panelTransition.reset();hoverInput={reduced:hoverInput.reduced,inside:false,blocked:false};hover.reset();invalidateContext();mediaObserver.close();systemVolume.close();weather.cancel();translator.cancel();broadcast();};
+  const hidePrivateContent=()=>{officina.suspend();finishPermissionReview(false);vault.lock();panelTransition.reset();hoverInput={reduced:hoverInput.reduced,inside:false,blocked:false};hover.reset();invalidateContext();mediaObserver.close();systemVolume.close();weather.cancel();translator.cancel();broadcast();};
   cap.on('hide',hidePrivateContent);
   cap.on('minimize',()=>{setTaskbarHidden(false);hidePrivateContent();});
   const reposition=()=>{
@@ -733,7 +844,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     dock={...dock,displayId:display.id};
     workspaceWindow.save({edgeDock:dock});
     if(expanded&&!cap.isMinimized()&&!cap.isMaximized()){
-     if(simplePanel())setWorkspaceMinimum();
+     if(compactPanel())setWorkspaceMinimum();
      else {const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);}
      positionSurface();
     }
@@ -772,6 +883,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(action.type==='provider'){await openExternal('https://openweathermap.org/');return weather.status();}
    const result=action.type==='refresh'?await weather.refresh(action.force):await weather.configure(action);
    if(!weatherAllowed())throw Error('La vista de Clima se cerró.');
+   broadcast();
    return result;
   });
   handle('oura',OuraAction,async action=>{
@@ -799,7 +911,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const previous=location();
    if(next===previous)return true;
    const monitor=previous==='floating'?screen.getDisplayMatching(cap.getBounds()):dockDisplay();
-   const before=expanded&&!simplePanel()?workspaceGeometry():parked;
+   const before=expanded&&!compactPanel()?workspaceGeometry():parked;
    endDrag();
    const floating=previous==='floating'?before:workspaceWindow.floating;
    const nextDock:EdgeDock=next==='floating'?dock:{side:next,displayId:monitor.id,fraction:next==='top'||dock.side==='top'?.5:dock.fraction};
@@ -821,6 +933,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const requireWorkspace=(page?:WorkspacePage)=>{
    if(!workspaceVisible(page))throw Error('Abre la sección correspondiente en ZEN.');
   };
+  handle('officina',OfficinaAction,action=>officina.handle(action));
   handle('status',none,snapshot);
   handle('calendar',CalendarAction,async action=>{
    requireWorkspace('calendar');
@@ -915,9 +1028,15 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('contextHandoff',z.uuid(),id=>context.handoff(id));
   handle('contextResult',none,()=>context.result());
   handle('contextSource',CodexReferenceSelection,selection=>context.source(selection));
-  handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),value=>{
-   if(!activityVisible())throw Error('Abre Actividad de Codex para revisar el permiso.');
-   hub.decide(value.id,value.decision);return true;
+  handle('decide',z.object({id:z.uuid(),decision:z.enum(['allow','deny','pass'])}).strict(),async value=>{
+   if(!activityVisible())throw Error('Abre Permisos de Codex para revisar la solicitud.');
+   const approval=hub.status().approvals.find(item=>item.id===value.id);
+   if(!approval)throw Error('Esta solicitud ya terminó o caducó.');
+   if(target&&approval.session!==target.session&&workspacePage!=='permissions')throw Error('Abre Permisos de Codex para revisar la solicitud de este chat.');
+   const destination=value.decision==='pass'?observedChatUrl(approval.session):undefined;
+   hub.decide(value.id,value.decision);
+   if(destination)await openExternal(destination);
+   return true;
   });
   handle('install',none,async()=>{requireWorkspace('settings');await integration.install();if(!smoke)void check();return true;});
   const persist=(v:CompanionSettings)=>{
@@ -927,13 +1046,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,v,reveal,()=>void openCurrent(),settings);
    try{writeFileSync(file+'.tmp',JSON.stringify(v,null,2));renameSync(file+'.tmp',file);}
    catch{if(changed&&!smoke)registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent(),v);throw Error('No se pudieron guardar las preferencias.');}
-   if(v.alwaysOnTop!==settings.alwaysOnTop)setTopmost(v.alwaysOnTop);
    if(!expanded&&!cap.isMinimized())setTaskbarHidden(v.hideCapsuleFromTaskbar);
    if(lockChanged&&v.windowLocked)endDrag();
    if(workspaceFrame&&lockChanged)cap.setMovable(!v.windowLocked);
    if(lockChanged||!v.collapseOnBlur||v.keepExpanded)cancelAutoCollapse();
    const ouraPolicyChanged=v.paused!==settings.paused||v.presentation!==settings.presentation;
    settings=v;
+   setTopmost();
    if(ouraPolicyChanged)oura.policyChanged();
    if(lockChanged){
     // The panel is still clipped here, so locking the visible capsule cancels the reveal.
@@ -942,7 +1061,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    }
    if(changed){shortcutIssue=undefined;hub.error=undefined;}
    hub.update(v);
-   if(v.presentation||v.paused){vault.lock();context?.clear();replyEpoch++;media?.close();mediaObserver?.close();systemVolume.close();weather.cancel();translator.cancel();}
+   if(v.presentation||v.paused){officina.suspend(true);vault.lock();context?.clear();replyEpoch++;media?.close();mediaObserver?.close();systemVolume.close();weather.cancel();translator.cancel();}
    syncVisibility();
    hover.refresh();
    return true;
@@ -1002,7 +1121,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    const ratio=alignment==='left'?0:alignment==='right'?1:.5;
    if(expanded){
     const current=workspaceGeometry(),rect=fitWorkspace(workArea,current.bounds);
-    if(!simplePanel()&&!workspaceWindow.save({previous:current}))throw Error('No se pudo guardar la posición anterior.');
+    if(!compactPanel()&&!workspaceWindow.save({previous:current}))throw Error('No se pudo guardar la posición anterior.');
     if(current.maximized)cap.unmaximize();
     cap.setBounds({...rect,x:workArea.x+Math.round((workArea.width-rect.width)*ratio)});
     rememberWorkspace();
@@ -1051,7 +1170,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('workspaceLayoutPreferences',WorkspaceLayoutPreferences,({side,restoreOnLaunch})=>{
    if(!workspaceVisible('options')&&!workspaceVisible('settings'))throw Error('Abre la distribución de ventana o Preferencias.');
    if(!workspaceWindow.save({preferences:{...workspaceWindow.preferences,side,restoreOnLaunch}}))throw Error('No se pudo guardar la distribución.');
-   if(simplePanel())setWorkspaceMinimum();
+   if(compactPanel())setWorkspaceMinimum();
    else {const minimum=activeWorkspaceMinimum();cap.setMinimumSize(minimum.width,minimum.height);}
    setCaptionTheme();
    updateShape();
@@ -1060,15 +1179,16 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   });
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');copyText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
-  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);powerMonitor.removeListener('resume',wakeOura);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
+  const officinaTicker=setInterval(()=>{if(officinaAllowed())void officina.tick();else officina.suspend();},2000);
+  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearTimeout(priorityTimer);panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);clearInterval(officinaTicker);officina.close();powerMonitor.removeListener('resume',wakeOura);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
   await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
   setCaptionTheme();
   if(workspaceWindow.startupMode==='workspace')enterWorkspace();
   else positionSurface();
   await readFrameInset();
-  setTopmost(settings.alwaysOnTop);
+  setTopmost();
   surfaceReady=true;showCapsule(false);if(!smoke){powerMonitor.on('resume',wakeOura);wakeOura();void check();}
   if(hoverSmoke)return;
-  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick,toggleSimpleMode});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
+  if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick,toggleSimpleMode,enableAutomaticPermissionReview:()=>{automaticPermissionReview=true;}});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});
 }

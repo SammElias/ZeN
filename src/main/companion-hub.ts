@@ -1,12 +1,13 @@
-import {CompanionEventSchema,CompanionLastReplySchema,type CompanionLastReply,type CompanionEvent,type CompanionStatus,type CompanionSettings,type CompanionApproval,type CompanionSession,type CompanionNotice,type CompanionConnection,type CompanionTarget,type CompanionSummary} from '../shared/codex-companion';
+import {CompanionEventSchema,CompanionLastReplySchema,CompanionTargetSchema,type CompanionLastReply,type CompanionEvent,type CompanionStatus,type CompanionSettings,type CompanionApproval,type CompanionSession,type CompanionNotice,type CompanionConnection,type CompanionTarget,type CompanionSummary} from '../shared/codex-companion';
 import {toolActivity,isSilenced,observedCommand} from '../shared/companion-presentation';
-import {matchesTarget} from '../shared/companion-target';
+import {matchesTarget,normalizeTargetFolder} from '../shared/companion-target';
 import {preferCompanionReply} from './companion-reply';
 type Decision='allow'|'deny'|'pass';
 /** Local observer. Only the pinned chat's latest confirmed answer is retained in RAM. */
 export class CompanionHub{
  private sessions=new Map<string,CompanionSession>();
- private pending=new Map<string,{view:CompanionApproval;reply:(d:Decision)=>void;timer:ReturnType<typeof setTimeout>}>();
+ private observedTurnFolders=new Map<string,string>();
+ private pending=new Map<string,{view:CompanionApproval;cwd:string;reply:(d:Decision)=>void;timer:ReturnType<typeof setTimeout>}>();
  private delegated=new Map<string,{timer:ReturnType<typeof setTimeout>;tool?:string}>();
  private seen=new Set<string>();private notices:CompanionStatus['notices']=[];
  private announced=new Set<string>();
@@ -14,7 +15,7 @@ export class CompanionHub{
  private ignoredEvents=0;targetError?:string;
  account:CompanionStatus['account']='unchecked';checking=false;installed=false;error?:string;
  connection:CompanionConnection={state:'unchecked',total:0,trusted:0,enabled:0};
- constructor(public settings:CompanionSettings,private changed:()=>void,private notify:(notice:CompanionStatus['notices'][number])=>void,private now=()=>Date.now(),private target?:CompanionTarget,private observed?:(event:CompanionEvent,session:CompanionSession,reply?:CompanionLastReply)=>void){}
+ constructor(public settings:CompanionSettings,private changed:()=>void,private notify:(notice:CompanionNotice)=>void,private now=()=>Date.now(),private target?:CompanionTarget,private observed?:(event:CompanionEvent,session:CompanionSession,reply?:CompanionLastReply)=>void,private permissionRequested?:(notice:CompanionNotice)=>void){}
  setSummary(id:string,runKey:string,summary:CompanionSummary){const s=this.sessions.get(id);if(!s||s.runKey!==runKey||s.state!=='finished')return;s.summary=summary;this.changed();}
  private canReadReply(session:string,cwd:string){return !this.targetError&&!!this.target&&matchesTarget(this.target,session,cwd)&&!this.settings.paused&&!this.settings.presentation;}
  lastReply(selected:CompanionTarget){
@@ -40,10 +41,16 @@ export class CompanionHub{
     steps:s.steps.map(t=>({...t}))}));
  }
  private pendingFor(id:string){return [...this.pending.values()].some(p=>p.view.session===id);}
+ turnNeedsPermission(target:CompanionTarget,turn:string){
+  const session=this.sessions.get(target.session);
+  return !!session&&session.turn===turn&&matchesTarget(target,session.id,session.cwd)&&
+   (this.pendingFor(session.id)||this.delegated.has(session.id));
+ }
  activitySessions(){return this.snapshotSessions(true);}
  status():CompanionStatus{return{settings:{...this.settings},target:this.target?{...this.target}:undefined,targetError:this.targetError,ignoredEvents:this.ignoredEvents,account:this.account,checking:this.checking,connection:{...this.connection},integration:this.lastEventAt?'receiving':this.installed?'waiting':'missing',sessions:this.snapshotSessions(),approvalCount:this.pending.size+this.delegated.size,approvals:[...this.pending.values()].map(p=>({...p.view})),notices:this.notices.map(n=>({...n})),lastEventAt:this.lastEventAt,error:this.error};}
  publish(){this.changed();}
- private notice(id:string,session:string,title:string,kind:CompanionNotice['kind']){const item={id,session,title,kind,read:false,audible:this.settings.sounds&&!this.settings.presentation&&!isSilenced(this.settings,this.now()),at:this.now()};this.notices=[item,...this.notices].slice(0,30);if(this.settings.notifications&&!this.settings.presentation&&!isSilenced(this.settings,this.now()))this.notify(item);}
+ private notice(id:string,session:string,title:string,kind:CompanionNotice['kind']){const item={id,session,title,kind,read:false,audible:this.settings.sounds&&!this.settings.presentation&&!isSilenced(this.settings,this.now()),at:this.now()};this.notices=[item,...this.notices].slice(0,30);if(kind==='permission')this.permissionRequested?.(item);if(this.settings.notifications&&!this.settings.presentation&&!isSilenced(this.settings,this.now()))this.notify(item);}
+ isPendingPermission(notice:CompanionNotice){return this.pending.has(notice.id)||this.delegated.has(notice.session);}
  markNoticesRead(){for(const n of this.notices)n.read=true;this.changed();}
  setTitle(session:string,title:unknown){const s=this.sessions.get(session);if(s&&typeof title==='string'&&title.trim()&&title.length<=200){s.title=title.trim();s.label=s.title;for(const p of this.pending.values())if(p.view.session===session)p.view.label=s.title;this.changed();}}
  clearNotices(){this.notices=[];this.changed();}
@@ -61,6 +68,13 @@ export class CompanionHub{
   this.delegated.set(e.session,{timer,tool:e.tool});
   if(first)this.notice(e.id,e.session,'Codex necesita tu permiso','permission');
  }
+ private canReviewObservedCommand(e:CompanionEvent,prior?:CompanionSession){
+  return !this.settings.presentation&&!!prior?.turn&&prior.turn===e.turn&&
+   prior.observation?.startedAt!==undefined&&prior.observation.endedAt===undefined&&
+   this.observedTurnFolders.get(e.session)===normalizeTargetFolder(e.cwd)&&
+   !!e.tool&&toolActivity(e.tool).kind==='command'&&
+   CompanionTargetSchema.safeParse({session:e.session,cwd:e.cwd,title:'Codex'}).success;
+ }
  accept(raw:unknown,reply:(d:Decision)=>void):()=>void{
   const parsed=CompanionEventSchema.safeParse(raw);if(!parsed.success||this.settings.paused){reply('pass');return()=>{};}
   const e=parsed.data,scoped=!this.target||matchesTarget(this.target,e.session,e.cwd);
@@ -71,6 +85,8 @@ export class CompanionHub{
   if(['UserPromptSubmit','SessionStart','Stop','Interrupt','SessionEnd'].includes(e.event)||
    e.event==='PostToolUse'&&this.delegated.get(e.session)?.tool===e.tool)this.clearDelegated(e.session);
   if(['UserPromptSubmit','SessionStart','Stop','Interrupt','SessionEnd'].includes(e.event))for(const [id,p]of this.pending)if(p.view.session===e.session)this.decide(id,'pass');
+  if(e.event==='UserPromptSubmit')this.observedTurnFolders.set(e.session,normalizeTargetFolder(e.cwd));
+  else if(['SessionStart','Stop','Interrupt','SessionEnd'].includes(e.event))this.observedTurnFolders.delete(e.session);
   const title=prior?.title??(scoped?this.target?.title:undefined);
   const label=title??e.cwd.split(/[\\/]/).filter(Boolean).pop()??'Codex';
   const observation:NonNullable<CompanionSession['observation']>=e.event==='UserPromptSubmit'?{since:this.now(),startedAt:this.now(),actions:0}:e.event==='SessionStart'?{since:this.now(),actions:0}:{...prior?.observation??{since:this.now(),actions:0}};
@@ -99,16 +115,32 @@ export class CompanionHub{
   else if(e.event==='Stop')session.state='finished';
   else if(e.event==='Interrupt')session.state='interrupted';
   else if(['SessionStart','SessionEnd'].includes(e.event))session.state='idle';
-  this.sessions.set(e.session,session);if(this.sessions.size>40){const oldest=this.snapshotSessions(true).reverse().find(s=>s.id!==e.session&&s.id!==this.target?.session&&!this.pendingFor(s.id));if(oldest){this.clearDelegated(oldest.id);this.sessions.delete(oldest.id);}}
-  if(!scoped){if(e.event==='PermissionRequest')this.observeDelegatedPermission(e,session);reply('pass');this.changed();return()=>{};}
-  try{this.observed?.(e,session,acceptedReply?{...acceptedReply}:undefined);}catch{/* Optional observers cannot delay or break hook replies. */}
+  this.sessions.set(e.session,session);if(this.sessions.size>40){const oldest=this.snapshotSessions(true).reverse().find(s=>s.id!==e.session&&s.id!==this.target?.session&&!this.pendingFor(s.id));if(oldest){this.clearDelegated(oldest.id);this.sessions.delete(oldest.id);this.observedTurnFolders.delete(oldest.id);}}
+  if(scoped)try{this.observed?.(e,session,acceptedReply?{...acceptedReply}:undefined);}catch{/* Optional observers cannot delay or break hook replies. */}
   if(e.event==='PermissionRequest'){
-   if(e.turn&&e.preview&&!e.truncated&&e.preview.length<=64000){session.state='approval';const view={id:e.id,session:e.session,turn:e.turn,label,tool:e.tool??'Acción',preview:e.preview,expiresAt:this.now()+105000};const timer=setTimeout(()=>this.decide(e.id,'pass'),105000);this.pending.set(e.id,{view,reply,timer});this.notice(e.id,e.session,'Codex necesita tu permiso','permission');this.changed();return()=>this.abandon(e.id);}
+   if((scoped||this.canReviewObservedCommand(e,prior))&&e.turn&&e.preview?.trim()&&!e.truncated&&e.preview.length<=64000){
+    session.state='approval';
+    const view={id:e.id,session:e.session,turn:e.turn,label,tool:e.tool??'Acción',preview:e.preview,expiresAt:this.now()+105000};
+    const timer=setTimeout(()=>this.decide(e.id,'pass'),105000);
+    this.pending.set(e.id,{view,cwd:e.cwd,reply,timer});
+    this.notice(e.id,e.session,'Codex necesita tu permiso','permission');
+    this.changed();return()=>this.abandon(e.id);
+   }
    this.observeDelegatedPermission(e,session);
-  }else if(e.event==='Stop'||e.failed){const kind=e.failed?'error':'finished',key=e.session+'|'+(e.turn??e.id)+'|'+kind;if(!this.announced.has(key)){this.announced.add(key);if(this.announced.size>1000)this.announced.delete(this.announced.values().next().value!);this.notice(e.id,e.session,e.failed?'Codex: revisa un error':'Codex terminó el turno',kind);}}
+  }else if(scoped&&(e.event==='Stop'||e.failed)){const kind=e.failed?'error':'finished',key=e.session+'|'+(e.turn??e.id)+'|'+kind;if(!this.announced.has(key)){this.announced.add(key);if(this.announced.size>1000)this.announced.delete(this.announced.values().next().value!);this.notice(e.id,e.session,e.failed?'Codex: revisa un error':'Codex terminó el turno',kind);}}
   reply('pass');this.changed();return()=>{};
  }
- decide(id:string,decision:Decision){const p=this.pending.get(id);if(!p)throw Error('Esta solicitud ya terminó o caducó.');if(this.settings.presentation&&decision!=='pass')throw Error('Desactiva Presentación para revisar la acción completa o revísala en Codex.');const s=this.sessions.get(p.view.session);if(decision!=='pass'&&(!s||s.turn!==p.view.turn||this.now()>=p.view.expiresAt)){this.decide(id,'pass');throw Error('El permiso ya no pertenece al turno activo.');}this.pending.delete(id);clearTimeout(p.timer);p.reply(decision);if(s&&!this.pendingFor(s.id)&&!this.delegated.has(s.id))s.state='unknown';this.changed();}
+ decide(id:string,decision:Decision){
+  const p=this.pending.get(id);if(!p)throw Error('Esta solicitud ya terminó o caducó.');
+  if(this.settings.presentation&&decision!=='pass')throw Error('Desactiva Presentación para revisar la acción completa o revísala en Codex.');
+  const s=this.sessions.get(p.view.session);
+  if(decision!=='pass'&&(this.targetError||!s||s.turn!==p.view.turn||normalizeTargetFolder(s.cwd)!==normalizeTargetFolder(p.cwd)||this.now()>=p.view.expiresAt)){
+   this.decide(id,'pass');throw Error('El permiso ya no pertenece al turno activo.');
+  }
+  this.pending.delete(id);clearTimeout(p.timer);p.reply(decision);
+  if(s&&!this.pendingFor(s.id)&&!this.delegated.has(s.id))s.state='unknown';
+  this.changed();
+ }
  private abandon(id:string){const p=this.pending.get(id);if(!p)return;this.pending.delete(id);clearTimeout(p.timer);const s=this.sessions.get(p.view.session);if(s&&!this.pendingFor(s.id)&&!this.delegated.has(s.id))s.state='unknown';this.changed();}
  dispose(){for(const id of this.delegated.keys())this.clearDelegated(id);for(const id of [...this.pending.keys()])this.decide(id,'pass');}
 }

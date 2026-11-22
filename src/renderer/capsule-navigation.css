@@ -5,6 +5,7 @@
   --capsule-settings: #c3cce3;
   --capsule-calendar: #f5b7da;
   --capsule-metrics: #b8dc96;
+  --capsule-officina: #8eeeff;
 }
 .companion-capsule[data-theme=light] .capsule-launcher {
   --capsule-home: #265383;
@@ -13,6 +14,7 @@
   --capsule-settings: #4a5676;
   --capsule-calendar: #883566;
   --capsule-metrics: #395b23;
+  --capsule-officina: #176171;
 }
 .capsule-launcher > [data-section=home] { --capsule-app-ink: var(--capsule-home, var(--glass-text)); }
 .capsule-launcher > [data-section=spotify] { --capsule-app-ink: var(--capsule-sound, var(--glass-text)); }
@@ -74,5 +76,6 @@
 
 .capsule-launcher > [data-section=calendar] { --capsule-app-ink: var(--capsule-calendar, var(--glass-text)); }
 .capsule-launcher > [data-section=metrics] { --capsule-app-ink: var(--capsule-metrics, var(--glass-text)); }
+.capsule-launcher > [data-section=officina] { --capsule-app-ink: var(--capsule-officina, var(--glass-text)); }
 .oura-glance { display:grid;gap:1px;font-size:8.5px;line-height:1.05;white-space:nowrap;font-variant-numeric:tabular-nums; }
 .oura-glance small { font-size:7px;color:inherit; }

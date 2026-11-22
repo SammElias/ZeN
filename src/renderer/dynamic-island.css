@@ -173,7 +173,9 @@
 .zen-island-signal i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 .zen-island-signal svg { width: 13px; height: 13px; }
 .zen-island-trigger[data-phase=working] { --island-signal: #c2a8ff; }
-.zen-island-trigger[data-phase=attention] { --island-signal: #ffcc7d; }
+.zen-island-trigger[data-phase=attention] { --island-signal: #ffcc7d; background: rgb(255 181 92 / .11); box-shadow: inset 0 0 0 1px rgb(255 181 92 / .22); }
+.zen-island-trigger[data-phase=attention]:hover { background: rgb(255 181 92 / .16); }
+.zen-island-trigger[data-phase=attention] .zen-island-signal { padding: 2px 4px; border-radius: 6px; background: #422a17; }
 .zen-island-trigger[data-phase=finished] { --island-signal: #9ce2bf; }
 .zen-island-trigger[data-phase=error] { --island-signal: #ff9aab; }
 .companion-capsule[data-motion=true] .zen-island-trigger { transition: background-color var(--motion-hover) var(--motion-enterEase); }

@@ -1,7 +1,9 @@
 import {matchesTarget,normalizeTargetFolder,stripWindowsPathPrefix} from '../shared/companion-target';
 import {CompanionTargetSchema,COMPANION_REPLY_LIMIT,type CompanionTarget,type CompanionLastReply,type CompanionSession} from '../shared/codex-companion';
+import type {OfficinaRunIdentity} from '../shared/companion-officina';
 import {DatabaseSync} from 'node:sqlite';
 import {lstat,open,realpath,type FileHandle} from 'node:fs/promises';
+import type {Stats} from 'node:fs';
 import {basename,isAbsolute,join,relative,resolve,sep} from 'node:path';
 const MAX_REPLY_HEADER=64*1024,REPLY_WINDOW=2*1024*1024,MAX_REPLY_SCAN=16*1024*1024;
 // The rollout can retain a trailing memory citation block omitted by task_complete.
@@ -20,10 +22,10 @@ async function confinedFile(home:string,path:string){
  return canonical;
 }
 
-async function* reverseReplyLines(handle:FileHandle,size:number){
+async function* reverseReplyLines(handle:FileHandle,size:number,limit=MAX_REPLY_SCAN){
  let cursor=size,spent=0,carry:Buffer=Buffer.alloc(0),skipIncompleteEnd=true;
- while(cursor>0&&spent<MAX_REPLY_SCAN){
-  const length=Math.min(REPLY_WINDOW,cursor,MAX_REPLY_SCAN-spent),start=cursor-length,buffer=Buffer.alloc(length),read=await handle.read(buffer,0,length,start);
+ while(cursor>0&&spent<limit){
+  const length=Math.min(REPLY_WINDOW,cursor,limit-spent),start=cursor-length,buffer=Buffer.alloc(length),read=await handle.read(buffer,0,length,start);
   if(read.bytesRead!==length)return;
   cursor=start;spent+=length;
   const combined=carry.length?Buffer.concat([buffer,carry]):buffer;let end=combined.length;
@@ -38,6 +40,39 @@ async function* reverseReplyLines(handle:FileHandle,size:number){
    yield combined.subarray(previous+1,end).toString('utf8');end=previous;
   }
   if(end===0)carry=Buffer.alloc(0);
+ }
+}
+
+export type OfficinaCodexTurn = {turn: string; state: 'working' | 'finished' | 'interrupted'; at: number};
+
+async function scanOfficinaTurn(handle:FileHandle,size:number,target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+ const stopped=new Map<string,'finished'|'interrupted'>();
+ let newerTurn:string|undefined;
+ for await(const line of reverseReplyLines(handle,size,REPLY_WINDOW)){
+  if(!/"(?:task_started|task_complete|turn_aborted|item_completed)"/.test(line))continue;
+  let item:any;try{item=JSON.parse(line);}catch{continue;}
+  const p=item?.payload,turn=p?.turn_id,at=Date.parse(item.timestamp);
+  if(item.type!=='event_msg'||typeof turn!=='string'||!turn||turn.length>160||!Number.isFinite(at)||at<since||p.root_turn_id&&p.root_turn_id!==turn)continue;
+  if(p.type==='task_started'){
+   newerTurn??=turn;
+   continue;
+  }
+  if(p.type==='task_complete'||p.type==='turn_aborted'){
+   if(!stopped.has(turn))stopped.set(turn,p.type==='task_complete'?'finished':'interrupted');
+   continue;
+  }
+  if(p.type!=='item_completed'||p.thread_id!==target.session||p.item?.type!=='UserMessage'||!Array.isArray(p.item.content))continue;
+  for(const part of p.item.content){
+   if(part?.type!=='text'||typeof part.text!=='string'||!part.text.includes(identity.run))continue;
+   try{
+    const recorded=JSON.parse(part.text.trimEnd().split('\n').at(-1)!).identity;
+    if(recorded&&recorded.run===identity.run&&recorded.task===identity.task&&recorded.project===identity.project&&recorded.role===identity.role){
+     const state=stopped.get(turn);
+     if(state)return {turn,state,at};
+     return !newerTurn||newerTurn===turn?{turn,state:'working',at}:undefined;
+    }
+   }catch{/* Only the matching Officina delivery can identify the active turn. */}
+  }
  }
 }
 
@@ -74,6 +109,13 @@ async function scanLastReply(handle:FileHandle,size:number,target:CompanionTarge
  return undefined;
 }
 
+function projectRootMatches(db: DatabaseSync, projectId: string, cwd: string) {
+ const roots=db.prepare(`SELECT r.path FROM project_roots r JOIN projects p ON p.id=r.project_id
+  WHERE r.project_id=? LIMIT 2`).all(projectId);
+ const root=roots[0]?.path;
+ return roots.length===1&&typeof root==='string'&&normalizeTargetFolder(root)===normalizeTargetFolder(cwd);
+}
+
 /**
  * Read-only recovery from the local Codex index and rollout. Only one pinned
  * answer is cached in RAM. Missing or unsupported data stays unavailable.
@@ -82,6 +124,55 @@ export class CodexReplyReader {
  private replyCache?: ReplyCache;
 
  constructor(private codexHome: string) {}
+
+ async hasOfficinaProject(projectId: string, cwd: string) {
+  try {
+   return await this.readOfficinaIndex(db=>projectRootMatches(db,projectId,cwd));
+  } catch {return false;}
+ }
+
+ async missingOfficinaThread(projectId: string, cwd: string, thread: string) {
+  try {
+   return await this.readOfficinaIndex(db=>
+    projectRootMatches(db,projectId,cwd)&&!db.prepare('SELECT 1 FROM threads WHERE id=?').get(thread));
+  } catch {return false;}
+ }
+
+ private async readOfficinaIndex<T>(read: (db: DatabaseSync) => T) {
+  const database=await confinedFile(this.codexHome,join(this.codexHome,'state_5.sqlite'));
+  const db=new DatabaseSync(database,{readOnly:true});
+  try {
+   db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=50');
+   return read(db);
+  } finally {db.close();}
+ }
+
+ async hasDedicatedThread(target: CompanionTarget, projectId?: string) {
+  try {
+   return await this.readOfficinaIndex(db=>{
+    const row=db.prepare(projectId
+     ? 'SELECT cwd,archived,agent_path,project_id FROM threads WHERE id=?'
+     : 'SELECT cwd,archived,agent_path FROM threads WHERE id=?').get(target.session);
+    if(row?.archived!==0||row.agent_path!==null&&row.agent_path!==''||!matchesTarget(target,target.session,row.cwd))return false;
+    if(!projectId)return true;
+    // Desktop builds can resume an Officina chat without its project assignment.
+    // The exact recorded thread and folder remain required, and a different assigned project is rejected.
+    return (row.project_id===projectId||row.project_id===null)&&projectRootMatches(db,projectId,target.cwd);
+   });
+  } catch {return false;}
+ }
+
+ async officinaProjectThreads(projectId: string, cwd: string, pendingName?: string) {
+  const database=await confinedFile(this.codexHome,join(this.codexHome,'state_5.sqlite'));
+  const db=new DatabaseSync(database,{readOnly:true});
+  try {
+   db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=50');
+   const rows=db.prepare("SELECT id,cwd,name,has_user_event FROM threads WHERE project_id=? AND archived=0 AND (agent_path IS NULL OR agent_path='') LIMIT 51").all(projectId);
+   if(rows.length>50)throw Error('Revisa los chats de este proyecto en Codex.');
+   return rows.filter(row=>typeof row.cwd==='string'&&normalizeTargetFolder(row.cwd)===normalizeTargetFolder(cwd)&&
+    (!pendingName||row.name===pendingName&&row.has_user_event===0)).map(row=>String(row.id));
+  } finally {db.close();}
+ }
 
  async observedTitles(sessions:ReadonlyArray<Pick<CompanionSession,'id'|'cwd'>>){
   const titles=new Map<string,string>();
@@ -102,7 +193,7 @@ export class CodexReplyReader {
   return titles;
  }
 
- async read(target:CompanionTarget):Promise<CompanionLastReply|undefined>{
+ private async withRollout<T>(target:CompanionTarget, use:(handle:FileHandle,stat:Stats,file:string,checkHeader:()=>Promise<boolean>)=>Promise<T>):Promise<T|undefined>{
  const codexHome = this.codexHome;
  if(!CompanionTargetSchema.safeParse(target).success)return undefined;
  try{
@@ -117,22 +208,36 @@ export class CodexReplyReader {
   try{
    const stat=await handle.stat(),current=await lstat(file);
    if(!stat.isFile()||current.isSymbolicLink()||stat.ino!==current.ino||stat.dev!==current.dev)return undefined;
-   const key=file+'\0'+target.session+'\0'+normalizeTargetFolder(target.cwd);
-   const replyCache=this.replyCache;
-   if(replyCache?.key===key&&replyCache.dev===stat.dev&&replyCache.ino===stat.ino&&replyCache.size===stat.size&&replyCache.mtimeMs===stat.mtimeMs&&replyCache.ctimeMs===stat.ctimeMs)return replyCache.reply?{...replyCache.reply}:undefined;
-   this.replyCache=undefined;
-   const header=Buffer.alloc(Math.min(MAX_REPLY_HEADER,stat.size)),headRead=await handle.read(header,0,header.length,0),head=header.subarray(0,headRead.bytesRead).toString('utf8'),end=head.indexOf('\n');
-   if(end<0)return undefined;
-   const meta=JSON.parse(head.slice(0,end)),identity=meta?.payload;
-   if(meta?.type!=='session_meta'||!matchesTarget(target,identity?.id,identity?.cwd)||typeof identity.source!=='string'||/subagent/i.test(identity.source))return undefined;
-   const reply=await scanLastReply(handle,stat.size,target),after=await handle.stat();
-   // A concurrent rewrite/truncation is retried next time; a pure append leaves
-   // the snapshot valid but is deliberately not cached under its newer size.
-   if(after.ino!==stat.ino||after.dev!==stat.dev||after.size<stat.size||after.size===stat.size&&(after.mtimeMs!==stat.mtimeMs||after.ctimeMs!==stat.ctimeMs))return undefined;
-   if(after.size===stat.size)this.replyCache={key,dev:stat.dev,ino:stat.ino,size:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs,reply:reply?{...reply}:undefined};
-   return reply;
+   const checkHeader=async()=>{
+    const header=Buffer.alloc(Math.min(MAX_REPLY_HEADER,stat.size)),headRead=await handle.read(header,0,header.length,0),head=header.subarray(0,headRead.bytesRead).toString('utf8'),end=head.indexOf('\n');
+    if(end<0)return false;
+    const meta=JSON.parse(head.slice(0,end)),identity=meta?.payload;
+    return meta?.type==='session_meta'&&matchesTarget(target,identity?.id,identity?.cwd)&&typeof identity.source==='string'&&!/subagent/i.test(identity.source);
+   };
+   return await use(handle,stat,file,checkHeader);
   }finally{await handle.close();}
  }catch{/* Missing, busy or changed local data never exposes another chat or diagnostic contents. */}
  return undefined;
+ }
+
+ async readOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+  return this.withRollout(target,async(handle,stat,_file,checkHeader)=>{
+   if(!await checkHeader())return undefined;
+   const turn=await scanOfficinaTurn(handle,stat.size,target,identity,since),after=await handle.stat();
+   return after.size===stat.size&&after.mtimeMs===stat.mtimeMs&&after.ctimeMs===stat.ctimeMs?turn:undefined;
+  });
+ }
+
+ async read(target:CompanionTarget):Promise<CompanionLastReply|undefined>{
+  return this.withRollout(target,async(handle,stat,file,checkHeader)=>{
+   const key=file+'\0'+target.session+'\0'+normalizeTargetFolder(target.cwd),replyCache=this.replyCache;
+   if(replyCache?.key===key&&replyCache.dev===stat.dev&&replyCache.ino===stat.ino&&replyCache.size===stat.size&&replyCache.mtimeMs===stat.mtimeMs&&replyCache.ctimeMs===stat.ctimeMs)return replyCache.reply?{...replyCache.reply}:undefined;
+   this.replyCache=undefined;
+   if(!await checkHeader())return undefined;
+   const reply=await scanLastReply(handle,stat.size,target),after=await handle.stat();
+   if(after.ino!==stat.ino||after.dev!==stat.dev||after.size<stat.size||after.size===stat.size&&(after.mtimeMs!==stat.mtimeMs||after.ctimeMs!==stat.ctimeMs))return undefined;
+   if(after.size===stat.size)this.replyCache={key,dev:stat.dev,ino:stat.ino,size:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs,reply:reply?{...reply}:undefined};
+   return reply;
+  });
  }
 }

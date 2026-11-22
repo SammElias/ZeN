@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {CompanionHub} from '../src/main/companion-hub';
 import {CompanionSettingsSchema,CompanionTargetSchema,type CompanionTarget} from '../src/shared/codex-companion';
 import {activeSession,codexChatUrl,noticeChatUrl,isSilenced,lastSignalLabel,completionDetail} from '../src/shared/companion-presentation';
+import {displayStatus} from '../src/shared/companion-privacy';
 const target:CompanionTarget={session:'fixed-chat',cwd:'C:\\Work\\ZeN',title:'Mi chat'};
 const hubs:CompanionHub[]=[];afterEach(()=>hubs.splice(0).forEach(h=>h.dispose()));
 function fixture(){let now=1000;const notices:any[]=[],replies:string[]=[];const hub=new CompanionHub(CompanionSettingsSchema.parse({}),()=>{},n=>notices.push(n),()=>now,target);hubs.push(hub);const event=(name:string,extra:any={})=>{const id=randomUUID();hub.accept({id,event:name,session:target.session,cwd:target.cwd,turn:'turn-1',...extra},r=>replies.push(r));return id;};return{hub,event,replies,notices,advance:(ms:number)=>now+=ms,now:()=>now};}
@@ -11,6 +12,31 @@ describe('fixed Codex chat and project',()=>{
  it('observes other chats for Activity and isolates the pinned chat signals, events and permissions',()=>{const f=fixture();f.event('PermissionRequest',{session:'other-chat',preview:'private other action'});f.event('Stop',{cwd:target.cwd+'-other'});f.event('PreToolUse',{cwd:target.cwd+'\\nested',preview:'other code'});expect(f.replies).toEqual(['pass','pass','pass']);const s=f.hub.status();expect(s.sessions).toEqual([]);expect(s.approvals).toEqual([]);expect(s.notices).toEqual([expect.objectContaining({session:'other-chat',kind:'permission',title:'Codex necesita tu permiso'})]);expect(s.lastEventAt).toBeUndefined();expect(s.ignoredEvents).toBe(2);const monitored=f.hub.activitySessions();expect(monitored.map(({id,state})=>({id,state}))).toEqual([{id:'other-chat',state:'approval'}]);expect(JSON.stringify(monitored)).not.toContain('private other action');});
  it('matches the exact Windows folder regardless of case, separators and trailing slash',()=>{const f=fixture();f.event('PreToolUse',{cwd:'c:/work/zen/'});expect(f.hub.status().sessions[0].label).toBe(target.title);expect(f.hub.status().lastEventAt).toBe(1000);});
  it('does not let a foreign event invalidate the fixed chat permission',()=>{const f=fixture();const id=f.event('PermissionRequest',{preview:'fixed action'});f.event('UserPromptSubmit',{session:'other-chat',turn:'turn-2'});expect(f.hub.status().approvals[0].id).toBe(id);f.hub.decide(id,'allow');expect(f.replies).toEqual(['pass','allow']);});
+ it('reviews the full command of a verified local turn only in the permission panel',()=>{
+  const f=fixture(),other={session:'other-chat',cwd:'C:\\Other',turn:'other-turn'};
+  f.event('UserPromptSubmit',other);
+  const id=f.event('PermissionRequest',{...other,tool:'Bash',preview:'git status --short'});
+  const status=f.hub.status();
+  expect(status.approvals[0]).toMatchObject({id,session:other.session,preview:'git status --short'});
+  expect(status.sessions).toEqual([]);
+  expect(status.lastEventAt).toBeUndefined();
+  expect(displayStatus({...status,workspace:{expanded:true,page:'codex'}},1,true).approvals[0].preview).toBe('');
+  expect(displayStatus({...status,workspace:{expanded:true,page:'permissions'}},2,true).approvals[0].preview).toBe('git status --short');
+  expect(displayStatus({...status,workspace:{expanded:true,page:'permissions'}},3,false).approvals[0].preview).toBe('');
+  expect(f.replies).toEqual(['pass']);
+  f.hub.decide(id,'allow');
+  expect(f.replies).toEqual(['pass','allow']);
+  expect(()=>f.hub.decide(id,'allow')).toThrow();
+ });
+ it('leaves commands with a different origin or incomplete detail to Codex',()=>{
+  const f=fixture(),other={session:'other-chat',cwd:'C:\\Other',turn:'other-turn'};
+  f.event('UserPromptSubmit',other);
+  f.event('PreToolUse',{...other,cwd:'C:\\Different'});
+  f.event('PermissionRequest',{...other,cwd:'C:\\Different',tool:'Bash',preview:'git status --short'});
+  f.event('PermissionRequest',{...other,tool:'Bash',preview:'git status --short',truncated:true});
+  expect(f.hub.status().approvals).toEqual([]);
+  expect(f.replies).toEqual(['pass','pass','pass','pass']);
+ });
  it('opens only the exact chat from return buttons and notification callbacks',()=>{const f=fixture();f.event('Stop');expect(noticeChatUrl(f.hub.status(),f.hub.status().notices[0])).toBe('codex://threads/fixed-chat');expect(()=>codexChatUrl(f.hub.status(),'other-chat')).toThrow();expect(()=>noticeChatUrl(f.hub.status(),{...f.hub.status().notices[0],session:'other-chat'})).toThrow();});
  it('fails closed on an invalid saved target instead of following another session',()=>{const f=fixture();f.hub.targetError='Invalid target';f.event('UserPromptSubmit');expect(f.hub.status().sessions).toEqual([]);expect(()=>codexChatUrl(f.hub.status())).toThrow('Invalid target');expect(CompanionTargetSchema.safeParse({...target,cwd:'relative'}).success).toBe(false);expect(CompanionTargetSchema.safeParse({...target,session:'id/other'}).success).toBe(false);});
  it('returns independent status snapshots that cannot change the pinned target',()=>{const f=fixture();f.event('UserPromptSubmit');const s=f.hub.status();s.target!.session='other';s.sessions[0].observation!.actions=900;s.settings.paused=true;expect(f.hub.status().target?.session).toBe(target.session);expect(f.hub.status().sessions[0].observation?.actions).toBe(0);expect(f.hub.settings.paused).toBe(false);});

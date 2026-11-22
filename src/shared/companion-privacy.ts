@@ -10,7 +10,10 @@ export function displayStatus(raw:CompanionStatus,revision:number,visible:boolea
  if(!privateView||value.workspace?.expanded)delete value.ouraGlance;
  const showActivity=visible&&value.workspace?.expanded&&isLauncherPageSelected(value.workspace.page,'codex')&&!value.settings.presentation&&!value.settings.paused;
  if(!showActivity)delete value.activitySessions;
- if(!showActivity)for(const approval of value.approvals){approval.preview='';approval.tool='Acción de Codex';approval.label='Permiso pendiente';}
+ for(const approval of value.approvals){
+  if(showActivity&&(!value.target||approval.session===value.target.session||value.workspace?.page==='permissions'))continue;
+  approval.preview='';approval.tool='Acción de Codex';approval.label='Permiso pendiente';
+ }
  if(value.settings.paused||value.settings.presentation)value.approvalCount=0;
  for(const session of value.sessions){
   delete session.lastReply;

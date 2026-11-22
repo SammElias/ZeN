@@ -19,7 +19,7 @@ import type {createSmokeOura} from './companion-smoke-oura';
 import {emptyOuraCache} from '../shared/companion-oura';
 import {nativeHelper} from './native-helper';
 import {PasswordVault} from './password-vault';
-export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick,toggleSimpleMode}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void;toggleSimpleMode:()=>void}){
+export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick,toggleSimpleMode,enableAutomaticPermissionReview}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void;toggleSimpleMode:()=>void;enableAutomaticPermissionReview:()=>void}){
 
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
  mkdirSync(screenshots,{recursive:true});
@@ -103,7 +103,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   check('capsuleMenuOrder-'+side,await js(cap,`(()=>{
    const buttons=[...document.querySelectorAll('.capsule-launcher button')];
    return buttons.map(button=>button.dataset.hoverApp).join(',')===${JSON.stringify(sectionPages.join(','))}&&
-    buttons.map(button=>button.getAttribute('aria-label')).join(',')==='Home,HUB,Calendario,Métricas,Volumen,Configuración';
+    buttons.map(button=>button.getAttribute('aria-label')).join(',')==='Home,HUB,Calendario,Métricas,Volumen,Officina,Configuración';
   })()`));
   check('keyboard-'+side,await js(cap,`(()=>{
    const buttons=[...document.querySelectorAll('.capsule-launcher button')];
@@ -308,13 +308,13 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  observationFixture.paused=false;
 
  await integration.install(); // This integration and its Codex home are inside the smoke profile.
- const relay=(name:string,cmd:string)=>new Promise<any>((resolve,reject)=>{
+ const relay=(name:string,cmd:string,chat={session:'native-test',cwd:'C:\\fixture',turn:'capsule-turn'})=>new Promise<any>((resolve,reject)=>{
   const child=spawn(integration.executable,['--zen-companion'],{windowsHide:true,stdio:'pipe'});
   let output='';
   child.stdout.on('data',data=>output+=data);
   child.stderr.resume();child.stdin.on('error',reject);child.once('error',reject);
   child.once('close',code=>{try{if(code!==0)throw Error('Synthetic hook failed');resolve(JSON.parse(output));}catch(error){reject(error);}});
-  child.stdin.end(JSON.stringify({hook_event_name:name,session_id:'native-test',cwd:'C:\\fixture',turn_id:'capsule-turn',tool_name:'functions.exec_command',tool_input:{cmd}}));
+  child.stdin.end(JSON.stringify({hook_event_name:name,session_id:chat.session,cwd:chat.cwd,turn_id:chat.turn,tool_name:'functions.exec_command',tool_input:{cmd}}));
  });
  hub.accept({id:randomUUID(),event:'UserPromptSubmit',session:'native-test',cwd:'C:\\fixture',turn:'capsule-turn'},()=>{});
  await relay('PreToolUse','git status --short');
@@ -329,9 +329,48 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await wait(()=>js(cap,"document.querySelector('.approval-card')?.textContent.includes('npm test -- --run')"));
  check('permissionDetailsAccessible',hub.status().approvals.length===1&&await js(cap,"!document.querySelector('.codex-page [role=tablist]')"));
  check('monitorCommandVisibleWithoutExpansion',await js(cap,"document.querySelector('.codex-command-line')?.textContent==='git status --short'"));
+ await compact();
+ const approvalAnchor=await screenRect();
+ const approvalSignal="document.querySelector('.zen-island-trigger[data-phase=attention]')";
+ check('capsulePermissionSignal',await js(cap,`${approvalSignal}?.getAttribute('aria-label').includes('Revisar permisos de Codex')&&!document.querySelector('.approval-card')`));
+ await js(cap,`${approvalSignal}.click()`);
+ await wait(()=>js(cap,"document.querySelector('.codex-review .approval-card pre')?.textContent==='npm test -- --run'"));
+ check('capsuleOpensFocusedPermissionReview',hub.status().approvals.length===1&&await js(cap,"document.querySelector('.codex-page[data-reviewing=true] h1').textContent==='Aprobar comando de Codex'&&!document.querySelector('.codex-chat-timeline')"));
+ const approvalGeometry=await js(cap,"window.companion.status().then(r=>r.value.workspace.geometry.panel)");
+ check('capsulePermissionPanelIsCompact',approvalGeometry.width===350&&approvalGeometry.height===238&&!await inSimpleMode()&&sameRect(await screenRect(),approvalAnchor));
+ check('approvalShowsSingleSurface',await js(cap,`(()=>{
+  const surface=document.querySelector('.workspace-surface[data-review=true]');
+  const review=surface.querySelector('.codex-page');
+  const buttonRows=[...review.querySelectorAll('.actions button')].map(button=>button.getBoundingClientRect().top);
+  return !surface.querySelector('.workspace-neon-border')&&review.querySelectorAll('h1').length===1&&
+   review.querySelector('.codex-review-heading button').ariaLabel==='Cerrar revisión'&&
+   !review.querySelector('.codex-review-details').open&&!review.querySelector('.codex-review-deadline')&&
+   buttonRows.length===3&&buttonRows.every(row=>Math.abs(row-buttonRows[0])<1);
+ })()`));
  await shot(cap,'codex-permission');
+ await js(cap,"document.querySelector('.codex-review-heading button[aria-label=\"Cerrar revisión\"]').click()");
+ await wait(()=>js(cap,"document.querySelector('#capsule-content').hidden"));
+ check('capsuleClosingReviewKeepsPermissionPending',hub.status().approvals.length===1);
+ await js(cap,`${approvalSignal}.click()`);
+ await wait(()=>js(cap,"document.querySelector('.codex-review .approval-card pre')?.textContent==='npm test -- --run'"));
  await js(cap,"Array.from(document.querySelectorAll('.approval-card button')).find(button=>button.textContent==='Rechazar').click()");
  check('denialReturnsOnceToNativeHook',(await decision).hookSpecificOutput?.decision?.behavior==='deny'&&hub.status().approvals.length===0);
+
+ const granted=relay('PermissionRequest','git status --short');
+ void granted.catch(()=>{});
+ await nav('home');
+ const beforePermission=cap.getBounds();
+ await wait(()=>js(cap,`${approvalSignal}?.getAttribute('aria-label').includes('Revisar permisos de Codex')`));
+ const singleApproval=hub.status().approvals[0];
+ await js(cap,`${approvalSignal}.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))`);
+ await wait(()=>js(cap,"document.querySelector('.codex-review .approval-card pre')?.textContent==='git status --short'"));
+ check('capsuleKeyboardPermissionReview',await js(cap,"document.activeElement?.id==='capsule-content'"));
+ check('capsuleReviewNeverApprovesAutomatically',hub.status().approvals.length===1);
+ await js(cap,"document.querySelector('.codex-review .approval-card .actions .primary').click()");
+ check('capsuleApprovalReturnsOnceToNativeHook',(await granted).hookSpecificOutput?.decision?.behavior==='allow'&&hub.status().approvals.length===0&&
+  await js(cap,`window.companion.decide(${JSON.stringify(singleApproval.id)},'allow').then(r=>!r.ok)`));
+ await nav('home');
+ check('capsuleRestoresWorkspaceAfterPermission',sameRect(cap.getBounds(),beforePermission));
 
  const otherChat={session:'other-test',cwd:'C:\\Calendario de prueba',turn:'other-turn'};
  hub.accept({id:randomUUID(),event:'PreToolUse',tool:'mcp__codex_apps__google_calendar__list_events',...otherChat},()=>{});
@@ -351,7 +390,38 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  const notice=hub.status().notices.find(item=>item.kind==='permission'&&item.session===otherChat.session)!;
  await activateNotice(notice);
  check('foreignPermissionNoticeOpensExactChat',openedTargets.at(-1)==='codex://threads/other-test');
+ await js(cap,`${approvalSignal}.click()`);
+ await wait(()=>js(cap,"document.querySelector('.codex-review-external button')"));
+ check('capsuleReviewKeepsOtherChatsInCodex',await js(cap,"!document.querySelector('.approval-card')&&!document.querySelector('.codex-page').textContent.includes('Contenido privado de otro chat')"));
+ const beforeExternalReview=openedTargets.length;
+ await js(cap,"document.querySelector('.codex-review-external button').click()");
+ await wait(async()=>openedTargets.length===beforeExternalReview+1);
+ check('capsuleReviewOpensExactForeignChat',openedTargets.at(-1)==='codex://threads/other-test');
+ await nav('codex');
  hub.accept({id:randomUUID(),event:'PostToolUse',tool:'shell',...otherChat},()=>{});
+ hub.accept({id:randomUUID(),event:'UserPromptSubmit',...otherChat},()=>{});
+ hub.setTitle(otherChat.session,'[https://example.com/repo](https://example.com/repo) Agenda del mes');
+ const otherDecision=relay('PermissionRequest','git status --branch',otherChat);
+ void otherDecision.catch(()=>{});
+ await wait(async()=>hub.status().approvals.some(item=>item.session===otherChat.session));
+ const otherApproval=hub.status().approvals.find(item=>item.session===otherChat.session)!;
+ check('capsuleObservedCommandRequiresExplicitReview',await js(cap,`window.companion.status().then(async r=>
+  !r.value.approvals.find(item=>item.id===${JSON.stringify(otherApproval.id)})?.preview&&
+  !(await window.companion.decide(${JSON.stringify(otherApproval.id)},'allow')).ok)`));
+ await js(cap,`${approvalSignal}.click()`);
+ await wait(()=>js(cap,"document.querySelector('.codex-review .approval-card pre')?.textContent==='git status --branch'"));
+ check('capsulePermissionTitleCleansRepeatedLink',await js(cap,"document.querySelector('.codex-review-chat').textContent==='Agenda del mes'"));
+ await js(cap,"document.querySelector('.codex-review .approval-card .actions .primary').click()");
+ check('capsuleDecidesForVerifiedOtherChat',(await otherDecision).hookSpecificOutput?.decision?.behavior==='allow');
+ const handoff=relay('PermissionRequest','git diff --stat',otherChat);
+ void handoff.catch(()=>{});
+ await wait(()=>js(cap,"document.querySelector('.codex-review .approval-card pre')?.textContent==='git diff --stat'"));
+ const beforeHandoff=openedTargets.length;
+ await js(cap,"document.querySelector('.codex-review-handoff').click()");
+ await wait(async()=>openedTargets.length===beforeHandoff+1);
+ check('capsuleHandsOffWithoutDeciding',!(await handoff).hookSpecificOutput&&openedTargets.at(-1)==='codex://threads/other-test');
+ hub.setTitle(otherChat.session,'Agenda del mes');
+ await nav('codex');
  await shot(cap,'codex-activity');
  const monitorBounds=cap.getBounds();
  await resizeForFixture(590,monitorBounds.height);
@@ -682,7 +752,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('simpleModeHomeDraft',await js(cap,"document.querySelector('.home-simple-codex').open&&document.querySelector('#codex-request').value==='Borrador habitual de prueba'"));
  const simpleHomeHeight=cap.getBounds().height;
  for(const [page,selector] of [
-  ['codex','.codex-monitor'],['permissions','.codex-monitor'],['notices','.notice-tools'],
+  ['codex','.codex-monitor'],['permissions','.codex-page[data-reviewing=true]'],['notices','.notice-tools'],
   ['options','.capsule-inline-menu'],['shortcuts','.capsule-inline-menu'],['settings','.preferences-category-select'],
  ]){
   await nav(page);
@@ -763,6 +833,67 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await nav('home');
  await fill('#codex-request','');
  Object.assign(report,await smokeAppearance({cap,js,wait,nav,shot,selectPosition,compact,resize:resizeForFixture}));
+ await selectPosition('floating');
+ await compact();
+ const foreground=new BrowserWindow({width:420,height:300,title:'Ventana de prueba de foco'});
+ try{
+  await foreground.loadURL('data:text/html,<input autofocus aria-label="Prueba de foco">');
+  foreground.focus();
+  await wait(async()=>foreground.isFocused());
+  const foregroundBefore=await nativeProbe('-Order');
+  enableAutomaticPermissionReview();
+  const longCommand=Array.from({length:35},(_,index)=>`echo argumento largo de prueba ${index+1}`).join('\n')+
+   '\n\nParámetros adicionales:\n'+JSON.stringify({workdir:'C:\\fixture',sandbox_permissions:'require_escalated'});
+  const pending=relay('PermissionRequest',longCommand);
+  void pending.catch(()=>{});
+  await wait(()=>js(cap,"!!document.querySelector('#capsule-content[data-page=permissions]:not([hidden]) .codex-review pre')"));
+  const raised=await nativeProbe('-Order');
+  check('automaticApprovalTakesPriorityWithoutFocus',raised.topmost&&raised.foregroundHandle===foregroundBefore.foregroundHandle&&!raised.foreground&&hub.status().approvals.length===1);
+  const longReview=await js(cap,"window.companion.status().then(r=>r.value.workspace.geometry.panel)");
+  check('approvalHeightAdaptsToCommand',longReview.width===approvalGeometry.width&&longReview.height>approvalGeometry.height&&longReview.height<=306);
+  await js(cap,"document.querySelector('.codex-review-details summary').click()");
+  const copies=copiedText.length;
+  await js(cap,"document.querySelector('.codex-review-details button').click()");
+  await wait(async()=>copiedText.length===copies+1);
+  check('approvalCopiesFullCommandAndScope',copiedText.at(-1)===longCommand);
+  await js(cap,"document.querySelector('.codex-review-details summary').click()");
+  await resizeForFixture(350,335);
+  check('responsiveApprovalKeepsButtonsVisible',await js(cap,`(()=>{
+   const panel=document.querySelector('#capsule-content').getBoundingClientRect();
+   const command=document.querySelector('.codex-review pre');
+   const detail=document.querySelector('.codex-approval-body');
+   const detailBounds=detail.getBoundingClientRect();
+   const buttons=[...document.querySelectorAll('.codex-review .actions button')];
+   return command.textContent===${JSON.stringify(longCommand)}&&command.clientHeight>0&&document.querySelector('.codex-review-chat').clientHeight>0&&
+    (detail.scrollHeight>detail.clientHeight||command.scrollHeight>command.clientHeight)&&buttons.length===3&&
+    buttons.every(button=>{const rect=button.getBoundingClientRect();return rect.top>=detailBounds.bottom&&rect.bottom<=panel.bottom&&rect.right<=panel.right;});
+  })()`));
+  await shot(cap,'codex-permission-responsive');
+  const another=relay('PermissionRequest','echo siguiente solicitud');
+  void another.catch(()=>{});
+  await wait(()=>js(cap,"document.querySelector('.codex-review-selector select')?.options.length===2"));
+  await js(cap,"(()=>{const select=document.querySelector('.codex-review-selector select');select.selectedIndex=1;select.dispatchEvent(new Event('change',{bubbles:true}));})()");
+  await wait(()=>js(cap,"document.querySelector('.codex-review pre')?.textContent==='echo siguiente solicitud'"));
+  check('responsiveApprovalSwitchesBetweenPendingRequests',hub.status().approvals.length===2);
+  await clickLabel('.codex-review','Rechazar');
+  check('automaticApprovalRejectsSelectedRequest',(await another).hookSpecificOutput?.decision?.behavior==='deny');
+  await clickLabel('.codex-review','Rechazar');
+  check('automaticApprovalRejectsLastRequest',(await pending).hookSpecificOutput?.decision?.behavior==='deny');
+  await wait(()=>js(cap,"document.querySelector('#capsule-content').hidden"));
+  const restored=await nativeProbe('-Order');
+  check('automaticApprovalRestoresPreviousOrder',restored.topmost===foregroundBefore.topmost&&restored.foregroundHandle===foregroundBefore.foregroundHandle);
+  cap.minimize();
+  const minimized=relay('PermissionRequest','echo aviso con ZEN minimizado');
+  void minimized.catch(()=>{});
+  await wait(async()=>!cap.isMinimized()&&cap.isVisible()&&await js(cap,"document.querySelector('.codex-review pre')?.textContent==='echo aviso con ZEN minimizado'"));
+  check('automaticApprovalAppearsWhenMinimized',cap.isAlwaysOnTop()&&!cap.isFocused());
+  await js(cap,"document.querySelector('.codex-review-heading button[aria-label=\"Cerrar revisión\"]').click()");
+  await wait(async()=>cap.isMinimized());
+  check('automaticApprovalDismissPreservesRequest',hub.status().approvals.length===1&&cap.isAlwaysOnTop()===foregroundBefore.topmost);
+  hub.decide(hub.status().approvals[0].id,'pass');
+  await minimized;
+  cap.restore();
+ }finally{foreground.destroy();}
  check('noDuplicateWindow',BrowserWindow.getAllWindows().length===1);
  check('noOldBarAtAnyEntry',await js(cap,"!document.querySelector('.companion-bar,.capsule-single-row')"));
  const savedState=JSON.parse(readFileSync(join(profile,'companion-workspace-window.json'),'utf8'));

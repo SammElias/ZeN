@@ -18,6 +18,7 @@ const bridge: CompanionBridge = {
   oura: action => call('oura',action),
   weather: action => call('weather',action),
   translator: action => call('translator',action),
+  officina: action => call('officina',action),
   calendar: action => call('calendar',action),
   status: () => call('status'),
   onStatus: callback => {

@@ -19,9 +19,9 @@ export class CompanionLauncher{
     }
     if (!raw.order.includes('notes')) raw.order.push('notes');
     if (!raw.order.includes('calendar')) raw.order.push('calendar');
-    const previousVisible=raw.order.filter((page:unknown)=>page!=='notices');
+    const previousVisible=raw.order.filter((page:unknown)=>page!=='notices'&&page!=='officina');
     if(!previousVisible.includes('metrics'))previousVisible.push('metrics');
-    if(previousVisible.join()===previousDefault)raw.order=[...launcherPages];
+    if(!raw.order.includes('officina')&&previousVisible.join()===previousDefault)raw.order=[...launcherPages];
    }
    if (retiredPage(raw.last)) raw.last = 'home';
    if (raw.last === 'passwords') raw.last = 'notes';

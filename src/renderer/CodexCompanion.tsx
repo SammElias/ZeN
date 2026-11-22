@@ -22,6 +22,7 @@ import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
 import {CodexRequest} from '../shared/companion-request';
 import {CompanionCalendar} from './CompanionCalendar';
+import {OfficinaWorkspace} from './OfficinaWorkspace';
 import {CompanionMetrics} from './CompanionMetrics';
 import {DynamicIsland} from './DynamicIsland';
 import {defaultNeon} from '../shared/companion-neon';
@@ -154,7 +155,7 @@ export function CodexCompanion(){
  const {status,ready}=useCompanion(panel),[error,setError]=useState(''),[reduced,setReduced]=useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
  const {track:nowPlaying}=useNowPlaying(status);
  const expanded=status.workspace?.expanded??false,page=status.workspace?.page??'home';
- const simpleMode=status.workspace?.simpleMode===true&&page!=='notes';
+ const simpleMode=status.workspace?.simpleMode===true&&page!=='notes'&&page!=='officina';
  const mediaPlayer=useMediaPlayer(status,'workspace',expanded&&page==='spotify');
  const [openedPages,setOpenedPages]=useState<WorkspacePage[]>([]);
  const previousOptionsPage=useRef<WorkspacePage|undefined>(undefined);
@@ -232,6 +233,12 @@ export function CodexCompanion(){
   focusDestination.current=true;
   void runPanelAction(()=>window.companion.togglePanel(),expanded).then(result=>{if(!result.ok)setError(result.error);});
  };
+ const reviewPermissions=()=>{
+  focusDestination.current=true;
+  void runPanelAction(()=>window.companion.navigate('permissions'),false).then(result=>{
+   if(!result.ok){focusDestination.current=false;setError(result.error);}
+  }).catch(()=>{focusDestination.current=false;setError('No se pudo abrir la revisión de permisos.');});
+ };
  const activateSection=async(section:SectionPage,keyboard:boolean)=>{
   const attempt=++activationAttempt.current;
   focusDestination.current=false;
@@ -292,7 +299,7 @@ export function CodexCompanion(){
    (section&&root.current?.querySelector<HTMLElement>(`.capsule-launcher [data-page="${section}"]`))||
    root.current?.querySelector<HTMLElement>('.zen-island-trigger');
   target?.focus({preventScroll:true});
- },[expanded]);
+ },[expanded,page]);
  useLayoutEffect(()=>{
   if(!sectionFocus||(status.revision??0)<sectionFocus.revision)return;
   if(page===sectionFocus.page&&expanded===sectionFocus.expanded){
@@ -376,11 +383,11 @@ export function CodexCompanion(){
  const rectStyle=(rect?:{x:number;y:number;width:number;height:number})=>rect?{left:rect.x,top:rect.y,width:rect.width,height:rect.height}:undefined;
  return <main ref={root} onClick={playClick} className={'companion-capsule fixed-capsule '+(expanded?'expanded companion-shell':'collapsed')} data-island={!expanded} data-edge={edge?.side} data-orientation={vertical?'vertical':'horizontal'} data-native-caption={status.workspace?.nativeCaption===true} data-theme={appearance.theme} data-accent={appearance.accent} data-background={appearance.background} style={{...motionStyle,...appearanceVars(appearance),...geometryStyle} as React.CSSProperties} data-motion={status.settings.motion&&!reduced}>
   <header className="compact-capsule" style={rectStyle(geometry?.capsule)}>
-   <DynamicIsland status={status} ready={ready} open={toggle} onActivate={activateSection} onError={setError} error={status.settings.presentation&&error?'Revisa la configuración en Codex.':error}/>
+   <DynamicIsland status={status} ready={ready} open={toggle} onReview={reviewPermissions} onActivate={activateSection} onError={setError} error={status.settings.presentation&&error?'Revisa la configuración en Codex.':error}/>
    <NeonBorder options={neon} visible={surfaceVisible} animation={neonAnimation}
     shape={{side:edge?.side,compact:true,radius:18}}/>
   </header>
-  {(expanded||visited)&&<div className="workspace-surface" style={rectStyle(geometry?.panel)} hidden={!expanded} inert={!expanded}
+  {(expanded||visited)&&<div className="workspace-surface" data-review={page==='permissions'||undefined} style={rectStyle(geometry?.panel)} hidden={!expanded} inert={!expanded}
    data-panel-phase={panelPaint!==undefined?'preparing':hoverClosing?'closing':panelOpening?'opening':'visible'}>
    <section ref={panel} id="capsule-content" className="workspace-content" data-page={page} data-simple-mode={simpleMode || undefined} tabIndex={-1} hidden={!expanded} inert={!expanded}
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
@@ -393,6 +400,9 @@ export function CodexCompanion(){
     {safeNotes&&(openedPages.includes('calendar')||page==='calendar')&&<div hidden={!expanded||page!=='calendar'} inert={!expanded||page!=='calendar'}>
      <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision} simpleMode={status.workspace?.simpleMode===true}/>
     </div>}
+    {expanded&&page==='officina'&&(safeNotes
+      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening}/>
+      : <div className="companion-empty"><h2>Officina en pausa</h2><p>Desactiva Pausa o Presentación para abrir el tablero.</p></div>)}
     {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura} simpleMode={simpleMode}/>}
     {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}
     {(openedPages.includes('spotify')||page==='spotify')&&<div hidden={!expanded||page!=='spotify'} inert={!expanded||page!=='spotify'}>
@@ -403,7 +413,7 @@ export function CodexCompanion(){
     {(page==='options'||page==='shortcuts')&&<CapsuleMenu status={status} context={page==='shortcuts'?status.workspace?.context:undefined}/>}
     {(openedPages.some(value=>value==='codex'||value==='permissions')||page==='codex'||page==='permissions')&&
      <div hidden={!expanded||page!=='codex'&&page!=='permissions'} inert={!expanded||page!=='codex'&&page!=='permissions'}>
-      <CodexWorkspace status={status} visible={expanded&&(page==='codex'||page==='permissions')} memory={contextMemory}/>
+      <CodexWorkspace status={status} visible={expanded&&(page==='codex'||page==='permissions')} memory={contextMemory} onCloseReview={toggle}/>
      </div>}
     {(settingsOpened||page==='settings')&&<div className="preferences-retained" hidden={!expanded||page!=='settings'} inert={!expanded||page!=='settings'}>
      <CompanionSettings status={status} visible={expanded&&page==='settings'} onBack={returnFromSettings}
@@ -420,7 +430,7 @@ export function CodexCompanion(){
       hoverEnabled={status.workspace?.nativeCaption===true&&!status.settings.windowLocked&&!hoverClosing&&!panelOpening} onAssess={prepareAssessment}/></Suspense>
     </div>}
    </section>
-   <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible} animation={neonAnimation}/>
+   <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible&&page!=='permissions'} animation={neonAnimation}/>
   </div>}
  </main>;
 }

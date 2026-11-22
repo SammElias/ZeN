@@ -3,7 +3,7 @@ import type {CompanionStatus} from '../shared/codex-companion';
 import {connectionLabel, isSilenced, lastSignalLabel} from '../shared/companion-presentation';
 import {interfaceAudio} from './companion-interface-audio';
 
-function useClock(){
+export function useClock(){
  const [now,setNow]=useState(Date.now());
  useEffect(()=>{let timer:ReturnType<typeof setInterval>|undefined;const sync=()=>{clearInterval(timer);if(!document.hidden){setNow(Date.now());timer=setInterval(()=>setNow(Date.now()),1000);}};sync();document.addEventListener('visibilitychange',sync);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',sync);};},[]);
  return now;
@@ -29,6 +29,7 @@ const iconPaths = {
   mail: 'M3 5h18v14H3zM3 6l9 7 9-7',
   calendar: 'M4 5h16v16H4zM4 10h16M8 3v4m8-4v4M8 14h2m4 0h2m-8 3h2',
   metrics: 'M4 20h16M7 16v-4m5 4V5m5 11V9',
+  office: 'M3 21h18M5 21V8h14v13M8 8V3h8v5m-7 4h1m4 0h1m-6 4h1m4 0h1m-5 5v-2h4v2',
   moon: 'M20.6 15.2A9 9 0 0 1 8.8 3.4 9 9 0 1 0 20.6 15.2Z',
   pulse: 'M3 12h4l3-7 4 14 3-7h4',
   steps: 'M4 19h5v-5h5V9h6',

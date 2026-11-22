@@ -1,0 +1,294 @@
+.officina-screens {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Coordinates are measured on the 1374 × 1145 scene image. */
+.officina-screen,
+.officina-screen-reflection {
+  position: absolute;
+  left: calc(100% * var(--screen-x) / 1374);
+  top: calc(100% * var(--screen-y) / 1145);
+  width: calc(100% * var(--screen-width) / 1374);
+  height: calc(100% * var(--screen-height) / 1145);
+}
+
+.officina-screen-reflection {
+  mix-blend-mode: screen;
+  rotate: var(--reflection-angle, 0deg);
+  opacity: .24;
+}
+.officina-screen-reflection > span {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 47% 45%, var(--reflection-color), transparent 68%);
+  opacity: .38;
+  animation: officina-reflected-light var(--reflection-period) var(--reflection-delay) ease-in-out infinite;
+}
+.officina-screen-reflection[data-role=analyst] {
+  --screen-x: 396; --screen-y: 286; --screen-width: 128; --screen-height: 57;
+  --reflection-color: #ffda96; --reflection-period: 12s; --reflection-delay: -1.8s;
+}
+.officina-screen-reflection[data-role=architect] {
+  --screen-x: 1000; --screen-y: 291; --screen-width: 136; --screen-height: 54;
+  --reflection-color: #c1abff; --reflection-period: 9.6s; --reflection-delay: -4.8s;
+  --reflection-angle: 5deg;
+}
+.officina-screen-reflection[data-role=developer] {
+  --screen-x: 221; --screen-y: 566; --screen-width: 158; --screen-height: 70;
+  --reflection-color: #80caff; --reflection-period: 16.8s; --reflection-delay: -4.1s;
+  --reflection-angle: -14deg;
+}
+.officina-screen-reflection[data-role=tester] {
+  --screen-x: 1070; --screen-y: 604; --screen-width: 128; --screen-height: 68;
+  --reflection-color: #92ebe2; --reflection-period: 8.6s; --reflection-delay: -2s;
+  --reflection-angle: 10deg;
+}
+.officina-screen-reflection[data-role=alm] {
+  --screen-x: 285; --screen-y: 879; --screen-width: 166; --screen-height: 70;
+  --reflection-color: #b5a7ff;
+}
+.officina-screen-reflection[data-role=alm] > span { animation: officina-rocket-light 10.8s -2.5s ease-in-out infinite; }
+@keyframes officina-reflected-light {
+  0%, 18%, 100% { opacity: .32; }
+  38%, 54% { opacity: .68; }
+  78% { opacity: .48; }
+}
+
+.officina-screen-arrival {
+  position: absolute;
+  top: 17%; right: 11%; width: 27%; height: 20%;
+  transform: skewY(var(--arrival-tilt, 0deg));
+  border-radius: 12%;
+  background: linear-gradient(90deg, #c9fbff 0 20%, #86e7f3 25%, #bdedff 92%);
+  box-shadow: 0 0 5px #93f3ffbd;
+  opacity: 0;
+  animation: officina-screen-arrival 1.25s ease-out both;
+}
+.officina-architecture-screen { --arrival-tilt: 5deg; }
+.officina-code .officina-screen-arrival { top: 21%; --arrival-tilt: var(--editor-tilt); }
+.officina-test-screen { --arrival-tilt: 10deg; }
+@keyframes officina-screen-arrival {
+  0% { opacity: 0; translate: 0 -24%; }
+  28%, 55% { opacity: .85; translate: 0 0; }
+  100% { opacity: 0; translate: 0 0; }
+}
+
+.officina-analysis-screen { --screen-x: 362; --screen-y: 192; --screen-width: 177; --screen-height: 81; }
+.officina-sticky-focus,
+.officina-criteria-focus {
+  position: absolute;
+  border-radius: 8%;
+  mix-blend-mode: screen;
+}
+.officina-sticky-focus {
+  left: 27%; top: 35%; width: 9%; height: 21%;
+  opacity: .26;
+  background: #fff0b88c;
+  box-shadow: 0 0 5px #ffce7382;
+  animation: officina-note-focus 12s -1.8s ease-in-out infinite;
+}
+.officina-criteria-focus {
+  left: 70%; top: 61%; width: 24%; height: 14%;
+  opacity: .22;
+  background: #fff6dc95;
+  animation: officina-criteria-focus 12s -1.8s ease-in-out infinite;
+}
+.officina-board-pointer {
+  position: absolute;
+  left: 10%; top: 40%;
+  width: 4.2%; aspect-ratio: .88;
+  background: #fff9e8;
+  clip-path: polygon(0 0, 100% 70%, 53% 70%, 74% 100%, 52% 100%, 31% 74%, 0 100%);
+  box-shadow: inset 0 0 0 1px #91562c88;
+  animation: officina-board-review 12s -1.8s ease-in-out infinite;
+}
+@keyframes officina-note-focus {
+  0%, 12%, 56%, 100% { opacity: .26; }
+  29%, 39% { opacity: 1; }
+}
+@keyframes officina-criteria-focus {
+  0%, 46%, 90%, 100% { opacity: .22; }
+  64%, 76% { opacity: .92; }
+}
+@keyframes officina-board-review {
+  0%, 12%, 96%, 100% { left: 10%; top: 40%; }
+  28%, 39% { left: 30%; top: 40%; }
+  63%, 76% { left: 72%; top: 64%; }
+  88% { left: 38%; top: 27%; }
+}
+
+.officina-architecture-screen { --screen-x: 1005; --screen-y: 201; --screen-width: 181; --screen-height: 95; }
+.officina-diagram-node {
+  position: absolute;
+  left: var(--node-x);
+  top: var(--node-y);
+  width: 19%;
+  height: 18%;
+  transform: skewY(5deg);
+  border-radius: 8%;
+  opacity: .14;
+  background: #bda3f6a0;
+  box-shadow: inset 0 0 3px #e1d2ff, 0 0 5px #b085ebbf;
+  mix-blend-mode: screen;
+  animation: officina-node-flow 9.6s var(--node-delay) ease-in-out infinite;
+}
+.officina-diagram-node:nth-child(1) { --node-x: 7%; --node-y: 19%; --node-delay: -9.6s; }
+.officina-diagram-node:nth-child(2) { --node-x: 36.5%; --node-y: 32%; --node-delay: -8s; }
+.officina-diagram-node:nth-child(3) { --node-x: 49%; --node-y: 13%; --node-delay: -6.4s; }
+.officina-diagram-node:nth-child(4) { --node-x: 74.5%; --node-y: 37%; --node-delay: -4.8s; }
+.officina-diagram-node:nth-child(5) { --node-x: 57.1%; --node-y: 68%; --node-delay: -3.2s; }
+.officina-diagram-node:nth-child(6) { --node-x: 19%; --node-y: 61%; --node-delay: -1.6s; }
+@keyframes officina-node-flow {
+  0%, 42%, 100% { opacity: .14; }
+  14%, 20% { opacity: .68; }
+}
+
+.officina-code--main {
+  --screen-x: 218; --screen-y: 486; --screen-width: 93; --screen-height: 94;
+  --screen-edges: polygon(0 27%, 97% 2%, 100% 73%, 2% 100%);
+  --editor-tilt: -14deg;
+  --editor-top: 31%;
+  --editor-period: 16.8s;
+  --editor-delay: -4.1s;
+}
+.officina-code--side {
+  --screen-x: 318; --screen-y: 470; --screen-width: 101; --screen-height: 79;
+  /* Leave the edge of the developer's head in front of the display. */
+  --screen-edges: polygon(0 18%, 100% 0, 100% 85%, 43% 98%, 32% 92%, 22% 88%, 0 92%);
+  --editor-tilt: -8.4deg;
+  --editor-top: 21%;
+  --editor-period: 20.4s;
+  --editor-delay: -10.6s;
+}
+.officina-code-viewport {
+  position: absolute;
+  inset: 0;
+  clip-path: var(--screen-edges);
+  background: linear-gradient(125deg, #233149, #151823 65%);
+  container-type: inline-size;
+}
+.officina-code-editor {
+  position: absolute;
+  left: 1%; right: 1%; top: var(--editor-top); height: 80%;
+  transform: skewY(var(--editor-tilt));
+  transform-origin: top left;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 7%, #000 84%, transparent 97%);
+}
+.officina-code-reel { animation: officina-code-scroll var(--editor-period) var(--editor-delay) ease-in-out infinite; }
+.officina-code-page {
+  font-family: Consolas, monospace;
+  font-size: 4.5cqw;
+  line-height: 1.58;
+  color: #98d9e8;
+}
+.officina-code-page code {
+  display: block;
+  font: inherit;
+  white-space: pre;
+}
+.officina-code-number {
+  display: inline-block;
+  width: 13%;
+  padding-right: 3%;
+  text-align: right;
+  color: #8297b2;
+  border-right: thin solid #7088b44a;
+  margin-right: 4%;
+}
+.officina-code-page b { color: #ecb0dc; font-weight: inherit; }
+.officina-code-page code:nth-last-child(2)::after {
+  content: '';
+  display: inline-block;
+  vertical-align: text-bottom;
+  width: .5ch;
+  height: .93em;
+  margin-left: .3ch;
+  opacity: .38;
+  background: #d2f5ff;
+  animation: officina-editor-caret 1.8s ease-in-out infinite alternate;
+}
+/* The last frame shows the duplicate page in the same position as the first. */
+@keyframes officina-code-scroll {
+  0%, 12% { transform: translateY(0); }
+  27%, 44% { transform: translateY(-16.6667%); }
+  59%, 72% { transform: translateY(-33.3333%); }
+  90%, 100% { transform: translateY(-50%); }
+}
+@keyframes officina-editor-caret { from { opacity: .38; } to { opacity: .9; } }
+
+.officina-test-screen { --screen-x: 1112; --screen-y: 554; --screen-width: 73; --screen-height: 69; }
+.officina-test-focus {
+  position: absolute;
+  left: 10%; top: 17%; width: 80%; height: 18%;
+  transform: skewY(10deg);
+  background: #5acbbc50;
+  border-left: thin solid #2a9f887d;
+  border-radius: 9%;
+  opacity: .85;
+  animation: officina-test-scan 8.6s -2s ease-in-out infinite;
+}
+.officina-test-progress {
+  position: absolute;
+  left: 49%; top: 88%; width: 38%; height: 5%;
+  border-radius: 99px;
+  background: #309b8496;
+  transform: skewY(10deg);
+  transform-origin: left center;
+  scale: .28 1;
+  animation: officina-test-progress 8.6s -2s ease-in-out infinite;
+}
+@keyframes officina-test-scan {
+  0%, 15%, 100% { translate: 0 0; opacity: .85; }
+  31%, 40% { translate: 0 121%; opacity: .85; }
+  56%, 70% { translate: 0 242%; opacity: .85; }
+  87% { translate: 0 0; opacity: .36; }
+}
+@keyframes officina-test-progress {
+  0%, 15%, 100% { scale: .28 1; }
+  31%, 40% { scale: .62 1; }
+  56%, 71% { scale: 1 1; }
+  88% { scale: .28 1; }
+}
+
+.officina-release-screen { --screen-x: 330; --screen-y: 786; --screen-width: 160; --screen-height: 99; }
+.officina-rocket-glow {
+  position: absolute;
+  left: 29%; top: 7%; width: 47%; height: 49%;
+  transform: rotate(-46deg);
+  opacity: .28;
+  scale: .84;
+  background: radial-gradient(ellipse, #e1e4ffb3, #8c85ec7d 35%, transparent 71%);
+  mix-blend-mode: screen;
+  animation: officina-rocket-light 10.8s -2.5s ease-in-out infinite;
+}
+.officina-pipeline-pulse {
+  position: absolute;
+  top: 73%; left: 16.4%; width: 5%; height: 7%;
+  border-radius: 50%;
+  opacity: 0;
+  background: #ebfcff;
+  box-shadow: 0 0 5px 2px #5ed5f0b0;
+  animation: officina-pipeline-travel 10.8s -2.5s ease-in-out infinite;
+}
+@keyframes officina-rocket-light {
+  0%, 10%, 90%, 100% { opacity: .28; scale: .84; }
+  42% { opacity: .48; scale: .97; }
+  63%, 73% { opacity: .83; scale: 1.12; }
+}
+@keyframes officina-pipeline-travel {
+  0% { translate: 0 0; opacity: 0; }
+  10%, 15% { translate: 0 0; opacity: .88; }
+  34%, 43% { translate: 625% 0; opacity: .88; }
+  62%, 69% { translate: 1250% 0; opacity: .88; }
+  88%, 100% { translate: 1250% 0; opacity: 0; }
+}
+
+.officina-scene[data-animate=false] .officina-screens * { animation-play-state: paused; }
+.officina-scene[data-animate=false] .officina-code-page code::after { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .officina-screens *, .officina-code-page code::after { animation-play-state: paused; }
+}

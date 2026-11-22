@@ -10,7 +10,7 @@ import {CapsuleNavigation, type ActivateSection} from './CapsuleNavigation';
 
 const labels={idle:'ZEN',working:'Trabajando',attention:'Permiso',finished:'Terminado',error:'Error',paused:'En pausa'};
 
-export function DynamicIsland({status,ready,open,onActivate,onError,error}:{status:CompanionStatus;ready:boolean;open:()=>void;onActivate:ActivateSection;onError:(error:string)=>void;error?:string}) {
+export function DynamicIsland({status,ready,open,onReview,onActivate,onError,error}:{status:CompanionStatus;ready:boolean;open:()=>void;onReview:()=>void;onActivate:ActivateSection;onError:(error:string)=>void;error?:string}) {
  const {state}=orbitalPresentation(status);
  const finishedAt=status.notices.find(n=>n.kind==='finished'&&!n.read)?.at;
  const [expired,setExpired]=useState<number>();
@@ -19,12 +19,15 @@ export function DynamicIsland({status,ready,open,onActivate,onError,error}:{stat
   const timeout=setTimeout(()=>setExpired(finishedAt),Math.max(0,finishedAt+ISLAND_FINISH_MS-Date.now()));
   return ()=>clearTimeout(timeout);
  },[finishedAt]);
- const visual=state==='paused'?'paused':(status.approvalCount??status.approvals.length)>0?'attention':error||status.notices.some(n=>n.kind==='error'&&!n.read)?'error':
+ const approvals=status.settings.paused||status.settings.presentation?0:status.approvalCount??status.approvals.length;
+ const visual=state==='paused'?'paused':approvals>0?'attention':error||status.notices.some(n=>n.kind==='error'&&!n.read)?'error':
   state==='thinking'||state==='working'?'working':
   state==='finished'&&finishedAt!==undefined&&expired!==finishedAt&&Date.now()<finishedAt+ISLAND_FINISH_MS?'finished':'idle';
- const label=labels[visual];
+ const label=visual==='attention'?(approvals===1?'1 permiso pendiente':`${approvals} permisos pendientes`):labels[visual];
  const expanded=status.workspace?.expanded===true;
- const action=expanded?'Ocultar panel':'Abrir última sección';
+ const review=approvals>0&&!(expanded&&status.workspace?.page==='permissions');
+ const action=review?'Revisar permisos de Codex':expanded?'Ocultar panel':'Abrir última sección';
+ const activate=review?onReview:open;
  const lastPhase=useRef(visual);
  const [flash,setFlash]=useState(false);
  useEffect(()=>{
@@ -34,7 +37,7 @@ export function DynamicIsland({status,ready,open,onActivate,onError,error}:{stat
  return <div className="zen-island-shell" data-stacked={status.workspace?.islandStacked===true}>
   <div className="zen-island-navigation">
   <button type="button" className="zen-island-trigger" data-phase={visual} data-flash={flash}
-   aria-label={label+' · '+action} aria-expanded={expanded} aria-controls="capsule-content" title={error??label+' · '+action+' · Clic derecho para opciones'} disabled={!ready}
+   aria-label={label+' · '+action} aria-expanded={expanded} aria-controls="capsule-content" title={error&&!review?error:label+' · '+action+' · Clic derecho para opciones'} disabled={!ready}
    onContextMenu={event=>{event.preventDefault();void window.companion.capsuleLocationMenu();}}
    onKeyDown={event=>{
     if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){
@@ -44,9 +47,9 @@ export function DynamicIsland({status,ready,open,onActivate,onError,error}:{stat
     }
     if(event.key!=='Enter'&&event.key!==' ')return;
     event.preventDefault();
-    if(!event.repeat)open();
+    if(!event.repeat)activate();
    }}
-   onClick={open}>
+   onClick={activate}>
   <ZenStatusMark status={status} ready={ready}/>
   <span role="status" className="zen-island-label">{label}</span>
   {error&&<span role="alert" className="zen-island-label">{error}</span>}

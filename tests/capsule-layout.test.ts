@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {capsuleLayout,capsuleLayoutShape,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from '../src/main/companion-capsule-layout';
+import {capsuleLayout,capsuleLayoutShape,permissionPanelSize,resizeCapsuleLayout,retractCapsulePanel,simpleWorkspacePanels} from '../src/main/companion-capsule-layout';
 import {workspacePages} from '../src/shared/companion-navigation';
 import {edgeBounds,islandBounds} from '../src/main/companion-workspace-window';
 import {CompanionWorkspaceWindow} from '../src/main/companion-workspace-window';
@@ -60,12 +60,32 @@ it('fits the simple panel while retaining the capsule and excluding the unused r
  expect(bounds.y+panel!.y).toBe(shortArea.y);
  expect(panel!.height).toBe(shortArea.height);
 });
-it('gives every workspace except HUB a compact size and keeps room for the floating capsule',()=>{
- expect(Object.keys(simpleWorkspacePanels).sort()).toEqual(workspacePages.filter(page=>page!=='notes').sort());
+it('keeps HUB and Officina full size and leaves room for the floating capsule',()=>{
+ expect(Object.keys(simpleWorkspacePanels).sort()).toEqual(workspacePages.filter(page=>page!=='notes'&&page!=='officina').sort());
  const anchor=islandBounds({area,bounds:{...desired,y:area.y+area.height-315},displayId:1,maximized:false},true);
  const music=capsuleLayout(area,anchor,desired,undefined,true,34,simpleWorkspacePanels.spotify);
  expect(music.panel).toMatchObject({width:490,height:260});
  expect(music.panel!.y).toBe(music.capsule.y+music.capsule.height);
+});
+it('keeps the compact approval panel next to its capsule in each position',()=>{
+ const size=simpleWorkspacePanels.permissions!;
+ for(const side of ['top','left','right',undefined] as const){
+  const anchor=side?edgeBounds(area,{side,displayId:1,fraction:.5},true,true):
+   islandBounds({area,bounds:desired,displayId:1,maximized:false},true);
+  const layout=capsuleLayout(area,anchor,desired,side,true,34,size);
+  const view=resizeCapsuleLayout(layout,layout.bounds,side,true);
+  expect(view).toEqual(layout);
+  expect(view.panel).toMatchObject({width:350,height:238});
+  expect(view.bounds.x+view.capsule.x).toBe(anchor.x);
+  expect(view.bounds.y+view.capsule.y).toBe(anchor.y+34);
+ }
+});
+it('gives longer approval previews and pending requests more room within the compact height limit',()=>{
+ const base=permissionPanelSize('git status --short');
+ expect(base).toEqual({width:350,height:238});
+ expect(permissionPanelSize('x'.repeat(125)).height).toBeGreaterThan(base.height);
+ expect(permissionPanelSize('git status --short',2).height).toBeGreaterThan(base.height);
+ expect(permissionPanelSize('consulta de prueba\n'.repeat(50))).toEqual({width:350,height:306});
 });
 it('retracts the panel toward the capsule from each position while keeping the capsule fixed',()=>{
  const rightEdge=({x,width}:{x:number;width:number})=>x+width;

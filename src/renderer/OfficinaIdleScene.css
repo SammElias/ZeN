@@ -1,0 +1,80 @@
+.officina-idle-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.officina-idle-seat {
+  position: absolute;
+  mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent),
+    linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent);
+  mask-composite: intersect;
+}
+
+.officina-idle-frame,
+.officina-ambient-leaves {
+  position: absolute;
+  background-position: var(--officina-pose-position);
+  background-size: var(--officina-pose-size);
+  background-repeat: no-repeat;
+}
+
+.officina-idle-frame {
+  inset: 0;
+  opacity: 0;
+  animation-duration: var(--officina-idle-period);
+  animation-delay: var(--officina-idle-delay);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.officina-idle-frame--transition {
+  background-image: url('./assets/officina-idle-transition.png');
+  animation-name: officina-idle-transition;
+}
+
+.officina-idle-frame--rest {
+  background-image: url('./assets/officina-idle.png');
+  animation-name: officina-idle-rest;
+}
+
+/* The intermediate pose stays visible beneath the crossfade in both directions. */
+@keyframes officina-idle-transition {
+  0%, 2%, 14%, 29%, 44%, 100% { opacity: 0; }
+  6%, 11%, 33%, 39% { opacity: 1; }
+}
+
+@keyframes officina-idle-rest {
+  0%, 8%, 38%, 100% { opacity: 0; }
+  12%, 34% { opacity: 1; }
+}
+
+.officina-ambient-lamp {
+  position: absolute;
+  width: 9%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: radial-gradient(circle, #ffd496 0%, #e89248 37%, transparent 70%);
+  mix-blend-mode: screen;
+  animation: officina-warm-light 6.4s ease-in-out infinite alternate;
+}
+
+.officina-ambient-lamp[data-lamp=wall] { left: 8.1%; top: 34%; }
+.officina-ambient-lamp[data-lamp=lounge] { left: 91%; top: 77%; animation-delay: -3.1s; }
+
+@keyframes officina-warm-light { from { opacity: .035; } to { opacity: .12; } }
+
+.officina-ambient-leaves {
+  background-image: url('./assets/officina-office.png');
+  mask-image: radial-gradient(ellipse at 52% 44%, #000 25%, transparent 71%);
+  transform-origin: 50% 92%;
+  animation: officina-leaves-sway 5.7s ease-in-out infinite;
+}
+
+@keyframes officina-leaves-sway { 25% { rotate: 1.8deg; } 70% { rotate: -1.3deg; } }
+
+.officina-routine { margin: 5px 0 9px; font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .officina-idle-scene { display: none; }
+}

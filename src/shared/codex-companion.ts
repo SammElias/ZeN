@@ -2,6 +2,7 @@ import type {CalendarAction,CalendarSnapshot,CalendarEvent,CalendarOperation} fr
 import type {OuraAction,OuraGlance,OuraHomeSleep,OuraStatus} from './companion-oura';
 import type {WeatherAction,WeatherStatus} from './companion-weather';
 import type {TranslatorAction,TranslatorReply} from './companion-translator';
+import type {OfficinaAction,OfficinaView} from './companion-officina';
 import type {CodexRequestReceipt} from './companion-request';
 import type {AppearanceOptions,AppearanceState} from './companion-appearance';
 import type {ContextInput,ContextPreview,ContextFile} from './companion-context';
@@ -58,6 +59,7 @@ export interface CompanionBridge{
  oura(action:OuraAction):Promise<CompanionResult<boolean>>;
  weather(action:WeatherAction):Promise<CompanionResult<WeatherStatus>>;
  translator(action:TranslatorAction):Promise<CompanionResult<TranslatorReply>>;
+ officina(action:OfficinaAction):Promise<CompanionResult<OfficinaView>>;
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;
  profileBackup(action:'export'|'import'):Promise<CompanionResult<'exported'|'imported'|'cancelled'>>;
  profileSync(action:import('./profile-sync').ProfileSyncAction):Promise<CompanionResult<import('./profile-sync').ProfileSyncStatus>>;

@@ -1,5 +1,5 @@
 export const hubName = 'HUB';
-export const primaryPages = ['home', 'notes', 'calendar', 'metrics', 'spotify'] as const;
+export const primaryPages = ['home', 'notes', 'calendar', 'metrics', 'spotify', 'officina'] as const;
 export const launcherPages = [...primaryPages, 'codex', 'notices'] as const;
 export const sectionPages = [...primaryPages, 'settings'] as const;
 export const sectionTargets = [...sectionPages, 'codex'] as const;

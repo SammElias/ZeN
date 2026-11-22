@@ -15,14 +15,28 @@ Las claves usan una máscara fija de ocho puntos, también al editar: se conserv
 - La primera apertura muestra directamente la app elegida. Con el panel abierto, cambiar de app gira solo el contenido según el orden visible del menú. Bajar o avanzar a la derecha gira hacia abajo. Subir o volver a la izquierda invierte el giro. Con movimiento reducido, el cambio es instantáneo. Volver a pulsar la app activa conserva su vista.
 - Cierra el candado para conservar la presentación actual y bloquear el arrastre. Si el panel está abierto, conserva su estado al pasar a otra aplicación y sigue los ajustes normales de superposición de Windows. Si solo está la cápsula, el cursor la deja recogida y un clic en un acceso abre el panel fijado. Usa el emblema o Escape para recogerlo.
 - Cambiar el candado cancela el temporizador de apertura o repliegue. Al desbloquear dentro del panel, el plazo de 450 ms empieza al salir. El repliegue conserva la posición, la sección y el borrador. Si lo recoges con el cursor sobre un icono de Apps, puedes volver a ese icono o pasar directamente a otro para abrir el panel.
-- El emblema oculta el panel visible y recupera la última sección cuando solo se ve la cápsula. El menú contextual del emblema ofrece ubicación, distribución, siempre encima, preferencias, avisos, silencio, minimizar y salir.
+- El emblema oculta el panel visible o recupera la última sección. Cuando indica un permiso pendiente, abre primero su revisión. El menú contextual del emblema ofrece ubicación, distribución, siempre encima, preferencias, avisos, silencio, minimizar y salir.
 - La selección marca un panel visible. Al ocultarlo, una raya discreta recuerda la última sección. Las flechas recorren los accesos según su orientación y Enter o Espacio los activan. Escape respeta primero diálogos y menús.
 - El selector de **Arriba**, **Izquierda**, **Derecha** y **Flotante** permanece accesible junto al candado y al agarre. El candado bloquea el arrastre. El panel conserva su contenido al cambiar de ubicación.
-- El icono de Home muestra los avisos y permisos pendientes. Abre el menú del emblema y selecciona **Ver avisos** para revisar la lista. Desde Home puedes abrir Codex. El estado junto al emblema corresponde a señales observadas.
+- En Windows, una nueva solicitud abre **Permisos de Codex** junto a la cápsula, por encima de las ventanas del escritorio. La aplicación anterior conserva el teclado hasta que hagas clic en ZEN. Al resolver la última solicitud o cerrar la tarjeta, ZEN recupera su vista y prioridad anteriores. Usa el emblema ámbar para volver a una solicitud que siga pendiente.
 - Volumen abre Sonido. Ocultar su panel libera la consulta de controles sin enviar órdenes al reproductor.
 - `Ctrl+Alt+C`, si conservas el atajo inicial, vuelve al chat fijado. La X y **Minimizar ZEN** conservan la aplicación en Windows. **Salir de ZEN** termina la instancia.
 
 ## 02 · Pedir, revisar y continuar ![](assets/azul.svg)
+
+**Officina** se abre desde la cápsula con el tamaño habitual de la ventana de ZEN. Elige o crea un proyecto en la cabecera. Los cinco puestos abren sus fichas y la mesa abre el tablero. Los puntos cian de las conexiones registradas abren la pregunta, respuesta o entrega correspondiente. En **Último traspaso → Ver tarea** se consulta la versión, el paso siguiente y el resultado de QA.
+
+Cada ficha de puesto describe su personalidad y su rutina cuando queda libre. Al empezar a trabajar en Codex, el puesto deja la rutina y su pantalla acelera. Al terminar o cuando necesita atención, la pantalla queda fija. La llegada de un traspaso enciende brevemente el monitor del puesto que lo recibe.
+
+Escribe en el campo fijo de abajo, visible desde **Equipo** y **Chat global**. Si todavía no hay un proyecto seleccionado, el campo pide el nombre. **Enviar** abre el historial junto al plano. Officina deduce qué resultado cumple tu petición, crea o reutiliza su proyecto en Codex y prepara los cinco puestos y Coordinación. En **Chats en Codex** están los accesos a los chats de los puestos y a la carpeta del proyecto.
+
+En **Equipo**, cada puesto y Coordinación muestran su encargo y su estado. La señal cian que recorre la conexión de un puesto indica que Codex ya empezó su turno. **Aprobación pendiente** aparece cuando el turno tiene una solicitud de permiso abierta en Codex. Desde ahí puedes abrir **Permisos de Codex**. Cuando el equipo concluye, **Chat global** muestra **Objetivo completado** o **Cerrado con limitaciones**, junto con el resultado guardado. Pulsa un puesto para abrir el encargo o su chat. **Chats en Codex → Añadir a Proyectos de Codex** incluye **Copiar ruta de la carpeta** para registrarla como origen en Codex.
+
+Para revisar las pestañas abiertas de tu navegador habitual, pide en el objetivo la extensión de ChatGPT y el nombre del navegador si lo conoces. El Analista empieza por las pestañas accesibles. Las demás consultas usan el navegador integrado por defecto. Cuando Codex solicite acceso a un sitio o iniciar sesión, atiende la solicitud en Codex. Los encargos anteriores de revisión que quedaron esperando capturas muestran **Asignar revisión al Analista**.
+
+Una pregunta posterior sobre lo que estás viendo o la pestaña activa reutiliza el navegador indicado en el mismo proyecto. Si una revisión se cerró con limitaciones, **Reintentar con la extensión** permite retomarla expresamente.
+
+Los proyectos previos con vínculo manual conservan su tablero y su historial. **Activar cola** permite retomar los encargos pendientes del proyecto visible. Una consulta o entrega con **Requiere actuación** pone en cola al destinatario. Los registros informativos quedan disponibles en la tarea. Si un envío queda incierto, revisa el chat antes de liberar el turno.
 
 | Acción | Resultado |
 | --- | --- |
@@ -30,7 +44,7 @@ Las claves usan una máscara fija de ocho puntos, también al editar: se conserv
 | Pulsar **Abrir en Codex** sin destino fijado. | Se prepara el borrador o se ofrece el texto copiado. El usuario envía desde Codex. |
 | Elegir **Resumir mis correos** o **Ver mi agenda**. | Se pide a Codex una consulta de lectura de los últimos siete días de correos no leídos en Recibidos o los próximos siete días de agenda, incluido hoy. Se conserva el borrador de Inicio. |
 | Abrir **Codex**. | Elegir un chat observado entre los que necesitan permiso, los que están en curso y los recientes. La cronología muestra los comandos recibidos. Expande una fila para ver el detalle disponible. **Peticiones y resultados del chat fijado** abre el análisis dentro de Actividad. |
-| Ver un contador ámbar en el icono de Home. | Desde Home, abre Codex y elige un chat del grupo **Necesitan permiso** en Actividad. El chat autorizado muestra la solicitud y sus acciones de un uso. En otros chats, **Revisar permiso en Codex** abre el chat exacto. Los avisos de Windows respetan las preferencias de sonido y notificaciones. |
+| Ver un permiso pendiente en la cápsula. | Lee el comando y el chat y elige **Permitir esta vez** o **Rechazar**. Si hay varias solicitudes, cambia entre ellas con el selector. **Detalles** permite copiar la solicitud completa y consultar su caducidad. **Abrir en Codex** entrega la solicitud al diálogo habitual del chat de origen. |
 | Usar **Analizar** desde Codex. | Seleccionar archivo, página o texto, revisar lo que se enviará y confirmar. Si cambió el contexto o venció la revisión, preparar una nueva. |
 
 En Home, las píldoras de **Codex**, **HUB** y **Sonido** abren la actividad o los permisos, la biblioteca y el reproductor, respectivamente. Sonido indica el título y si hay una sesión en reproducción o en pausa.
@@ -39,7 +53,7 @@ En Home, las píldoras de **Codex**, **HUB** y **Sonido** abren la actividad o l
 
 La tarjeta **Sueño** muestra la duración, la puntuación y la fecha de la última noche registrada por Oura. Si queda pendiente la sincronización de anoche, indica la fecha del dato disponible. **Ver métricas** abre la sección de Métricas con el historial.
 
-En espacios estrechos, el selector **Chats** recoge la lista. **Filtros** busca acciones del chat seleccionado o limita la cronología a comandos o archivos. Para permisos de otros chats, usa **Revisar en Codex**. Las peticiones de Home y Calendario se envían al chat fijado.
+En espacios estrechos, el selector **Chats** recoge la lista. **Filtros** busca acciones del chat seleccionado o limita la cronología a comandos o archivos. Los comandos de otros chats locales se pueden revisar desde **Permisos** cuando ZEN ha observado su turno y dispone del comando completo. Las demás solicitudes abren el chat de origen. Las peticiones de Home y Calendario se envían al chat fijado.
 
 En Home, el editor **Petición para Codex** está al final, debajo de Clima, Hoy, Sueño y los accesos a módulos. Puedes silenciar los avisos durante 30 minutos o reactivarlos desde el menú del emblema.
 
