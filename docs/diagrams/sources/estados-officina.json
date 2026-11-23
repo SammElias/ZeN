@@ -1,0 +1,216 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Officina · Estados de envío",
+    "output": "docs/diagrams/estados-officina.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "repository": {
+      "url": "https://github.com/SammElias/ZeN.git",
+      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
+      "link_mode": "local-only"
+    }
+  },
+  "mainPath": [
+    "waiting",
+    "sending",
+    "sent",
+    "completed"
+  ],
+  "states": [
+    {
+      "id": "waiting",
+      "type": "start",
+      "label": "En cola",
+      "sublabel": "waiting",
+      "sources": [
+        {
+          "path": "src/main/companion-officina-workflow.ts",
+          "line": 10,
+          "end_line": 13
+        }
+      ]
+    },
+    {
+      "id": "sending",
+      "type": "active",
+      "label": "Enviando",
+      "sublabel": "sending",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 509,
+          "end_line": 546
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 69,
+          "end_line": 76
+        }
+      ]
+    },
+    {
+      "id": "sent",
+      "type": "waiting",
+      "label": "Enviado",
+      "sublabel": "sent",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 542,
+          "end_line": 550
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 572,
+          "end_line": 584
+        }
+      ]
+    },
+    {
+      "id": "completed",
+      "type": "success",
+      "label": "Completado",
+      "sublabel": "completed",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 591,
+          "end_line": 614
+        }
+      ]
+    },
+    {
+      "id": "uncertain",
+      "type": "waiting",
+      "label": "Sin confirmar",
+      "sublabel": "uncertain",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 69,
+          "end_line": 76
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 572,
+          "end_line": 588
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "decision",
+      "label": "Revisión",
+      "sublabel": "review",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 493,
+          "end_line": 507
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 605,
+          "end_line": 615
+        }
+      ]
+    },
+    {
+      "id": "released",
+      "type": "neutral",
+      "label": "Liberado",
+      "sublabel": "released",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 265,
+          "end_line": 275
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "waiting-sending",
+      "label": "Prepara turno",
+      "variant": "default",
+      "from": "waiting",
+      "to": "sending"
+    },
+    {
+      "id": "sending-sent",
+      "label": "Acuse del puente",
+      "variant": "default",
+      "from": "sending",
+      "to": "sent"
+    },
+    {
+      "id": "sent-completed",
+      "label": "Respuesta válida",
+      "variant": "default",
+      "from": "sent",
+      "to": "completed"
+    },
+    {
+      "id": "sending-waiting",
+      "label": "Fallo recuperable",
+      "variant": "default",
+      "from": "sending",
+      "to": "waiting"
+    },
+    {
+      "id": "waiting-review",
+      "label": "Tarea cerrada o límite",
+      "variant": "default",
+      "from": "waiting",
+      "to": "review"
+    },
+    {
+      "id": "sending-review",
+      "label": "Destino o fuente inválida",
+      "variant": "default",
+      "from": "sending",
+      "to": "review"
+    },
+    {
+      "id": "sending-uncertain",
+      "label": "Sin acuse o reinicio",
+      "variant": "default",
+      "from": "sending",
+      "to": "uncertain"
+    },
+    {
+      "id": "sent-uncertain",
+      "variant": "default",
+      "from": "sent",
+      "to": "uncertain"
+    },
+    {
+      "id": "uncertain-completed",
+      "label": "Respuesta recuperada",
+      "variant": "default",
+      "from": "uncertain",
+      "to": "completed"
+    },
+    {
+      "id": "uncertain-released",
+      "label": "Liberación manual",
+      "variant": "default",
+      "from": "uncertain",
+      "to": "released"
+    }
+  ],
+  "cards": [
+    {
+      "title": "IMPLEMENTADO",
+      "dot": "amber",
+      "items": [
+        "Si el envío se vuelve incierto, Officina intenta confirmar la respuesta mediante el historial. Un fallo del despacho suspende la cola.",
+        "Enviado → Sin confirmar: 15 minutos sin respuesta verificable."
+      ]
+    }
+  ]
+}

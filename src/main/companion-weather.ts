@@ -1,9 +1,9 @@
 import {existsSync,readFileSync,renameSync,rmSync,writeFileSync} from 'node:fs';
 import {z} from 'zod';
-import {dublinWeather, WeatherKey, WeatherLocation, weatherRefreshMs, type WeatherAction, type WeatherForecast, type WeatherStatus} from '../shared/companion-weather';
+import {dublinWeather, isFreshWeather, WeatherKey, WeatherLocation, WeatherForecast, weatherRefreshMs, type WeatherAction, type WeatherStatus} from '../shared/companion-weather';
 import {findWeatherCity, OpenWeatherError, readOpenWeather} from './openweather-api';
 
-const StoredWeather = z.object({version:z.literal(1),key:WeatherKey,location:WeatherLocation}).strict();
+const StoredWeather = z.object({version:z.literal(1),key:WeatherKey,location:WeatherLocation,forecast:WeatherForecast.optional()}).strict();
 type StoredWeather = z.infer<typeof StoredWeather>;
 type Protection = {isEncryptionAvailable():boolean;encryptString(data:string):Buffer;decryptString(data:Buffer):string};
 type Options = {allowed:()=>boolean; read?:typeof readOpenWeather; find?:typeof findWeatherCity; now?:()=>number};
@@ -22,6 +22,7 @@ export class CompanionWeather {
     this.now = options.now??Date.now;
     if (existsSync(path)) try {
       this.settings = StoredWeather.parse(JSON.parse(protection.decryptString(readFileSync(path))));
+      this.forecast = this.settings.forecast;
     } catch {
       this.error = 'No se pudo abrir la clave guardada. Puedes configurarla de nuevo.';
     }
@@ -52,7 +53,8 @@ export class CompanionWeather {
       try {
         const {forecast,settings} = await load(controller.signal);
         if (!controller.signal.aborted && this.options.allowed()) {
-          if (settings) this.save(settings);
+          if (settings) this.save({...settings,forecast});
+          else if(this.settings)try{this.save({...this.settings,forecast});}catch{/* The current forecast is still available in memory. */}
           this.forecast = forecast;
           this.error = undefined;
           this.retryAt = 0;
@@ -77,7 +79,7 @@ export class CompanionWeather {
     if (!settings || !this.options.allowed()) return this.status();
     if (this.pending) return this.pending.task;
     const now = this.now();
-    if (now<this.retryAt || now-this.lastAttempt<30_000 || (!force && this.forecast && now-this.forecast.updatedAt<weatherRefreshMs)) return this.status();
+    if (now<this.retryAt || now-this.lastAttempt<30_000 || (!force && this.forecast && isFreshWeather(this.forecast,now)&&now-this.forecast.updatedAt<weatherRefreshMs)) return this.status();
     return this.run(async signal => ({forecast:await (this.options.read??readOpenWeather)(settings.location,settings.key,signal,now)}));
   }
 

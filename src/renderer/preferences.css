@@ -95,6 +95,14 @@
 .preferences-page :is([role=alert],[role=status]) { margin: 7px 0 0; }
 .preferences-page [role=alert] { color: var(--zen-error); }
 .preference-fieldset { min-width: 0; border: 0; margin: 0; padding: 0; }
+.daily-office-settings { margin-top: 16px; }
+.daily-office-settings legend { font-weight: 650; }
+.daily-office-days,.daily-office-exceptions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.daily-office-days label { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 8px; }
+.daily-office-days input { accent-color: var(--accent); }
+.daily-office-exceptions :is(input,select) { max-width: 100%; min-height: 32px; padding: 4px 7px; }
+.daily-office-settings ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.daily-office-settings li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
 .preference-row {
   display: grid;
   grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);

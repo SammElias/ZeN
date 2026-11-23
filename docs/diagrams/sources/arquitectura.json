@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ZeN · Arquitectura activa",
+    "output": "docs/diagrams/arquitectura.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "repository": {
+      "url": "https://github.com/SammElias/ZeN.git",
+      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "renderer",
+      "type": "frontend",
+      "label": "Ventana ZEN",
+      "sublabel": "Cápsula y panel",
+      "sources": [
+        {
+          "path": "src/renderer/CodexCompanion.tsx",
+          "line": 396,
+          "end_line": 407
+        },
+        {
+          "path": "src/renderer/main.tsx",
+          "line": 1,
+          "end_line": 13
+        }
+      ],
+      "pos": [
+        55,
+        125
+      ],
+      "size": [
+        175,
+        78
+      ]
+    },
+    {
+      "id": "preload",
+      "type": "security",
+      "label": "Preload",
+      "sublabel": "API IPC acotada",
+      "sources": [
+        {
+          "path": "src/preload/companion.ts",
+          "line": 88,
+          "end_line": 101
+        }
+      ],
+      "pos": [
+        295,
+        125
+      ],
+      "size": [
+        175,
+        78
+      ]
+    },
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Electron Main",
+      "sublabel": "Autoriza acciones",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 935,
+          "end_line": 945
+        },
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 140,
+          "end_line": 144
+        }
+      ],
+      "pos": [
+        540,
+        125
+      ],
+      "size": [
+        175,
+        78
+      ]
+    },
+    {
+      "id": "officina",
+      "type": "backend",
+      "label": "Officina",
+      "sublabel": "Tablero y cola local",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 344,
+          "end_line": 370
+        }
+      ],
+      "pos": [
+        790,
+        125
+      ],
+      "size": [
+        175,
+        78
+      ]
+    },
+    {
+      "id": "codex",
+      "type": "external",
+      "label": "Codex Desktop",
+      "sublabel": "Chats y turnos",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 360,
+          "end_line": 369
+        }
+      ],
+      "pos": [
+        1040,
+        125
+      ],
+      "size": [
+        175,
+        78
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "officina.sqlite",
+      "sublabel": "Proyectos y ejecuciones",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 58,
+          "end_line": 96
+        }
+      ],
+      "pos": [
+        790,
+        325
+      ],
+      "size": [
+        195,
+        78
+      ]
+    },
+    {
+      "id": "history",
+      "type": "database",
+      "label": "Historial de Codex",
+      "sublabel": "Índice y sesiones",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 370,
+          "end_line": 372
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 561,
+          "end_line": 573
+        }
+      ],
+      "pos": [
+        1040,
+        325
+      ],
+      "size": [
+        175,
+        78
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "renderer-preload",
+      "label": "Acción",
+      "variant": "emphasis",
+      "from": "renderer",
+      "to": "preload"
+    },
+    {
+      "id": "preload-main",
+      "label": "IPC",
+      "variant": "security",
+      "from": "preload",
+      "to": "main"
+    },
+    {
+      "id": "main-officina",
+      "label": "Despacha",
+      "variant": "emphasis",
+      "from": "main",
+      "to": "officina"
+    },
+    {
+      "id": "officina-codex",
+      "label": "Encola turno",
+      "variant": "emphasis",
+      "from": "officina",
+      "to": "codex"
+    },
+    {
+      "id": "officina-store",
+      "label": "Persiste",
+      "variant": "default",
+      "from": "officina",
+      "to": "store"
+    },
+    {
+      "id": "history-officina",
+      "label": "Lee resultado",
+      "variant": "dashed",
+      "from": "history",
+      "to": "officina"
+    }
+  ],
+  "cards": [
+    {
+      "title": "IMPLEMENTADO",
+      "dot": "cyan",
+      "items": [
+        "Main controla los efectos y el acceso a la cola. Codex conserva sus chats, cuenta y conectores."
+      ]
+    },
+    {
+      "title": "Alcance",
+      "dot": "slate",
+      "items": [
+        "Vista del compañero empaquetado, con detalle de Officina. Las otras superficies comparten ventana y la autorización de Main."
+      ]
+    }
+  ]
+}

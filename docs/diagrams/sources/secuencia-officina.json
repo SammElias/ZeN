@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Officina · Del encargo al resultado",
+    "output": "docs/diagrams/secuencia-officina.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "repository": {
+      "url": "https://github.com/SammElias/ZeN.git",
+      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
+      "link_mode": "local-only"
+    },
+    "viewBox": [
+      1080,
+      570
+    ],
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "chat",
+      "type": "frontend",
+      "label": "Chat global",
+      "sublabel": "Objetivo o puesto",
+      "sources": [
+        {
+          "path": "src/renderer/CodexCompanion.tsx",
+          "line": 396,
+          "end_line": 407
+        }
+      ]
+    },
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Main / Officina",
+      "sublabel": "Valida y persiste",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 485,
+          "end_line": 539
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 561,
+          "end_line": 615
+        },
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 935,
+          "end_line": 945
+        }
+      ]
+    },
+    {
+      "id": "codex",
+      "type": "external",
+      "label": "Codex",
+      "sublabel": "Cola del chat",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 360,
+          "end_line": 369
+        }
+      ]
+    },
+    {
+      "id": "reader",
+      "type": "database",
+      "label": "Lector local",
+      "sublabel": "Sesiones de Codex",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 370,
+          "end_line": 372
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 561,
+          "end_line": 573
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "chat-main",
+      "label": "Envía objetivo",
+      "variant": "default",
+      "from": "chat",
+      "to": "main",
+      "y": 160
+    },
+    {
+      "id": "main-codex",
+      "label": "Encola tras validar",
+      "variant": "default",
+      "from": "main",
+      "to": "codex",
+      "y": 230
+    },
+    {
+      "id": "codex-reader",
+      "label": "Turno registrado",
+      "variant": "dashed",
+      "from": "codex",
+      "to": "reader",
+      "y": 306
+    },
+    {
+      "id": "reader-main",
+      "label": "Respuesta correlacionada",
+      "variant": "dashed",
+      "from": "reader",
+      "to": "main",
+      "y": 382
+    },
+    {
+      "id": "main-chat",
+      "label": "Lee tablero actualizado",
+      "variant": "dashed",
+      "from": "main",
+      "to": "chat",
+      "y": 458
+    }
+  ],
+  "cards": [
+    {
+      "title": "IMPLEMENTADO",
+      "dot": "cyan",
+      "items": [
+        "Una lectura de la sesión puede recuperar un envío anterior. El permiso pendiente se correlaciona antes de registrar la respuesta."
+      ]
+    },
+    {
+      "title": "PROBADO",
+      "dot": "amber",
+      "items": [
+        "El smoke de Electron usa un puente simulado. Codex real queda sin verificar para esta entrega."
+      ]
+    }
+  ]
+}

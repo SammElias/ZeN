@@ -1,5 +1,7 @@
 import {CompanionCalendar} from './companion-calendar';
 import {CalendarAction} from '../shared/companion-calendar';
+import {DailyHomeAction} from '../shared/companion-daily-home';
+import {CompanionDailyHome} from './companion-daily-home';
 import {CompanionOura} from './companion-oura';
 import {authorizeOura} from './oura-oauth';
 import {OuraAction,ouraLegal} from '../shared/companion-oura';
@@ -30,7 +32,8 @@ import {contextFile} from './companion-context-file';
 import {ContextInput} from '../shared/companion-context';
 import {CodexReferenceSelection} from '../shared/codex-result-document';
 import {app,BrowserWindow,Tray,Menu,Notification,screen,globalShortcut,shell,clipboard,dialog,protocol,nativeImage,systemPreferences,safeStorage,powerMonitor} from 'electron';
-import {dirname,extname,isAbsolute,join} from 'node:path';
+import {dirname,join} from 'node:path';
+import {registerZenShortcut,windowsPortableLauncher,zenAppUserModelId} from './companion-windows-launcher';
 import {execFile} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync} from 'node:fs';
@@ -71,11 +74,12 @@ import {registerVaultIpc} from './companion-vault';
 import {copyVaultText} from './vault-clipboard';
 import {VaultHelloBinding,windowsVaultHello} from './vault-hello';
 protocol.registerSchemesAsPrivileged([{scheme:'zen-theme',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
-const appUserModelId='com.zen.desktop';
-app.setName('ZEN');app.setAppUserModelId(appUserModelId);
+app.setName('ZEN');
 const hoverSmoke=process.argv.includes('--zen-hover-smoke');
 const officinaSmokeProfile=hoverSmoke?process.argv.find(arg=>/^--zen-officina-profile=[a-f0-9-]{36}$/.test(arg))?.split('=')[1]:undefined;
 const smoke=hoverSmoke||process.argv.includes('--zen-shell-smoke');if(smoke){const p=join(app.getPath('temp'),'zen-companion-smoke-'+(officinaSmokeProfile??process.pid));mkdirSync(p,{recursive:true});app.setPath('userData',p);}
+const appUserModelId=smoke?`${zenAppUserModelId}.smoke`:zenAppUserModelId;
+app.setAppUserModelId(appUserModelId);
 const copiedRequests:string[]=[];const queuedRequests:{thread:string;text:string}[]=[];const copiedText:string[]=[];const openedTargets:string[]=[];const openExternal=(url:string)=>smoke?(openedTargets.push(url),Promise.resolve()):shell.openExternal(url);
 const copyText = (text: string) => { if (smoke) copiedText.push(text); else clipboard.writeText(text); };
 let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
@@ -85,6 +89,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
  app.once('quit',(_event,code)=>process.exit(code));
  void app.whenReady().then(async()=>{
   const profile=app.getPath('userData'),file=join(profile,'companion-settings.json');let settings:CompanionSettings;
+  const dailyHome=new CompanionDailyHome(profile);
   const workspaceWindow=new CompanionWorkspaceWindow(join(profile,'companion-workspace-window.json'));
   try{settings=CompanionSettingsSchema.parse(migrateWindowPreferences(JSON.parse(readFileSync(file,'utf8'))));}catch{settings=CompanionSettingsSchema.parse({});}
   const targetFile=join(profile,'companion-target.json');let target:CompanionTarget|undefined,targetError:string|undefined;
@@ -111,6 +116,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const rendererQuery={view:'capsule'};
   const rendererUrl=pathToFileURL(renderer).href+'?'+new URLSearchParams(rendererQuery);
   const nativeCaption=process.platform==='win32';
+  const portableLauncher=nativeCaption&&app.isPackaged?windowsPortableLauncher():undefined;
+  if(portableLauncher&&!smoke){
+   try{
+    registerZenShortcut(join(app.getPath('appData'),'Microsoft','Windows','Start Menu','Programs'),portableLauncher);
+   }catch(error){console.warn('No se pudo actualizar el acceso de ZEN en Inicio:',error);}
+  }
   const activeDisplay=()=>screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const fitDisplay=(saved:WorkspaceGeometry,displays=screen.getAllDisplays(),fallback=activeDisplay()):WorkspaceGeometry=>{
    const monitor=displays.find(d=>d.id===saved.displayId)??fallback;
@@ -151,9 +162,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   if(process.platform==='win32'){
    if(app.isPackaged){
     // The extracted Electron executable is temporary. Taskbar shortcuts should reopen the portable launcher.
-    const portable=process.env.PORTABLE_EXECUTABLE_FILE;
-    const launcher=portable&&isAbsolute(portable)&&extname(portable).toLowerCase()==='.exe'&&existsSync(portable)?portable:process.execPath;
-    cap.setAppDetails({appId:appUserModelId,appIconPath:launcher,relaunchCommand:`"${launcher}"`,relaunchDisplayName:'ZEN'});
+    const launcher=portableLauncher??process.execPath;
+    cap.setAppDetails({appId:appUserModelId,appIconPath:launcher,appIconIndex:0,relaunchCommand:`"${launcher}"`,relaunchDisplayName:'ZEN'});
    }
    cap.setAccentColor(false);
    try{cap.setBackgroundMaterial('none');}catch{/* Windows versions without the backdrop attribute use the solid backing. */}
@@ -210,6 +220,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    oura:privateEffectsAllowed()&&workspaceVisible('metrics')?oura.snapshot():undefined,
    ouraGlance:privateEffectsAllowed()&&!expanded&&surfaceVisible()?oura.glance():undefined,
    ouraHomeSleep:privateEffectsAllowed()&&workspaceVisible('home')?oura.homeSleep():undefined,
+   homeBrief:weatherAllowed()?dailyHome.view(new Date(),Intl.DateTimeFormat().resolvedOptions().timeZone,weather.status(),calendarRevision,
+    (range,now)=>calendar.dailyEvents(range,now)):undefined,
    activitySessions:activityVisible()?hub.activitySessions():undefined,
    appearance:appearance.status(),
    workspace:{
@@ -325,9 +337,10 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
     return preferCompanionReply(hub.lastReply(selected),local);
    },
   });
+  let calendarRevision=0;
   const calendar=new CompanionCalendar(join(profile,'companion-calendar.json'),{
    policy:()=>({visible:workspaceVisible('calendar'),allowed:privateEffectsAllowed(),target:targetError?undefined:target}),
-   queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:broadcast,
+   queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:()=>{calendarRevision++;broadcast();},
   });
   const officinaAllowed=()=>!quitting&&!desktopLocked&&privateEffectsAllowed()&&workspaceVisible('officina')&&!panelTransition.hoverClosing;
   const connectOfficina=async()=>{
@@ -356,6 +369,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    verifyProject:(projectId,cwd)=>replyReader.hasOfficinaProject(projectId,cwd),
    openChat:thread=>openExternal('codex://threads/'+thread),
    openProject:cwd=>openExternal('codex://new?path='+encodeURIComponent(cwd)),
+   openReferenceUrl:openExternal,
+   revealReference:async(file,directory)=>{
+    if(smoke){openedTargets.push(file);return;}
+    if(directory){
+     if(await shell.openPath(file)) throw Error('Windows no pudo abrir la carpeta.');
+    }else shell.showItemInFolder(file);
+   },
    copyProjectPath:copyText,
    queue:(thread,text,verify,browser)=>withRequest(async()=>{
     const wake=(url:string)=>{
@@ -386,6 +406,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   const weather=new CompanionWeather(join(profile,'companion-weather.bin'),safeStorage,{
    allowed:weatherAllowed,...(smoke?createSmokeWeather():undefined),
   });
+  const wakeHome=()=>{if(weatherAllowed()){broadcast();void weather.refresh().then(broadcast);}};
   const translator=new CompanionTranslator(join(profile,'companion-translator.bin'),safeStorage,
    ()=>privateEffectsAllowed()&&workspaceVisible('notes')&&!panelTransition.hoverClosing,
    smoke?smokeTranslatorResponse:undefined);
@@ -941,6 +962,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   };
   handle('officina',OfficinaAction,action=>officina.handle(action));
   handle('status',none,snapshot);
+  handle('dailyHome',DailyHomeAction,action=>{
+   requireWorkspace('settings');
+   if(!privateEffectsAllowed())throw Error('Desactiva Pausa o Presentación para configurar el resumen diario.');
+   if(action.type==='save')try{dailyHome.save(action.preferences);}catch{throw Error('No se pudieron guardar las preferencias del resumen diario.');}
+   return dailyHome.preferences;
+  });
   handle('calendar',CalendarAction,async action=>{
    requireWorkspace('calendar');
    if(action.type==='read')return calendar.snapshot();
@@ -1186,14 +1213,14 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');copyText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
   const officinaTicker=setInterval(()=>{if(officinaAllowed())void officina.tick();else officina.suspend();},2000);
-  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearTimeout(priorityTimer);panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);clearInterval(officinaTicker);officina.close();powerMonitor.removeListener('resume',wakeOura);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
+  const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearTimeout(priorityTimer);panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);clearInterval(officinaTicker);officina.close();powerMonitor.removeListener('resume',wakeOura);powerMonitor.removeListener('resume',wakeHome);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
   await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
   setCaptionTheme();
   if(workspaceWindow.startupMode==='workspace')enterWorkspace();
   else positionSurface();
   await readFrameInset();
   setTopmost();
-  surfaceReady=true;showCapsule(false);if(!smoke){powerMonitor.on('resume',wakeOura);wakeOura();void check();}
+  surfaceReady=true;showCapsule(false);if(!smoke){powerMonitor.on('resume',wakeOura);powerMonitor.on('resume',wakeHome);wakeOura();void check();}
   if(hoverSmoke)return;
   if(smokeMedia){try{const {companionSmoke}=await import('./companion-smoke');const result=await companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture:smokeOura!,observationFixture:smokeMedia.state,dismissOnOutsideClick,toggleSimpleMode,enableAutomaticPermissionReview:()=>{automaticPermissionReview=true;}});writeFileSync(join(profile,'smoke-result.json'),JSON.stringify({pid:process.pid,executable:process.execPath,result}));app.quit();}catch(e){console.error(e);app.exit(1);}}
  }).catch(e=>{console.error('ZEN companion startup: '+String(e));app.exit(1);});

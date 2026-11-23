@@ -1,6 +1,7 @@
 import type {CalendarAction,CalendarSnapshot,CalendarEvent,CalendarOperation} from './companion-calendar';
 import type {OuraAction,OuraGlance,OuraHomeSleep,OuraStatus} from './companion-oura';
 import type {WeatherAction,WeatherStatus} from './companion-weather';
+import type {DailyHomeAction,DailyHomePreferences,HomeBrief} from './companion-daily-home';
 import type {TranslatorAction,TranslatorReply} from './companion-translator';
 import type {OfficinaAction,OfficinaView} from './companion-officina';
 import type {CodexRequestReceipt} from './companion-request';
@@ -51,13 +52,14 @@ export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:Com
 export type CompanionApproval={id:string;session:string;turn:string;label:string;tool:string;preview:string;expiresAt:number};
 export type CompanionNotice={id:string;session:string;title:string;kind:'permission'|'finished'|'error';read:boolean;audible?:boolean;at:number};
 export type CompanionConnection={state:'unchecked'|'missing'|'review'|'disabled'|'ready'|'unavailable';checkedAt?:number;total:number;trusted:number;enabled:number};
-export type CompanionStatus={oura?:OuraStatus;ouraGlance?:OuraGlance;ouraHomeSleep?:OuraHomeSleep;appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvalCount?:number;approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
+export type CompanionStatus={oura?:OuraStatus;ouraGlance?:OuraGlance;ouraHomeSleep?:OuraHomeSleep;homeBrief?:HomeBrief;appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvalCount?:number;approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
  vault(action:import('./password-vault').VaultRequest):Promise<CompanionResult<import('./password-vault').VaultReply>>;
  onVaultSignal(callback:(signal:import('./password-vault').VaultSignal)=>void):()=>void;
  oura(action:OuraAction):Promise<CompanionResult<boolean>>;
  weather(action:WeatherAction):Promise<CompanionResult<WeatherStatus>>;
+ dailyHome(action:DailyHomeAction):Promise<CompanionResult<DailyHomePreferences>>;
  translator(action:TranslatorAction):Promise<CompanionResult<TranslatorReply>>;
  officina(action:OfficinaAction):Promise<CompanionResult<OfficinaView>>;
  appearanceSave(options:AppearanceOptions):Promise<CompanionResult<AppearanceState>>;appearanceChoose():Promise<CompanionResult<AppearanceState>>;

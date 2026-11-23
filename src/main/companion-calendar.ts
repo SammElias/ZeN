@@ -15,6 +15,7 @@ const creation=z.object({draftId:z.uuid(),requestId:z.uuid(),eventKey:z.string()
 const stored=z.object({version:z.literal(1),events:z.array(CalendarEvent).max(10000),sources:z.array(CalendarSource).max(100),
  coverage:z.array(coverage).max(200),creations:z.array(creation).max(1000).default([])});
 type Pending={operation:CalendarOperation;target:Target;sources:string[];event?:CalendarEvent;awaitingLateReply?:boolean};
+export type DailyCalendarEvent={event:CalendarEvent;source:'local'|'synchronized';at?:number};
 
 export class CompanionCalendar {
  private state:z.infer<typeof stored>={version:1,events:[],sources:[],coverage:[],creations:[]};
@@ -24,6 +25,19 @@ export class CompanionCalendar {
   try{this.state=stored.parse(JSON.parse(readFileSync(file,'utf8')));}catch{this.damaged=existsSync(file);}
  }
  get waiting(){return [...this.pending.values()].some(item=>item.operation.status==='waiting'||item.operation.status==='uncertain'||item.awaitingLateReply);}
+ /** Home only reuses recent observations from the existing calendar cache. */
+ dailyEvents(range:CalendarRange,now:number){
+  if(this.damaged)return undefined;
+  const coverage=this.state.coverage.filter(item=>item.at<=now&&now-item.at<=24*3600000&&item.range.start<range.end&&item.range.end>range.start);
+  const events=this.state.events.flatMap<DailyCalendarEvent>(event=>{
+   if(!calendarOverlaps(event,range))return [];
+   if(event.accountId==='zen-local')return [{event,source:'local' as const}];
+   const source=sourceKey({accountId:event.accountId,id:event.calendarId});
+   const at=coverage.filter(item=>item.source===source&&calendarOverlaps(event,item.range)).reduce((latest,item)=>Math.max(latest,item.at),0);
+   return at?[{event,source:'synchronized' as const,at}]:[];
+  });
+  return {events,updatedAt:coverage.reduce((latest,item)=>Math.max(latest,item.at),0)||undefined};
+ }
  private save(next:typeof this.state){
   if(this.damaged)throw Error('El calendario local contiene datos dañados. Conserva el archivo original antes de restaurar una copia.');
   const value=stored.parse(next);
@@ -75,7 +89,9 @@ export class CompanionCalendar {
    'Consulta eventos que se SOLAPAN con el intervalo (inicio incluido, fin exclusivo), recorriendo toda la paginación y expandiendo recurrencias y excepciones. '+
    'Conserva identidad de cuenta, calendario y evento. No reconstruyas la agenda del historial. No crees ni modifiques eventos. '+
    'Devuelve cada calendario consultado en coverage y marca complete=true solo si terminaste todas sus páginas. '+
-   'Incluye cancelaciones cuando las facilite el proveedor. Si careces del conector devuelve type:error. '+
+   'Incluye cancelaciones cuando las facilite el proveedor. Excluye eventos que la cuenta consultada rechazó. '+
+   'Si el proveedor los confirma, admite los campos opcionales attendance (accepted, tentative, declined), workMode (office, remote) y kind (meeting). '+
+   'Usa workMode solo con un campo o etiqueta explícitos y kind solo para reuniones identificadas. Si careces del conector devuelve type:error. '+
    'Los calendarios writable=true deben tener permiso de escritura confirmado por el proveedor.\n'+
    JSON.stringify({range,selectedSources:sources,response:{version:1,type:'events',range,
     sources:[{accountId:'identidad-real',id:'calendario-real',name:'Nombre',writable:false}],
@@ -173,14 +189,14 @@ export class CompanionCalendar {
     for(const event of reply.events){
      const source=sourceKey({accountId:event.accountId,id:event.calendarId});
      if(!sources.has(source)||!covered.has(source)||event.accountId==='zen-local'||pending.sources.length&&!pending.sources.includes(source)||
-      !calendarOverlaps({...event,cancelled:false},reply.range))
+      !calendarOverlaps({...event,cancelled:false,attendance:undefined},reply.range))
       throw Error('La respuesta contiene eventos de un calendario ajeno al intervalo consultado.');
     }
     for(const [id,event] of events){
      const key=sourceKey({accountId:event.accountId,id:event.calendarId});
      if(event.accountId!=='zen-local'&&covered.get(key)===true&&calendarOverlaps(event,reply.range))events.delete(id);
     }
-    for(const event of reply.events){if(event.cancelled)events.delete(eventKey(event));else events.set(eventKey(event),event);}
+    for(const event of reply.events){if(event.cancelled||event.attendance==='declined')events.delete(eventKey(event));else events.set(eventKey(event),event);}
     const at=Date.now();
     const ranges=this.state.coverage.filter(item=>JSON.stringify(item.range)!==JSON.stringify(reply.range)||!covered.has(item.source));
     for(const [source,complete] of covered)ranges.push({range:reply.range,source,complete,at});

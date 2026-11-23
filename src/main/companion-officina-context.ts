@@ -1,11 +1,27 @@
 import {randomUUID} from 'node:crypto';
-import {lstat, realpath} from 'node:fs/promises';
-import {basename} from 'node:path';
+import {lstat, mkdir, readFile, realpath, writeFile} from 'node:fs/promises';
+import {basename, dirname} from 'node:path';
 import {OfficinaLocalSource} from '../shared/companion-officina';
 import {normalizeTargetFolder, stripWindowsPathPrefix} from '../shared/companion-target';
 
 type Kind = 'file' | 'folder';
 export class OfficinaSourceUnavailable extends Error {}
+
+export async function prepareOfficinaFile(path: string, text: string, issue: string) {
+  try {
+    const directory = dirname(path);
+    await mkdir(directory, {recursive: true});
+    if (!(await lstat(directory)).isDirectory()) throw Error('La carpeta de contexto no es local.');
+    try {
+      await writeFile(path, text, {encoding: 'utf8', flag: 'wx'});
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    const file = await lstat(path);
+    if (file.isFile() && file.size === Buffer.byteLength(text) && await readFile(path, 'utf8') === text) return;
+  } catch { /* Report the source issue without exposing filesystem details. */ }
+  throw new OfficinaSourceUnavailable(issue);
+}
 
 async function identity(path: string, kind: Kind) {
   const info = await lstat(path, {bigint: true});

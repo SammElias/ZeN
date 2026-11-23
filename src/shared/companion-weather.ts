@@ -17,17 +17,18 @@ export const WeatherAction = z.discriminatedUnion('type', [
 ]);
 export type WeatherAction = z.infer<typeof WeatherAction>;
 
-export type WeatherForecast = {
-  temperature: number;
-  description: string;
-  icon: string;
-  low: number;
-  high: number;
-  rain: boolean;
-  rainChance?: number;
-  period: 'today' | 'tomorrow' | 'next24h';
-  updatedAt: number;
-};
+const temperature=z.number().min(-100).max(80);
+export const WeatherForecast=z.object({
+  temperature,description:z.string().min(1).max(100),icon:z.string().regex(/^\d{2}[dn]$/),
+  low:temperature,high:temperature,rain:z.boolean(),rainChance:z.number().int().min(0).max(100).optional(),
+  period:z.enum(['today','tomorrow','next24h']),updatedAt:z.number().int().nonnegative(),
+  expiresAt:z.number().int().nonnegative().optional(),windKph:z.number().nonnegative().optional(),
+}).strict();
+export type WeatherForecast=z.infer<typeof WeatherForecast>;
+
+export function isFreshWeather(forecast:WeatherForecast,now:number) {
+  return now>=forecast.updatedAt&&now<Math.min(forecast.expiresAt??Infinity,forecast.updatedAt+2*3600_000);
+}
 
 export type WeatherStatus = {
   location: WeatherLocation;

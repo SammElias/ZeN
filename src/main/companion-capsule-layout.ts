@@ -9,7 +9,7 @@ export type CapsuleLayout={bounds:Area;capsule:Area;panel?:Area};
 const clamp=(value:number,start:number,end:number)=>Math.max(start,Math.min(value,end));
 type PanelSize=Pick<Area,'width'|'height'>;
 export const simpleWorkspacePanels:Partial<Record<WorkspacePage,PanelSize>>={
- home:{width:530,height:345},
+ home:{width:530,height:415},
  calendar:{width:530,height:330},
  metrics:{width:520,height:325},
  spotify:{width:490,height:260},

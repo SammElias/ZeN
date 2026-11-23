@@ -44,9 +44,68 @@
 .companion-capsule .home-weather .home-weather-error { color: var(--zen-error); font-size: var(--zen-meta); }
 .home-weather > .home-panel-link { justify-self: start; }
 
+.home-daily-greeting { display: grid; gap: 4px; min-width: 0; }
+.home-daily-greeting h2 { font-size: clamp(19px, 3.4cqi, 27px); line-height: 1.2; letter-spacing: -.035em; }
+.home-daily-greeting p { font-size: 13px; line-height: 1.45; }
+.home-weather-scene {
+  --scene-ink: var(--accent);
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 46px;
+  color: var(--scene-ink);
+  border-radius: 15px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--scene-ink) 21%, transparent), transparent 76%);
+}
+.home-weather-scene[data-scene=sun] { --scene-ink: var(--zen-warning); }
+.home-weather-scene[data-scene=rain] { --scene-ink: var(--zen-identity); }
+.home-weather-scene[data-scene=wind] { --scene-ink: var(--glass-secondary); }
+.companion-capsule[data-theme=monochrome] .home-weather-scene { --scene-ink: var(--glass-secondary); }
+.companion-capsule .workspace-content[data-page=home] .home-weather-scene .weather-scene-back { width: 30px; height: 30px; }
+.companion-capsule .workspace-content[data-page=home] .home-weather-scene .weather-scene-front { position: absolute; width: 19px; height: 19px; right: 4px; bottom: 6px; }
+.home-weather-scene:is([data-scene=rain],[data-scene=snow]) .weather-scene-back { align-self: start; }
+.weather-drops,.weather-flakes { position: absolute; inset: auto 13px 7px; display: flex; justify-content: space-around; align-items: center; }
+.weather-drops i { width: 2px; height: 6px; border-radius: 1px; background: currentColor; transform: rotate(20deg); }
+.companion-capsule .workspace-content[data-page=home] .weather-flakes svg { width: 7px; height: 7px; }
+.companion-capsule .workspace-content[data-page=home] .home-brief-agenda {
+  display: flex;
+  width: 100%;
+  border-radius: 10px;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 6px 9px;
+  text-align: start;
+}
+.home-brief-agenda > span:first-child { display: flex; flex: 1; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.home-brief-agenda > span:first-child > span,.home-brief-agenda-label { color: var(--glass-secondary); }
+
+@media (prefers-reduced-motion: no-preference) {
+ .companion-capsule[data-motion=true] .home-daily-greeting[data-enter=true] { animation: daily-greeting-enter 260ms ease-out both; }
+ .companion-capsule[data-motion=true] .home-daily-greeting[data-visible=false] { animation-play-state: paused; }
+ .companion-capsule[data-motion=true] .home-weather-scene[data-animate=true] {
+  &[data-scene=sun] .weather-scene-back { animation: daily-weather-sun 28s linear infinite; }
+  &:is([data-scene=cloud],[data-scene=fog],[data-scene=wind]) .weather-scene-back { animation: daily-weather-drift 5s ease-in-out infinite alternate; }
+  .weather-scene-front { animation: daily-weather-drift 7s ease-in-out infinite alternate-reverse; }
+  &[data-scene=night] .weather-scene-back { animation: daily-weather-night 6s ease-in-out infinite alternate; }
+  .weather-drops i { animation: daily-weather-rain 1.8s ease-in-out infinite; }
+  .weather-flakes svg { animation: daily-weather-snow 3.5s ease-in-out infinite; }
+  :is(.weather-drops i,.weather-flakes svg):nth-child(2) { animation-delay: -.7s; }
+  :is(.weather-drops i,.weather-flakes svg):nth-child(3) { animation-delay: -1.3s; }
+ }
+}
+@keyframes daily-greeting-enter { from { opacity: .35; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes daily-weather-sun { to { transform: rotate(360deg); } }
+@keyframes daily-weather-drift { to { transform: translateX(3px); } }
+@keyframes daily-weather-night { from { opacity: .67; } to { opacity: 1; } }
+@keyframes daily-weather-rain { from { opacity: .2; transform: translateY(-2px) rotate(20deg); } to { opacity: .85; transform: translateY(3px) rotate(20deg); } }
+@keyframes daily-weather-snow { from { opacity: .45; transform: translate(-2px,-2px); } to { opacity: .85; transform: translate(2px,2px); } }
+
 @container (max-width: 390px) {
   .home-weather-settings { grid-template-columns: minmax(0, 1fr); }
   .home-weather-forecast { gap: 7px; }
   .home-weather-outlook { padding-inline-start: 8px; }
   .home-weather-range { gap: 4px 6px; }
+  .home-brief-agenda-label { display: none; }
 }

@@ -10,16 +10,52 @@ export const officinaRoles = {
 
 export const OfficinaRole = z.enum(Object.keys(officinaRoles) as (keyof typeof officinaRoles)[]);
 export type OfficinaRole = z.infer<typeof OfficinaRole>;
-export const OfficinaActor = z.enum(['coordinator', ...OfficinaRole.options]);
+export const OfficinaParticipant = z.enum(['coordinator', ...OfficinaRole.options]);
+export type OfficinaParticipant = z.infer<typeof OfficinaParticipant>;
+export const OfficinaActor = z.enum([...OfficinaParticipant.options, 'observer']);
 export type OfficinaActor = z.infer<typeof OfficinaActor>;
-export const officinaActorName = (role: OfficinaActor) => role === 'coordinator' ? 'Coordinación' : officinaRoles[role].name;
+export const officinaActorName = (role: OfficinaActor, project?: Pick<OfficinaProject, 'profiles'>) =>
+  role === 'observer' ? 'ZEN' : project?.profiles?.[role]?.name ?? (role === 'coordinator' ? 'Coordinación' : officinaRoles[role].name);
 export const OfficinaId = z.uuid();
 const text = (max: number) => z.string().trim().min(1).max(max)
   .refine(value => !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\uD800-\uDFFF]/u.test(value));
+export const officinaRoleNameLimit = 40;
+export const officinaRolePromptLimit = 1600;
+export const OfficinaRoleProfile = z.object({
+  name: text(officinaRoleNameLimit).refine(value => !/[\r\n\t]/u.test(value)),
+  prompt: text(officinaRolePromptLimit),
+}).strict();
+export type OfficinaRoleProfile = z.infer<typeof OfficinaRoleProfile>;
 export const officinaReplySummaryLimit = 700;
 export const officinaReplyMarkdownLimit = 4000;
+export const officinaMessageLimit = 800;
+export const officinaPasteLimit = 32_000;
+const pastedText = z.string().min(1).max(officinaPasteLimit)
+  .refine(value => !!value.trim() && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\uD800-\uDFFF]/u.test(value));
+export function officinaPasteTitle(value: string) {
+  return value.trimStart().split(/\r?\n/, 1)[0].replace(/^#{1,6}\s+/u, '')
+    .slice(0, 120).replace(/[\uD800-\uDBFF]$/u, '').trim() || 'Texto pegado';
+}
 const replyMarkdown = text(officinaReplyMarkdownLimit).optional();
 const response = {text: text(officinaReplySummaryLimit), markdown: replyMarkdown};
+export const officinaObserverProposalLimit = 4;
+const proposalIndex = z.number().int().min(0).max(officinaObserverProposalLimit - 1);
+const proposalFields = {title: text(120), evidence: text(500), validation: text(300)};
+const observerProposal = z.discriminatedUnion('kind', [
+  z.object({kind: z.literal('prompt'), ...proposalFields, role: OfficinaParticipant, prompt: text(officinaRolePromptLimit)}).strict(),
+  z.object({kind: z.literal('process'), ...proposalFields, recommendation: text(800)}).strict(),
+]);
+const observerReport = z.object({kind: z.literal('observation'), ...response,
+  proposals: z.array(observerProposal).max(officinaObserverProposalLimit)}).strict();
+const observerFollowupReport = z.object({kind: z.literal('followup'), ...response,
+  outcome: z.enum(['done', 'limited'])}).strict();
+const observerReview = z.object({
+  id: OfficinaId, scope: OfficinaId.optional(), at: z.number(), source: z.literal('monitor').optional(),
+  baseline: z.partialRecord(OfficinaParticipant, text(officinaRolePromptLimit)).optional(),
+  report: observerReport.optional(),
+  decisions: z.array(z.object({index: proposalIndex, status: z.enum(['approved', 'rejected']), at: z.number()})).max(officinaObserverProposalLimit).optional(),
+});
+export type OfficinaObserverReview = z.infer<typeof observerReview>;
 const attachment = z.object({version: text(100), link: text(360), next: text(360)}).strict();
 export const OfficinaTaskFields = z.object({
   title: text(120), objective: text(800), criteria: text(800), owner: OfficinaRole,
@@ -31,7 +67,7 @@ export type OfficinaTaskStatus = z.infer<typeof OfficinaTaskStatus>;
 export const OfficinaContribution = z.discriminatedUnion('kind', [
   z.object({kind: z.literal('progress'), ...response}).strict(),
   z.object({kind: z.literal('decision'), ...response, replyTo: OfficinaId.optional()}).strict(),
-  z.object({kind: z.literal('blocker'), ...response}).strict(),
+  z.object({kind: z.literal('blocker'), ...response, replyTo: OfficinaId.optional()}).strict(),
   z.object({kind: z.literal('question'), ...response, to: OfficinaRole, act: z.boolean()}).strict(),
   z.object({kind: z.literal('answer'), ...response, replyTo: OfficinaId}).strict(),
   z.object({kind: z.literal('handoff'), ...response, to: OfficinaRole, act: z.boolean(), artifact: attachment}).strict(),
@@ -60,13 +96,21 @@ const provision = z.object({
   pending: z.object({role: OfficinaActor, thread: OfficinaId.optional()}).optional(), issue: text(700).optional(),
 });
 export type OfficinaTeam = z.infer<typeof provision>;
-export const OfficinaStep = z.object({role: OfficinaRole, instruction: text(500)}).strict();
+export const officinaStepInstructionLimit = 800;
+export const OfficinaStep = z.object({role: OfficinaRole, instruction: text(officinaStepInstructionLimit)}).strict();
 export type OfficinaStep = z.infer<typeof OfficinaStep>;
+const goalMessage = z.object({
+  from: z.enum(['human', 'codex', 'zen']), text: text(900), markdown: replyMarkdown,
+  reply: z.object({run: OfficinaId, kind: z.enum(['plan', 'complete', 'limited', 'question'])}).optional(),
+});
+export type OfficinaGoalMessage = z.infer<typeof goalMessage>;
 const goal = z.object({
-  task: OfficinaId, request: text(800), steps: z.array(OfficinaStep).max(20), cursor: z.number().int().min(0),
-  round: z.number().int().min(0), history: z.array(z.object({from: z.enum(['human', 'codex', 'zen']), text: text(900), markdown: replyMarkdown})).max(32),
+  task: OfficinaId, request: text(officinaMessageLimit), steps: z.array(OfficinaStep).max(20), cursor: z.number().int().min(0),
+  round: z.number().int().min(0), history: z.array(goalMessage).max(32),
   phase: z.enum(['plan', 'work', 'verify', 'complete']), outcome: z.literal('limited').optional(), question: text(700).optional(),
+  recipient: OfficinaRole.optional(),
   files: z.array(OfficinaLocalSource).max(officinaMaxFiles).optional(),
+  pastedText: pastedText.optional(),
 });
 export type OfficinaGoal = z.infer<typeof goal>;
 const task = OfficinaTaskFields.extend({id: OfficinaId, status: OfficinaTaskStatus});
@@ -81,13 +125,16 @@ const run = z.object({
   state: z.enum(Object.keys(officinaRunLabels) as (keyof typeof officinaRunLabels)[]),
   step: z.number().int().nonnegative().optional(), destination: destination.optional(),
   sentAt: z.number().optional(), turn: z.string().max(160).optional(), issue: z.string().optional(),
+  followup: z.object({review: OfficinaId, index: proposalIndex, result: observerFollowupReport.optional()}).optional(),
 });
 export type OfficinaRun = z.infer<typeof run>;
 export type OfficinaRunIdentity = {project: string; task: string; role: OfficinaActor; run: string};
-export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number};
+export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number; turn?: string};
 export const OfficinaProject = z.object({
   id: OfficinaId, name: text(120), binding: OfficinaBinding.optional(), team: provision.optional(),
   folder: OfficinaLocalSource.optional(),
+  profiles: z.partialRecord(OfficinaActor, OfficinaRoleProfile).optional(),
+  reviews: z.array(observerReview).max(450).optional(),
   goals: z.array(goal).max(100).optional(),
   tasks: z.array(task).max(150), events: z.array(OfficinaEvent).max(1800), runs: z.array(run).max(450),
 });
@@ -97,20 +144,32 @@ export type OfficinaView = {
   project?: OfficinaProject;
   activity?: OfficinaRunActivity;
   enabled: boolean;
+  observerQueued?: string[];
   dispatchBlock?: string;
-  context?: {folder?: SourceLabel; files: SourceLabel[]};
+  context?: {folder?: SourceLabel; folderProject?: string; files: SourceLabel[]};
 };
 
 export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('read')}).strict(),
   z.object({type: z.literal('select'), project: OfficinaId}).strict(),
   z.object({type: z.literal('project'), name: text(120)}).strict(),
-  z.object({type: z.literal('chat'), name: text(120), message: text(800), id: OfficinaId}).strict(),
+  z.object({type: z.literal('chat'), project: OfficinaId.nullable().optional(), role: OfficinaParticipant.optional(),
+    name: text(120), message: text(officinaMessageLimit).optional(), pastedText: pastedText.optional(), id: OfficinaId})
+    .strict().refine(value => !!(value.message || value.pastedText)),
   z.object({type: z.literal('pick-context'), kind: z.enum(['folder', 'file'])}).strict(),
   z.object({type: z.literal('remove-context'), id: OfficinaId}).strict(),
   z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700)}).strict(),
+  z.object({type: z.literal('retry-closure'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('resume-browser-review'), project: OfficinaId, task: OfficinaId}).strict(),
   z.object({type: z.literal('open-team-chat'), project: OfficinaId, role: OfficinaActor}).strict(),
+  z.object({type: z.literal('role-profile'), project: OfficinaId, role: OfficinaActor, profile: OfficinaRoleProfile.nullable()}).strict(),
+  z.object({type: z.literal('observe-team'), project: OfficinaId, id: OfficinaId, task: OfficinaId.optional()}).strict(),
+  z.object({type: z.literal('decide-observation'), project: OfficinaId, id: OfficinaId, index: proposalIndex,
+    decision: z.enum(['approved', 'rejected'])}).strict(),
+  z.object({type: z.literal('follow-observation'), project: OfficinaId, id: OfficinaId, index: proposalIndex}).strict(),
+  z.object({type: z.literal('open-run-chat'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
+  z.object({type: z.literal('open-reference'), project: OfficinaId, task: OfficinaId.optional(),
+    target: text(2048), mode: z.enum(['browser', 'editor', 'explorer'])}).strict(),
   z.object({type: z.literal('open-team-project'), project: OfficinaId}).strict(),
   z.object({type: z.literal('copy-team-project-path'), project: OfficinaId}).strict(),
   z.object({type: z.literal('bind'), project: OfficinaId, binding: OfficinaBinding}).strict(),
@@ -135,6 +194,11 @@ export const OfficinaCoordinatorResult = z.object({
   ]),
 }).strict();
 export type OfficinaCoordinatorResult = z.infer<typeof OfficinaCoordinatorResult>;
+export const OfficinaObserverResult = z.object({
+  project: OfficinaId, task: OfficinaId, run: OfficinaId, role: z.literal('observer'),
+  result: z.discriminatedUnion('kind', [observerReport, observerFollowupReport]),
+}).strict();
+export type OfficinaObserverResult = z.infer<typeof OfficinaObserverResult>;
 
 export const officinaEventLabels = {
   progress: 'Avance', decision: 'Resolución', blocker: 'Limitación',

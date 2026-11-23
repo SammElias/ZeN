@@ -6,7 +6,10 @@ export function displayStatus(raw:CompanionStatus,revision:number,visible:boolea
  const value=structuredClone(raw);value.revision=revision;
  const privateView=visible&&!value.settings.presentation&&!value.settings.paused;
  if(!privateView||!value.workspace?.expanded||value.workspace.page!=='metrics')delete value.oura;
- if(!privateView||!value.workspace?.expanded||value.workspace.page!=='home')delete value.ouraHomeSleep;
+ if(!privateView||!value.workspace?.expanded||value.workspace.page!=='home'){
+  delete value.ouraHomeSleep;
+  delete value.homeBrief;
+ }
  if(!privateView||value.workspace?.expanded)delete value.ouraGlance;
  const showActivity=visible&&value.workspace?.expanded&&isLauncherPageSelected(value.workspace.page,'codex')&&!value.settings.presentation&&!value.settings.paused;
  if(!showActivity)delete value.activitySessions;

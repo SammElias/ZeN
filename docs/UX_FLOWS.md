@@ -1,5 +1,7 @@
 # Flujos de usuario
 
+[Diagramas de arquitectura y Officina](diagrams/index.html)
+
 **HUB → Contraseñas.** La primera apertura explica que la maestra será necesaria para recuperar el acceso a las cuentas y pide crearla y confirmarla. Las siguientes muestran solo el desbloqueo; hover nunca descifra. Tras una acción explícita aparecen un buscador local, Nuevo proyecto y proyectos plegables con contador y Añadir cuenta. Se admiten servicios repetidos y edición independiente por cuenta. Renombrar y eliminar proyecto se ofrecen en su menú; eliminar muestra el total de cuentas y requiere confirmación. Las filas mantienen Copiar usuario, Copiar contraseña y el ojo; Editar y Eliminar están en el menú secundario.
 
 Con la bóveda abierta, **Windows Hello** permite activar el acceso local tras confirmar la maestra y completar los avisos de Windows. A partir de ahí, **Desbloquear con Windows Hello** aparece junto al formulario de contraseña maestra. Cancelar el diálogo deja la bóveda bloqueada. El mismo menú dentro de la bóveda permite desactivar Windows Hello.
@@ -24,17 +26,29 @@ Las claves usan una máscara fija de ocho puntos, también al editar: se conserv
 
 ## 02 · Pedir, revisar y continuar ![](assets/azul.svg)
 
-**Officina** se abre desde la cápsula con el tamaño habitual de la ventana de ZEN. Elige o crea un proyecto en la cabecera. Los cinco puestos abren sus fichas y la mesa abre el tablero. Los puntos cian de las conexiones registradas abren la pregunta, respuesta o entrega correspondiente. En **Último traspaso → Ver tarea** se consulta la versión, el paso siguiente y el resultado de QA.
+**Officina** se abre desde la cápsula con el tamaño habitual de la ventana de ZEN. Elige o crea un proyecto en la cabecera. Selecciona un especialista o la mesa de **Coordinación** desde el plano o **Equipo**. Ambos resaltan el mismo puesto. Debajo del plano puedes consultar sus encargos, abrir su ficha o revisar el tablero desde Coordinación. Los puntos cian abren la actividad registrada en cada conexión.
 
 Cada ficha de puesto describe su personalidad y su rutina cuando queda libre. Al empezar a trabajar en Codex, el puesto deja la rutina y su pantalla acelera. Al terminar o cuando necesita atención, la pantalla queda fija. La llegada de un traspaso enciende brevemente el monitor del puesto que lo recibe.
 
-Escribe en el campo fijo de abajo, visible desde **Equipo** y **Chat global**. Si todavía no hay un proyecto seleccionado, el campo pide el nombre. **Enviar** abre el historial junto al plano. Officina deduce qué resultado cumple tu petición, crea o reutiliza su proyecto en Codex y prepara los cinco puestos y Coordinación. En **Chats en Codex** están los accesos a los chats de los puestos y a la carpeta del proyecto.
+Escribe en el campo fijo de abajo, visible desde **Equipo** y **Chat global**. Comprueba el destinatario indicado junto al campo. **Para Coordinación** inicia la coordinación del objetivo. Si seleccionas un especialista, el puesto recibe el primer encargo directamente. Pasar el ratón sobre un escritorio solo muestra su actividad. En **Chat global** también puedes elegir el destinatario desde el campo de envío. **Enviar** abre la conversación del nuevo encargo. Si todavía no hay un proyecto seleccionado, el campo pide el nombre. En **Chats en Codex** están los accesos a los chats de los puestos y a la carpeta del proyecto.
 
-Pulsa **Elegir carpeta de trabajo** y selecciona la raíz del proyecto que quieres analizar. Al enviar el objetivo, los chats de Codex trabajan desde esa carpeta y pueden recorrer sus subcarpetas. Un tablero que ya tiene chats vinculados a otra raíz conserva su historial y Officina selecciona el proyecto de la carpeta elegida. Con **Adjuntar archivos** puedes añadir hasta ocho al próximo encargo. Los adjuntos enviados aparecen en su historial y puedes retirar los que aún estén en el borrador.
+Pulsa **Elegir carpeta de trabajo** y selecciona la raíz del proyecto que quieres analizar. Al enviar el objetivo, los chats de Codex trabajan desde esa carpeta y pueden recorrer sus subcarpetas. Si la carpeta elegida corresponde a otro proyecto, el campo de envío muestra su nombre antes de cambiar de tablero. Con **Adjuntar archivos** puedes añadir hasta ocho al próximo encargo. Los adjuntos enviados aparecen en su historial y puedes retirar los que aún estén en el borrador.
 
-En **Equipo**, cada puesto y Coordinación muestran su encargo y su estado. La señal cian que recorre la conexión de un puesto indica que Codex ya empezó su turno. **Aprobación pendiente** aparece cuando el turno tiene una solicitud de permiso abierta en Codex. Desde ahí puedes abrir **Permisos de Codex**. Cuando el equipo concluye, **Chat global** muestra **Objetivo completado** o **Cerrado con limitaciones**, junto con el resultado guardado. Pulsa un puesto para abrir el encargo o su chat. **Chats en Codex → Añadir a Proyectos de Codex** incluye **Copiar ruta de la carpeta** para registrarla como origen en Codex.
+En **Equipo**, Coordinación muestra qué asignó y cada puesto indica cuándo dejó un resultado. **Ver resultado** abre la aportación de ese puesto dentro de Officina. Para una respuesta antigua que falta, **Consultar resultado** indica su ausencia y ofrece **Abrir en Codex** si se conoce su chat. La señal cian indica que Codex empezó un turno. Desde la mesa puedes ver quién espera una respuesta y si hace falta aportar información o revisar una aprobación.
 
-La **Conclusión** aparece destacada en cada encargo. En **Respuestas del equipo**, abre la ficha de un puesto para leer su aportación. Las respuestas admiten encabezados, listas, tablas y código.
+En un informe o un traspaso, pulsa la ruta de un archivo y elige **Abrir en VS Code** o **Mostrar en el Explorador**. El editor usa la línea indicada cuando el enlace la incluye. Si el enlace apunta a una carpeta, puedes abrirla en el Explorador. Las URL web se abren en el navegador predeterminado.
+
+El aviso situado sobre el equipo o la conversación indica el encargo y el siguiente paso. **Tu autorización es necesaria** aparece cuando Codex solicita un permiso y lleva a su revisión. **Cierre de Coordinación pendiente** muestra la versión aprobada por QA, cuando consta, y **Reintentar cierre** usa los informes que ya están guardados. **Ver informes** abre el detalle de la tarea.
+
+**Chat global** ocupa el panel de Officina y muestra una conversación por encargo. El selector superior permite consultar los anteriores del proyecto. Cada mensaje del equipo identifica al autor y muestra un resumen de su asignación, decisión, entrega o resultado. Pulsa el mensaje para abrir su aportación completa con encabezados, listas, tablas y código. **Ver tarea** abre los pasos y el historial detallado. **Chats en Codex → Añadir a Proyectos de Codex** incluye **Copiar ruta de la carpeta** para registrarla como origen en Codex.
+
+Para adaptar la oficina, selecciona un puesto y pulsa **Editar puesto** en su ficha de actividad. El selector del diálogo incluye los seis puestos operativos y ZEN. El nombre visible se usa en el plano, Equipo y el campo de envío. Las instrucciones personalizadas se usan en los próximos turnos de ese proyecto. **Restaurar perfil predeterminado** recupera la configuración de desarrollo de aplicaciones del puesto. **Reglas fijas y formato de las respuestas** muestra las instrucciones comunes de permisos y Markdown.
+
+Selecciona **ZEN** en la parte superior del plano o en **Equipo**. Elige una tarea con actividad guardada o las seis más recientes y pulsa **Revisar actividad**. **Instrucciones** muestra su mandato de observación. **Ver propuestas** abre el informe, la evidencia y la forma de comprobar cada mejora. Para autorizar un cambio de prompt, abre **Comparar prompts** y pulsa **Aplicar prompt**. Si el texto cambió desde la revisión, solicita una nueva. **Aprobar e iniciar seguimiento** encarga a ZEN la comprobación o preparación de la recomendación aprobada. Las aprobaciones anteriores se pueden recuperar con **Iniciar seguimiento**. **Ver seguimiento** muestra el progreso y el resultado en Equipo y Chat global. También puedes **Descartar** cada propuesta.
+
+**ZEN detectó una incidencia** aparece en Equipo y Chat global cuando una respuesta terminada requiere revisión o un puesto deja una limitación ligada a una entrega. **Ver propuesta** abre la evidencia y la mejora sugerida. Si la respuesta quedó fuera del formato de Officina, **Abrir respuesta en Codex** lleva al chat del encargo.
+
+Al pegar texto que supera el límite de 800 caracteres del mensaje, Officina lo pliega en una tarjeta de hasta 32.000 caracteres. **Mostrar en el campo de texto** permite editarlo antes de enviar. Se puede enviar solo o con un mensaje breve. El historial conserva la tarjeta y permite leer el texto completo.
 
 Para revisar las pestañas abiertas de tu navegador habitual, pide en el objetivo la extensión de ChatGPT y el nombre del navegador si lo conoces. El Analista empieza por las pestañas accesibles. Las demás consultas usan el navegador integrado por defecto. Cuando Codex solicite acceso a un sitio o iniciar sesión, atiende la solicitud en Codex. Los encargos anteriores de revisión que quedaron esperando capturas muestran **Asignar revisión al Analista**.
 
@@ -54,6 +68,10 @@ Los proyectos previos con vínculo manual conservan su tablero y su historial. *
 En Home, las píldoras de **Codex**, **HUB** y **Sonido** abren la actividad o los permisos, la biblioteca y el reproductor, respectivamente. Sonido indica el título y si hay una sesión en reproducción o en pausa.
 
 **Clima** muestra la temperatura actual y la previsión de Dublín por defecto. Consulta la máxima, la mínima y la lluvia del resto de hoy o de mañana, según los tramos disponibles. En **Configurar clima** puedes elegir otra ciudad indicando su país, por ejemplo «Madrid, ES». Una instalación nueva solicita la clave de OpenWeather una vez.
+
+El saludo cambia con la hora de Windows. El consejo usa el pronóstico vigente y el panel identifica una previsión anterior cuando ya ha caducado. **Ver calendario** lleva a la agenda desde el próximo compromiso disponible. Home muestra su fecha y hora y reserva los títulos y las descripciones para Calendario.
+
+En **Preferencias → Resumen diario**, puedes desactivar el saludo, la agenda o las animaciones meteorológicas. Configura días habituales de oficina y excepciones por fecha. Un campo confirmado o las etiquetas `[oficina]` y `[teletrabajo]` identifican un evento explícito. Una rutina o una mención en texto aparecen como previsión o indicio. Si hay confirmaciones incompatibles, Home muestra «Modalidad sin confirmar».
 
 La tarjeta **Sueño** muestra la duración, la puntuación y la fecha de la última noche registrada por Oura. Si queda pendiente la sincronización de anoche, indica la fecha del dato disponible. **Ver métricas** abre la sección de Métricas con el historial.
 
@@ -148,7 +166,7 @@ Los destinos externos aparecen cuando Codex devuelve sus identidades y permiso d
 
 Pega el **Client ID** y pulsa **Conectar Oura**. ZEN lo recuerda en este equipo y lo rellena al volver a conectar. **Desconectar Oura** elimina la sesión y las métricas guardadas. El Client ID sigue disponible para reconectar.
 
-**Hoy** muestra las últimas medidas disponibles de Sueño, Disposición y Actividad. Cada tarjeta indica su día local de Oura y su última consulta correcta. Selecciona una tarjeta para ver siete días. Un hueco indica que ese valor aún no está disponible.
+**Hoy** muestra las últimas medidas disponibles de Sueño, Disposición y Actividad. Cada tarjeta indica su día local de Oura y su última consulta correcta. Selecciona una tarjeta para ver los últimos siete días, con el más reciente arriba. Un hueco indica que ese valor aún no está disponible.
 
 Si falta el sueño principal asignado a hoy, la tarjeta indica «Sueño de anoche pendiente de sincronizar» y fecha la última noche disponible. Abre Oura en el móvil para sincronizar el anillo. ZEN consulta automáticamente los recursos con datos pendientes en intervalos de cinco minutos y espacia los reintentos si hay errores. **Actualizar** consulta Oura Cloud. La selección de una tarjeta o el acceso desde la cápsula usa la caché.
 

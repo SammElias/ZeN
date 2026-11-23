@@ -1,5 +1,7 @@
 # Seguridad y privacidad
 
+[Diagramas de arquitectura y Officina](diagrams/index.html)
+
 **Bóveda de Contraseñas.** `passwords.kdbx` se abre con la contraseña maestra. Todo el contenido, incluidos proyectos, servicios y usuarios, queda cifrado. Una clave errónea o un archivo dañado nunca inicia una bóveda nueva sobre la anterior. Se abre bloqueada desde **HUB → Contraseñas**. La sesión se revoca al cambiar de sección, replegar, minimizar, ocultar, cerrar, suspender, activar Pausa/Presentación o recibir `lock-screen`. El candado de posición no desbloquea ni conserva abierta la bóveda. Perder foco oculta lo revelado. El ojo tiene un máximo de diez segundos y una sola cuenta visible. Las transiciones eliminan primero el valor saliente.
 
 **Windows Hello.** El usuario puede activarlo desde una bóveda abierta tras verificar de nuevo la contraseña maestra. El archivo local `passwords-hello.json` contiene el componente de contraseña de KDBX cifrado con AES-256-GCM y los parámetros necesarios para abrirlo en ese equipo. Para nuevas activaciones, la clave AES es aleatoria y se envuelve con una clave RSA local no exportable del proveedor Microsoft Passport. El auxiliar comprueba la política de verificación obligatoria de la clave y rechaza claves que permitan descifrado silencioso. Las activaciones anteriores basadas en WebAuthn PRF siguen abriendo con su credencial original. Main controla la operación y cancela o rechaza resultados tardíos al bloquear la bóveda. La contraseña maestra sigue sirviendo para abrir el KDBX en cualquier equipo. [Almacenamiento de claves CNG](https://learn.microsoft.com/en-us/windows/win32/seccng/cng-key-storage-functions) · [Extensión PRF](https://www.w3.org/TR/webauthn-3/#prf-extension).
@@ -23,7 +25,9 @@ La tarjeta automática se abre solo en el escritorio desbloqueado y fuera de Pau
 
 ## 03 · Secretos y conexiones ![](assets/ambar.svg)
 
-Clima guarda la clave de OpenWeather y la ciudad en un archivo cifrado mediante `safeStorage` del perfil local. La clave se usa en main para consultas HTTPS al proveedor. El estado de Clima devuelve ciudad y pronóstico. Al salir de Home o activar Pausa o Presentación se cancela la consulta. El respaldo portable excluye esa configuración cifrada.
+Clima guarda la clave de OpenWeather, la ciudad y la última previsión en un archivo cifrado mediante `safeStorage` del perfil local. La clave se usa en main para consultas HTTPS al proveedor. El estado de Clima devuelve ciudad y pronóstico. Al salir de Home o activar Pausa o Presentación se cancela la consulta. El respaldo portable excluye ese archivo cifrado.
+
+El resumen diario se genera localmente. Main entrega a Home visible solo el saludo, el consejo y los campos de agenda necesarios para la vista. Pausa y Presentación ocultan el resumen. La caché guarda texto y una huella, sin títulos, descripciones ni identificadores de eventos. Los datos del resumen quedan fuera de Codex, los diagnósticos y las copias portables.
 
 Traductor guarda la clave de Azure en el perfil local con `safeStorage`. Main acepta traducciones con HUB visible y fuera de Pausa y Presentación. La petición HTTPS envía solo el texto introducido al endpoint Global de Azure al pulsar Traducir. ZEN cancela la consulta al salir y excluye la clave y los textos de los diagnósticos, las peticiones de Codex y los respaldos.
 
@@ -46,6 +50,18 @@ El pipe local usa un token guardado en el perfil de ZEN. Se excluye de repositor
 | Perfil compartido | Main autoriza desde Preferencias y usa AES-256-GCM para los archivos de Syncthing. El código aleatorio se protege con el almacén seguro de Windows. La bóveda usa una activación separada y conserva su cifrado KDBX dentro del archivo de transporte. Pausa y Presentación detienen el intercambio. |
 
 Las carpetas de trabajo y los archivos de Officina se eligen mediante el selector nativo. Main conserva su ruta canónica e identidad local, y comprueba que las fuentes sigan disponibles antes de cada turno. Los chats de equipo se crean con el sandbox de solo lectura y el revisor humano. Los nombres y las rutas quedan en el tablero local y en el contexto de los chats que trabajan en el encargo. Codex lee los contenidos desde el disco.
+
+Consultar un resultado de Officina usa el tablero local sin despachar turnos. Para abrirlo en Codex, Main comprueba el proyecto visible, la tarea, la ejecución y la conversación guardada al enviar ese encargo.
+
+Para abrir una referencia de un informe, Main comprueba el proyecto visible y la tarea. Solo admite rutas locales existentes dentro de la carpeta de trabajo o archivos adjuntados explícitamente a esa tarea. Resuelve la ruta real antes de abrirla para bloquear escapes mediante enlaces o uniones de directorios. El comando para el editor se construye con la ruta comprobada y las URL web se limitan a HTTP y HTTPS.
+
+Los perfiles personalizados se conservan en el tablero de su proyecto. Main verifica el proyecto visible al guardar. Las instrucciones del puesto viajan como contexto del siguiente turno y se aplican con los permisos y el contrato de respuesta vigentes de Codex.
+
+Main materializa el texto pegado desde el objetivo guardado y verifica su contenido antes de cada turno. El archivo queda en el perfil local. El texto se usa dentro de los permisos de Codex para el encargo que lo recibió.
+
+Main prepara y verifica los informes locales que completan un turno largo. El aviso de permisos de Officina se correlaciona con el chat y el turno observados. Las decisiones sobre permisos se siguen tomando en el circuito de Codex.
+
+El chat de ZEN se crea en solo lectura con elevación desactivada. El encargo identifica un archivo de evidencia acotado al tablero del proyecto. El contrato de respuesta reserva las asignaciones y traspasos a los puestos operativos. Solo la acción explícita del usuario puede aplicar un prompt, tras comprobar que la propuesta sigue pendiente y que el texto revisado está vigente. Main exige que conste la aprobación exacta para enviar un seguimiento. El seguimiento admite comprobaciones de lectura y preparación de cambios para revisión, con el mismo sandbox de ZEN.
 
 ## 05 · Verificar y diagnosticar ![](assets/verde.svg)
 

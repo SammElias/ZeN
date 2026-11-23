@@ -14,6 +14,8 @@ export const CalendarEvent=z.object({
  id:z.string().min(1).max(500),accountId:z.string().min(1).max(300),calendarId:z.string().min(1).max(500),
  title:z.string().trim().min(1).max(240),start:z.string().max(80),end:z.string().max(80),allDay:z.boolean(),timeZone:zone,
  description:text.default(''),location:z.string().max(500).default(''),cancelled:z.boolean().default(false),
+ attendance:z.enum(['accepted','tentative','declined']).optional(),
+ workMode:z.enum(['office','remote']).optional(),kind:z.literal('meeting').optional(),
 }).strict().refine(event=>event.allDay
  ?calendarDate.safeParse(event.start).success&&calendarDate.safeParse(event.end).success&&event.end>event.start
  :[event.start,event.end].every(value=>/T.*(?:Z|[+-]\d\d:\d\d)$/.test(value)&&Number.isFinite(Date.parse(value)))&&Date.parse(event.end)>Date.parse(event.start));
@@ -111,7 +113,7 @@ function calendarDayStart(date:string,timeZone:string) {
  dayStarts.set(key,after);return after;
 }
 export function calendarOverlaps(event:CalendarEvent,range:CalendarRange) {
- if(event.cancelled)return false;
+ if(event.cancelled||event.attendance==='declined')return false;
  if(event.allDay)return event.start<range.end&&event.end>range.start;
  const start=calendarDayStart(range.start,range.timeZone),end=calendarDayStart(range.end,range.timeZone);
  return start<end&&Date.parse(event.start)<end&&Date.parse(event.end)>start;
@@ -121,7 +123,7 @@ export function nextCalendarEvent(events:readonly CalendarEvent[],now:Date,timeZ
  const today=calendarDateInZone(now,timeZone);
  let timed:CalendarEvent|undefined,allDay:CalendarEvent|undefined,nearest=Infinity;
  for(const event of events){
-  if(event.cancelled)continue;
+  if(event.cancelled||event.attendance==='declined')continue;
   if(event.allDay){
    if(event.start>today&&(!allDay||event.start<allDay.start))allDay=event;
    continue;

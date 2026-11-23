@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {describe,expect,it,vi} from 'vitest';
 import {CompanionWeather} from '../src/main/companion-weather';
 import {OpenWeatherError,readOpenWeather} from '../src/main/openweather-api';
-import {dublinWeather,weatherRefreshMs} from '../src/shared/companion-weather';
+import {dublinWeather,isFreshWeather,weatherRefreshMs} from '../src/shared/companion-weather';
 
 const key = 'f'.repeat(32);
 const forecastRow = (time:string,temp:number,id=800,pop=0) => ({
@@ -36,6 +36,7 @@ describe('OpenWeather summary',()=>{
     const result=await readOpenWeather(dublinWeather,key,new AbortController().signal,Date.parse('2026-07-20T22:40:00Z'),http as unknown as typeof fetch);
     expect(result).toMatchObject({period:'tomorrow',low:11,high:19,rain:false});
     expect(result.rainChance).toBeUndefined();
+    expect(isFreshWeather(result,Date.parse('2026-07-20T23:00:00Z'))).toBe(false);
   });
 
   it('returns a sanitized authorization error and refuses redirects',async()=>{
@@ -69,7 +70,7 @@ describe('weather profile and privacy',()=>{
       expect(stale).toMatchObject({forecast:configured.forecast,error:'Consultas limitadas'});
       expect(await weather.refresh(true)).toEqual(stale);
       expect(read).toHaveBeenCalledTimes(2);
-      expect(new CompanionWeather(file,protection,options).status()).toMatchObject({configured:true,location:dublinWeather});
+      expect(new CompanionWeather(file,protection,options).status()).toMatchObject({configured:true,location:dublinWeather,forecast:configured.forecast});
     } finally { rmSync(folder,{recursive:true,force:true}); }
   });
 

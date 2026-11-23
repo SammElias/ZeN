@@ -23,6 +23,9 @@
   .home-brand-mark .zen-emblem { width: 21px; height: 21px; }
   .home-panel, .home-status button.home-date { padding: 8px 10px; border-radius: 12px; }
   .home-weather { gap: 6px; }
+  .home-daily-greeting h2 { font-size: 19px; }
+  .home-daily-greeting p { font-size: 12px; }
+  .home-weather-scene { width: 42px; height: 39px; }
   .home-weather-current strong { font-size: 29px; }
   .home-weather-outlook { gap: 3px; }
   .home-weather-footer { padding-top: 5px; }

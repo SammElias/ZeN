@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Officina · Límites de datos",
+    "output": "docs/diagrams/limites-de-datos.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "repository": {
+      "url": "https://github.com/SammElias/ZeN.git",
+      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
+      "link_mode": "local-only"
+    },
+    "viewBox": [
+      1080,
+      480
+    ]
+  },
+  "stages": [
+    {
+      "label": "Entrada local"
+    },
+    {
+      "label": "Autorización"
+    },
+    {
+      "label": "Persistencia y destino"
+    },
+    {
+      "label": "Lectura"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Ventana ZEN",
+      "sublabel": "Objetivo y contexto",
+      "sources": [
+        {
+          "path": "src/renderer/CodexCompanion.tsx",
+          "line": 396,
+          "end_line": 407
+        }
+      ],
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "sources",
+      "type": "external",
+      "label": "Archivos elegidos",
+      "sublabel": "Carpeta y adjuntos",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 320,
+          "end_line": 330
+        }
+      ],
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "Main",
+      "sublabel": "Vista, destino y ruta",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 113,
+          "end_line": 122
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 517,
+          "end_line": 539
+        }
+      ],
+      "stage": 1,
+      "row": 0,
+      "yOffset": 9
+    },
+    {
+      "id": "codex",
+      "type": "external",
+      "label": "Chat de Codex",
+      "sublabel": "Encargo correlacionado",
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 360,
+          "end_line": 369
+        }
+      ],
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite de Officina",
+      "sublabel": "Tablero local",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 58,
+          "end_line": 96
+        }
+      ],
+      "stage": 2,
+      "row": 1
+    },
+    {
+      "id": "history",
+      "type": "database",
+      "label": "Registro de Codex",
+      "sublabel": "Lectura local",
+      "sources": [
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 561,
+          "end_line": 588
+        }
+      ],
+      "stage": 3,
+      "row": 0
+    }
+  ],
+  "flows": [
+    {
+      "id": "ui-gate",
+      "label": "Acción IPC",
+      "variant": "security",
+      "from": "ui",
+      "to": "gate"
+    },
+    {
+      "id": "sources-gate",
+      "label": "Rutas verificadas",
+      "variant": "security",
+      "from": "sources",
+      "to": "gate"
+    },
+    {
+      "id": "gate-codex",
+      "label": "Encargo autorizado",
+      "variant": "emphasis",
+      "from": "gate",
+      "to": "codex"
+    },
+    {
+      "id": "gate-sqlite",
+      "label": "Estado local",
+      "variant": "default",
+      "from": "gate",
+      "to": "sqlite"
+    },
+    {
+      "id": "codex-history",
+      "label": "Turno y respuesta",
+      "variant": "dashed",
+      "from": "codex",
+      "to": "history"
+    }
+  ],
+  "cards": [
+    {
+      "title": "IMPLEMENTADO",
+      "dot": "cyan",
+      "items": [
+        "Los archivos seleccionados se vuelven a verificar antes de enviar. El revisor humano resuelve las solicitudes de permisos."
+      ]
+    },
+    {
+      "title": "Correlación",
+      "dot": "violet",
+      "items": [
+        "Main consulta el historial local y exige proyecto, tarea, ejecución y puesto antes de aplicar un resultado."
+      ]
+    }
+  ]
+}

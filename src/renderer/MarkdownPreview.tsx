@@ -1,8 +1,10 @@
 import React, {lazy, Suspense} from 'react';
 
-type MarkdownProps = {
+export type MarkdownProps = {
   text: string; className: string; open?: (url: string) => void;
   renderCode?: (text: string, language: string) => React.ReactNode;
+  renderLink?: (url: string, children: React.ReactNode) => React.ReactNode;
+  renderInlineCode?: (text: string) => React.ReactNode;
 };
 
 function PlainText({text, className}: MarkdownProps) {

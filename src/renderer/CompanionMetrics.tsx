@@ -23,7 +23,7 @@ function measures(metric:OuraMetric){
 }
 
 function OuraHistory({metric,status}:{metric:OuraMetric;status:OuraStatus}){
- const days=ouraWeek(status.cache,metric,status.today),series=measures(metric);
+ const days=ouraWeek(status.cache,metric,status.today).reverse(),series=measures(metric);
  const maxima=series.map(item=>Math.max(item.minimumScale,...days.map(day=>item.value(day)??0)));
  const title=cards.find(card=>card.id===metric)?.title;
  return <section className="oura-history" aria-labelledby="oura-history-title">

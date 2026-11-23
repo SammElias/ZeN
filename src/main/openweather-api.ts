@@ -6,7 +6,7 @@ const API = 'https://api.openweathermap.org';
 const temperature = z.number().min(-100).max(80);
 const condition = z.object({id:z.number().int().min(200).max(899),description:z.string().trim().min(1).max(100),icon:z.string().regex(/^\d{2}[dn]$/)});
 const conditions = z.array(condition).min(1).max(10);
-const current = z.object({main:z.object({temp:temperature}),weather:conditions});
+const current = z.object({main:z.object({temp:temperature}),weather:conditions,wind:z.object({speed:z.number().min(0).max(150)}).optional()});
 const forecasts = z.object({
   city:z.object({timezone:z.number().int().min(-43200).max(50400)}),
   list:z.array(z.object({
@@ -71,7 +71,13 @@ export async function readOpenWeather(location: WeatherLocation, key: string, si
   const rain = window.filter(item => (item.rain?.['3h']??0) > 0 || item.weather.some(({id}) => id < 600));
   const chances = rain.flatMap(item => item.pop === undefined ? [] : [item.pop]);
   const {description,icon} = observed.weather[0];
+  let before=now,expiresAt=now+2*3600_000;
+  if(day(expiresAt)!==today)while(expiresAt-before>1){
+    const middle=Math.floor((before+expiresAt)/2);
+    if(day(middle)===today)before=middle;else expiresAt=middle;
+  }
   return {temperature:Math.round(observed.main.temp),description,icon,
     low:Math.round(Math.min(...values)),high:Math.round(Math.max(...values)),rain:rain.length>0,
-    rainChance:chances.length ? Math.round(Math.max(...chances)*100) : undefined,period,updatedAt:now};
+    rainChance:chances.length ? Math.round(Math.max(...chances)*100) : undefined,period,updatedAt:now,expiresAt,
+    windKph:observed.wind?Math.round(observed.wind.speed*3.6):undefined};
 }

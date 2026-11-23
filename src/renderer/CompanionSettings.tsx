@@ -6,6 +6,7 @@ import {interfaceSoundEnabled} from '../shared/companion-interface-audio';
 import {AppearanceSettings} from './AppearanceSettings';
 import {BackupSettings} from './BackupSettings';
 import {ProfileSyncSettings} from './ProfileSyncSettings';
+import {DailyHomeSettings} from './DailyHomeSettings';
 import {CapsulePosition} from './CapsulePosition';
 import {CompanionIcon, OpenCodex, Quiet, Signal} from './CompanionActions';
 import {PreferenceRow,PreferenceSave,PreferenceSwitch,type PreferenceFeedback} from './PreferencesControls';
@@ -16,6 +17,7 @@ const categories={
  appearance:{title:'Apariencia',icon:'settings',description:'Personaliza el tema, el fondo y el acabado del cristal.'},
  capsule:{title:'Cápsula y panel',icon:'presentation',description:'Elige dónde aparece ZEN y cómo se comporta su ventana.'},
  audio:{title:'Sonidos y avisos',icon:'bell',description:'Controla los efectos de interfaz, los avisos y las notificaciones.'},
+ daily:{title:'Resumen diario',icon:'calendar',description:'Configura el saludo, la agenda y el clima de Home.'},
  shortcuts:{title:'Atajos',icon:'code',description:'Cambia las combinaciones de teclado de ZEN.'},
  data:{title:'Datos y configuración',icon:'folder',description:'Traslada tus datos a otro equipo o recupera una copia.'},
  connection:{title:'Conexión y diagnóstico',icon:'pin',description:'Revisa la conexión con Codex y el estado de la integración local.'},
@@ -216,6 +218,9 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
      </PreferenceRow>
     </div>
    </div>}
+   <div className="preferences-page" hidden={category!=='daily'} inert={category!=='daily'}>
+    <DailyHomeSettings visible={visible&&category==='daily'} allowed={!status.settings.presentation&&!status.settings.paused}/>
+   </div>
    {category==='connection'&&<ConnectionSettings status={status} visible={visible}/>}
   </section>
  </div>;

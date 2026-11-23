@@ -1,10 +1,12 @@
 import {useLayoutEffect, useRef, type ReactNode} from 'react';
 import {OfficinaRole} from '../shared/companion-officina';
 import type {officinaRoleTracking} from '../shared/officina-tracking';
+import zenDesk from './assets/officina-zen-desk.png';
 import './OfficinaScreens.css';
 
 type ScreenState = ReturnType<typeof officinaRoleTracking>['state'];
-type ScreenTeam = Record<OfficinaRole, {state: ScreenState}>;
+type ScreenRole = OfficinaRole | 'observer';
+type ScreenTeam = Record<ScreenRole, {state: ScreenState}>;
 type ScreenArrival = {id: string; role: OfficinaRole; delay: number};
 
 const playbackRates: Partial<Record<ScreenState, number>> = {
@@ -48,13 +50,25 @@ function CodeScreen({variant, state, notification}: {variant: 'main' | 'side'; s
   </div>;
 }
 
+function ObserverStation({state}: {state: ScreenState}) {
+  return <div className="officina-observer-station">
+    <img className="officina-observer-furniture" src={zenDesk} alt="" draggable={false}/>
+    <span className="officina-screen-reflection officina-observer-reflection" data-role="observer" data-state={state}><span/></span>
+    <div className="officina-screen officina-observer-monitor" data-role="observer" data-state={state}>
+      <span className="officina-observer-status"/>
+      <div className="officina-observer-checks"><span/><span/><span/><i/></div>
+      <div className="officina-observer-bars"><span/><span/><span/><span/></div>
+    </div>
+  </div>;
+}
+
 export function OfficinaScreens({team, animate, arrival}: {team: ScreenTeam; animate: boolean; arrival?: ScreenArrival}) {
   const layer = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!animate || !layer.current) return;
     // Changing the rate keeps the current frame when a role starts or finishes a turn.
     for (const display of layer.current.querySelectorAll<HTMLElement>('[data-role]')) {
-      const role = display.dataset.role as OfficinaRole;
+      const role = display.dataset.role as ScreenRole;
       const rate = playbackRates[team[role].state] ?? .36;
       for (const animation of display.getAnimations({subtree: true})) {
         if (animation.effect?.getTiming().iterations === Infinity && animation.playbackRate !== rate) {
@@ -92,5 +106,6 @@ export function OfficinaScreens({team, animate, arrival}: {team: ScreenTeam; ani
       <span className="officina-pipeline-pulse"/>
       {notification('alm')}
     </div>
+    <ObserverStation state={team.observer.state}/>
   </div>;
 }

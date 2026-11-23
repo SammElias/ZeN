@@ -21,6 +21,7 @@
 3. Respeta las convenciones, reutiliza componentes, mantén el código modular y añade comentarios cuando expliquen un comportamiento poco evidente. Limita los cambios y dependencias al alcance solicitado. Conserva el trabajo local ajeno. Delega solo cuando el usuario lo solicite.
 4. Valida el flujo habitual y sus regresiones. Distingue entre implementación, prueba con fixtures y comprobación física. Comunica lo que quede pendiente.
 5. **Después de cada implementación, modificación funcional o cambio arquitectónico, revisar si los documentos del proyecto necesitan actualizarse.** Actualiza únicamente los afectados.
+6. Cuando cambien la arquitectura, las dependencias, las integraciones, los flujos críticos o el modelo de datos, revisa los [diagramas](docs/diagrams/index.html) y actualiza las vistas afectadas y sus fuentes.
 
 ## 03 · Límites del compañero ![](docs/assets/verde.svg)
 

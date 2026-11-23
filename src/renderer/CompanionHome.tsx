@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import type {CompanionStatus} from '../shared/codex-companion';
 import type {MediaNowPlaying} from '../shared/companion-media';
 import {calendarDateInZone} from '../shared/companion-calendar';
@@ -86,6 +86,7 @@ function HomeSleep({sleep,onOpen}:{sleep:OuraHomeSleep;onOpen:()=>void}) {
 export function CompanionHome({status, ready, visible, weatherVisible, draft, setDraft, onDismissAssessment, nowPlaying, onNavigate}: Props) {
   const [navigationError, setNavigationError] = useState('');
   const [requestOpen, setRequestOpen] = useState(false);
+  const greetingSeen=useRef(false);
   const simpleMode = status.workspace?.simpleMode;
   const assessmentPending = Boolean(onDismissAssessment);
   useEffect(()=>{if(assessmentPending)setRequestOpen(true);},[assessmentPending]);
@@ -127,7 +128,7 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
 
     {hidden && <p className="home-status-privacy" role="status">{status.settings.presentation?'Presentación activa':'ZEN está en pausa'}</p>}
 
-    {weatherVisible && !hidden && <HomeWeather/>}
+    {weatherVisible && !hidden && <HomeWeather brief={status.homeBrief} greetingSeen={greetingSeen} onOpenCalendar={()=>onNavigate('calendar')}/>}
     {visible && <div className="home-glance">
       <HomeDate onOpen={()=>onNavigate('calendar')} simpleMode={simpleMode===true}/>
       {!hidden && status.ouraHomeSleep && <HomeSleep sleep={status.ouraHomeSleep} onOpen={()=>onNavigate('metrics')}/>}

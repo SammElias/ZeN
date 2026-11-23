@@ -401,7 +401,7 @@ export function CodexCompanion(){
      <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision} simpleMode={status.workspace?.simpleMode===true}/>
     </div>}
     {expanded&&page==='officina'&&(safeNotes
-      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening}/>
+      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening} approvals={status.approvals}/>
       : <div className="companion-empty"><h2>Officina en pausa</h2><p>Desactiva Pausa o Presentación para abrir el tablero.</p></div>)}
     {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura} simpleMode={simpleMode}/>}
     {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}

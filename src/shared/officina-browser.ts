@@ -34,17 +34,18 @@ export function officinaGoalBrowser(project: OfficinaProject, goal: OfficinaGoal
     return first?.mode === 'extension' && !first.browser
       ? choices.find(choice => choice?.mode === 'extension' && choice.browser) ?? first : first;
   };
-  const explicit = choose([...messages, goal.request]);
+  const explicit = choose([...messages, goal.request, goal.pastedText ?? '']);
   if (explicit?.mode === 'integrated' || explicit?.mode === 'extension' && explicit.browser ||
       !messages.some(officinaActiveTabRequested)) return explicit;
   const previous = project.goals?.slice(0, project.goals.indexOf(goal)).reverse();
   const inherited = previous?.map(item => choose([...item.history].reverse().filter(message => message.from === 'human')
-    .map(message => message.text).concat(item.request))).find(Boolean);
+    .map(message => message.text).concat(item.request, item.pastedText ?? ''))).find(Boolean);
   return explicit?.mode === 'extension' && inherited?.mode !== 'extension' ? explicit : inherited ?? explicit;
 }
 
 export function officinaGoalRequest(goal: OfficinaGoal) {
-  return [goal.request, ...goal.history.filter(item => item.from === 'human').map(item => item.text)].join('\n');
+  return [goal.request, goal.pastedText, ...goal.history.filter(item => item.from === 'human').map(item => item.text)]
+    .filter(Boolean).join('\n');
 }
 
 export function isOfficinaTabReview(text: string, browser = officinaBrowserFor(text)) {

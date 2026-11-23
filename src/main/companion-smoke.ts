@@ -1,4 +1,4 @@
-import {app,screen,BrowserWindow,Menu,safeStorage} from 'electron';
+import {app,screen,BrowserWindow,Menu,safeStorage,shell} from 'electron';
 import type {CompanionHub} from './companion-hub';
 import type {CompanionIntegration} from './companion-integration';
 import {spawn,spawnSync} from 'node:child_process';
@@ -19,6 +19,7 @@ import type {createSmokeOura} from './companion-smoke-oura';
 import {emptyOuraCache} from '../shared/companion-oura';
 import {nativeHelper} from './native-helper';
 import {PasswordVault} from './password-vault';
+import {registerZenShortcut,windowsPortableLauncher,zenAppUserModelId} from './companion-windows-launcher';
 export async function companionSmoke({cap,hub,integration,calendar,profile,openedTargets,activateNotice,copiedRequests,queuedRequests,copiedText,media,ouraFixture,observationFixture,dismissOnOutsideClick,toggleSimpleMode,enableAutomaticPermissionReview}:{cap:BrowserWindow;hub:CompanionHub;integration:CompanionIntegration;calendar:CompanionCalendar;profile:string;openedTargets:string[];activateNotice:(n:CompanionNotice)=>Promise<void>;copiedRequests:string[];queuedRequests:{thread:string;text:string}[];copiedText:string[];media:CompanionMedia;ouraFixture:ReturnType<typeof createSmokeOura>;observationFixture:SmokeMediaState;dismissOnOutsideClick:()=>void;toggleSimpleMode:()=>void;enableAutomaticPermissionReview:()=>void}){
 
  const evidenceDirectory=join(profile,'evidence'),screenshots=join(evidenceDirectory,'screenshots');
@@ -66,6 +67,21 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   child.once('error',reject);
   child.once('exit',code=>{try{if(code!==0)throw Error('Native probe failed');resolve(JSON.parse(output));}catch(error){reject(error);}});
  });
+ if(process.platform==='win32'){
+  const launcher=windowsPortableLauncher()??process.execPath;
+  const programs=join(profile,'Start Menu','Programs'), shortcut=join(programs,'ZEN.lnk');
+  const obsolete=join(profile,'old','ZEN.exe');
+  mkdirSync(programs,{recursive:true});
+  check('obsoleteShortcutFixture',shell.writeShortcutLink(shortcut,{target:obsolete,appUserModelId:zenAppUserModelId}));
+  check('startShortcutRegistered',registerZenShortcut(programs,launcher));
+  const link=shell.readShortcutLink(shortcut);
+  check('startShortcutStable',link.target===launcher&&link.icon===launcher&&link.iconIndex===0&&link.appUserModelId===zenAppUserModelId);
+  if(app.isPackaged){
+   const details=await nativeProbe('-Taskbar');
+   check('taskbarStableLauncher',details.relaunch===`"${launcher}"`&&details.icon===`${launcher},0`&&
+    details.displayName==='ZEN'&&details.appId===`${zenAppUserModelId}.smoke`);
+  }
+ }
  const capsuleRect=()=>js(cap,"document.querySelector('.compact-capsule').getBoundingClientRect().toJSON()");
  const sameRect=(a:any,b:any)=>['x','y','width','height'].every(key=>Math.abs(a[key]-b[key])<=1);
  const screenRect=async()=>{
@@ -173,6 +189,16 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await fill('.home-weather-settings input[type=password]',weatherKey);
  await js(cap,"document.querySelector('.home-weather-settings button[type=submit]').click()");
  await wait(()=>js(cap,"document.querySelector('.home-weather-rain')?.textContent.includes('78 %')&&document.querySelector('.home-weather-footer img').naturalWidth>0"));
+ check('dailyHomeGreeting',await js(cap,"document.querySelector('.home-daily-greeting h2').textContent.trim().length>0&&!!document.querySelector('.home-daily-greeting p').textContent"));
+ check('dailyHomeRainIllustration',await js(cap,"!!document.querySelector('.home-weather-scene[data-scene=rain] .weather-drops')&&document.querySelector('.home-weather-rain').textContent.includes('Probabilidad de lluvia')"));
+ cap.webContents.debugger.attach('1.3');
+ try{
+  await cap.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  check('dailyHomeReducedMotion',await js(cap,"getComputedStyle(document.querySelector('.weather-drops i')).animationName==='none'&&getComputedStyle(document.querySelector('.home-daily-greeting')).animationName==='none'"));
+ }finally{
+  await cap.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]});
+  cap.webContents.debugger.detach();
+ }
  check('weatherHomeForecast',await js(cap,"document.querySelector('.home-weather-current strong')?.textContent==='9°C'&&document.querySelector('.home-weather-range')?.textContent.includes('11°')&&document.querySelector('.home-weather-range')?.textContent.includes('6°')&&document.querySelector('.home-weather-footer img').naturalWidth>0"));
  check('weatherKeyEncryptedAndPrivate',!readFileSync(join(profile,'companion-weather.bin')).includes(weatherKey)&&
   await js(cap,`window.companion.weather({type:'refresh'}).then(result=>result.ok&&!JSON.stringify(result.value).includes(${JSON.stringify(weatherKey)}))`));
@@ -523,10 +549,30 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   await js(cap,"document.querySelector('.calendar-month-picker summary').click()");
   check('simpleModeCalendarMonth',await js(cap,"!!document.querySelector('.calendar-grid')?.getClientRects().length&&!!document.querySelector('[aria-label=\"Mes siguiente\"]')"));
   await changeSimpleMode(false);
+  const today=calendarDateInZone(new Date(),timeZone);
+  await calendar.create({id:randomUUID(),title:'[oficina] Título privado de prueba',date:today,endDate:today,
+   start:'09:00',end:'10:00',allDay:true,timeZone,destination:'local',description:'Detalle privado de prueba',location:''});
+  const queuedBeforeBrief=queuedRequests.length;
+  await nav('home');
+  await wait(()=>js(cap,"document.querySelector('.home-brief-agenda')?.textContent.includes('Oficina hoy')"));
+  check('dailyHomeCalendarProjection',await js(cap,"window.companion.status().then(({value})=>value.homeBrief.summary.source==='local'&&value.homeBrief.summary.work.source==='event'&&!JSON.stringify(value.homeBrief).includes('privado'))"));
+  await shot(cap,'home-daily-brief');
+  await nav('settings');
+  check('dailyHomeHiddenOutsideHome',await js(cap,"window.companion.status().then(({value})=>value.homeBrief===undefined&&!document.querySelector('.home-weather-scene'))"));
+  await js(cap,"document.querySelector('.preferences-nav [data-category=daily]').click()");
+  await wait(()=>js(cap,"document.querySelectorAll('.daily-home-settings [role=switch]').length===3"));
+  await js(cap,"document.querySelectorAll('.daily-home-settings [role=switch]')[1].click();document.querySelector('.daily-home-settings .preference-save .primary').click()");
+  await wait(()=>js(cap,"document.querySelector('.daily-home-settings [role=status]')?.textContent.includes('guardadas')"));
+  await nav('home');
+  check('dailyHomeCalendarDisabled',await js(cap,"!!document.querySelector('.home-daily-greeting')&&!document.querySelector('.home-brief-agenda')"));
+  check('dailyHomeDoesNotQueueCodex',queuedRequests.length===queuedBeforeBrief);
+  await nav('calendar');
  } finally {restoreFixtureEvents();}
  await nav('metrics');
  await wait(()=>js(cap,"document.querySelector('#oura-client-id')"));
  const metricsToday=await js(cap,"window.companion.status().then(r=>r.value.oura.today)");
+ const recentFirst=Array.from({length:7},(_,index)=>addCalendarDays(metricsToday,-index)).join(',');
+ const historyOrder="Array.from(document.querySelectorAll('.oura-week tbody tr'),row=>row.dataset.day).join(',')";
  const recentNight=addCalendarDays(metricsToday,-1);
  const connectOura=()=>js(cap,"window.companion.oura({type:'connect',clientId:'test-oura-app'})");
  ouraFixture.state.authorizationError='Oura no concedió el acceso. Aviso de prueba.';
@@ -545,6 +591,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await js(cap,"document.querySelector('[data-oura-card=activity]').click()");
  await wait(()=>js(cap,"document.querySelector('.oura-simple-history[open] .oura-week[data-metric=activity]')"));
  check('simpleModeMetricsHistory',true);
+ check('simpleModeMetricsRecentFirst',await js(cap,historyOrder)===recentFirst);
  await changeSimpleMode(false);
  await nav('home');
  await wait(()=>js(cap,"document.querySelector('.home-sleep')?.textContent.includes('Anoche pendiente de sincronizar')"));
@@ -563,6 +610,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await clickSection('metrics');
  await wait(()=>js(cap,"document.querySelector('[data-oura-card=sleep]')?.textContent.includes('7 h 32 min')"));
  check('ouraChartSevenUniqueDays',await js(cap,`document.querySelectorAll('.oura-week tbody tr').length===7&&document.querySelectorAll('.oura-week [data-day="${metricsToday}"]').length===1&&document.querySelectorAll('.oura-week [data-missing=true]').length>0`));
+ check('ouraHistoryRecentFirst',await js(cap,historyOrder)===recentFirst);
  await js(cap,"document.querySelector('[data-oura-card=activity]').click()");
  check('ouraChartsAndNavigationReadCache',ouraFixture.state.requests.length===requestsBeforeOuraNav&&await js(cap,"document.querySelector('.oura-week').dataset.metric==='activity'"));
  await shot(cap,'metrics-oura-fixture');

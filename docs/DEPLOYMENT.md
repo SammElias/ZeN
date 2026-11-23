@@ -9,6 +9,8 @@ Contraseñas usa los auxiliares .NET 10 `Zen.VaultClipboard` y `Zen.VaultHello`,
 3. Ejecuta `ZEN.exe`. Busca el icono en la bandeja de Windows o pulsa `Ctrl+Alt+Z` con el atajo inicial.
 4. Para observar actividad, abre **Preferencias → Conexión y diagnóstico de Codex → Preparar integración**. Revisa los hooks de ZEN con `/hooks` en el CLI de Codex.
 
+Para anclarlo, ejecuta el portable desde la carpeta donde lo conservarás, busca **ZEN** en Inicio y elige **Anclar a la barra de tareas**. También puedes anclarlo desde el menú del botón de ZEN en la barra mientras la ventana esté visible.
+
 Para conectar otro Windows al servidor personal de la Raspberry, sigue la [guía de instalación de Syncthing](PERSONAL_SYNC.md).
 
 ## 02 · Compilar desde GitHub ![](assets/azul.svg)
@@ -68,7 +70,7 @@ Para activar **HUB → Traductor**, crea o utiliza un recurso de **Azure Transla
 
 - Valida el artefacto con `node scripts/single-file-smoke.mjs release/single-file/ZEN.exe` y comprueba su SHA-256 con `Get-FileHash .\release\single-file\ZEN.exe -Algorithm SHA256`. Los informes de empaquetado se generan en `docs/evidence/`. [Pruebas](TESTING.md)
 - Para actualizar, sal de ZEN desde la bandeja, conserva una copia del EXE anterior en `release/` y reemplaza el ejecutable. Si se ha pedido instalarlo en el escritorio, entrega solo `ZEN.exe`. Comprueba el hash y el arranque sin reiniciar Codex.
-- Los accesos directos de ZEN deben apuntar al `ZEN.exe` portable. La ventana comunica esa ruta a Windows para que el botón de la barra de tareas pueda mostrar el icono y volver a abrir ZEN después de salir.
+- El portable crea o repara el acceso de ZEN en el menú Inicio del usuario. Tanto el acceso como la ventana comunican a Windows el icono y la ruta del portable, que permite volver a abrir ZEN después de salir. Si había un anclaje que apuntaba a una copia temporal, vuelve a anclar ZEN desde Inicio.
 - Si falla el arranque, cierra ZEN y restaura el EXE anterior. Para recuperar datos tras una importación, importa la copia que ZEN guardó en `backups` con una versión compatible.
 - Antes de publicar, revisa qué archivos se subirán. El repositorio admite fuentes y documentación revisadas. El EXE se distribuye como activo de Release únicamente cuando se autoriza esa entrega. [Reglas de trabajo](../AGENTS.md)
 - Templates incluye treinta vistas previas originales de interfaces empresariales, con prompts para Power Apps Canvas y React. Cada usuario puede añadir sus referencias en HUB.

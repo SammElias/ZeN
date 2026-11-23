@@ -1,0 +1,8 @@
+*.delivery.json
+*.delivery-pending.json
+.archify-delivery-lock.json
+/arquitectura.html
+/estados-officina.html
+/limites-de-datos.html
+/secuencia-officina.html
+/sources/jetbrains-mono.css
