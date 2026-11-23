@@ -8,6 +8,10 @@ export function officinaUnsentContextIssue(run: OfficinaRun) {
     run.sentAt === undefined && !run.destination && !run.turn;
 }
 
+export function officinaSendRetry(run: OfficinaRun) {
+  return run.state === 'review' && !!run.retryAttempt && run.sentAt === undefined && !run.destination && !run.turn;
+}
+
 export function officinaClosureRetry(project: OfficinaProject, task: string) {
   const goal = project.goals?.find(item => item.task === task);
   if (goal?.phase !== 'verify' || goal.recipient || goal.question && goal.question !== legacyOfficinaContextQuestion ||
@@ -40,6 +44,8 @@ export function officinaAttention(project: OfficinaProject, activity?: OfficinaR
     const goal = project.goals?.find(item => item.task === task.id);
     if (goal?.question && officinaAskedQuestion(goal)) return {kind: 'question', task, question: goal.question};
     const run = project.runs.filter(item => item.task === task.id).at(-1);
-    if (run?.issue && ['uncertain', 'review', 'waiting', 'released'].includes(run.state)) return {kind: 'dispatch', task, run};
+    if (run?.issue && ['uncertain', 'review', 'waiting', 'released'].includes(run.state) && run.retryAt === undefined) {
+      return {kind: 'dispatch', task, run};
+    }
   }
 }

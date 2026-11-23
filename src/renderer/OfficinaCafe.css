@@ -1,0 +1,21 @@
+.officina-cafe-counter {
+  position: absolute;
+  pointer-events: none;
+}
+
+.officina-cafe-counter::before {
+  content: '';
+  position: absolute;
+  inset: 70% 1% 1% 1%;
+  background: radial-gradient(ellipse, #fba0525c 0%, #b87a4c39 37%, transparent 70%);
+}
+
+.officina-cafe-counter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('./assets/officina-cafe-room.png') var(--officina-pose-position) / var(--officina-pose-size) no-repeat;
+  /* Keep the cabinet and machine from the source without the old back wall. */
+  clip-path: polygon(10% 28%, 16% 18%, 40% 18%, 47% 29%, 47% 12%, 50% 5%, 68% 5%,
+    69% 11%, 78% 12%, 78% 35%, 84% 36%, 86% 82%, 16% 84%, 13% 42%);
+}

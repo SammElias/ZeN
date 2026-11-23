@@ -3,11 +3,12 @@ import {
 } from './companion-officina';
 import {officinaDelegatedRoles, officinaResults} from './officina-results';
 import {officinaAskedQuestion, officinaClosureRetry} from './officina-attention';
-import {officinaPendingProposals} from './officina-observer';
+import {officinaImprovementGoal, officinaPendingProposals} from './officina-observer';
 
 export const officinaTrackingLabels = {
   working: 'Trabajando en Codex', permission: 'Aprobación pendiente', sending: 'Enviando a Codex',
-  submitted: 'Enviado · inicio por confirmar', checking: 'Verificando la respuesta', review: 'Requiere revisión',
+  submitted: 'Enviado · inicio por confirmar', queued: 'En cola de Codex', retrying: 'Esperando a Codex',
+  checking: 'Verificando la respuesta', review: 'Requiere revisión',
   interrupted: 'Turno interrumpido', blocked: 'Limitación registrada', information: 'Falta información', waiting: 'En cola de Officina',
   scheduled: 'Espera su turno', done: 'Terminó el encargo', limited: 'Cerrado con limitaciones',
   skipped: 'Omitido por cierre', assigned: 'Asignado', idle: 'Sin encargos',
@@ -20,9 +21,9 @@ export function officinaRunTracking(run: OfficinaRun, observed?: OfficinaRunActi
     return observed.state === 'finished' ? 'checking' : observed.state;
   }
   switch (run.state) {
-    case 'waiting': return 'waiting';
+    case 'waiting': return run.retryAt === undefined ? 'waiting' : 'retrying';
     case 'sending': return 'sending';
-    case 'sent': return 'submitted';
+    case 'sent': return run.queuedAt === undefined ? 'submitted' : 'queued';
     case 'completed': return 'done';
     case 'skipped': return 'skipped';
     default: return 'review';
@@ -37,11 +38,17 @@ export function officinaFollowupTracking(run: OfficinaRun, observed?: OfficinaRu
   return {state, label: state === 'waiting' ? 'Seguimiento en cola' : undefined, detail: run.issue};
 }
 
+export function officinaObserverRun(project?: OfficinaProject) {
+  if (!project) return;
+  const runs = project.runs.filter(run => run.role === 'observer' &&
+    !(run.followup && run.state === 'completed' && officinaImprovementGoal(project, run.followup.review)));
+  return runs.find(run => ['sending', 'sent', 'uncertain'].includes(run.state)) ?? runs.at(-1);
+}
+
 export function officinaRoleTracking(project: OfficinaProject | undefined, role: OfficinaActor, observed?: OfficinaRunActivity): RoleStatus {
   if (role === 'observer') {
-    const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review), 0);
-    const runs = project?.runs.filter(run => run.role === role);
-    const last = runs?.find(run => ['sending', 'sent', 'uncertain'].includes(run.state)) ?? runs?.at(-1);
+    const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review, project), 0);
+    const last = officinaObserverRun(project);
     if (last?.followup) return officinaFollowupTracking(last, observed);
     if (last && last.state !== 'completed') return {state: officinaRunTracking(last, observed), detail: last.issue};
     return last || pending ? {state: 'done', label: pending ? `${pending} ${pending === 1 ? 'propuesta pendiente' : 'propuestas pendientes'}` : 'Revisión lista'} :
@@ -64,7 +71,7 @@ export function officinaRoleTracking(project: OfficinaProject | undefined, role:
     project.runs.filter(run => run.task === goal.task).at(-1)?.role === role).at(-1);
   if (clarification) return status(officinaAskedQuestion(clarification) ? 'information' : 'review', clarification.task, clarification.question);
   const waiting = runs.find(run => run.state === 'waiting' && !closed.has(run.task));
-  if (waiting) return status('waiting', waiting.task, waiting.issue);
+  if (waiting) return status(officinaRunTracking(waiting, observed), waiting.task, waiting.issue);
   const scheduled = project.goals?.find(goal => goal.phase === 'work' && goal.steps.slice(goal.cursor + 1).some(step => step.role === role));
   if (scheduled) return status('scheduled', scheduled.task);
   if (last?.state === 'review' || last?.state === 'released') return status('review', last.task, last.issue);

@@ -1,6 +1,6 @@
 import {matchesTarget,normalizeTargetFolder,stripWindowsPathPrefix} from '../shared/companion-target';
 import {CompanionTargetSchema,COMPANION_REPLY_LIMIT,type CompanionTarget,type CompanionLastReply,type CompanionSession} from '../shared/codex-companion';
-import type {OfficinaRunIdentity} from '../shared/companion-officina';
+import {officinaInputMatches, type OfficinaRunIdentity} from '../shared/companion-officina';
 import {DatabaseSync} from 'node:sqlite';
 import {lstat,open,realpath,type FileHandle} from 'node:fs/promises';
 import type {Stats} from 'node:fs';
@@ -9,6 +9,12 @@ const MAX_REPLY_HEADER=64*1024,REPLY_WINDOW=2*1024*1024,MAX_REPLY_SCAN=16*1024*1
 // The rollout can retain a trailing memory citation block omitted by task_complete.
 const memoryCitationSuffix=/^[ \t\r\n]*<oai-mem-citation>\r?\n<citation_entries>[^<]*<\/citation_entries>\r?\n<rollout_ids>[^<]*<\/rollout_ids>\r?\n<\/oai-mem-citation>[ \t\r\n]*$/;
 type ReplyCache={key:string;dev:number;ino:number;size:number;mtimeMs:number;ctimeMs:number;reply?:CompanionLastReply};
+type RolloutVersion=Pick<Stats,'dev'|'ino'|'size'|'mtimeMs'|'ctimeMs'>;
+type TurnCheckpoint=RolloutVersion&{through:number;turn?:OfficinaCodexTurn};
+
+const sameRollout=(a:RolloutVersion,b:RolloutVersion)=>a.dev===b.dev&&a.ino===b.ino;
+const sameVersion=(a:RolloutVersion,b:RolloutVersion)=>sameRollout(a,b)&&a.size===b.size&&a.mtimeMs===b.mtimeMs&&a.ctimeMs===b.ctimeMs;
+const isAppend=(before:RolloutVersion,after:RolloutVersion)=>sameRollout(before,after)&&after.size>before.size;
 
 /** No junctions/symlinks, traversal or paths outside the exact local Codex home. */
 async function confinedFile(home:string,path:string){
@@ -22,10 +28,10 @@ async function confinedFile(home:string,path:string){
  return canonical;
 }
 
-async function* reverseReplyLines(handle:FileHandle,size:number,limit=MAX_REPLY_SCAN){
+async function* reverseReplyLines(handle:FileHandle,size:number,limit=MAX_REPLY_SCAN,from=0){
  let cursor=size,spent=0,carry:Buffer=Buffer.alloc(0),skipIncompleteEnd=true;
- while(cursor>0&&spent<limit){
-  const length=Math.min(REPLY_WINDOW,cursor,limit-spent),start=cursor-length,buffer=Buffer.alloc(length),read=await handle.read(buffer,0,length,start);
+ while(cursor>from&&spent<limit){
+  const length=Math.min(REPLY_WINDOW,cursor-from,limit-spent),start=cursor-length,buffer=Buffer.alloc(length),read=await handle.read(buffer,0,length,start);
   if(read.bytesRead!==length)return;
   cursor=start;spent+=length;
   const combined=carry.length?Buffer.concat([buffer,carry]):buffer;let end=combined.length;
@@ -33,7 +39,7 @@ async function* reverseReplyLines(handle:FileHandle,size:number,limit=MAX_REPLY_
   while(end>0){
    const previous=combined.lastIndexOf(10,end-1);
    if(previous<0){
-    if(start===0)yield combined.subarray(0,end).toString('utf8');
+    if(start===from)yield combined.subarray(0,end).toString('utf8');
     else carry=combined.subarray(0,end);
     break;
    }
@@ -45,10 +51,42 @@ async function* reverseReplyLines(handle:FileHandle,size:number,limit=MAX_REPLY_
 
 export type OfficinaCodexTurn = {turn: string; state: 'working' | 'finished' | 'interrupted'; at: number};
 
+async function completeLogEnd(handle:FileHandle,size:number){
+ const floor=Math.max(0,size-MAX_REPLY_SCAN);
+ for(let end=size;end>floor;){
+  const length=Math.min(65536,end-floor),start=end-length,buffer=Buffer.alloc(length);
+  if((await handle.read(buffer,0,length,start)).bytesRead!==length)return undefined;
+  const newline=buffer.lastIndexOf(10);
+  if(newline>=0)return start+newline+1;
+  end=start;
+ }
+}
+
+async function continueOfficinaTurn(handle:FileHandle,size:number,from:number,known:OfficinaCodexTurn,session:string,direct:boolean){
+ let state:OfficinaCodexTurn['state']|undefined,replaced=false;
+ for await(const line of reverseReplyLines(handle,size,size-from,from)){
+  if(!/"(?:task_started|task_complete|turn_aborted|item_completed|turn_context)"/.test(line))continue;
+  let item:any;try{item=JSON.parse(line);}catch{continue;}
+  const p=item?.payload,turn=p?.turn_id,at=Date.parse(item.timestamp);
+  if(typeof turn!=='string'||!turn||turn.length>160||!Number.isFinite(at)||at<known.at||p.root_turn_id&&p.root_turn_id!==turn)continue;
+  if(item.type==='turn_context'&&direct&&turn!==known.turn)replaced=true;
+  if(item.type!=='event_msg'||typeof p.thread_id==='string'&&p.thread_id!==session)continue;
+  const lifecycle=p.type==='task_started'||p.type==='task_complete'||p.type==='turn_aborted';
+  if(turn!==known.turn){
+   if(p.type==='task_started'||direct&&(lifecycle||p.type==='item_completed'&&p.item?.type==='UserMessage'))replaced=true;
+  }else if(lifecycle&&!state){
+   state=p.type==='task_complete'?'finished':p.type==='turn_aborted'?'interrupted':'working';
+  }
+ }
+ const next=state??known.state;
+ if(replaced&&(direct||next==='working'))return undefined;
+ return {...known,state:next};
+}
+
 async function scanOfficinaTurn(handle:FileHandle,size:number,target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
  const stopped=new Map<string,'finished'|'interrupted'>();
  let newerTurn:string|undefined;
- for await(const line of reverseReplyLines(handle,size,REPLY_WINDOW)){
+ for await(const line of reverseReplyLines(handle,size)){
   if(!/"(?:task_started|task_complete|turn_aborted|item_completed)"/.test(line))continue;
   let item:any;try{item=JSON.parse(line);}catch{continue;}
   const p=item?.payload,turn=p?.turn_id,at=Date.parse(item.timestamp);
@@ -63,25 +101,21 @@ async function scanOfficinaTurn(handle:FileHandle,size:number,target:CompanionTa
   }
   if(p.type!=='item_completed'||p.thread_id!==target.session||p.item?.type!=='UserMessage'||!Array.isArray(p.item.content))continue;
   for(const part of p.item.content){
-   if(part?.type!=='text'||typeof part.text!=='string'||!part.text.includes(identity.run))continue;
-   try{
-    const recorded=JSON.parse(part.text.trimEnd().split('\n').at(-1)!).identity;
-    if(recorded&&recorded.run===identity.run&&recorded.task===identity.task&&recorded.project===identity.project&&recorded.role===identity.role){
-     const state=stopped.get(turn);
-     if(state)return {turn,state,at};
-     return !newerTurn||newerTurn===turn?{turn,state:'working',at}:undefined;
-    }
-   }catch{/* Only the matching Officina delivery can identify the active turn. */}
+   if(part?.type!=='text'||typeof part.text!=='string'||!officinaInputMatches(part.text,identity))continue;
+   const state=stopped.get(turn);
+   if(state)return {turn,state,at};
+   return !newerTurn||newerTurn===turn?{turn,state:'working',at}:undefined;
   }
  }
 }
 
-async function scanLastReply(handle:FileHandle,size:number,target:CompanionTarget):Promise<CompanionLastReply|undefined>{
+async function scanLastReply(handle:FileHandle,size:number,target:CompanionTarget,exactTurn?:string):Promise<CompanionLastReply|undefined>{
  let candidate:{text:string;turn:string;at:number;finalMatches:boolean}|undefined;
  for await(const line of reverseReplyLines(handle,size)){
   if(!/"type"\s*:\s*"(?:task_complete|turn_context|task_started)"|"phase"\s*:\s*"final_answer"/.test(line))continue;
   let item:any;try{item=JSON.parse(line);}catch{continue;}
   const p=item?.payload;
+  if(exactTurn&&!candidate&&(item?.type!=='event_msg'||p?.type!=='task_complete'||p.turn_id!==exactTurn))continue;
   if(item?.type==='event_msg'&&p?.type==='task_complete'){
    if(candidate)return undefined;
    // An empty completion may follow a turn with no answer. A newer final still
@@ -109,6 +143,40 @@ async function scanLastReply(handle:FileHandle,size:number,target:CompanionTarge
  return undefined;
 }
 
+async function scanOfficinaDirectTurn(handle:FileHandle,size:number,target:CompanionTarget):Promise<OfficinaCodexTurn|undefined>{
+ let latest:string|undefined, request:{at:number;managed:boolean}|undefined;
+ let state:OfficinaCodexTurn['state']='working';
+ for await(const line of reverseReplyLines(handle,size)){
+  if(!/"(?:task_started|task_complete|turn_aborted|item_completed|turn_context)"/.test(line))continue;
+  let item:any;try{item=JSON.parse(line);}catch{continue;}
+  const p=item?.payload,turn=p?.turn_id,at=Date.parse(item.timestamp);
+  if(typeof turn!=='string'||!turn||turn.length>160||!Number.isFinite(at)||p.root_turn_id&&p.root_turn_id!==turn)continue;
+  if(item.type==='turn_context'){
+   if(!latest||latest!==turn||!request||request.managed||!matchesTarget(target,target.session,p.cwd))return;
+   return {turn,state,at:request.at};
+  }
+  if(item.type!=='event_msg')continue;
+  if(p.type==='task_complete'||p.type==='turn_aborted'){
+   if(latest&&latest!==turn)return;
+   latest=turn;state=p.type==='task_complete'?'finished':'interrupted';
+  }else if(p.type==='task_started'){
+   return;
+  }else if(p.type==='item_completed'&&p.thread_id===target.session&&p.item?.type==='UserMessage'&&Array.isArray(p.item.content)){
+   if(latest&&latest!==turn)return;
+   latest=turn;
+   const managed=p.item.content.some((part:any)=>{
+    if(part?.type!=='text'||typeof part.text!=='string')return false;
+    try {
+     const identity=JSON.parse(part.text.trimEnd().split('\n').at(-1)).identity;
+     return !!identity?.run&&!!identity.project&&!!identity.task&&!!identity.role;
+    }catch{return false;}
+   });
+   // A steering message does not change the origin of the turn that accepted it.
+   request={at,managed:managed||!!request?.managed};
+  }
+ }
+}
+
 function projectRootMatches(db: DatabaseSync, projectId: string, cwd: string) {
  const roots=db.prepare(`SELECT r.path FROM project_roots r JOIN projects p ON p.id=r.project_id
   WHERE r.project_id=? LIMIT 2`).all(projectId);
@@ -117,11 +185,12 @@ function projectRootMatches(db: DatabaseSync, projectId: string, cwd: string) {
 }
 
 /**
- * Read-only recovery from the local Codex index and rollout. Only one pinned
- * answer is cached in RAM. Missing or unsupported data stays unavailable.
+ * Read-only recovery from the local Codex index and rollout. Cache one pinned
+ * answer and keep Officina checkpoints as turn metadata only.
  */
 export class CodexReplyReader {
  private replyCache?: ReplyCache;
+ private turnCheckpoints=new Map<string,TurnCheckpoint>();
 
  constructor(private codexHome: string) {}
 
@@ -220,11 +289,40 @@ export class CodexReplyReader {
  return undefined;
  }
 
- async readOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+ readOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+  const scope=JSON.stringify([identity.project,identity.task,identity.run,identity.role,since]);
+  return this.readOfficinaActivity(target,scope,(handle,size)=>scanOfficinaTurn(handle,size,target,identity,since));
+ }
+
+ readOfficinaDirectTurn(target:CompanionTarget):Promise<OfficinaCodexTurn|undefined>{
+  return this.readOfficinaActivity(target,'direct',(handle,size)=>scanOfficinaDirectTurn(handle,size,target));
+ }
+
+ private async readOfficinaActivity(target:CompanionTarget,scope:string,
+   recover:(handle:FileHandle,size:number)=>Promise<OfficinaCodexTurn|undefined>){
+  return this.withRollout(target,async(handle,stat,file,checkHeader)=>{
+   const key=[file,normalizeTargetFolder(target.cwd),scope].join('\0');
+   const cached=this.turnCheckpoints.get(key);
+   if(cached&&sameVersion(cached,stat))return cached.turn;
+   if(!await checkHeader())return undefined;
+   const through=await completeLogEnd(handle,stat.size);
+   if(through===undefined)return undefined;
+   // Keep the verified request and scan new complete lines for its lifecycle.
+   const continued=cached?.turn&&isAppend(cached,stat)&&through>=cached.through&&through-cached.through<=MAX_REPLY_SCAN
+    ? await continueOfficinaTurn(handle,through,cached.through,cached.turn,target.session,scope==='direct'):undefined;
+   const turn=continued??await recover(handle,through),after=await handle.stat();
+   if(!sameVersion(stat,after)&&!isAppend(stat,after))return undefined;
+   if(this.turnCheckpoints.size>=24&&!cached)this.turnCheckpoints.delete(this.turnCheckpoints.keys().next().value!);
+   this.turnCheckpoints.set(key,{dev:stat.dev,ino:stat.ino,size:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs,through,turn});
+   return turn;
+  });
+ }
+
+ async readOfficinaTurnReply(target:CompanionTarget,turn:string):Promise<CompanionLastReply|undefined>{
   return this.withRollout(target,async(handle,stat,_file,checkHeader)=>{
    if(!await checkHeader())return undefined;
-   const turn=await scanOfficinaTurn(handle,stat.size,target,identity,since),after=await handle.stat();
-   return after.size===stat.size&&after.mtimeMs===stat.mtimeMs&&after.ctimeMs===stat.ctimeMs?turn:undefined;
+   const reply=await scanLastReply(handle,stat.size,target,turn),after=await handle.stat();
+   return sameVersion(stat,after)||isAppend(stat,after)?reply:undefined;
   });
  }
 

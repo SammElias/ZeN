@@ -1,9 +1,9 @@
 import React, {useRef, useState} from 'react';
 import {ArrowRight, Eye, Settings2} from 'lucide-react';
 import {officinaActorName, officinaRunLabels, type OfficinaAction, type OfficinaProject,
-  type OfficinaObserverReview, type OfficinaRun, type OfficinaRunActivity} from '../shared/companion-officina';
+  type OfficinaObserverReview, type OfficinaRunActivity} from '../shared/companion-officina';
 import {officinaRoleProfile} from '../shared/officina-instructions';
-import {officinaApprovedImprovement, officinaObservationTaskLimit, officinaObservationTasks, officinaPendingProposals} from '../shared/officina-observer';
+import {officinaImprovementGoal, officinaObservationTaskLimit, officinaObservationTasks, officinaPendingProposals} from '../shared/officina-observer';
 import {officinaFollowupTracking, officinaTrackingLabels} from '../shared/officina-tracking';
 import {OfficinaMarkdown} from './OfficinaReference';
 
@@ -23,19 +23,6 @@ export function OfficinaMonitorNotice({project, review, open}: {
   </section>;
 }
 
-export function OfficinaFollowupNotice({project, run, activity, open}: {
-  project: OfficinaProject; run: OfficinaRun; activity?: OfficinaRunActivity; open: () => void;
-}) {
-  const proposal = run.followup && officinaApprovedImprovement(project, run.followup)?.proposal;
-  if (!proposal) return null;
-  const tracking = officinaFollowupTracking(run, activity);
-  return <section className="officina-next" data-kind="followup" aria-label="Seguimiento de ZEN" role="status">
-    <strong><Eye aria-hidden="true"/>ZEN · {tracking.label ?? officinaTrackingLabels[tracking.state]}</strong>
-    <small title={proposal.title}>{proposal.title}</small>
-    <button className="officina-next-action" onClick={open}>Ver seguimiento <ArrowRight aria-hidden="true"/></button>
-  </section>;
-}
-
 export function OfficinaObserverDesk({project, queued, act, open, settings}: {
   project?: OfficinaProject; queued?: string[]; act: Act; open: () => void; settings: () => void;
 }) {
@@ -47,13 +34,18 @@ export function OfficinaObserverDesk({project, queued, act, open, settings}: {
   const waiting = !!run && queued?.includes(run.id);
   const active = run && ['sending', 'sent', 'uncertain'].includes(run.state);
   const tasks = project ? officinaObservationTasks(project) : [];
-  const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review), 0);
+  const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review, project), 0);
   return <section className="officina-desk-activity officina-observer-desk" aria-label="Puesto de ZEN">
     <header>
       <div><span className="officina-role-icon"><Eye aria-hidden="true"/></span><h2>ZEN</h2></div>
       <button onClick={settings}><Settings2 aria-hidden="true"/>Instrucciones</button>
     </header>
     <p>Revisa cómo trabajó el equipo y te propone mejoras para sus prompts, funciones y coordinación.</p>
+    {project?.team?.projectId && <label className="officina-auto-improvements">
+      <input type="checkbox" checked={!!project.autoImprovements?.enabled} onChange={event =>
+        void act({type: 'auto-improvements', project: project.id, enabled: event.target.checked})}/>
+      <span><strong>Mejoras automáticas</strong><small>Coordinación recibe las incidencias confirmadas. Aprobada la versión por Tester, ALM puede desplegarla en el destino local del proyecto.</small></span>
+    </label>}
     {!project?.team ? <p>Envía un encargo desde Chat global para vincular un proyecto de Codex.</p> :
       !tasks.length ? <p>Todavía no hay resultados ni incidencias para revisar.</p> : <form className="officina-observer-scope"
         onSubmit={async event => {
@@ -76,12 +68,12 @@ export function OfficinaObserverDesk({project, queued, act, open, settings}: {
   </section>;
 }
 
-export function OfficinaObserverPanel({project, act, initialReview, activity, queued}: {
-  project: OfficinaProject; act: Act; initialReview?: string; activity?: OfficinaRunActivity; queued?: string[];
+export function OfficinaObserverPanel({project, act, initialReview, activity, queued, openTask}: {
+  project: OfficinaProject; act: Act; initialReview?: string; activity?: OfficinaRunActivity; queued?: string[]; openTask: (id: string) => void;
 }) {
   const reviews = project.reviews ?? [];
   const [selected, setSelected] = useState(() =>
-    initialReview ?? reviews.filter(item => officinaPendingProposals(item) > 0).at(-1)?.id ?? reviews.at(-1)?.id ?? '');
+    initialReview ?? reviews.filter(item => officinaPendingProposals(item, project) > 0).at(-1)?.id ?? reviews.at(-1)?.id ?? '');
   const review = reviews.find(item => item.id === selected);
   const run = review && project.runs.find(item => item.id === review.id);
   if (!review) return <p>Todavía no hay revisiones de ZEN en este proyecto.</p>;
@@ -96,6 +88,7 @@ export function OfficinaObserverPanel({project, act, initialReview, activity, qu
       <OfficinaMarkdown text={review.report.markdown ?? review.report.text} project={project.id} task={review.scope} act={act}/>
       {review.report.proposals.length ? <section aria-label="Propuestas de ZEN" className="officina-observer-proposals" key={review.id}>
         {review.report.proposals.map((proposal, index) => {
+          const improvement = index === 0 ? officinaImprovementGoal(project, review.id) : undefined;
           const decision = review.decisions?.find(item => item.index === index)?.status;
           const prompt = proposal.kind === 'prompt';
           const current = prompt ? officinaRoleProfile(proposal.role, project).prompt : undefined;
@@ -113,6 +106,9 @@ export function OfficinaObserverPanel({project, act, initialReview, activity, qu
             <p><strong>Evidencia</strong> · {proposal.evidence}</p>
             <p><strong>Cómo comprobarlo</strong> · {proposal.validation}</p>
             {!prompt && <p>{proposal.recommendation}</p>}
+            {improvement && <div className="officina-observer-actions">
+              <button className="officina-accent" onClick={() => openTask(improvement.task)}>Ver mejora en Coordinación <ArrowRight aria-hidden="true"/></button>
+            </div>}
             {decision && <p role="status" className="officina-proposal-decision">
               {decision === 'rejected' ? 'Descartada' : prompt ? 'Prompt aplicado' : 'Recomendación aprobada'}
             </p>}
@@ -143,7 +139,7 @@ export function OfficinaObserverPanel({project, act, initialReview, activity, qu
               {!decision && (changed ? <p>El prompt vigente cambió. Solicita otra revisión para aplicar una mejora.</p> :
                 <button className="officina-accent" onClick={() => decide('approved')}>Aplicar prompt</button>)}
             </details>}
-            {!decision && <div className="officina-observer-actions">
+            {!decision && !improvement && <div className="officina-observer-actions">
               {!prompt && <button className="officina-accent" onClick={() => decide('approved')}>Aprobar e iniciar seguimiento</button>}
               <button onClick={() => decide('rejected')}>Descartar</button>
             </div>}

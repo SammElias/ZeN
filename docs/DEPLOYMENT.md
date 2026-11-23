@@ -68,8 +68,23 @@ Para activar **HUB → Traductor**, crea o utiliza un recurso de **Azure Transla
 
 ## 05 · Verificar, actualizar y revertir ![](assets/ambar.svg)
 
-- Valida el artefacto con `node scripts/single-file-smoke.mjs release/single-file/ZEN.exe` y comprueba su SHA-256 con `Get-FileHash .\release\single-file\ZEN.exe -Algorithm SHA256`. Los informes de empaquetado se generan en `docs/evidence/`. [Pruebas](TESTING.md)
-- Para actualizar, sal de ZEN desde la bandeja, conserva una copia del EXE anterior en `release/` y reemplaza el ejecutable. Si se ha pedido instalarlo en el escritorio, entrega solo `ZEN.exe`. Comprueba el hash y el arranque sin reiniciar Codex.
+Desde la raíz del repositorio, ALM puede preparar y verificar el portable de Windows con el siguiente comando.
+
+```powershell
+pwsh -NoProfile -File scripts/deploy-windows.ps1
+```
+
+Para un despliegue local autorizado, ejecuta desde el chat de Codex.
+
+```powershell
+pwsh -NoProfile -File scripts/deploy-windows.ps1 -Install
+```
+
+El comando compila, ejecuta las pruebas, coteja el paquete con el portable extraído y comprueba su arranque aislado. Si hay una versión en ejecución, la reemplaza tras respaldar su EXE y confirmar su cierre ordenado. Después abre ZEN desde el escritorio y comprueba la ventana del proceso y las huellas del paquete que está en ejecución. El reinicio de ZEN forma parte del despliegue local autorizado. Codex sigue ejecutando el mismo encargo. Si falla la instalación, el script intenta restaurar el respaldo.
+
+- Si Tester entregó un manifiesto SHA-256 para una revisión concreta, añade `-ApprovedManifest <ruta>` para exigir que esa revisión coincida antes de instalar.
+- Usa `-Install -UseValidatedPackage` cuando el portable ya esté comprobado para esa revisión. Si el portable pertenece a una compilación anterior y la revisión aprobada sigue disponible, ejecuta `-Install` con el mismo manifiesto para preparar y validar el paquete correcto. Si una versión antigua no atiende la solicitud de salida, el script indica el proceso y permite retomar la instalación después de usar **Salir de ZEN** desde la bandeja.
+- Los informes de empaquetado se guardan en `docs/evidence/`. Tras la instalación, `release/deployment-windows.json` registra el destino, SHA-256, respaldo, reinicio y procesos comprobados. ALM puede usar ese registro para entregar el resultado en Officina cuando se vuelva a abrir el módulo. [Pruebas](TESTING.md)
 - El portable crea o repara el acceso de ZEN en el menú Inicio del usuario. Tanto el acceso como la ventana comunican a Windows el icono y la ruta del portable, que permite volver a abrir ZEN después de salir. Si había un anclaje que apuntaba a una copia temporal, vuelve a anclar ZEN desde Inicio.
 - Si falla el arranque, cierra ZEN y restaura el EXE anterior. Para recuperar datos tras una importación, importa la copia que ZEN guardó en `backups` con una versión compatible.
 - Antes de publicar, revisa qué archivos se subirán. El repositorio admite fuentes y documentación revisadas. El EXE se distribuye como activo de Release únicamente cuando se autoriza esa entrega. [Reglas de trabajo](../AGENTS.md)

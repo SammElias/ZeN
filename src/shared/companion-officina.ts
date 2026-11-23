@@ -30,6 +30,8 @@ export const officinaReplySummaryLimit = 700;
 export const officinaReplyMarkdownLimit = 4000;
 export const officinaMessageLimit = 800;
 export const officinaPasteLimit = 32_000;
+export const officinaMaxImages = 3;
+const pastedImage = z.string().max(3_000_000).regex(/^data:image\/jpeg;base64,[a-z0-9+/]+={0,2}$/i);
 const pastedText = z.string().min(1).max(officinaPasteLimit)
   .refine(value => !!value.trim() && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\uD800-\uDFFF]/u.test(value));
 export function officinaPasteTitle(value: string) {
@@ -51,6 +53,7 @@ const observerFollowupReport = z.object({kind: z.literal('followup'), ...respons
   outcome: z.enum(['done', 'limited'])}).strict();
 const observerReview = z.object({
   id: OfficinaId, scope: OfficinaId.optional(), at: z.number(), source: z.literal('monitor').optional(),
+  incident: z.enum(['reply-format', 'delivery-check']).optional(),
   baseline: z.partialRecord(OfficinaParticipant, text(officinaRolePromptLimit)).optional(),
   report: observerReport.optional(),
   decisions: z.array(z.object({index: proposalIndex, status: z.enum(['approved', 'rejected']), at: z.number()})).max(officinaObserverProposalLimit).optional(),
@@ -83,7 +86,7 @@ export type OfficinaEvent = z.infer<typeof OfficinaEvent>;
 const windowsFolder = text(1024).refine(value => /^(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/i.test(value) && !/[\r\n]/.test(value));
 export const officinaMaxFiles = 8;
 export const OfficinaLocalSource = z.object({id: OfficinaId, name: text(260), path: windowsFolder,
-  device: z.string().regex(/^\d+$/), inode: z.string().regex(/^\d+$/)}).strict();
+  device: z.string().regex(/^\d+$/), inode: z.string().regex(/^\d+$/), sha256: z.string().regex(/^[a-f0-9]{64}$/).optional()}).strict();
 export type OfficinaLocalSource = z.infer<typeof OfficinaLocalSource>;
 type SourceLabel = Pick<OfficinaLocalSource, 'id' | 'name' | 'path'>;
 export const OfficinaBinding = z.object({thread: OfficinaId, cwd: windowsFolder, environment: text(120)}).strict();
@@ -109,7 +112,10 @@ const goal = z.object({
   round: z.number().int().min(0), history: z.array(goalMessage).max(32),
   phase: z.enum(['plan', 'work', 'verify', 'complete']), outcome: z.literal('limited').optional(), question: text(700).optional(),
   recipient: OfficinaRole.optional(),
+  improvement: OfficinaId.optional(),
+  improvementNoticeDismissed: z.literal(true).optional(),
   files: z.array(OfficinaLocalSource).max(officinaMaxFiles).optional(),
+  images: z.array(OfficinaLocalSource.required({sha256: true})).max(officinaMaxImages).optional(),
   pastedText: pastedText.optional(),
 });
 export type OfficinaGoal = z.infer<typeof goal>;
@@ -124,17 +130,30 @@ const run = z.object({
   id: OfficinaId, task: OfficinaId, role: OfficinaActor, event: OfficinaId.optional(), depth: z.number(),
   state: z.enum(Object.keys(officinaRunLabels) as (keyof typeof officinaRunLabels)[]),
   step: z.number().int().nonnegative().optional(), destination: destination.optional(),
-  sentAt: z.number().optional(), turn: z.string().max(160).optional(), issue: z.string().optional(),
+  sentAt: z.number().optional(), queuedAt: z.number().optional(), turn: z.string().max(160).optional(), issue: z.string().optional(),
+  retryAttempt: z.number().int().min(1).max(4).optional(), retryAt: z.number().optional(),
+  closureRetried: z.literal(true).optional(),
   followup: z.object({review: OfficinaId, index: proposalIndex, result: observerFollowupReport.optional()}).optional(),
 });
 export type OfficinaRun = z.infer<typeof run>;
 export type OfficinaRunIdentity = {project: string; task: string; role: OfficinaActor; run: string};
+export function officinaInputMatches(text: string, identity: OfficinaRunIdentity) {
+  if (!text.includes(identity.run)) return false;
+  try {
+    const recorded = JSON.parse(text.trimEnd().split('\n').at(-1)!).identity;
+    return recorded?.run === identity.run && recorded?.task === identity.task &&
+      recorded?.project === identity.project && recorded?.role === identity.role;
+  } catch { return false; }
+}
 export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number; turn?: string};
+export type OfficinaDirectActivity = {state: OfficinaRunActivity['state']; at: number};
 export const OfficinaProject = z.object({
   id: OfficinaId, name: text(120), binding: OfficinaBinding.optional(), team: provision.optional(),
   folder: OfficinaLocalSource.optional(),
+  queueEnabled: z.boolean().optional(),
   profiles: z.partialRecord(OfficinaActor, OfficinaRoleProfile).optional(),
   reviews: z.array(observerReview).max(450).optional(),
+  autoImprovements: z.object({enabled: z.boolean(), since: z.number()}).optional(),
   goals: z.array(goal).max(100).optional(),
   tasks: z.array(task).max(150), events: z.array(OfficinaEvent).max(1800), runs: z.array(run).max(450),
 });
@@ -143,6 +162,7 @@ export type OfficinaView = {
   projects: Pick<OfficinaProject, 'id' | 'name'>[];
   project?: OfficinaProject;
   activity?: OfficinaRunActivity;
+  directActivity?: Partial<Record<OfficinaActor, OfficinaDirectActivity>>;
   enabled: boolean;
   observerQueued?: string[];
   dispatchBlock?: string;
@@ -153,17 +173,22 @@ export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('read')}).strict(),
   z.object({type: z.literal('select'), project: OfficinaId}).strict(),
   z.object({type: z.literal('project'), name: text(120)}).strict(),
+  z.object({type: z.literal('delete-project'), project: OfficinaId}).strict(),
   z.object({type: z.literal('chat'), project: OfficinaId.nullable().optional(), role: OfficinaParticipant.optional(),
-    name: text(120), message: text(officinaMessageLimit).optional(), pastedText: pastedText.optional(), id: OfficinaId})
-    .strict().refine(value => !!(value.message || value.pastedText)),
+    name: text(120), message: text(officinaMessageLimit).optional(), pastedText: pastedText.optional(),
+    images: z.array(pastedImage).max(officinaMaxImages).optional(), id: OfficinaId})
+    .strict().refine(value => !!(value.message || value.pastedText || value.images?.length)),
   z.object({type: z.literal('pick-context'), kind: z.enum(['folder', 'file'])}).strict(),
   z.object({type: z.literal('remove-context'), id: OfficinaId}).strict(),
   z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700)}).strict(),
   z.object({type: z.literal('retry-closure'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
+  z.object({type: z.literal('retry-send'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('resume-browser-review'), project: OfficinaId, task: OfficinaId}).strict(),
   z.object({type: z.literal('open-team-chat'), project: OfficinaId, role: OfficinaActor}).strict(),
   z.object({type: z.literal('role-profile'), project: OfficinaId, role: OfficinaActor, profile: OfficinaRoleProfile.nullable()}).strict(),
   z.object({type: z.literal('observe-team'), project: OfficinaId, id: OfficinaId, task: OfficinaId.optional()}).strict(),
+  z.object({type: z.literal('auto-improvements'), project: OfficinaId, enabled: z.boolean()}).strict(),
+  z.object({type: z.literal('dismiss-improvement'), project: OfficinaId, task: OfficinaId}).strict(),
   z.object({type: z.literal('decide-observation'), project: OfficinaId, id: OfficinaId, index: proposalIndex,
     decision: z.enum(['approved', 'rejected'])}).strict(),
   z.object({type: z.literal('follow-observation'), project: OfficinaId, id: OfficinaId, index: proposalIndex}).strict(),

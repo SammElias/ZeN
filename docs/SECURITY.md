@@ -19,6 +19,7 @@ La tarjeta automática se abre solo en el escritorio desbloqueado y fuera de Pau
 ## 02 · Límites de IPC y ejecución ![](assets/azul.svg)
 
 - Renderer con sandbox, aislamiento de contexto, seguridad web y Node deshabilitado. Main verifica emisor, frame principal, URL local y esquema antes de autorizar cada acción. [IPC](../src/main/companion-ipc.ts)
+- El permiso de pantalla completa requiere el frame principal de ZEN y la vista de Officina visible en el escritorio desbloqueado, fuera de Pausa y Presentación. Chromium exige un gesto del usuario para entrar.
 - El renderer invoca métodos cerrados de preload. El CLI y los auxiliares reciben argumentos definidos por main. Texto, Markdown y eventos externos se tratan como datos.
 - La solicitud de análisis se revisa antes del envío, caduca a los dos minutos y es de un uso. La selección de archivo pasa por diálogo nativo, límites de tamaño e identidad. La huella se revalida antes de utilizar el archivo. [Contexto](../src/main/companion-context.ts)
 - La observación multimedia es de lectura. Los controles de reproducción exigen una sesión válida y una acción explícita del usuario. El ajuste del volumen general exige Sonido visible y ZEN enfocado. El auxiliar comprueba que la salida predeterminada siga siendo la que muestra el deslizador antes de escribir el nivel.
@@ -53,6 +54,12 @@ Las carpetas de trabajo y los archivos de Officina se eligen mediante el selecto
 
 Consultar un resultado de Officina usa el tablero local sin despachar turnos. Para abrirlo en Codex, Main comprueba el proyecto visible, la tarea, la ejecución y la conversación guardada al enviar ese encargo.
 
+El estado de un turno directo se consulta solo para los chats de equipo del proyecto visible y tras comprobar su carpeta. El panel recibe el estado y la hora. La recuperación de un resultado histórico exige el turno y la identidad del encargo guardados.
+
+Para recuperar un envío incierto, Main vuelve a verificar el chat dedicado y compara proyecto, tarea, ejecución y puesto con el mensaje en cola o aceptado en el turno. Si encuentra una entrada en cola, avisa al mismo chat únicamente mientras la cola esté autorizada en el proyecto visible. Los reintentos de envío se reservan para fallos previos a la entrega. Pausa, Presentación y la revisión de permisos conservan sus límites.
+
+Eliminar un proyecto de Officina requiere la vista autorizada y que el proyecto confirmado siga seleccionado. Main elimina su tablero y actualiza la selección en una transacción local. Conserva los chats y los archivos usados como contexto. Los encargos que ya recibió Codex siguen en su conversación.
+
 Para abrir una referencia de un informe, Main comprueba el proyecto visible y la tarea. Solo admite rutas locales existentes dentro de la carpeta de trabajo o archivos adjuntados explícitamente a esa tarea. Resuelve la ruta real antes de abrirla para bloquear escapes mediante enlaces o uniones de directorios. El comando para el editor se construye con la ruta comprobada y las URL web se limitan a HTTP y HTTPS.
 
 Los perfiles personalizados se conservan en el tablero de su proyecto. Main verifica el proyecto visible al guardar. Las instrucciones del puesto viajan como contexto del siguiente turno y se aplican con los permisos y el contrato de respuesta vigentes de Codex.
@@ -61,7 +68,11 @@ Main materializa el texto pegado desde el objetivo guardado y verifica su conten
 
 Main prepara y verifica los informes locales que completan un turno largo. El aviso de permisos de Officina se correlaciona con el chat y el turno observados. Las decisiones sobre permisos se siguen tomando en el circuito de Codex.
 
+Las imágenes se incorporan desde el evento de pegado o de arrastre del usuario. Al enviar, Main valida los JPEG normalizados, los guarda en el perfil local y comprueba la huella antes de adjuntarlos a los turnos del encargo. Abrir una imagen desde el historial usa el mismo control de ámbito que los enlaces a adjuntos.
+
 El chat de ZEN se crea en solo lectura con elevación desactivada. El encargo identifica un archivo de evidencia acotado al tablero del proyecto. El contrato de respuesta reserva las asignaciones y traspasos a los puestos operativos. Solo la acción explícita del usuario puede aplicar un prompt, tras comprobar que la propuesta sigue pendiente y que el texto revisado está vigente. Main exige que conste la aprobación exacta para enviar un seguimiento. El seguimiento admite comprobaciones de lectura y preparación de cambios para revisión, con el mismo sandbox de ZEN.
+
+El ajuste de mejoras automáticas autoriza la coordinación de correcciones locales para incidencias comprobadas en el proyecto vinculado. Main genera el encargo desde el tipo de incidencia y referencia el turno original como evidencia. El despacho de ALM exige QA de Tester vinculado al traspaso de esa revisión. El circuito de permisos de Codex sigue aplicándose a los turnos de Desarrollo, Tester y ALM.
 
 ## 05 · Verificar y diagnosticar ![](assets/verde.svg)
 

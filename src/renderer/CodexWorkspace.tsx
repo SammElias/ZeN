@@ -1,4 +1,4 @@
-import React, {useLayoutEffect, useState} from 'react';
+import React, {useLayoutEffect, useRef, useState} from 'react';
 import type {CompanionApproval, CompanionSession, CompanionStatus} from '../shared/codex-companion';
 import {phaseNames as names,toolActivity} from '../shared/companion-presentation';
 import {CodexContext,type ContextDraft} from './CodexContext';
@@ -28,22 +28,50 @@ function CodePreview({text,label='Código / acción',review}:{text:string;label?
  return <div className="code-preview"><div><span>{label}</span><button type="button" onClick={()=>void copy()}>{notice||'Copiar'}</button></div><pre tabIndex={0} aria-label={label}>{lines.map((line,index)=><span className={line.startsWith('+')?'diff-add':line.startsWith('-')?'diff-remove':line.startsWith('@@')||line.startsWith('***')?'diff-header':''} key={index}>{line}{index<lines.length-1?'\n':''}</span>)}</pre></div>;
 }
 
+const codexViews = [{id: 'activity', label: 'Actividad'}, {id: 'summary', label: 'Resumen'}] as const;
+
 export function CodexWorkspace({status,visible,memory,onCloseReview}:{status:CompanionStatus;visible:boolean;memory:{current?:ContextDraft};onCloseReview:()=>void}){
+ const [tab,setTab]=useState<(typeof codexViews)[number]['id']>('activity');
+ const root=useRef<HTMLElement>(null);
  const reviewing=status.workspace?.page==='permissions';
- return <section className="codex-page" data-reviewing={reviewing}>
-  {reviewing?(visible&&<ApprovalReview status={status} onClose={onCloseReview}/>):<div className="workspace-section-heading"><h1>Actividad de Codex</h1></div>}
-  <Activity status={status} visible={visible&&!reviewing} memory={memory}/>
+ useLayoutEffect(()=>{
+  const content=root.current?.closest('.workspace-content');
+  if(content)content.scrollTop=0;
+ },[tab,reviewing]);
+ const showActivity=visible&&!reviewing&&tab==='activity';
+ const showSummary=visible&&!reviewing&&tab==='summary';
+ return <section ref={root} className="codex-page" data-reviewing={reviewing}>
+  {reviewing?(visible&&<ApprovalReview status={status} onClose={onCloseReview}/>):<div className="workspace-section-heading">
+   <h1>Codex</h1>
+   <div className="codex-subnav" role="tablist" aria-label="Vistas de Codex">
+    {codexViews.map(({id,label},index)=><button key={id} type="button" id={`codex-tab-${id}`} role="tab"
+     aria-selected={tab===id} aria-controls={`codex-panel-${id}`} tabIndex={tab===id?0:-1} onClick={()=>setTab(id)}
+     onKeyDown={event=>{
+      const next=event.key==='Home'?codexViews[0]:event.key==='End'?codexViews[1]:
+       ['ArrowLeft','ArrowRight'].includes(event.key)?codexViews[1-index]:undefined;
+      if(!next)return;
+      event.preventDefault();
+      setTab(next.id);
+      root.current?.querySelector<HTMLButtonElement>(`#codex-tab-${next.id}`)?.focus();
+     }}>{label}</button>)}
+   </div>
+  </div>}
+  <div id="codex-panel-activity" role="tabpanel" aria-labelledby="codex-tab-activity" hidden={!showActivity} tabIndex={0}>
+   <Activity status={status} visible={showActivity}/>
+  </div>
+  <div id="codex-panel-summary" role="tabpanel" aria-labelledby="codex-tab-summary" hidden={!showSummary} tabIndex={0}>
+   {showSummary&&<CodexSummary status={status} memory={memory}/>}
+  </div>
  </section>;
 }
 
 const inProgress=(session:CompanionSession)=>session.state==='working'||session.state==='thinking';
 const projectName=(session:CompanionSession)=>session.cwd.split(/[\\/]/).filter(Boolean).at(-1);
 
-function Activity({status,visible,memory}:{status:CompanionStatus;visible:boolean;memory:{current?:ContextDraft}}){
+function Activity({status,visible}:{status:CompanionStatus;visible:boolean}){
  const [observedId,selectChat]=useState<string>();
  const [picker,setPicker]=useState(false),[chatQuery,setChatQuery]=useState('');
  const [query,setQuery]=useState(''),[kind,setKind]=useState('all');
- const [analysisOpen,setAnalysisOpen]=useState(false);
  const sessions=visible?status.activitySessions??[]:[];
  const needsApproval=(session:CompanionSession)=>session.state==='approval'||status.approvals.some(a=>a.session===session.id);
  const groups=[
@@ -63,7 +91,6 @@ function Activity({status,visible,memory}:{status:CompanionStatus;visible:boolea
   searchText([step.label,step.tool,step.preview].join(' ')).includes(activitySearch)).reverse()??[];
  const approvals=status.approvals.filter(item=>item.session===selectedId&&item.preview);
  const permissionCount=status.approvalCount??status.approvals.length;
- const canAnalyze=!status.targetError&&!status.settings.presentation&&!status.settings.paused&&Boolean(status.target);
  const observedAt=sessions[0]?.at??status.lastEventAt;
  const count=groups[1].items.length;
  const pickerLabel=count?`Chats · ${count} en curso`:'Chats';
@@ -99,8 +126,9 @@ function Activity({status,visible,memory}:{status:CompanionStatus;visible:boolea
      <div className="codex-monitor-actions"><OpenCodex id={selected.id}>{needsApproval(selected)&&!approvals.length?'Revisar permiso en Codex':'Abrir en Codex'}</OpenCodex></div>
     </header>
     <div className="codex-chat-current"><span className="codex-chat-dot" data-state={needsApproval(selected)?'approval':selected.state} aria-hidden="true"/>
-     <span>{needsApproval(selected)?names.approval:selected.state==='working'&&currentStep?currentStep.label:names[selected.state]}</span>
-     {selected.at>0&&<time dateTime={new Date(selected.at).toISOString()}>{activityTime.format(selected.at)}</time>}
+     <span className="codex-chat-state"><small>Estado</small> {needsApproval(selected)?names.approval:names[selected.state]}</span>
+     {currentStep&&<span className="codex-chat-action"><small>Última acción</small> {currentStep.label}</span>}
+     {selected.at>0&&<time dateTime={new Date(selected.at).toISOString()}><small>Estado a las</small> {activityTime.format(selected.at)}</time>}
     </div>
     {approvals.map(approval=><ApprovalCard key={approval.id} approval={approval}/>)}
     {selected.steps.length>0&&<details className="codex-activity-filters"><summary>Filtros{kind!=='all'||query.trim()?' · activos':''}</summary>
@@ -115,11 +143,14 @@ function Activity({status,visible,memory}:{status:CompanionStatus;visible:boolea
     {!steps.length&&<p>{selected.steps.length?'No hay acciones que coincidan.':'Aún no hay acciones observadas para este chat.'}</p>}
    </article>
   </div>:<div className="companion-empty"><CompanionIcon name="code"/><h2>{status.settings.presentation?'Actividad oculta en Presentación':status.settings.paused?'Seguimiento en pausa':'Esperando actividad de Codex'}</h2></div>}
-  {canAnalyze&&<details className="codex-analysis" open={analysisOpen} onToggle={event=>setAnalysisOpen(event.currentTarget.open)}>
-   <summary>Peticiones y resultados del chat fijado</summary>
-   {analysisOpen&&<CodexContext disabled={false} visible={visible} memory={memory} targetTitle={status.target?.title}><p>Los resultados de análisis aparecerán aquí.</p></CodexContext>}
-  </details>}
  </div>;
+}
+function CodexSummary({status,memory}:{status:CompanionStatus;memory:{current?:ContextDraft}}){
+ if(status.settings.presentation||status.settings.paused)return <p>Resumen oculto mientras Pausa o Presentación está activo.</p>;
+ if(status.targetError||!status.target)return <p>{status.targetError||'Fija un chat en Codex para consultar sus peticiones y resultados.'}</p>;
+ return <CodexContext disabled={false} visible={true} memory={memory} targetTitle={status.target.title}>
+  <p>Los resultados de análisis aparecerán aquí.</p>
+ </CodexContext>;
 }
 function ApprovalDeadline({expiresAt}:{expiresAt:number}){
  const seconds=Math.ceil((expiresAt-useClock())/1000);

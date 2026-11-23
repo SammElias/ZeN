@@ -4,6 +4,40 @@
   pointer-events: none;
 }
 
+.officina-gestures { position: absolute; inset: 0; }
+.officina-gestures i {
+  position: absolute;
+  background: var(--officina-room-art) var(--officina-pose-position) / var(--officina-pose-size) no-repeat;
+  transform-origin: 50% 59%;
+  mask-image: radial-gradient(ellipse 51% 51% at center, #000 43%, transparent);
+}
+
+.officina-gesture-hands {
+  animation: officina-gesture-hands var(--gesture-period) var(--gesture-delay) ease-in-out infinite;
+}
+
+.officina-gesture-head,
+.officina-idle-frame::after,
+.officina-observer-look {
+  animation: officina-gesture-head var(--gesture-period) var(--gesture-delay) ease-in-out infinite;
+}
+
+@keyframes officina-gesture-hands {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  18% { transform: translate(7%, -4%) rotate(4deg); }
+  33% { transform: translate(2%, 2%) rotate(-2deg); }
+  50% { transform: translate(8%, -5%) rotate(5deg); }
+  68% { transform: translate(-6%, 2%) rotate(-3deg); }
+  85% { transform: translate(4%, -3%) rotate(2deg); }
+}
+
+@keyframes officina-gesture-head {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  23% { transform: translate(var(--gesture-shift, 4%), 0) rotate(var(--gesture-tilt)); }
+  47% { transform: translate(0, var(--gesture-shift, 4%)) rotate(calc(var(--gesture-tilt) * .45)); }
+  74% { transform: translate(calc(var(--gesture-shift, 4%) * -.6), 0) rotate(calc(var(--gesture-tilt) * -.4)); }
+}
+
 .officina-idle-seat {
   position: absolute;
   mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent),
@@ -19,13 +53,26 @@
   background-repeat: no-repeat;
 }
 
-.officina-idle-frame {
-  inset: 0;
+.officina-idle-frame,
+.officina-observer-coffee {
   opacity: 0;
   animation-duration: var(--officina-idle-period);
   animation-delay: var(--officina-idle-delay);
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
+}
+
+.officina-idle-frame { inset: 0; }
+
+.officina-idle-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  --gesture-shift: 1%;
+  transform-origin: var(--officina-pose-head-x) var(--officina-pose-head-y);
+  mask-image: radial-gradient(ellipse 26% 24% at var(--officina-pose-head-x) var(--officina-pose-head-y),
+    #000 41%, transparent);
 }
 
 .officina-idle-frame--transition {
@@ -38,15 +85,62 @@
   animation-name: officina-idle-rest;
 }
 
+.officina-idle-frame--coffee {
+  background-image: url('./assets/officina-seated-coffee.png');
+  animation-name: officina-coffee-sip;
+}
+
+.officina-idle-seat[data-role=developer] .officina-idle-frame--transition {
+  animation-name: officina-coffee-lift;
+}
+
+.officina-idle-frame--coffee[data-coffee=developer] {
+  background-image: url('./assets/officina-idle.png');
+}
+
+.officina-observer-coffee {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  --officina-idle-period: 81s;
+  --officina-idle-delay: -31s;
+  mask-image: radial-gradient(ellipse 22% 26% at 65% 33%, #000 51%, transparent 95%);
+  animation-name: officina-coffee-sip;
+}
+
+.officina-observer-look {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  --gesture-period: 8.2s;
+  --gesture-delay: -1.7s;
+  --gesture-tilt: 2.6deg;
+  --gesture-shift: 1.15%;
+  transform-origin: 76% 29%;
+  mask-image: radial-gradient(ellipse 16% 19% at 76% 26%, #000 44%, transparent);
+}
+
 /* The intermediate pose stays visible beneath the crossfade in both directions. */
 @keyframes officina-idle-transition {
-  0%, 2%, 14%, 29%, 44%, 100% { opacity: 0; }
-  6%, 11%, 33%, 39% { opacity: 1; }
+  0%, 2%, 10%, 15%, 24%, 100% { opacity: 0; }
+  4.5%, 7%, 18.5%, 21.5% { opacity: 1; }
 }
 
 @keyframes officina-idle-rest {
-  0%, 8%, 38%, 100% { opacity: 0; }
-  12%, 34% { opacity: 1; }
+  0%, 5.5%, 21%, 100% { opacity: 0; }
+  8%, 18.5% { opacity: 1; }
+}
+
+@keyframes officina-coffee-lift {
+  0%, 48%, 56%, 62%, 67%, 100% { opacity: 0; }
+  50%, 54%, 63.5%, 65% { opacity: 1; }
+}
+
+@keyframes officina-coffee-sip {
+  0%, 51.5%, 63.5%, 100% { opacity: 0; }
+  53.5%, 61.5% { opacity: 1; }
 }
 
 .officina-ambient-lamp {
@@ -56,19 +150,19 @@
   translate: -50% -50%;
   background: radial-gradient(circle, #ffd496 0%, #e89248 37%, transparent 70%);
   mix-blend-mode: screen;
-  animation: officina-warm-light 6.4s ease-in-out infinite alternate;
+  animation: officina-warm-light 14s ease-in-out infinite alternate;
 }
 
 .officina-ambient-lamp[data-lamp=wall] { left: 8.1%; top: 34%; }
-.officina-ambient-lamp[data-lamp=lounge] { left: 91%; top: 77%; animation-delay: -3.1s; }
+.officina-ambient-lamp[data-lamp=lounge] { left: 91%; top: 77%; animation-delay: -8s; }
 
 @keyframes officina-warm-light { from { opacity: .035; } to { opacity: .12; } }
 
 .officina-ambient-leaves {
-  background-image: url('./assets/officina-office.png');
+  background-image: var(--officina-room-art);
   mask-image: radial-gradient(ellipse at 52% 44%, #000 25%, transparent 71%);
   transform-origin: 50% 92%;
-  animation: officina-leaves-sway 5.7s ease-in-out infinite;
+  animation: officina-leaves-sway 18s ease-in-out infinite;
 }
 
 @keyframes officina-leaves-sway { 25% { rotate: 1.8deg; } 70% { rotate: -1.3deg; } }
@@ -76,5 +170,5 @@
 .officina-routine { margin: 5px 0 9px; font-size: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .officina-idle-scene { display: none; }
+  .officina-idle-scene, .officina-observer-coffee, .officina-observer-look { display: none; }
 }

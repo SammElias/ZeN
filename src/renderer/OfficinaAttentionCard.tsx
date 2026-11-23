@@ -2,6 +2,7 @@ import React from 'react';
 import {AlertCircle, ArrowRight, RotateCw, ShieldCheck} from 'lucide-react';
 import type {CompanionApproval} from '../shared/codex-companion';
 import type {OfficinaAttention} from '../shared/officina-attention';
+import {officinaSendRetry} from '../shared/officina-attention';
 import {officinaActorName, officinaDeliveryQa, type OfficinaAction, type OfficinaProject} from '../shared/companion-officina';
 
 export function OfficinaAttentionCard({item, project, act, approvals, openTask}: {
@@ -45,7 +46,13 @@ export function OfficinaAttentionCard({item, project, act, approvals, openTask}:
     </>}
     {item.kind === 'dispatch' && <>
       <p>{item.run.issue}</p>
-      {completedReply ? <button className="officina-next-action" onClick={() =>
+      {officinaSendRetry(item.run) ? <button className="officina-next-action" onClick={() =>
+        void act({type: 'retry-send', project: project.id, task: task.id, run: item.run.id})}>
+        Reintentar envío <RotateCw aria-hidden="true"/>
+      </button> : item.run.state === 'uncertain' && item.run.destination ? <button className="officina-next-action" onClick={() =>
+        void act({type: 'open-run-chat', project: project.id, task: task.id, run: item.run.id})}>
+        Revisar en Codex <ArrowRight aria-hidden="true"/>
+      </button> : completedReply ? <button className="officina-next-action" onClick={() =>
         void act({type: 'open-run-chat', project: project.id, task: task.id, run: item.run.id})}>
         Abrir respuesta en Codex <ArrowRight aria-hidden="true"/>
       </button> : openTask && <button className="officina-next-action" onClick={() => openTask(task.id)}>Ver turno <ArrowRight aria-hidden="true"/></button>}

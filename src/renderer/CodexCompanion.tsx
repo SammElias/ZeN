@@ -336,7 +336,7 @@ export function CodexCompanion(){
 
  useEffect(()=>{
   function handleEscape(event: KeyboardEvent) {
-   if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||!expanded||root.current?.querySelector('dialog[open]'))return;
+   if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||!expanded||document.fullscreenElement||root.current?.querySelector('dialog[open]'))return;
    event.preventDefault();
    const disclosure=root.current?.querySelector<HTMLDetailsElement>('.workspace-content:not([hidden]) :is(.hub-menu,.workspace-layout-menu,.settings-connection)[open]');
    if(disclosure&&(disclosure.contains(document.activeElement)||disclosure.classList.contains('workspace-layout-menu'))){

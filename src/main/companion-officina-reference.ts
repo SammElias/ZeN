@@ -8,8 +8,9 @@ import {verifyOfficinaSource} from './companion-officina-context';
 type LocalReference = Extract<OfficinaReference, {kind: 'local'}>;
 
 export function officinaReferenceScope(project: OfficinaProject, task?: string) {
+  const goal = task ? project.goals?.find(item => item.task === task) : undefined;
   return {folder: project.folder, cwd: project.team?.cwd ?? project.binding?.cwd,
-    files: task ? project.goals?.find(goal => goal.task === task)?.files ?? [] : []};
+    files: [...(goal?.files ?? []), ...(goal?.images ?? [])]};
 }
 
 function within(root: string, file: string) {

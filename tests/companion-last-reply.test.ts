@@ -24,8 +24,86 @@ async function local(content=header()+context()+final()+complete(),row:any={}){
  const db=new DatabaseSync(join(home,'state_5.sqlite'));db.exec('CREATE TABLE threads(id TEXT PRIMARY KEY,rollout_path TEXT,cwd TEXT,agent_path TEXT)');
  db.prepare('INSERT INTO threads(id,rollout_path,cwd,agent_path) VALUES(?,?,?,?)').run(target.session,row.path??file,row.cwd??target.cwd,row.agent??null);db.close();
  const reader=new CodexReplyReader(home);
- return{home,file,read:(selected=target)=>reader.read(selected)};
+ return{home,file,reader,read:(selected=target)=>reader.read(selected)};
 }
+
+it('reads an exact completed turn even after another Codex request', async()=>{
+ const newer=final('Otro trabajo')+complete('Otro trabajo',{turn_id:'t2'});
+ const fixture=await local(header()+context()+final()+complete()+context({turn_id:'t2'})+newer);
+ expect(await fixture.reader.readOfficinaTurnReply(target,'t1')).toMatchObject({text:'Real final',turn:'t1'});
+ expect(await fixture.read()).toMatchObject({text:'Otro trabajo',turn:'t2'});
+ expect(await fixture.reader.readOfficinaTurnReply(target,'otro')).toBeUndefined();
+});
+
+it('observes a direct user turn and excludes a managed turn with a steering message', async()=>{
+ const accepted=(turn:string,text:string,thread_id=target.session)=>json('event_msg',{
+  type:'item_completed',thread_id,turn_id:turn,item:{type:'UserMessage',content:[{type:'text',text}]},
+ });
+ const fixture=await local(header()+context()+accepted('t1','Comprueba la entrega.'));
+ expect(await fixture.reader.readOfficinaDirectTurn(target)).toMatchObject({turn:'t1',state:'working'});
+ await appendFile(fixture.file,final()+complete());
+ expect(await fixture.reader.readOfficinaDirectTurn(target)).toMatchObject({turn:'t1',state:'finished'});
+ const built=JSON.stringify({identity:{project:'p',task:'t',run:'r',role:'alm'}});
+ await appendFile(fixture.file,context({turn_id:'t2'})+accepted('t2','Gestionado en Officina\n'+built)+accepted('t2','Cambio de contexto'));
+ expect(await fixture.reader.readOfficinaDirectTurn(target)).toBeUndefined();
+ await appendFile(fixture.file,context({turn_id:'t3',cwd:target.cwd+'-otro'})+accepted('t3','Otro proyecto'));
+ expect(await fixture.reader.readOfficinaDirectTurn(target)).toBeUndefined();
+});
+
+it.each(['developer','tester'] as const)('keeps %s working after the accepting event leaves the tail', async role=>{
+ const identity={project:randomUUID(),run:randomUUID(),task:randomUUID(),role};
+ const accepted=json('event_msg',{type:'item_completed',thread_id:target.session,turn_id:'t1',item:{
+  type:'UserMessage',content:[{type:'text',text:'Encargo\n'+JSON.stringify({identity})}],
+ }});
+ const fixture=await local(header()+context()+accepted);
+ const at=Date.parse('2026-10-25T10:00:00Z');
+ const working={turn:'t1',state:'working',at};
+ const output=json('response_item',{type:'function_call_output',output:'x'.repeat(5*1024*1024)});
+ await appendFile(fixture.file,output);
+ const read=()=>fixture.reader.readOfficinaTurn(target,identity,at);
+ expect(await read()).toEqual(working);
+ for(let cycle=0;cycle<3;cycle++){
+  await appendFile(fixture.file,output);
+  expect(await read()).toEqual(working);
+ }
+ await appendFile(fixture.file,json('event_msg',{type:'task_complete',turn_id:'child',root_turn_id:'t1'}));
+ expect(await read()).toEqual(working);
+ const end=complete().trimEnd();
+ await appendFile(fixture.file,end);
+ expect(await read()).toEqual(working);
+ await appendFile(fixture.file,'\n'+json('event_msg',{type:'task_started',turn_id:'newer'}));
+ expect(await read()).toEqual({...working,state:'finished'});
+ await writeFile(fixture.file,header()+context());
+ expect(await read()).toBeUndefined();
+});
+
+it('continues a verified direct turn when the rollout grows during the read', async()=>{
+ const accepted=json('event_msg',{type:'item_completed',thread_id:target.session,turn_id:'t1',item:{
+  type:'UserMessage',content:[{type:'text',text:'Comprueba los cambios.'}],
+ }});
+ const fixture=await local(header()+context()+accepted);
+ const actual=await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+ const output=json('response_item',{type:'function_call_output',output:'x'.repeat(6*1024*1024)});
+ await appendFile(fixture.file,output);
+ const read=()=>fixture.reader.readOfficinaDirectTurn(target);
+ expect(await read()).toMatchObject({turn:'t1',state:'working'});
+ await appendFile(fixture.file,output);
+ expect(await read()).toMatchObject({turn:'t1',state:'working'});
+ await appendFile(fixture.file,output);
+ vi.mocked(open).mockImplementationOnce(async(path,flags,mode)=>{
+  const handle=await actual.open(path,flags,mode),stat=handle.stat.bind(handle);
+  vi.spyOn(handle,'stat').mockImplementationOnce(async()=>{
+   const snapshot=await stat();
+   await appendFile(fixture.file,complete());
+   return snapshot;
+  });
+  return handle;
+ });
+ expect(await read()).toMatchObject({turn:'t1',state:'working'});
+ expect(await read()).toMatchObject({turn:'t1',state:'finished'});
+ await appendFile(fixture.file,json('event_msg',{type:'task_started',turn_id:'later'}));
+ expect(await read()).toBeUndefined();
+});
 function fixture(pinned:CompanionTarget|null=target){
  let now=1000;const changed=vi.fn(),observed=vi.fn(),hub=new CompanionHub(CompanionSettingsSchema.parse({}),changed,()=>{},()=>now,pinned??undefined,observed);disposals.push(()=>hub.dispose());
  const event=(event:string,extra:any={})=>{const reply=vi.fn();hub.accept({id:randomUUID(),event,session:target.session,cwd:target.cwd,turn:'t1',...extra},reply);return reply;};

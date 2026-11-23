@@ -85,6 +85,45 @@ async function record(page, kind, values) {
     [...document.querySelectorAll('dialog select')].some(select => select.value === 'progress'));
 }
 
+async function checkCoordinationWidth(page, width) {
+  const card = page.getByRole('region', {name: 'Actividad de Coordinación'});
+  const {previousTitle, ...geometry} = await card.evaluate(node => {
+    const title = node.querySelector('.officina-desk-task strong');
+    const previousTitle = title.textContent;
+    const select = document.createElement('select');
+    const result = document.createElement('p');
+    select.dataset.widthFixture = result.dataset.widthFixture = 'true';
+    const token = 'segmento_sin_espacios_'.repeat(24);
+    title.textContent = token.slice(0, 120);
+    select.add(new Option('Encargo de Coordinación con un título largo '.repeat(3)));
+    result.className = 'officina-result-preview';
+    result.textContent = 'Resultado de Coordinación · ' + token;
+    node.append(select, result);
+    const card = node.getBoundingClientRect();
+    const fits = element => {
+      const box = element.getBoundingClientRect();
+      return box.width > 0 && box.left >= card.left && box.right <= card.right + 1;
+    };
+    const composer = document.querySelector('.officina-chat-compose').getBoundingClientRect();
+    const resultBox = result.getBoundingClientRect();
+    return {previousTitle, width: innerWidth, overflow: node.scrollWidth - node.clientWidth,
+      controlsFit: [...node.querySelectorAll('button, select'), title].every(fits),
+      wraps: resultBox.height > parseFloat(getComputedStyle(result).fontSize) * 2,
+      composerVisible: composer.height > 0 && composer.bottom <= innerHeight + 1,
+      sidebarVisible: document.querySelector('.officina-side').getBoundingClientRect().width > 0};
+  });
+  try {
+    assert.deepEqual(geometry, {width, overflow: 0, controlsFit: true, wraps: true, composerVisible: true, sidebarVisible: true});
+    if (width === 320) await card.evaluate(node => node.scrollIntoView({block: 'start'}));
+    await page.screenshot({path: resolve(evidence, 'officina-coordinacion-' + width + '.png')});
+  } finally {
+    await card.evaluate((node, title) => {
+      node.querySelectorAll('[data-width-fixture]').forEach(element => element.remove());
+      node.querySelector('.officina-desk-task strong').textContent = title;
+    }, previousTitle);
+  }
+}
+
 await withZen(async (page, app) => {
   await enter(page);
   assert.equal(await page.locator('.capsule-launcher [data-page=officina]').count(), 1);
@@ -104,6 +143,8 @@ await withZen(async (page, app) => {
   assert.deepEqual(frame.panel, normalPanel);
   assert.deepEqual(await app.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows()[0].getBounds()), normal.bounds);
   await createProject(page, 'Aprobación de gastos');
+  assert.equal(await page.locator('.officina-compose-queue').count(), 0);
+  assert.equal(await page.getByRole('button', {name: 'Activar cola', exact: true}).count(), 0);
   const idleSeats = page.locator('.officina-idle-seat');
   const analystIdle = page.locator('.officina-idle-seat[data-role=analyst]');
   const screens = page.locator('.officina-screen');
@@ -113,6 +154,8 @@ await withZen(async (page, app) => {
   await page.waitForFunction(() => [...document.querySelectorAll('.officina-screen, .officina-screen-reflection')]
     .every(display => display.getAnimations({subtree: true}).some(animation => animation.playbackRate > 0 && animation.playbackRate < 1)));
   assert.equal(await page.locator('.officina-round').count(), 0);
+  await page.locator('.officina-cafe-counter').waitFor();
+  assert.equal(await page.locator('.officina-coffee-walk, .officina-cafe-button').count(), 0);
   assert.deepEqual(await idleSeats.evaluateAll(seats => seats.map(seat => seat.dataset.action)),
     ['phone', 'pen', 'coffee', 'stretch', 'notebook']);
   assert.equal(await idleSeats.evaluateAll(seats => new Set(seats.map(seat =>
@@ -120,9 +163,103 @@ await withZen(async (page, app) => {
   assert.deepEqual(await screens.evaluateAll(displays => displays.map(display => [display.dataset.role,
     display.getAnimations({subtree: true}).some(animation => animation.playState === 'running' &&
       animation.effect.getTiming().iterations === Infinity)])),
-  [['analyst', true], ['architect', true], ['developer', true], ['developer', true], ['tester', true], ['alm', true], ['observer', true]]);
+  [['analyst', true], ['architect', true], ['developer', true], ['developer', true], ['tester', true], ['alm', true],
+    ['coordinator', true], ['observer', true]]);
+  const scene = page.locator('.officina-scene');
+  const visibleMotion = await scene.evaluate(async scene => {
+    const sample = elements => elements.map(element => element.getAnimations({subtree: true}).map(({effect}) => {
+      const {opacity, left, top, translate, scale, transform, backgroundPosition} =
+        getComputedStyle(effect.target, effect.pseudoElement);
+      return [opacity, left, top, translate, scale, transform, backgroundPosition].join('/');
+    }).join('|'));
+    const elements = [...scene.querySelectorAll('.officina-screen, [data-seated-gesture]')];
+    const before = sample(elements);
+    await new Promise(resolve => setTimeout(resolve, 350));
+    return sample(elements).map((appearance, index) => [elements[index].dataset.role ??
+      elements[index].dataset.seatedGesture, appearance !== before[index]]);
+  });
+  assert.equal(visibleMotion.length, 14);
+  assert.deepEqual(visibleMotion.filter(([, changed]) => !changed), [], 'Cada puesto debe tener movimiento ambiental');
+  const assertRoomTargets = async () => {
+    const rooms = await scene.evaluate(scene => {
+      const selectors = '.officina-desk, .officina-observer-marker, .officina-table';
+      const areas = Array.from(scene.querySelectorAll(selectors), element => element.getBoundingClientRect());
+      const separated = areas.every((area, index) => areas.slice(index + 1).every(other =>
+        Math.min(area.right, other.right) - Math.max(area.left, other.left) < 1 ||
+        Math.min(area.bottom, other.bottom) - Math.max(area.top, other.top) < 1));
+      const screens = Array.from(scene.querySelectorAll('.officina-screen'), screen => {
+        const bounds = screen.getBoundingClientRect();
+        const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+        return [screen.dataset.role, hit?.closest(selectors)?.dataset.role, !!hit?.closest('.officina-desk-label')];
+      });
+      return {separated, areas: areas.length, screens};
+    });
+    assert.equal(rooms.areas, 7);
+    assert.equal(rooms.separated, true);
+    assert.equal(rooms.screens.length, 8);
+    assert.deepEqual(rooms.screens.filter(([role, hit, covered]) => role !== hit || covered), []);
+  };
+  await assertRoomTargets();
+  const measureWindow = () => app.evaluate(({BrowserWindow, screen}) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    return {bounds: window.getBounds(), display: screen.getDisplayMatching(window.getBounds()).bounds,
+      fullscreen: window.isFullScreen()};
+  });
+  const windowed = await measureWindow();
+  const viewport = await page.evaluate(() => [innerWidth, innerHeight]);
+  const showFullscreen = page.getByRole('button', {name: 'Pantalla completa', exact: true});
+  const exitFullscreen = page.getByRole('button', {name: 'Salir de pantalla completa', exact: true});
+  const fullscreenState = expected => page.waitForFunction(expected =>
+    document.querySelector('.officina-stage')?.matches(':fullscreen') === expected, expected);
+  await showFullscreen.click();
+  await fullscreenState(true);
+  await exitFullscreen.waitFor();
+  await page.waitForFunction(size => innerWidth === size.width && innerHeight === size.height, windowed.display);
+  const fullscreen = await measureWindow();
+  assert.equal(fullscreen.fullscreen, true);
+  assert.deepEqual(fullscreen.bounds, windowed.display);
+  const dimension = await scene.boundingBox();
+  assert.ok(Math.abs(dimension.width / dimension.height - 1.2) < .003);
+  const available = Math.min(fullscreen.display.width, fullscreen.display.height * 1.2);
+  assert.ok(Math.abs(dimension.width - available) < 2);
+  const stage = page.locator('.officina-stage');
+  assert.match(await stage.evaluate(node => getComputedStyle(node, '::before').backgroundImage), /officina-office-rooms/);
+  await assertRoomTargets();
+  await page.screenshot({path: resolve(evidence, 'officina-pantalla-completa.png')});
+  const narrowViewport = await page.context().newCDPSession(page);
+  try {
+    await narrowViewport.send('Emulation.setDeviceMetricsOverride', {width: 360, height: 780, deviceScaleFactor: 1, mobile: false});
+    await page.waitForFunction(() => innerWidth === 360 && innerHeight === 780);
+    await fullscreenState(true);
+    const narrowScene = await scene.boundingBox();
+    assert.ok(Math.abs(narrowScene.width - 360) < 2 && Math.abs(narrowScene.height - 300) < 2);
+    await assertRoomTargets();
+    await exitFullscreen.click({trial: true});
+    await page.screenshot({path: resolve(evidence, 'officina-pantalla-completa-estrecha.png')});
+  } finally {
+    await narrowViewport.send('Emulation.clearDeviceMetricsOverride');
+    await narrowViewport.detach();
+  }
+  await page.keyboard.press('Escape');
+  await fullscreenState(false);
+  await page.waitForFunction(([width, height]) => innerWidth === width && innerHeight === height, viewport);
+  assert.deepEqual(await measureWindow(), windowed);
+  await showFullscreen.waitFor();
+  await page.waitForFunction(() => document.activeElement?.classList.contains('officina-fullscreen-button'));
+  await showFullscreen.click();
+  await exitFullscreen.click();
+  await fullscreenState(false);
+  await page.waitForFunction(([width, height]) => innerWidth === width && innerHeight === height, viewport);
+  assert.deepEqual(await measureWindow(), windowed);
   const discontinuities = await page.locator('.officina-screens').evaluate(layer => {
     const failures = [];
+    const numbers = value => (value.match(/[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number);
+    const close = (before, after) => {
+      if (before === after) return true;
+      const first = numbers(before), second = numbers(after);
+      return first.length > 0 && first.length === second.length &&
+        first.every((number, index) => Math.abs(number - second[index]) < .05);
+    };
     for (const animation of layer.getAnimations({subtree: true})) {
       const {effect, currentTime} = animation;
       const {target, pseudoElement} = effect;
@@ -136,19 +273,21 @@ await withZen(async (page, app) => {
       const after = sample(2.0001);
       animation.currentTime = currentTime;
       if (before.opacity < .001 && after.opacity < .001) continue;
-      if (target.classList.contains('officina-code-reel')) {
-        const pageHeight = Number.parseFloat(getComputedStyle(target.firstElementChild).height);
-        const shift = new DOMMatrix(after.transform).m42 - new DOMMatrix(before.transform).m42;
-        if (Math.abs(shift - pageHeight) > .05) failures.push(animation.animationName);
+      if (target.matches('.officina-code-reel, .officina-test-reel, .officina-observer-reel')) {
+        const horizontal = target.classList.contains('officina-observer-reel');
+        const pageSize = Number.parseFloat(getComputedStyle(target.firstElementChild)[horizontal ? 'width' : 'height']);
+        const axis = horizontal ? 'm41' : 'm42';
+        const shift = new DOMMatrix(after.transform)[axis] - new DOMMatrix(before.transform)[axis];
+        if (Math.abs(shift - pageSize) > .05) failures.push(animation.animationName);
       } else if (Math.abs(before.opacity - after.opacity) > .01 ||
-        before.position.some((value, index) => value !== after.position[index])) {
+        before.position.some((value, index) => !close(value, after.position[index]))) {
         failures.push(animation.animationName);
       }
     }
     return failures;
   });
   assert.deepEqual(discontinuities, [], 'Los ciclos de pantalla deben enlazar sus fotogramas');
-  await page.locator('.officina-scene').evaluate(async scene => {
+  await scene.evaluate(async scene => {
     await scene.querySelector('.officina-photo').decode();
     await scene.querySelector('.officina-observer-furniture').decode();
     const poses = [...scene.querySelectorAll('.officina-idle-frame')];
@@ -161,17 +300,44 @@ await withZen(async (page, app) => {
     for (const animation of scene.querySelector('.officina-idle-scene').getAnimations({subtree: true})) {
       const {duration, delay} = animation.effect.getTiming();
       animation.pause();
-      animation.currentTime = (duration * 1.22 + delay) % duration;
+      animation.currentTime = duration * 1.13 + delay;
     }
   });
-  await page.locator('.officina-scene').screenshot({path: resolve(evidence, 'officina-pantallas.png')});
-  await page.locator('.officina-idle-scene').evaluate(scene => scene.getAnimations({subtree: true}).forEach(animation => animation.play()));
+  await scene.screenshot({path: resolve(evidence, 'officina-pantallas.png')});
+  const coffee = await scene.evaluate(async scene => {
+    await scene.querySelector('.officina-observer-coffee').decode();
+    const frames = [...scene.querySelectorAll('[data-coffee]')];
+    for (const animation of scene.querySelector('.officina-idle-scene').getAnimations({subtree: true})) {
+      const {duration, delay} = animation.effect.getTiming();
+      animation.currentTime = duration * 1.38 + delay;
+    }
+    return frames.map(frame => {
+      const animation = frame.getAnimations().find(candidate => candidate.animationName === 'officina-coffee-sip');
+      const {duration, delay} = animation.effect.getTiming();
+      animation.pause();
+      const sample = phase => {
+        animation.currentTime = duration * (1 + phase) + delay;
+        return Number(getComputedStyle(frame).opacity);
+      };
+      const opacity = [.002, .47, .57, .71, .998].map(sample);
+      sample(['developer', 'tester', 'observer'].includes(frame.dataset.coffee) ? .57 : .38);
+      return {role: frame.dataset.coffee, duration, delay, opacity};
+    });
+  });
+  assert.deepEqual(coffee.map(frame => frame.role), ['analyst', 'architect', 'developer', 'tester', 'alm', 'observer']);
+  assert.ok(coffee.every(frame => frame.duration >= 55_000));
+  assert.equal(new Set(coffee.map(frame => frame.delay)).size, coffee.length);
+  for (const frame of coffee) assert.deepEqual(frame.opacity, [0, 0, 1, 0, 0], frame.role);
+  await scene.screenshot({path: resolve(evidence, 'officina-cafe-en-el-puesto.png')});
+  await scene.evaluate(scene => scene.querySelectorAll('.officina-idle-scene, .officina-observer-coffee')
+    .forEach(layer => layer.getAnimations({subtree: true}).forEach(animation => animation.play())));
   await page.locator('.officina-desk[data-role=analyst]').click();
   await page.getByRole('button', {name: 'Ficha del puesto'}).click();
   await page.getByRole('dialog').getByText('Mira el móvil cuando está libre.', {exact: false}).waitFor();
   await page.getByRole('dialog').getByRole('button', {name: 'Cerrar ficha'}).click();
   await createTask(page);
   await page.locator('.officina-idle-seat[data-role=developer]').waitFor({state: 'detached'});
+  assert.equal(await page.locator('[data-coffee=developer]').count(), 0);
   await analystIdle.waitFor();
   await taskFromBoard(page);
   await record(page, 'decision', {from: 'architect', text: rule});
@@ -193,10 +359,10 @@ await withZen(async (page, app) => {
     };
     const result = [sample(delay - 1), sample(delay + duration / 2), sample(delay + duration + 1)];
     animation.currentTime = currentTime;
-    return {opacity: result, synchronized: motion.getAttribute('dur') === `${delay}ms` &&
+    return {opacity: result, elapsed, currentTime, delay, synchronized: motion.getAttribute('dur') === `${delay}ms` &&
       elapsed >= 0 && Math.abs(elapsed * 1000 - currentTime) < 100};
   });
-  assert.equal(arrival.synchronized, true);
+  assert.equal(arrival.synchronized, true, JSON.stringify(arrival));
   assert.deepEqual(arrival.opacity, [0, .85, 0]);
   let dialog = page.getByRole('dialog');
   const versionOption = await dialog.locator('.officina-event').filter({hasText: 'dist/gastos.zip'}).getAttribute('class');
@@ -222,6 +388,9 @@ await withZen(async (page, app) => {
   await page.emulateMedia({reducedMotion: 'reduce'});
   await page.locator('.officina-gestures').waitFor({state: 'detached'});
   await page.locator('.officina-idle-scene').waitFor({state: 'detached'});
+  assert.equal(await page.locator('[data-seated-gesture]').count(), 0);
+  await page.locator('.officina-cafe-counter').waitFor();
+  assert.equal(await page.locator('[data-coffee]').count(), 0);
   await receipt.waitFor({state: 'detached'});
   await screens.first().waitFor();
   await page.waitForFunction(() => {
@@ -269,6 +438,9 @@ await withZen(async (page, app) => {
   await dialog.getByRole('heading', {name: 'Resumen'}).waitFor();
   assert.equal(await dialog.locator('ol li').count(), 2);
   await dialog.getByRole('table').getByText('Revisado', {exact: true}).waitFor();
+  await dialog.getByRole('table').locator('td[data-column="Estado"]').getByText('Revisado', {exact: true}).waitFor();
+  await dialog.getByRole('button', {name: 'Copiar informe'}).click();
+  await dialog.getByRole('status').getByText('Copiado', {exact: true}).waitFor();
   await dialog.screenshot({path: resolve(evidence, 'officina-respuestas.png')});
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   const chatLinks = page.locator('.officina-project-tools > summary').filter({hasText: 'Chats en Codex'});
@@ -287,13 +459,25 @@ await withZen(async (page, app) => {
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
   await page.locator('.officina-signal').waitFor();
   await analystIdle.waitFor({state: 'detached'});
-  assert.equal(await screens.count(), 7);
+  assert.equal(await screens.count(), 8);
   await page.waitForFunction(() => [...document.querySelectorAll('.officina-screens [data-role=analyst][data-state=working]')]
     .filter(display => display.getAnimations({subtree: true}).some(animation => animation.playbackRate > 1)).length === 2);
   await page.locator('.officina-idle-seat[data-role=developer]').waitFor();
   const analyst = page.locator('.officina-team-list button[data-role=analyst]');
   const coordination = page.locator('.officina-team-list button[data-role=coordinator]');
   await analyst.getByText('Trabajando en Codex', {exact: true}).waitFor();
+  const workColor = await page.locator('.officina').evaluate(root => {
+    const style = (selector, property) => getComputedStyle(root.querySelector(selector))[property];
+    return {
+      desk: style('.officina-desk[data-role=analyst][data-state=working] .officina-desk-label', 'borderTopColor'),
+      list: style('.officina-team-member[data-state=working] .officina-tracking-label', 'color'),
+      link: style('.officina-paths path[data-state=working]', 'stroke'),
+      selected: style('.officina-team-member[data-selected=true]', 'borderRightColor'),
+    };
+  });
+  assert.deepEqual(workColor, {desk: 'rgb(201, 244, 127)', list: 'rgb(201, 244, 127)',
+    link: 'rgb(201, 244, 127)', selected: 'rgba(105, 236, 255, 0.604)'});
+  await page.locator('.officina').screenshot({path: resolve(evidence, 'officina-trabajando-verde.png')});
   assert.equal(await coordination.count(), 1);
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
   await browserGoal.getByText('Objetivo de prueba completado.', {exact: true}).waitFor();
@@ -301,12 +485,12 @@ await withZen(async (page, app) => {
   await analystIdle.waitFor();
   await page.waitForFunction(() => {
     const animations = document.querySelector('.officina-analysis-screen[data-state=done]')?.getAnimations({subtree: true});
-    return animations?.length && animations.every(animation => animation.playbackRate === 0);
+    return animations?.length && animations.every(animation => animation.playbackRate > 0 && animation.playbackRate < 1);
   });
   assert.equal(await page.locator('.officina-board-pointer').evaluate(async cursor => {
     const before = cursor.getAnimations()[0].currentTime;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    return cursor.getAnimations()[0].currentTime === before;
+    return cursor.getAnimations()[0].currentTime > before;
   }), true);
   await page.waitForFunction(() => document.querySelector('.officina-code-reel')?.getAnimations()
     .some(animation => animation.playState === 'running'));
@@ -414,6 +598,7 @@ await withZen(async (page, app) => {
   for (const [width, height] of [[948, 977], [1280, 700]]) {
     await app.evaluate(({BrowserWindow}, size) => BrowserWindow.getAllWindows()[0].setSize(...size), [width, height]);
     await page.waitForFunction(w => innerWidth === w, width);
+    await checkCoordinationWidth(page, width);
     await page.locator('.officina-brand').hover();
     const geometry = await page.locator('.officina').evaluate(root => {
       const rect = selector => root.querySelector(selector).getBoundingClientRect().toJSON();
@@ -484,6 +669,44 @@ await withZen(async (page, app) => {
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
   const chatRecipient = page.getByRole('combobox', {name: 'Destinatario del encargo'});
   assert.equal(await chatRecipient.inputValue(), 'tester');
+  const originalWindow = await app.evaluate(({BrowserWindow}) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    const original = {minimum: window.getMinimumSize(), size: window.getContentSize()};
+    window.setMinimumSize(0, 0);
+    window.setContentSize(320, original.size[1]);
+    return original;
+  });
+  await page.waitForFunction(() => innerWidth === 320);
+  assert.ok(await chatRecipient.evaluate(select => {
+    const box = select.getBoundingClientRect();
+    return box.left >= 0 && box.right <= innerWidth && box.width >= 120;
+  }));
+  await page.locator('.officina-chat-compose').screenshot({path: resolve(evidence, 'officina-destinatario-320.png')});
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  const mapToggle = page.getByRole('button', {name: 'Ver mapa'});
+  await mapToggle.waitFor();
+  const map = page.locator('.officina-scene');
+  await map.waitFor({state: 'hidden'});
+  assert.ok(await page.locator('.officina-team').evaluate(team =>
+    team.getBoundingClientRect().top < document.querySelector('.officina-map-toggle').getBoundingClientRect().top));
+  await mapToggle.press('Enter');
+  await map.waitFor({state: 'visible'});
+  const narrowTester = map.locator('.officina-desk[data-role=tester]');
+  await narrowTester.press('Enter');
+  await narrowTester.press('Escape');
+  await map.waitFor({state: 'hidden'});
+  assert.ok(await mapToggle.evaluate(button => button === document.activeElement));
+  assert.equal(await testerCard.getAttribute('aria-pressed'), 'true');
+  await coordination.click();
+  await checkCoordinationWidth(page, 320);
+  await testerCard.click();
+  await page.getByRole('button', {name: 'Chat global', exact: true}).click();
+  await app.evaluate(({BrowserWindow}, original) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    window.setContentSize(...original.size);
+    window.setMinimumSize(...original.minimum);
+  }, originalWindow);
+  await page.waitForFunction(width => innerWidth === width, originalWindow.size[0]);
   await chatRecipient.selectOption('analyst');
   await page.getByRole('button', {name: 'Enviar a Analista funcional', exact: true}).waitFor();
   await chatRecipient.selectOption('tester');
@@ -498,11 +721,14 @@ await withZen(async (page, app) => {
   assert.equal(directGoal.phase, 'complete');
   const directRuns = sent.runs.filter(run => run.task === directGoal.task);
   assert.deepEqual(directRuns.map(run => [run.role, run.destination.thread]), [['tester', sent.team.threads.tester]]);
-  await direct.getByRole('button', {name: /^Ver mensaje de QA de aplicaciones/}).click();
+  const resultOrigin = direct.getByRole('button', {name: /^Ver mensaje de QA de aplicaciones/});
+  await resultOrigin.click();
   await dialog.getByRole('table').getByRole('cell', {name: 'Correcto'}).waitFor();
   await dialog.getByText('Destino confirmado.', {exact: true}).waitFor();
   assert.deepEqual(await readBoard(), sent);
-  await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({state: 'hidden'});
+  assert.ok(await resultOrigin.evaluate(node => node === document.activeElement));
   assert.deepEqual(sent.profiles.tester, {name: 'QA de aplicaciones', prompt: customPrompt});
 
   const pasted = '# Diagnóstico detallado\n\n' + 'Conserva los contratos y el comportamiento esperado.\n'.repeat(34);
@@ -538,8 +764,8 @@ await withZen(async (page, app) => {
     const scene = element.closest('.officina-scene').getBoundingClientRect();
     const box = element.getBoundingClientRect();
     const station = element.closest('.officina-scene').querySelector('.officina-observer-station').getBoundingClientRect();
-    return Math.abs((box.left + box.width / 2 - scene.left) / scene.width - .51) < .005 &&
-      (box.top - scene.top) / scene.height < .1 && box.left <= station.left && box.right >= station.right &&
+    return Math.abs((box.left + box.width / 2 - scene.left) / scene.width - .5555) < .005 &&
+      Math.abs((box.top - scene.top) / scene.height - .112) < .005 && box.left <= station.left && box.right >= station.right &&
       box.bottom >= station.bottom;
   }), true);
   await marker.click();
@@ -560,7 +786,7 @@ await withZen(async (page, app) => {
   await observer.getByRole('button', {name: 'Ver propuestas (2)'}).waitFor();
   await page.waitForFunction(() => {
     const animations = document.querySelector('.officina-observer-monitor[data-state=done]')?.getAnimations({subtree: true});
-    return animations?.length && animations.every(animation => animation.playbackRate === 0);
+    return animations?.length && animations.every(animation => animation.playbackRate > 0 && animation.playbackRate < 1);
   });
   const observation = await readBoard();
   assert.deepEqual(observation.profiles, observerBefore.profiles);
@@ -644,7 +870,8 @@ await withZen(async (page) => {
   await page.locator('.officina-chat').getByText('Evidencia de subcarpeta / Evidencia del archivo adjunto', {exact: true}).waitFor();
   await selector.selectOption({label: 'Revisión de ZeN'});
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
-  await page.locator('.officina-team-member:has([data-role=observer])').getByRole('button', {name: 'Revisiones'}).click();
+  await page.locator('.officina-team-select[data-role=observer]').click();
+  await page.getByRole('button', {name: /Ver revisiones|Ver propuestas/}).click();
   await dialog.getByText('Prompt aplicado', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await page.locator('.officina-team-list').getByRole('button', {name: 'Ver resultado de Analista funcional'}).click();
@@ -693,7 +920,96 @@ await withZen(async (page) => {
   await dialog.getByText('ZEN · Trabajando en Codex', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await notice.waitFor({state: 'detached'});
-  await page.locator('.officina-chat-toolbar .officina-next[data-kind=followup]').getByText('ZEN · Seguimiento listo', {exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  const zenMember = page.locator('.officina-team-member').filter({has: page.locator('[data-role=observer]')});
+  await zenMember.getByText('Seguimiento listo', {exact: true}).waitFor();
+  assert.equal(await page.getByText('Seguimiento listo', {exact: true}).count(), 1);
+  await zenMember.getByRole('button', {name: 'Ver seguimiento'}).click();
+  await dialog.getByText('Ver resultado de ZEN', {exact: true}).waitFor();
+  await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
+  await zenMember.locator('[data-role=observer]').click();
+  await page.getByRole('checkbox', {name: 'Mejoras automáticas', exact: false}).check();
+  const improvement = page.getByRole('region', {name: 'Mejora automática de ZEN'});
+  await improvement.getByRole('button', {name: 'Cerrar aviso de mejora'}).click();
+  await improvement.waitFor({state: 'detached'});
+  await page.getByRole('button', {name: 'Chat global', exact: true}).click();
+  assert.equal(await improvement.count(), 0);
+
+  const removable = 'Proyecto para eliminar';
+  await createProject(page, removable);
+  const removalId = await selector.inputValue();
+  await page.getByText('Opciones del proyecto', {exact: true}).click();
+  await page.getByRole('button', {name: 'Eliminar proyecto', exact: true}).click();
+  await dialog.getByRole('heading', {name: 'Eliminar proyecto de Officina'}).waitFor();
+  await dialog.getByText(/Proyecto para eliminar/).waitFor();
+  await dialog.getByText(/Se conservarán el proyecto y sus chats en Codex/).waitFor();
+  await dialog.getByRole('button', {name: 'Cancelar', exact: true}).click();
+  assert.equal(await selector.inputValue(), removalId);
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  await page.getByText('Opciones del proyecto', {exact: true}).click();
+  await page.getByRole('button', {name: 'Eliminar proyecto', exact: true}).click();
+  await dialog.getByRole('button', {name: 'Eliminar de Officina', exact: true}).click();
+  await dialog.waitFor({state: 'hidden'});
+  assert.equal(await selector.locator('option:checked').textContent(), 'Incidencia de laboratorio');
+  assert.equal(await selector.locator('option').filter({hasText: removable}).count(), 0);
+  await page.evaluate(async () => {
+    const bridge = window.companion;
+    const current = await bridge.officina({type: 'read'});
+    const project = current.value.project.id;
+    const paused = await bridge.officina({type: 'queue', project, enabled: false});
+    if (!paused.ok) throw Error(paused.error);
+    const queued = await bridge.officina({type: 'task', project, dispatch: true, fields: {
+      owner: 'analyst', title: 'Comprobación de cola', objective: 'Comprobar activación manual', criteria: 'Turno pendiente',
+    }});
+    if (!queued.ok) throw Error(queued.error);
+  });
+  const activateQueue = page.locator('.officina-compose-queue').getByRole('button', {name: 'Activar cola'});
+  await activateQueue.click();
+  await activateQueue.waitFor({state: 'hidden'});
+
+  await createProject(page, 'Imágenes y teclado');
+  await page.getByRole('button', {name: 'Chat global', exact: true}).click();
+  await page.getByRole('combobox', {name: 'Destinatario del encargo'}).selectOption('tester');
+  const composer = page.getByRole('textbox', {name: 'Objetivo'});
+  await composer.fill('Revisa la captura.');
+  await composer.press('End');
+  await composer.press('Shift+Enter');
+  await page.keyboard.insertText('Comprueba el segundo punto.');
+  assert.equal(await composer.inputValue(), 'Revisa la captura.\nComprueba el segundo punto.');
+  const attach = event => composer.evaluate(async (field, event) => {
+    const sample = document.createElement('canvas');
+    sample.width = sample.height = 32;
+    const context = sample.getContext('2d');
+    context.fillStyle = '#1ab3c3';
+    context.fillRect(0, 0, 32, 32);
+    const image = await new Promise(resolve => sample.toBlob(resolve, 'image/png'));
+    const data = new DataTransfer();
+    data.items.add(new File([image], 'captura.png', {type: 'image/png'}));
+    if (event === 'paste') field.dispatchEvent(new ClipboardEvent(event, {clipboardData: data, bubbles: true, cancelable: true}));
+    else field.dispatchEvent(new DragEvent(event, {dataTransfer: data, bubbles: true, cancelable: true}));
+  }, event);
+  const preview = page.getByRole('img', {name: 'Imagen adjunta 1'});
+  await attach('paste');
+  await preview.waitFor();
+  await page.getByRole('button', {name: 'Quitar imagen 1'}).click();
+  await preview.waitFor({state: 'detached'});
+  await attach('paste');
+  await preview.waitFor();
+  await page.locator('.officina-chat-compose').screenshot({path: resolve(evidence, 'officina-compositor-imagen.png')});
+  await composer.press('Enter');
+  const imageGoal = page.locator('.officina-goal').filter({hasText: 'Revisa la captura.'});
+  await imageGoal.getByText('Captura recibida por Tester.', {exact: true}).waitFor();
+  await imageGoal.getByRole('list', {name: 'Imágenes adjuntas'}).getByRole('button', {name: 'Imagen 1.jpg'}).waitFor();
+  assert.equal(await imageGoal.locator('.officina-chat-row[data-from=human] .officina-chat-message p').textContent(),
+    'Revisa la captura.\nComprueba el segundo punto.');
+  assert.equal(await composer.inputValue(), '');
+  await preview.waitFor({state: 'detached'});
+
+  await attach('drop');
+  await preview.waitFor();
+  await composer.press('Enter');
+  await page.locator('.officina-goal').filter({hasText: 'Analiza las imágenes adjuntas.'})
+    .getByText('Captura recibida por Tester.', {exact: true}).waitFor();
 });
 
 console.log(JSON.stringify({officina: true, evidence, restarted: true, projectIsolation: true, liveCodex: false}));

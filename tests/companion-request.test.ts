@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {openCodexRequest, queueCodexRequest} from '../src/main/companion-request';
+import {officinaRequestQueued, openCodexRequest, queueCodexContextRequest, queueCodexRequest} from '../src/main/companion-request';
 
 const execute = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({execFile: execute}));
@@ -106,5 +106,32 @@ describe('Codex desktop queue', () => {
     await expect(queueCodexRequest(thread, request, 'codex-fixture', verify, wake)).rejects.toThrow('Autorización caducada');
     expect(submissions()).toHaveLength(0);
     expect(wake).not.toHaveBeenCalled();
+  });
+
+  it('queues caption and local image together and wakes only the confirmed destination', async () => {
+    const image = 'C:\\fixture\\captura.jpg';
+    const rpc = {request: vi.fn().mockResolvedValue({queuedSubmission: {id: message, clientUserMessageId: message}})};
+    await queueCodexContextRequest(rpc, thread, message, request, {images: [image]}, verify, wake);
+    expect(rpc.request).toHaveBeenCalledExactlyOnceWith('thread/queue/add', {
+      threadId: thread, clientUserMessageId: message,
+      input: [{type: 'text', text: request, text_elements: []}, {type: 'localImage', path: image}],
+    });
+    expect(verify).toHaveBeenCalledBefore(rpc.request);
+    expect(rpc.request).toHaveBeenCalledBefore(wake);
+    expect(wake).toHaveBeenCalledExactlyOnceWith(`codex://threads/wake/${thread}`);
+  });
+
+  it('recognizes a paginated queue entry by its complete Officina identity', async () => {
+    const identity = {project: thread, task: otherThread, run: message, role: 'coordinator' as const};
+    const entry = (run: typeof identity) => ({input: [{type: 'text', text: `Encargo\n${JSON.stringify({identity: run})}`} ]});
+    const rpc = {request: vi.fn().mockResolvedValueOnce({data: [entry({...identity, task: thread})], nextCursor: 'older'})
+      .mockResolvedValueOnce({data: [entry(identity)]})};
+    expect(await officinaRequestQueued(rpc, thread, identity)).toBe(true);
+    expect(rpc.request.mock.calls).toEqual([
+      ['thread/queue/list', {threadId: thread, limit: 100, cursor: undefined}],
+      ['thread/queue/list', {threadId: thread, limit: 100, cursor: 'older'}],
+    ]);
+    rpc.request.mockResolvedValueOnce({data: [entry({...identity, project: otherThread})]});
+    expect(await officinaRequestQueued(rpc, thread, identity)).toBe(false);
   });
 });

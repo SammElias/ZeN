@@ -5,6 +5,7 @@ export type MarkdownProps = {
   renderCode?: (text: string, language: string) => React.ReactNode;
   renderLink?: (url: string, children: React.ReactNode) => React.ReactNode;
   renderInlineCode?: (text: string) => React.ReactNode;
+  renderTable?: (children: React.ReactNode) => React.ReactNode;
 };
 
 function PlainText({text, className}: MarkdownProps) {

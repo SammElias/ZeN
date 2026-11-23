@@ -6,7 +6,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {expect, it, vi} from 'vitest';
 import {CompanionOfficina} from '../src/main/companion-officina';
 import {OfficinaAction, OfficinaActor, officinaActorName, officinaOpenItems, officinaPasteLimit, officinaQa,
-  type OfficinaActor as Actor, type OfficinaContribution, type OfficinaCoordinatorResult, type OfficinaObserverResult, type OfficinaRole, type OfficinaTeam} from '../src/shared/companion-officina';
+  type OfficinaActor as Actor, type OfficinaContribution, type OfficinaCoordinatorResult, type OfficinaDestination,
+  type OfficinaObserverResult, type OfficinaRole, type OfficinaRunIdentity, type OfficinaTeam} from '../src/shared/companion-officina';
 import type {CompanionLastReply} from '../src/shared/codex-companion';
 import {isOfficinaTabReview, officinaBrowserFor} from '../src/shared/officina-browser';
 import {officinaRoleTracking} from '../src/shared/officina-tracking';
@@ -17,17 +18,33 @@ import {officinaOutputInstructions, officinaRoleProfile} from '../src/shared/off
 import type {OfficinaCodexTurn} from '../src/main/companion-codex-reader';
 import {OfficinaProvisioning} from '../src/main/companion-officina-provision';
 import {captureOfficinaSource} from '../src/main/companion-officina-context';
+import {officinaReply} from '../src/main/companion-officina-turn';
 
 const rule = 'Nadie puede aprobar su propio gasto.';
 const fields = {title: 'Permisos de aprobación', objective: 'Bloquear autoaprobaciones', criteria: rule, owner: 'architect' as const};
 const browserRequest = 'Analizar el contenido que tenemos en google chrome usa la heramienta de chat gpt en el navegador para averiguar el contenido';
 
-function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>) {
+it('recovers the legacy ALM limitation only for the verified turn', () => {
+  const project = randomUUID(), task = randomUUID(), id = randomUUID();
+  const run = {id, task, role: 'alm' as const, depth: 0, state: 'review' as const, sentAt: 1000, turn: 'original'};
+  const reply = {source: 'local' as const, at: 2000, turn: 'original', truncated: false,
+    text: `<zen_officina>${JSON.stringify({project, task, run: id, role: 'alm', result: {type:'blocker', text:'Falta validar el paquete.'}})}</zen_officina>`};
+  expect(officinaReply(reply, project, run)).toMatchObject({result:{kind:'blocker',text:'Falta validar el paquete.'}});
+  expect(officinaReply({...reply,turn:'otro'}, project, run)).toBeUndefined();
+  expect(officinaReply(reply, randomUUID(), run)).toBeUndefined();
+});
+
+function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>,
+  missingThread?: (projectId: string, cwd: string, thread: string) => Promise<boolean>) {
   const path = join(mkdtempSync(join(tmpdir(), 'zen-officina-')), 'test.sqlite');
   let now = 1000, reply: CompanionLastReply | undefined;
   let observed: OfficinaCodexTurn | undefined, permission = false;
   let allowed = true;
   const queue = vi.fn(async (_: string, _prompt: string, verify: () => Promise<void>, _browser?: {id: string; name?: string}) => {await verify();});
+  const wakeQueued = vi.fn(async (_: OfficinaDestination, _identity: OfficinaRunIdentity, authorize: () => void) => {
+    authorize();
+    return false;
+  });
   const verify = vi.fn(async () => true);
   const openChat = vi.fn(async (_thread: string) => {});
   const openReferenceUrl = vi.fn(async (_url: string) => {});
@@ -40,12 +57,13 @@ function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>) {
     checkpoint({projectId: project.id, cwd: project.folder?.path ?? 'C:\\fixtures\\expenses',
       threads: observer ? {...project.team?.threads, observer: zen} : {...project.team?.threads, ...workers}});
   });
-  const connection = {allowed: () => allowed, now: () => now, verify, queue, provision, pickContext, openChat,
+  const connection = {allowed: () => allowed, now: () => now, verify, queue, wakeQueued, provision, pickContext, missingThread, openChat,
     openReferenceUrl, revealReference, read: async () => reply,
     readTurn: async () => observed, needsPermission: () => permission};
   const newSession = () => new CompanionOfficina(path, connection);
   const binding = {thread: randomUUID(), cwd: 'C:\\fixtures\\expenses', environment: 'UAT de prueba'};
-  return {newSession, queue, binding, verify, threads, provision, path, openChat, openReferenceUrl, revealReference,
+  return {newSession, queue, wakeQueued, binding, verify, threads, provision, path, openChat, openReferenceUrl, revealReference,
+    advance(ms: number) {now += ms;},
     observe(turn: OfficinaCodexTurn | undefined, needPermission = false) {observed = turn; permission = needPermission;},
     applyReply(result: OfficinaContribution | OfficinaCoordinatorResult['result'] | OfficinaObserverResult['result'], overrides = {}) {
     const identity = JSON.parse(queue.mock.lastCall![1].split('\n').at(-1)!).identity;
@@ -54,6 +72,64 @@ function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>) {
     return reply;
   }, allow: (value: boolean) => {allowed = value;}};
 }
+
+it('deletes only the selected local board and saves the fallback selection', async () => {
+  const f = fixture();
+  const office = f.newSession();
+  const kept = (await office.handle({type: 'project', name: 'Conservar'})).project!;
+  const removed = (await office.handle({type: 'project', name: 'Eliminar'})).project!;
+  const file = join(dirname(f.path), 'entrega.txt');
+  writeFileSync(file, 'Entregable original');
+  await office.handle({type: 'bind', project: removed.id, binding: {...f.binding, cwd: dirname(f.path)}});
+  await office.handle({type: 'task', project: removed.id, fields, dispatch: true});
+  await expect(office.handle({type: 'delete-project', project: kept.id})).rejects.toThrow('proyecto visible cambió');
+  f.allow(false);
+  await expect(office.handle({type: 'delete-project', project: removed.id})).rejects.toThrow('Abre Officina');
+  f.allow(true);
+  expect(await office.handle({type: 'delete-project', project: removed.id})).toMatchObject({
+    project: {id: kept.id}, projects: [{id: kept.id, name: kept.name}], enabled: false,
+  });
+  expect(readFileSync(file, 'utf8')).toBe('Entregable original');
+  expect(f.queue).not.toHaveBeenCalled();
+  expect(f.provision).not.toHaveBeenCalled();
+  expect(f.openChat).not.toHaveBeenCalled();
+  office.close();
+
+  const reopened = f.newSession();
+  try {
+    expect((await reopened.handle({type: 'read'})).project?.id).toBe(kept.id);
+    await expect(reopened.handle({type: 'select', project: removed.id})).rejects.toThrow('ya no está disponible');
+    const empty = await reopened.handle({type: 'delete-project', project: kept.id});
+    expect(empty.projects).toEqual([]);
+    expect(empty.project).toBeUndefined();
+    expect((await reopened.handle({type: 'project', name: kept.name})).project?.id).not.toBe(kept.id);
+  } finally {
+    reopened.close();
+  }
+});
+
+it('never recreates a deleted project when an asynchronous chat check finishes', async () => {
+  let finishCheck!: (missing: boolean) => void;
+  const chatCheck = new Promise<boolean>(resolve => {finishCheck = resolve;});
+  const missingThread = vi.fn(() => chatCheck);
+  const f = fixture(undefined, missingThread);
+  const office = f.newSession();
+  try {
+    const {project} = await office.handle({type: 'chat', name: 'Proyecto temporal', message: 'Prepara un análisis.', id: randomUUID()});
+    await vi.waitFor(() => {
+      void office.tick();
+      expect(missingThread).toHaveBeenCalledOnce();
+    });
+    await office.handle({type: 'delete-project', project: project!.id});
+    finishCheck(false);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect((await office.handle({type: 'read'})).projects).toEqual([]);
+    expect(f.queue).not.toHaveBeenCalled();
+  } finally {
+    finishCheck(false);
+    office.close();
+  }
+});
 
 it.skipIf(process.platform !== 'win32')('opens report links only from the visible project without sending another turn', async () => {
   const f = fixture(), officina = f.newSession();
@@ -348,6 +424,98 @@ it('closes a legacy browser limitation without a new turn and preserves its repo
   expect(f.queue).toHaveBeenCalledTimes(1);
 });
 
+it('instructs ALM to restart an authorized local deployment and collects its result after ZEN reopens', async () => {
+  const f = fixture(), app = f.newSession(), task = randomUUID();
+  await app.handle({type: 'chat', id: task, name: 'ZeN', role: 'alm', message: 'Instala localmente la revisión aprobada.'});
+  try {
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await app.handle({type: 'read'})).project?.runs[0].state).toBe('sent');
+    });
+    const prompt = f.queue.mock.lastCall![1];
+    expect(prompt).toContain('cierre ordenado y la reapertura');
+    expect(prompt).toContain('scripts/deploy-windows.ps1 -Install');
+    expect(prompt).toContain('release/deployment-windows.json');
+  } finally {app.close();}
+  f.applyReply({kind: 'progress', text: 'Instalación y reinicio verificados.'});
+  const reopened = f.newSession();
+  try {
+    await reopened.handle({type: 'read'});
+    await reopened.tick();
+    const {project} = await reopened.handle({type: 'read'});
+    expect(project?.goals?.[0]).toMatchObject({task, phase: 'complete'});
+    expect(project?.goals?.[0].outcome).toBeUndefined();
+    expect(project?.events).toMatchObject([{from: 'alm', data: {kind: 'progress', text: 'Instalación y reinicio verificados.'}}]);
+    await reopened.tick();
+    expect(f.queue).toHaveBeenCalledTimes(1);
+  } finally {reopened.close();}
+});
+
+it.each([true, false])('routes one confirmed ZEN incident to the team with passing QA %s', async (passed) => {
+  const f = fixture(), task = randomUUID();
+  let app = f.newSession();
+  const next = async (role: Actor, count: number) => vi.waitFor(async () => {
+    await app.tick();
+    expect(f.queue).toHaveBeenCalledTimes(count);
+    const run = (await app.handle({type: 'read'})).project?.runs.at(-1);
+    expect(run, `Envío ${count}: ${run?.issue ?? 'sin aviso'}`).toMatchObject({role, state: 'sent'});
+    return JSON.parse(f.queue.mock.lastCall![1].split('\n').at(-1)!);
+  });
+  try {
+    const {project} = await app.handle({type: 'chat', id: task, name: 'ZeN', role: 'alm', message: 'Comprueba el despliegue.'});
+    const id = project!.id;
+    await next('alm', 1);
+    const enable = () => app.handle({type: 'auto-improvements', project: id, enabled: true});
+    if (!passed) await enable();
+    const incompatible = f.applyReply({kind: 'progress', text: 'Estado de la entrega.'}, {task: randomUUID()});
+    f.observe({turn: incompatible.turn!, at: incompatible.at, state: 'finished'});
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await app.handle({type: 'read'})).project?.reviews?.at(-1)).toMatchObject({incident: 'reply-format', scope: task});
+    });
+    f.observe(undefined);
+    await enable();
+    const coordinator = await next('coordinator', 2);
+    expect(coordinator.improvement).toMatchObject({task, turn: incompatible.turn});
+    const dismiss = {type: 'dismiss-improvement' as const, project: id, task: coordinator.identity.task};
+    await expect(app.handle({...dismiss, task})).rejects.toThrow('El aviso de mejora ya no está disponible');
+    expect((await app.handle(dismiss)).project?.goals?.at(-1)).toMatchObject({
+      task: coordinator.identity.task, phase: 'plan', improvementNoticeDismissed: true,
+    });
+    f.applyReply({kind: 'plan', text: 'Reparar, probar e instalar.', steps: [
+      {role: 'developer', instruction: 'Corrige la respuesta.'},
+      {role: 'tester', instruction: 'Prueba y valida la entrega.'},
+      {role: 'alm', instruction: 'Despliega la revisión aprobada.'},
+    ]});
+    const develop = await next('developer', 3);
+    f.applyReply({kind: 'handoff', text: 'Corrección lista.', to: 'tester', act: true,
+      artifact: {version: 'v2', link: 'release/v2.sha256', next: 'Verifica el registro del informe.'}});
+    const tester = await next('tester', 4);
+    expect(tester.event?.id).toBe(develop.identity.run);
+    f.applyReply({kind: 'qa', text: 'Comprobación de v2.', passed, replyTo: develop.identity.run, evidence: 'Prueba de registro.'});
+    // The approval belongs to the saved project and the unobserved reply survives a restart.
+    app.close();
+    app = f.newSession();
+    expect((await app.handle({type: 'read'})).project?.goals?.at(-1)?.improvementNoticeDismissed).toBe(true);
+    if (passed) {
+      const alm = await next('alm', 5);
+      expect(alm.qa).toBe('QA validó v2');
+      f.applyReply({kind: 'progress', text: 'v2 instalada y arranque verificado.'});
+    }
+    await next('coordinator', passed ? 6 : 5);
+    f.applyReply({kind: 'complete', text: 'Resultado consolidado.'});
+    await vi.waitFor(async () => {
+      await app.tick();
+      const current = (await app.handle({type: 'read'})).project!;
+      expect(current.goals?.filter(goal => goal.improvement)).toEqual([expect.objectContaining({phase: 'complete'})]);
+      expect(current.goals?.at(-1)?.outcome).toBe(passed ? undefined : 'limited');
+    });
+    await enable();
+    await app.tick();
+    expect(f.queue).toHaveBeenCalledTimes(passed ? 6 : 5);
+  } finally {app.close();}
+});
+
 it('recovers a previously saved review question without creating a second project or goal', async () => {
   const f = fixture(), app = f.newSession();
   const id = randomUUID();
@@ -640,6 +808,18 @@ it('recovers a closure that never reached Codex, keeping the complete reports an
     const developer = await sent('developer');
     f.applyReply({kind: 'handoff', to: 'tester', act: true, text: 'Versión disponible.',
       artifact: {version: 'v2', link: 'dist/app.zip', next: 'Comprueba la versión v2.'}});
+    await app.tick();
+    const withHandoff = (await app.handle({type: 'read'})).project!;
+    expect(withHandoff.runs.at(-1)).toMatchObject({role: 'tester', state: 'waiting', event: developer.id});
+    app.close();
+    // A legacy board can have the committed handoff but still lack its planned run.
+    withHandoff.runs.pop();
+    withHandoff.goals![0].cursor = 0;
+    const handoffDb = new DatabaseSync(f.path);
+    handoffDb.prepare('UPDATE officina_projects SET body=? WHERE id=?').run(JSON.stringify(withHandoff), project);
+    handoffDb.close();
+    app = f.newSession();
+    await app.handle({type: 'read'});
     const tester = await sent('tester');
     expect(tester).toMatchObject({step: 1, event: developer.id});
     expect(JSON.parse(f.queue.mock.lastCall![1].split('\n').at(-1)!)).toMatchObject({
@@ -671,10 +851,8 @@ it('recovers a closure that never reached Codex, keeping the complete reports an
     const restored = (await app.handle({type: 'read'})).project!;
     expect(officinaAttention(restored)).toMatchObject({kind: 'closure', run: {id: closure.id}});
     await expect(app.handle({type: 'answer-goal', project, task, message: 'Continúa.'})).rejects.toThrow('Reintentar cierre');
-    const action = {type: 'retry-closure', project, task, run: closure.id} as const;
-    await app.handle(action);
-    await expect(app.handle(action)).rejects.toThrow('ya no está disponible');
-    expect((await sent('coordinator')).id).toBe(closure.id);
+    expect(await sent('coordinator')).toMatchObject({id: closure.id, closureRetried: true});
+    await expect(app.handle({type: 'retry-closure', project, task, run: closure.id})).rejects.toThrow('ya no está disponible');
     const command = f.queue.mock.lastCall![1];
     expect(command.length).toBeLessThanOrEqual(MAX_CODEX_REQUEST);
     const payload = JSON.parse(command.split('\n').at(-1)!);
@@ -733,7 +911,7 @@ it('recovers a Tester limitation from its original turn after a separate develop
     expect(recovered.goals?.[0]).toMatchObject({phase: 'complete', outcome: 'limited'});
     expect(recovered.events.find(event => event.id === tester.id)?.data).toEqual(result);
     expect(officinaQa(recovered.events, task)).toBe('QA pendiente para v2');
-    expect(recovered.reviews).toEqual([{id: tester.id, scope: task, source: 'monitor', at: expect.any(Number),
+    expect(recovered.reviews).toEqual([{id: tester.id, scope: task, source: 'monitor', incident: 'delivery-check', at: expect.any(Number),
       report: expect.objectContaining({proposals: [expect.objectContaining({kind: 'process', evidence: result.text})]})}]);
     expect(officinaRoleTracking(recovered, 'observer').label).toBe('1 propuesta pendiente');
     expect(f.queue).toHaveBeenCalledTimes(4);
@@ -785,13 +963,111 @@ it('blocks delivery before the CLI handoff if visibility changed and keeps the t
     finally {f.allow(true);}
   });
   await app.handle({type: 'queue', project, enabled: true});
-  await vi.waitFor(async () => expect((await app.handle({type: 'read'})).enabled).toBe(false));
+  await vi.waitFor(async () => expect((await app.handle({type: 'read'})).project?.runs[0]).toMatchObject({state: 'waiting', retryAttempt: 1}));
   await app.tick();
   expect(f.queue).toHaveBeenCalledTimes(1);
   expect((await app.handle({type: 'read'})).project!.runs[0].state).toBe('waiting');
   f.allow(false);
   await expect(app.handle({type: 'read'})).rejects.toThrow('Pausa');
   app.close();
+});
+
+it.each([true, false])('retains the persisted queue choice after restarting with a failed preflight, pause %s', async paused => {
+  const f = fixture(), task = randomUUID();
+  let app = f.newSession();
+  try {
+    f.queue.mockRejectedValueOnce(Error('Codex no está listo'));
+    const {project} = await app.handle({type: 'chat', id: task, name: 'Recuperación local', message: 'Revisa el proyecto.'});
+    const projectId = project!.id;
+    const original = await vi.waitFor(async () => {
+      await app.tick();
+      const {project} = await app.handle({type: 'read'});
+      expect(project?.runs[0]).toMatchObject({state: 'waiting', retryAttempt: 1});
+      return project!.runs[0].id;
+    });
+    if (paused) await app.handle({type: 'queue', project: projectId, enabled: false});
+    app.close();
+    app = f.newSession();
+    expect((await app.handle({type: 'read'})).enabled).toBe(!paused);
+    f.advance(2000);
+    f.allow(false);
+    await app.tick();
+    f.allow(true);
+    expect(f.queue).toHaveBeenCalledTimes(1);
+    if (paused) {
+      await app.tick();
+      expect(f.queue).toHaveBeenCalledTimes(1);
+      await app.handle({type: 'queue', project: projectId, enabled: true});
+    }
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await app.handle({type: 'read'})).project?.runs).toEqual([expect.objectContaining({id: original, state: 'sent'})]);
+    });
+    expect(f.queue).toHaveBeenCalledTimes(2);
+  } finally {app.close();}
+});
+
+it.each([true, false])('recovers an uncertain dispatch without a second submission, queued %s', async queued => {
+  const f = fixture(), task = randomUUID();
+  let app = f.newSession();
+  try {
+    f.queue.mockImplementationOnce(async (_thread, _text, verify) => {await verify(); throw Error('Acuse perdido');});
+    const {project} = await app.handle({type: 'chat', id: task, name: 'Confirmar Codex', message: 'Revisa el proyecto.'});
+    const original = await vi.waitFor(async () => {
+      await app.tick();
+      const {project} = await app.handle({type: 'read'});
+      expect(project?.runs[0].state).toBe('uncertain');
+      return project!.runs[0].id;
+    });
+    app.close();
+    if (queued) f.wakeQueued.mockImplementationOnce(async (_binding, _identity, authorize) => {authorize(); return true;});
+    app = f.newSession();
+    await app.handle({type: 'read'});
+    await app.tick();
+    expect(f.wakeQueued).toHaveBeenLastCalledWith(expect.objectContaining({thread: f.threads.coordinator}),
+      {project: project!.id, task, run: original, role: 'coordinator'}, expect.any(Function));
+    let snapshot = await app.handle({type: 'read'});
+    expect(snapshot.project?.runs[0].state).toBe(queued ? 'sent' : 'uncertain');
+    if (queued) expect(officinaRoleTracking(snapshot.project, 'coordinator').state).toBe('queued');
+    f.advance(16 * 60_000);
+    f.observe({turn: 'turn-original', state: 'working', at: 1002});
+    await app.tick();
+    snapshot = await app.handle({type: 'read'});
+    expect(snapshot.project?.runs[0]).toMatchObject({id: original, state: 'sent'});
+    expect(snapshot.activity?.state).toBe('working');
+    expect(f.queue).toHaveBeenCalledTimes(1);
+  } finally {app.close();}
+});
+
+it('stops retrying a preflight failure and allows reopening only that unsent run', async () => {
+  const f = fixture(), task = randomUUID(), app = f.newSession();
+  try {
+    for (let n = 0; n < 4; n++) f.queue.mockRejectedValueOnce(Error('Codex no disponible'));
+    const {project} = await app.handle({type: 'chat', id: task, name: 'Revisión local', message: 'Revisa el proyecto.'});
+    await vi.waitFor(async () => {
+      await app.tick();
+      const current = await app.handle({type: 'read'});
+      expect(current.project?.runs[0].retryAttempt).toBe(1);
+    });
+    for (const ms of [2000, 5000, 15000]) {
+      f.advance(ms);
+      await app.tick();
+    }
+    const snapshot = await app.handle({type: 'read'});
+    const run = snapshot.project!.runs[0];
+    expect(run).toMatchObject({state: 'review', retryAttempt: 4});
+    expect(run.destination).toBeUndefined();
+    expect(officinaAttention(snapshot.project!)).toMatchObject({kind: 'dispatch', run: {id: run.id}});
+    f.advance(60_000);
+    await app.tick();
+    expect(f.queue).toHaveBeenCalledTimes(4);
+    await app.handle({type: 'retry-send', project: project!.id, task, run: run.id});
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await app.handle({type: 'read'})).project?.runs).toEqual([expect.objectContaining({id: run.id, state: 'sent'})]);
+    });
+    expect(f.queue).toHaveBeenCalledTimes(5);
+  } finally {app.close();}
 });
 
 it('holds work for a human decision and accepts only answers from the role addressed', async () => {

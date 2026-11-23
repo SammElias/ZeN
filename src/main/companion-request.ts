@@ -3,6 +3,7 @@ import {existsSync} from 'node:fs';
 import {isAbsolute, join} from 'node:path';
 import {promisify} from 'node:util';
 import {CodexRequest, type CodexRequestReceipt} from '../shared/companion-request';
+import {officinaInputMatches, type OfficinaRunIdentity} from '../shared/companion-officina';
 import {codexEnvironment, findCodex, type CodexTransport} from './codex-rpc';
 
 const newChat = 'codex://threads/new';
@@ -63,21 +64,37 @@ export async function queueCodexRequest(
   catch { throw Error('La petición quedó en cola, pero no se pudo avisar a Codex. Abre el chat fijado y revisa la cola antes de reintentar.'); }
 }
 
-export async function queueCodexBrowserRequest(
-  rpc: Pick<CodexTransport, 'request'>, thread: string, id: string, text: string, browserName: string | undefined,
+export async function queueCodexContextRequest(
+  rpc: Pick<CodexTransport, 'request'>, thread: string, id: string, text: string,
+  context: {browser?: {name?: string}; images?: string[]},
   verify: () => void | Promise<void>, wake: (url: string) => Promise<void>,
 ) {
-  if (!uuid.test(thread) || !uuid.test(id)) throw Error('No se pudo identificar el encargo de navegador.');
+  if (!uuid.test(thread) || !uuid.test(id)) throw Error('No se pudo identificar el encargo con adjuntos.');
   const input = [
-    {type: 'mention', name: browserName ?? 'Extensión de ChatGPT', path: 'plugin://chrome@openai-bundled'},
+    ...(context.browser ? [{type: 'mention', name: context.browser.name ?? 'Extensión de ChatGPT', path: 'plugin://chrome@openai-bundled'}] : []),
     {type: 'text', text: CodexRequest.parse(text), text_elements: []},
+    ...(context.images ?? []).map(path => ({type: 'localImage', path})),
   ];
   await verify();
   const {queuedSubmission} = await rpc.request('thread/queue/add', {threadId: thread, clientUserMessageId: id, input});
   if (queuedSubmission?.clientUserMessageId !== id || !uuid.test(queuedSubmission?.id ?? '')) {
-    throw Error('Codex no confirmó el encargo de navegador.');
+    throw Error('Codex no confirmó el encargo con contexto.');
   }
   await wake(`codex://threads/wake/${thread}`);
+}
+
+export async function officinaRequestQueued(rpc: Pick<CodexTransport, 'request'>, thread: string, identity: OfficinaRunIdentity) {
+  if (!uuid.test(thread)) return false;
+  let cursor: string | undefined;
+  for (let page = 0; page < 3; page++) {
+    const result = await rpc.request('thread/queue/list', {threadId: thread, limit: 100, cursor});
+    if (!Array.isArray(result?.data)) return false;
+    if (result.data.some((item: {input?: unknown}) => Array.isArray(item?.input) &&
+      item.input.some(part => part?.type === 'text' && typeof part.text === 'string' && officinaInputMatches(part.text, identity)))) return true;
+    if (typeof result.nextCursor !== 'string' || !result.nextCursor || result.nextCursor === cursor) return false;
+    cursor = result.nextCursor;
+  }
+  return false;
 }
 
 export async function openCodexRequest(

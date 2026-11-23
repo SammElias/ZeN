@@ -189,7 +189,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await fill('.home-weather-settings input[type=password]',weatherKey);
  await js(cap,"document.querySelector('.home-weather-settings button[type=submit]').click()");
  await wait(()=>js(cap,"document.querySelector('.home-weather-rain')?.textContent.includes('78 %')&&document.querySelector('.home-weather-footer img').naturalWidth>0"));
- check('dailyHomeGreeting',await js(cap,"document.querySelector('.home-daily-greeting h2').textContent.trim().length>0&&!!document.querySelector('.home-daily-greeting p').textContent"));
+ check('dailyHomeGreeting',await js(cap,"document.querySelector('.home-daily-greeting h2').textContent.includes('Samm')&&!!document.querySelector('.home-daily-greeting p').textContent"));
  check('dailyHomeRainIllustration',await js(cap,"!!document.querySelector('.home-weather-scene[data-scene=rain] .weather-drops')&&document.querySelector('.home-weather-rain').textContent.includes('Probabilidad de lluvia')"));
  cap.webContents.debugger.attach('1.3');
  try{
@@ -353,7 +353,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('permissionBlockedOnIsland',await js(cap,`window.companion.decide(${JSON.stringify(permission.id)},'allow').then(r=>!r.ok)`));
  await nav('codex');
  await wait(()=>js(cap,"document.querySelector('.approval-card')?.textContent.includes('npm test -- --run')"));
- check('permissionDetailsAccessible',hub.status().approvals.length===1&&await js(cap,"!document.querySelector('.codex-page [role=tablist]')"));
+ check('permissionDetailsAccessible',hub.status().approvals.length===1&&await js(cap,"document.querySelectorAll('.codex-page [role=tab]').length===2&&!document.querySelector('#codex-panel-activity').hidden"));
  check('monitorCommandVisibleWithoutExpansion',await js(cap,"document.querySelector('.codex-command-line')?.textContent==='git status --short'"));
  await compact();
  const approvalAnchor=await screenRect();
@@ -399,6 +399,8 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('capsuleRestoresWorkspaceAfterPermission',sameRect(cap.getBounds(),beforePermission));
 
  const otherChat={session:'other-test',cwd:'C:\\Calendario de prueba',turn:'other-turn'};
+ hub.accept({id:randomUUID(),event:'PreToolUse',tool:'Read',...otherChat},()=>{});
+ hub.accept({id:randomUUID(),event:'PreToolUse',tool:'exec_command',...otherChat},()=>{});
  hub.accept({id:randomUUID(),event:'PreToolUse',tool:'mcp__codex_apps__google_calendar__list_events',...otherChat},()=>{});
  hub.setTitle(otherChat.session,'Agenda del mes');
  await nav('codex');
@@ -407,6 +409,35 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await wait(()=>js(cap,"document.querySelector('.codex-chat-detail h2')?.textContent==='Agenda del mes'"));
  hub.accept({id:randomUUID(),event:'PreToolUse',session:'native-test',cwd:'C:\\fixture',turn:'capsule-turn',tool:'exec_command'},()=>{});
  check('monitorKeepsSelectionAndLabelsTool',await js(cap,"document.querySelector('.codex-chat-detail h2')?.textContent==='Agenda del mes'&&document.querySelector('.codex-chat-current')?.textContent.includes('Consultar calendario')"));
+ const activityFields=`(() => {
+  const tabs=[...document.querySelectorAll('.codex-subnav [role=tab]')];
+  const fields=[...document.querySelectorAll('.codex-chat-current :is(.codex-chat-state,.codex-chat-action,time)')];
+  return tabs.map(tab=>tab.textContent).join('|')==='Actividad|Resumen'&&
+   document.querySelectorAll('.codex-chat-timeline li').length>=3&&fields.length===3&&
+   [...tabs,...fields].every(element=>{
+    const box=element.getBoundingClientRect();
+    return box.width>0&&box.left>=0&&box.right<=innerWidth+1;
+   });
+ })()`;
+ check('codexActivityFieldsDesktop',await js(cap,activityFields));
+ await shot(cap,'codex-actividad-escritorio');
+ const activityBounds=cap.getBounds(), activityMinimum=cap.getMinimumSize();
+ cap.setMinimumSize(0,0);
+ try{
+  await resizeForFixture(320,activityBounds.height);
+  await wait(()=>js(cap,'innerWidth===320'));
+  check('codexActivityFields320',await js(cap,activityFields));
+  await shot(cap,'codex-actividad-320');
+  await js(cap,"document.querySelector('#codex-tab-activity').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}))");
+  await wait(()=>js(cap,"document.querySelector('#codex-tab-summary').getAttribute('aria-selected')==='true'&&!document.querySelector('#codex-panel-summary').hidden"));
+  check('codexSummaryKeyboardFocus',await js(cap,"document.activeElement?.id==='codex-tab-summary'&&document.querySelector('#codex-panel-activity').hidden"));
+  await shot(cap,'codex-resumen-320');
+  await js(cap,"document.querySelector('#codex-tab-activity').click()");
+  await wait(()=>js(cap,activityFields));
+ }finally{
+  cap.setBounds(activityBounds);
+  cap.setMinimumSize(activityMinimum[0],activityMinimum[1]);
+ }
  await js(cap,"document.querySelector('.codex-monitor-actions button').click()");
  await wait(async()=>openedTargets.at(-1)==='codex://threads/other-test');
  check('monitorOpensSelectedChat',openedTargets.at(-1)==='codex://threads/other-test');

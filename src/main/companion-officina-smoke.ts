@@ -30,7 +30,8 @@ export function makeOfficinaSmokeTeam(profile: string) {
       checkpoint({projectId: project.id, cwd: project.folder?.path ?? 'C:\\fixture',
         threads: observer ? {...project.team?.threads, observer: zen} : {...project.team?.threads, ...workers}});
     },
-    queue: async (thread: string, prompt: string, verify: () => Promise<void>, browser?: {id: string; name?: string}) => {
+    queue: async (thread: string, prompt: string, verify: () => Promise<void>, browser?: {id: string; name?: string},
+      images?: {id: string; paths: string[]}) => {
       await verify();
       const input = JSON.parse(prompt.split('\n').at(-1)!);
       if (input.identity.role === 'observer') {
@@ -67,7 +68,13 @@ export function makeOfficinaSmokeTeam(profile: string) {
         `${await readFile(join(input.localContext.folder, nested, 'guía.txt'), 'utf8')} / ${await readFile(input.localContext.files[0], 'utf8')}`;
       const review = input.task.objective === 'Analiza el proyecto y dime qué opinas.';
       const incident = input.task.objective === 'Verifica el traspaso de laboratorio.';
-      const result = incident ? input.identity.role === 'developer' ? {
+      const imageCheck = input.task.objective === 'Revisa la captura.\nComprueba el segundo punto.' ||
+        input.task.objective === 'Analiza las imágenes adjuntas.';
+      if (imageCheck && (images?.id !== input.identity.run || images?.paths.length !== 1 ||
+          (await readFile(images.paths[0])).subarray(0, 3).toString('hex') !== 'ffd8ff')) {
+        throw Error('El turno no recibió la captura adjunta.');
+      }
+      const result = imageCheck ? {kind: 'progress', text: 'Captura recibida por Tester.'} : incident ? input.identity.role === 'developer' ? {
         kind: 'handoff', to: 'tester', act: true, text: 'Entrega de laboratorio lista.',
         artifact: {version: 'v2', link: 'docs/ejemplo.html', next: 'Prueba la interacción.'},
       } : {kind: 'blocker', replyTo: input.event.id, text: 'La interacción quedó pendiente.'}
@@ -79,7 +86,9 @@ export function makeOfficinaSmokeTeam(profile: string) {
         : {kind: 'complete', text: source || (review ? 'Conclusión independiente de Coordinación.' : 'Objetivo de prueba completado.'),
           markdown: source ? `${source}\n\n- [Guía del proyecto](src/recursos/gu%C3%ADa.txt:1:1)\n- [Referencia web](https://example.invalid/guia)` :
             input.task.objective.startsWith('Define la regla')
-            ? '### Resumen\n\nObjetivo de prueba completado.\n\n1. Aplica la regla a las solicitudes.\n2. Verifica cada caso.\n\n| Comprobación | Estado |\n| --- | --- |\n| Ejemplo sintético | Revisado |' : undefined}
+            ? ['### Resumen', 'Objetivo de prueba completado.', '1. Aplica la regla a las solicitudes.\n2. Verifica cada caso.',
+              '| Comprobación | Estado | Prioridad | Evidencia |\n| --- | --- | --- | --- |\n' +
+              '| Ejemplo sintético | Revisado | Alta | [Reglas del proyecto](docs/reglas-de-aprobaciones.md:15) |'].join('\n\n') : undefined}
         : browser?.name === 'Chrome' && input.identity.role === 'analyst'
           ? input.task.objective.includes('sin pestañas')
             ? {kind: 'blocker', text: 'El navegador de prueba devolvió una lista vacía de pestañas.'}

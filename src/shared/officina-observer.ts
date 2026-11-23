@@ -11,7 +11,12 @@ export function officinaObservationTasks(project: OfficinaProject) {
   return project.tasks.filter(task => observed.has(task.id)).reverse();
 }
 
-export function officinaPendingProposals(review: OfficinaObserverReview) {
+export function officinaImprovementGoal(project: OfficinaProject, review: string) {
+  return project.goals?.find(goal => goal.improvement === review);
+}
+
+export function officinaPendingProposals(review: OfficinaObserverReview, project?: OfficinaProject) {
+  if (project && officinaImprovementGoal(project, review.id)) return 0;
   return (review.report?.proposals.length ?? 0) - (review.decisions?.length ?? 0);
 }
 

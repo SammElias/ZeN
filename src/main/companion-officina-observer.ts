@@ -1,9 +1,42 @@
 import {createHash, randomUUID} from 'node:crypto';
 import {join} from 'node:path';
-import {OfficinaParticipant, officinaActorName, type OfficinaObserverReview, type OfficinaProject, type OfficinaRun} from '../shared/companion-officina';
+import {OfficinaParticipant, officinaActorName, type OfficinaObserverReview, type OfficinaProject, type OfficinaRun, type OfficinaTask} from '../shared/companion-officina';
 import {CodexRequest} from '../shared/companion-request';
 import {officinaRoleInstructions, officinaRoleProfile, officinaOutputInstructions, officinaTurnProtocol} from '../shared/officina-instructions';
-import {officinaApprovedImprovement, officinaObservationTaskLimit, officinaObservationTasks} from '../shared/officina-observer';
+import {officinaApprovedImprovement, officinaImprovementGoal, officinaObservationTaskLimit, officinaObservationTasks} from '../shared/officina-observer';
+import {createOfficinaRun, goalFor} from './companion-officina-workflow';
+
+export function officinaIncident(project: OfficinaProject, review: OfficinaObserverReview) {
+  if (review.source !== 'monitor' || review.decisions?.some(decision => decision.index === 0 && decision.status === 'rejected')) return;
+  const run = project.runs.find(item => item.id === review.id && item.task === review.scope && item.role !== 'observer');
+  const task = project.tasks.find(item => item.id === review.scope);
+  if (!task || !run?.turn || !run.destination || goalFor(project, task.id)?.improvement) return;
+  const title = review.report?.proposals[0]?.title;
+  const kind = review.incident ?? (title === 'Validar el formato antes de entregar la respuesta' ? 'reply-format' :
+    title === 'Preparar una comprobación independiente de la entrega' ? 'delivery-check' : undefined);
+  if (kind) return {kind, run, task};
+}
+
+export function queueOfficinaImprovement(project: OfficinaProject, since?: number) {
+  if (project.goals?.some(goal => goal.improvement && goal.phase !== 'complete' && !goal.question)) return false;
+  const review = project.reviews?.filter(item => (since === undefined || item.at >= since) &&
+    !officinaImprovementGoal(project, item.id) && officinaIncident(project, item)).at(-1);
+  const incident = review && officinaIncident(project, review);
+  if (!review || !incident) return false;
+  const {kind, run} = incident;
+  const role = officinaActorName(run.role, project);
+  const title = kind === 'reply-format' ? 'Corregir el formato de respuesta de Officina' : 'Completar la comprobación de una entrega';
+  const objective = kind === 'reply-format' ?
+    `Investiga la respuesta incompatible del puesto ${role}. Corrige la causa en el proyecto y comprueba que se registra en el encargo correcto.` :
+    `Reproduce la limitación de la entrega detectada en ${role}. Corrige la causa reproducible y comprueba el recorrido afectado.`;
+  const task: OfficinaTask = {id: randomUUID(), title, objective, owner: 'developer', status: 'pending',
+    criteria: 'Desarrollo identifica la revisión corregida, Tester valida esa revisión y ALM despliega localmente la misma versión con evidencia de arranque.'};
+  project.tasks.push(task);
+  (project.goals ??= []).push({task: task.id, request: objective, improvement: review.id, phase: 'plan', round: 0,
+    cursor: 0, steps: [], history: [{from: 'zen', text: `ZEN envió a Coordinación una incidencia confirmada. ${objective}`}]});
+  createOfficinaRun(project, task.id, 'coordinator');
+  return true;
+}
 
 export function officinaObserveTurn(project: OfficinaProject, review: OfficinaObserverReview, run: OfficinaRun, directory: string) {
   const identity = {project: project.id, task: run.task, run: run.id, role: 'observer'};
@@ -110,5 +143,6 @@ export function recordOfficinaIncident(project: OfficinaProject, run: OfficinaRu
     validation: 'Una respuesta del mismo tipo se registra y puede consultarse desde la tarea.',
   };
   project.reviews = [...(project.reviews ?? []), {id: run.id, scope: run.task, at, source: 'monitor',
+    incident: limitation ? 'delivery-check' : 'reply-format',
     report: {kind: 'observation', text, proposals: [{kind: 'process', ...proposal}]}}];
 }

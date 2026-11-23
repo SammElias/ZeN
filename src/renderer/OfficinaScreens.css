@@ -32,27 +32,27 @@
 }
 .officina-screen-reflection[data-role=architect] {
   --screen-x: 1000; --screen-y: 291; --screen-width: 136; --screen-height: 54;
-  --reflection-color: #c1abff; --reflection-period: 9.6s; --reflection-delay: -4.8s;
+  --reflection-color: #c1abff; --reflection-period: 12.6s; --reflection-delay: -6.3s;
   --reflection-angle: 5deg;
 }
 .officina-screen-reflection[data-role=developer] {
   --screen-x: 221; --screen-y: 566; --screen-width: 158; --screen-height: 70;
-  --reflection-color: #80caff; --reflection-period: 16.8s; --reflection-delay: -4.1s;
+  --reflection-color: #80caff; --reflection-period: 16.4s; --reflection-delay: -4s;
   --reflection-angle: -14deg;
 }
 .officina-screen-reflection[data-role=tester] {
   --screen-x: 1070; --screen-y: 604; --screen-width: 128; --screen-height: 68;
-  --reflection-color: #92ebe2; --reflection-period: 8.6s; --reflection-delay: -2s;
+  --reflection-color: #92ebe2; --reflection-period: 10.8s; --reflection-delay: -2.5s;
   --reflection-angle: 10deg;
 }
 .officina-screen-reflection[data-role=alm] {
   --screen-x: 285; --screen-y: 879; --screen-width: 166; --screen-height: 70;
   --reflection-color: #b5a7ff;
 }
-.officina-screen-reflection[data-role=alm] > span { animation: officina-rocket-light 10.8s -2.5s ease-in-out infinite; }
+.officina-screen-reflection[data-role=alm] > span { animation: officina-rocket-light 13.5s -3.1s ease-in-out infinite; }
 @keyframes officina-reflected-light {
-  0%, 18%, 100% { opacity: .32; }
-  38%, 54% { opacity: .68; }
+  0%, 100% { opacity: .32; }
+  44% { opacity: .68; }
   78% { opacity: .48; }
 }
 
@@ -98,25 +98,29 @@
 .officina-board-pointer {
   position: absolute;
   left: 10%; top: 40%;
-  width: 4.2%; aspect-ratio: .88;
+  width: 5.6%; aspect-ratio: .88;
   background: #fff9e8;
   clip-path: polygon(0 0, 100% 70%, 53% 70%, 74% 100%, 52% 100%, 31% 74%, 0 100%);
   box-shadow: inset 0 0 0 1px #91562c88;
   animation: officina-board-review 12s -1.8s ease-in-out infinite;
 }
 @keyframes officina-note-focus {
-  0%, 12%, 56%, 100% { opacity: .26; }
-  29%, 39% { opacity: 1; }
+  0%, 100% { opacity: .28; }
+  32% { opacity: 1; }
+  64% { opacity: .16; }
 }
 @keyframes officina-criteria-focus {
-  0%, 46%, 90%, 100% { opacity: .22; }
-  64%, 76% { opacity: .92; }
+  0%, 100% { opacity: .22; }
+  38% { opacity: .14; }
+  68% { opacity: .98; }
 }
 @keyframes officina-board-review {
-  0%, 12%, 96%, 100% { left: 10%; top: 40%; }
-  28%, 39% { left: 30%; top: 40%; }
-  63%, 76% { left: 72%; top: 64%; }
-  88% { left: 38%; top: 27%; }
+  0%, 100% { left: 11%; top: 43%; }
+  24% { left: 32%; top: 34%; }
+  39% { left: 47%; top: 42%; }
+  62% { left: 74%; top: 62%; }
+  76% { left: 71%; top: 74%; }
+  90% { left: 36%; top: 56%; }
 }
 
 .officina-architecture-screen { --screen-x: 1005; --screen-y: 201; --screen-width: 181; --screen-height: 95; }
@@ -132,17 +136,49 @@
   background: #bda3f6a0;
   box-shadow: inset 0 0 3px #e1d2ff, 0 0 5px #b085ebbf;
   mix-blend-mode: screen;
-  animation: officina-node-flow 9.6s var(--node-delay) ease-in-out infinite;
+  animation: officina-node-flow 12.6s var(--node-delay) ease-in-out infinite;
 }
-.officina-diagram-node:nth-child(1) { --node-x: 7%; --node-y: 19%; --node-delay: -9.6s; }
-.officina-diagram-node:nth-child(2) { --node-x: 36.5%; --node-y: 32%; --node-delay: -8s; }
-.officina-diagram-node:nth-child(3) { --node-x: 49%; --node-y: 13%; --node-delay: -6.4s; }
-.officina-diagram-node:nth-child(4) { --node-x: 74.5%; --node-y: 37%; --node-delay: -4.8s; }
-.officina-diagram-node:nth-child(5) { --node-x: 57.1%; --node-y: 68%; --node-delay: -3.2s; }
-.officina-diagram-node:nth-child(6) { --node-x: 19%; --node-y: 61%; --node-delay: -1.6s; }
+.officina-diagram-node:nth-child(1) { --node-x: 7%; --node-y: 19%; --node-delay: -12.6s; }
+.officina-diagram-node:nth-child(2) { --node-x: 36.5%; --node-y: 32%; --node-delay: -10.5s; }
+.officina-diagram-node:nth-child(3) { --node-x: 49%; --node-y: 13%; --node-delay: -8.4s; }
+.officina-diagram-node:nth-child(4) { --node-x: 74.5%; --node-y: 37%; --node-delay: -6.3s; }
+.officina-diagram-node:nth-child(5) { --node-x: 57.1%; --node-y: 68%; --node-delay: -4.2s; }
+.officina-diagram-node:nth-child(6) { --node-x: 19%; --node-y: 61%; --node-delay: -2.1s; }
 @keyframes officina-node-flow {
-  0%, 42%, 100% { opacity: .14; }
-  14%, 20% { opacity: .68; }
+  0%, 75%, 100% { opacity: .12; }
+  19% { opacity: .94; }
+  39% { opacity: .36; }
+}
+
+.officina-diagram-packet {
+  position: absolute;
+  left: 16%;
+  top: 28%;
+  width: 3.4%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: #f4edff;
+  box-shadow: 0 0 .6cqw #b587ff;
+  animation: officina-diagram-travel 9.6s -1.5s linear infinite;
+}
+.officina-diagram-packet + .officina-diagram-packet {
+  background: #c7afff;
+  animation-delay: -6.3s;
+}
+@keyframes officina-diagram-travel {
+  0%, 100% { left: 16%; top: 28%; }
+  7% { left: 32%; top: 30%; }
+  12% { left: 32%; top: 40%; }
+  21% { left: 46%; top: 41%; }
+  26% { left: 46%; top: 23%; }
+  32% { left: 58%; top: 22%; }
+  39% { left: 58%; top: 45%; }
+  51% { left: 84%; top: 46%; }
+  60% { left: 84%; top: 72%; }
+  70% { left: 67%; top: 76%; }
+  88% { left: 28%; top: 70%; }
+  95% { left: 28%; top: 28%; }
 }
 
 .officina-code--main {
@@ -150,8 +186,8 @@
   --screen-edges: polygon(0 27%, 97% 2%, 100% 73%, 2% 100%);
   --editor-tilt: -14deg;
   --editor-top: 31%;
-  --editor-period: 16.8s;
-  --editor-delay: -4.1s;
+  --editor-period: 16.4s;
+  --editor-delay: -4s;
 }
 .officina-code--side {
   --screen-x: 318; --screen-y: 470; --screen-width: 101; --screen-height: 79;
@@ -159,8 +195,8 @@
   --screen-edges: polygon(0 18%, 100% 0, 100% 85%, 43% 98%, 32% 92%, 22% 88%, 0 92%);
   --editor-tilt: -8.4deg;
   --editor-top: 21%;
-  --editor-period: 20.4s;
-  --editor-delay: -10.6s;
+  --editor-period: 21.8s;
+  --editor-delay: -10.8s;
 }
 .officina-code-viewport {
   position: absolute;
@@ -177,7 +213,7 @@
   overflow: hidden;
   mask-image: linear-gradient(transparent, #000 7%, #000 84%, transparent 97%);
 }
-.officina-code-reel { animation: officina-code-scroll var(--editor-period) var(--editor-delay) ease-in-out infinite; }
+.officina-code-reel { animation: officina-code-scroll var(--editor-period) var(--editor-delay) linear infinite; }
 .officina-code-page {
   font-family: Consolas, monospace;
   font-size: 4.5cqw;
@@ -212,45 +248,84 @@
 }
 /* The last frame shows the duplicate page in the same position as the first. */
 @keyframes officina-code-scroll {
-  0%, 12% { transform: translateY(0); }
-  27%, 44% { transform: translateY(-16.6667%); }
-  59%, 72% { transform: translateY(-33.3333%); }
-  90%, 100% { transform: translateY(-50%); }
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
 }
 @keyframes officina-editor-caret { from { opacity: .38; } to { opacity: .9; } }
 
-.officina-test-screen { --screen-x: 1112; --screen-y: 554; --screen-width: 73; --screen-height: 69; }
-.officina-test-focus {
+.officina-test-screen { --screen-x: 1111; --screen-y: 551; --screen-width: 76; --screen-height: 71; }
+.officina-test-display {
   position: absolute;
-  left: 10%; top: 17%; width: 80%; height: 18%;
-  transform: skewY(10deg);
-  background: #5acbbc50;
-  border-left: thin solid #2a9f887d;
-  border-radius: 9%;
-  opacity: .85;
-  animation: officina-test-scan 8.6s -2s ease-in-out infinite;
+  inset: 0;
+  clip-path: polygon(4% 0, 100% 23%, 97% 100%, 0 81%);
+  background: #e1edf0;
 }
+.officina-test-runner {
+  position: absolute;
+  inset: 2% 4% 22% 5%;
+  transform: skewY(12deg);
+  transform-origin: left top;
+}
+.officina-test-header {
+  position: absolute;
+  inset: 4% 4% 78%;
+  display: flex;
+  align-items: center;
+  gap: 7%;
+  border-bottom: 1px solid #98bdbf;
+}
+.officina-test-header i { width: 13%; height: 54%; border-radius: 20%; background: #118377; }
+.officina-test-header b { width: 58%; height: 24%; background: #344b5d; }
+.officina-test-viewport {
+  position: absolute;
+  inset: 23% 4% 15%;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+}
+.officina-test-reel { height: 300%; animation: officina-test-scroll 9.2s -1.6s linear infinite; }
+.officina-test-page { height: 50%; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.officina-test-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 17% minmax(0, 1fr) 14%;
+  gap: 8%;
+  border-bottom: 1px solid #a8c0c4;
+}
+.officina-test-row i {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 73%;
+  border-radius: 16%;
+  background: #228a6a;
+}
+.officina-test-row i::before {
+  content: '';
+  width: 55%;
+  height: 54%;
+  clip-path: polygon(0 53%, 16% 35%, 38% 59%, 82% 0, 100% 21%, 39% 100%);
+  background: #eefdf3;
+}
+.officina-test-row span { height: 22%; background: #466073; }
+.officina-test-row b { height: 22%; background: #72b79a; }
+.officina-test-row[data-sample=run] { background: #67dba39e; }
+.officina-test-row[data-sample=run] i { background: #036b70; }
+.officina-test-row[data-sample=queued] i { background: #788795; }
+.officina-test-row:is([data-sample=run], [data-sample=queued]) i::before { width: 45%; height: 42%; clip-path: circle(48%); }
+.officina-test-track { position: absolute; inset: 90% 4% 4%; overflow: hidden; background: #bacbd5; }
 .officina-test-progress {
-  position: absolute;
-  left: 49%; top: 88%; width: 38%; height: 5%;
-  border-radius: 99px;
-  background: #309b8496;
-  transform: skewY(10deg);
+  display: block;
+  width: 100%;
+  height: 100%;
   transform-origin: left center;
-  scale: .28 1;
-  animation: officina-test-progress 8.6s -2s ease-in-out infinite;
+  background: #068374;
+  animation: officina-test-progress 9.2s -1.6s ease-in-out infinite;
 }
-@keyframes officina-test-scan {
-  0%, 15%, 100% { translate: 0 0; opacity: .85; }
-  31%, 40% { translate: 0 121%; opacity: .85; }
-  56%, 70% { translate: 0 242%; opacity: .85; }
-  87% { translate: 0 0; opacity: .36; }
-}
+@keyframes officina-test-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 @keyframes officina-test-progress {
-  0%, 15%, 100% { scale: .28 1; }
-  31%, 40% { scale: .62 1; }
-  56%, 71% { scale: 1 1; }
-  88% { scale: .28 1; }
+  0%, 100% { scale: .25 1; }
+  74% { scale: 1 1; }
+  92% { scale: .12 1; }
 }
 
 .officina-release-screen { --screen-x: 330; --screen-y: 786; --screen-width: 160; --screen-height: 99; }
@@ -262,7 +337,7 @@
   scale: .84;
   background: radial-gradient(ellipse, #e1e4ffb3, #8c85ec7d 35%, transparent 71%);
   mix-blend-mode: screen;
-  animation: officina-rocket-light 10.8s -2.5s ease-in-out infinite;
+  animation: officina-rocket-light 13.5s -3.1s ease-in-out infinite;
 }
 .officina-pipeline-pulse {
   position: absolute;
@@ -271,35 +346,54 @@
   opacity: 0;
   background: #ebfcff;
   box-shadow: 0 0 5px 2px #5ed5f0b0;
-  animation: officina-pipeline-travel 10.8s -2.5s ease-in-out infinite;
+  animation: officina-pipeline-travel 13.5s -3.1s ease-in-out infinite;
 }
 @keyframes officina-rocket-light {
-  0%, 10%, 90%, 100% { opacity: .28; scale: .84; }
-  42% { opacity: .48; scale: .97; }
-  63%, 73% { opacity: .83; scale: 1.12; }
+  0%, 100% { opacity: .28; scale: .84; }
+  29% { opacity: .57; scale: .95; }
+  61% { opacity: .96; scale: 1.13; }
+  82% { opacity: .62; scale: 1.04; }
 }
 @keyframes officina-pipeline-travel {
-  0% { translate: 0 0; opacity: 0; }
-  10%, 15% { translate: 0 0; opacity: .88; }
-  34%, 43% { translate: 625% 0; opacity: .88; }
-  62%, 69% { translate: 1250% 0; opacity: .88; }
-  88%, 100% { translate: 1250% 0; opacity: 0; }
+  0%, 100% { translate: 0 0; opacity: 0; }
+  9% { translate: 71% 0; opacity: .86; }
+  40% { translate: 625% 0; opacity: .98; }
+  75% { translate: 1250% 0; opacity: .75; }
+  85% { translate: 1250% 0; opacity: 0; }
+}
+
+.officina-coordinator-screen {
+  --screen-x: 673; --screen-y: 563; --screen-width: 28; --screen-height: 20;
+  overflow: hidden;
+  border: 1px solid #383131;
+  border-radius: 9%;
+  background: #263943;
+}
+.officina-coordinator-screen > span {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, #6dc5c75e 0 12%, transparent 12% 33.333%);
+  animation: officina-coordinator-notes 9.3s -2s linear infinite;
+}
+@keyframes officina-coordinator-notes {
+  from { background-position: 0 0; background-size: 100% 75%; }
+  to { background-position: 0 100%; background-size: 100% 75%; }
 }
 
 .officina-observer-station {
   position: absolute;
-  left: 42.8%; top: 11.3%; width: 16.4%; aspect-ratio: 6 / 5;
+  left: 47.7%; top: 17.5%; width: 12.8%; aspect-ratio: 6 / 5;
 }
 .officina-observer-furniture { display: block; width: 100%; height: 100%; }
 .officina-observer-reflection {
   left: 29%; top: 33%; width: 40%; height: 22%;
   --reflection-color: #80d6f4;
-  --reflection-period: 11s;
-  --reflection-delay: -2.4s;
+  --reflection-period: 11.4s;
+  --reflection-delay: -2.5s;
 }
 .officina-observer-monitor {
   left: 28.8%; top: 9.6%; width: 34%; height: 21%;
-  --observer-accent: #88c5e1;
+  --observer-accent: #84dcff;
   border-radius: 4%;
   background: linear-gradient(122deg, #1a3550df, #131e36b5);
 }
@@ -313,7 +407,7 @@
 }
 .officina-observer-checks {
   position: absolute;
-  left: 7%; right: 39%; top: 32%; bottom: 10%;
+  left: 7%; right: 48%; top: 32%; bottom: 13%;
   display: grid;
   align-content: space-between;
 }
@@ -326,36 +420,42 @@
 .officina-observer-checks > i {
   position: absolute; inset: -8% -4% auto; height: 32%;
   border-radius: 9%;
-  background: #7bd3f668;
+  background: #85e6ff99;
   box-shadow: 0 0 .35cqw #98ebff63;
-  animation: officina-observer-scan 11s -2.4s ease-in-out infinite;
+  animation: officina-observer-scan 7.6s -1.9s ease-in-out infinite;
+}
+.officina-observer-telemetry {
+  position: absolute;
+  left: 58%; right: 7%; top: 31%; bottom: 12%;
+  overflow: hidden;
+  background: repeating-linear-gradient(to top, #a0cfde29 0 2%, transparent 2% 27%);
+  border-bottom: 1px solid #a8c8e56e;
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+.officina-observer-reel {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  animation: officina-observer-scroll 6.6s -2.4s linear infinite;
 }
 .officina-observer-bars {
-  position: absolute; left: 68%; right: 8%; top: 38%; bottom: 9%;
-  display: flex; align-items: end; gap: 9%;
-  padding-bottom: 3%;
-  border-bottom: 1px solid #a8c8e56e;
+  display: flex;
+  align-items: end;
+  flex: 0 0 50%;
+  gap: .13cqw;
+  padding-inline-end: .13cqw;
 }
 .officina-observer-bars > span {
-  flex: 1; height: 56%;
-  background: linear-gradient(var(--observer-accent), #65aad654);
-  transform-origin: bottom;
-  animation: officina-observer-bars 11s var(--bar-delay, -2.4s) ease-in-out infinite;
+  flex: 1;
+  background: linear-gradient(var(--observer-accent), #5ea7d087);
 }
-.officina-observer-bars > span:nth-child(2) { height: 84%; --bar-delay: -3.2s; }
-.officina-observer-bars > span:nth-child(3) { height: 70%; --bar-delay: -2.75s; }
-.officina-observer-bars > span:nth-child(4) { height: 96%; --bar-delay: -4s; }
 @keyframes officina-observer-scan {
-  0%, 14%, 100% { translate: 0 0; opacity: .65; }
-  29%, 43% { translate: 0 124%; opacity: .9; }
-  59%, 73% { translate: 0 258%; opacity: .9; }
-  91% { translate: 0 0; opacity: .65; }
+  0%, 100% { translate: 0 0; opacity: .58; }
+  28% { translate: 0 122%; opacity: .95; }
+  61% { translate: 0 243%; opacity: .96; }
+  85% { translate: 0 70%; opacity: .61; }
 }
-@keyframes officina-observer-bars {
-  0%, 100% { scale: 1 .78; }
-  32%, 48% { scale: 1 1; }
-  69%, 83% { scale: 1 .64; }
-}
+@keyframes officina-observer-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 .officina-scene[data-animate=false] .officina-screens * { animation-play-state: paused; }
 .officina-scene[data-animate=false] .officina-code-page code::after { animation-play-state: paused; }

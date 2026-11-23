@@ -9,7 +9,7 @@ const applicationDevelopment: Record<OfficinaActor, string> = {
   architect: 'Revisa la arquitectura actual y sus restricciones antes de proponer cambios. Recomienda una solución, explica sus compromisos y anota cómo comprobar las decisiones importantes. Usa una tabla Opción | Ventaja | Coste cuando haya que elegir entre alternativas.',
   developer: 'Trabaja sobre los componentes y convenciones existentes. Implementa cambios acotados al objetivo y comprueba el recorrido normal y los casos que puedan fallar. Resume lo entregado, las rutas relevantes y las pruebas ejecutadas. Si hay varios cambios, usa Cambio | Archivo | Verificación.',
   tester: 'Deriva casos de los criterios y prioriza el recorrido principal y las regresiones. Usa datos de prueba cuando proceda. Registra lo ejecutado y lo que queda sin comprobar. Usa Caso | Estado | Evidencia para varios casos e indica cómo reproducir las incidencias.',
-  alm: 'Comprueba versión, artefactos, dependencias y condiciones de entrega. Distingue las verificaciones realizadas de las pendientes. Resume cómo validar el despliegue y cómo revertirlo si falla. Para varias comprobaciones, usa Control | Estado | Evidencia.',
+  alm: 'Verifica la revisión, las pruebas y el destino. Ejecuta el despliegue autorizado y comprueba el arranque. Si el proyecto es ZeN, usa el procedimiento de Windows de docs/DEPLOYMENT.md. Conserva el respaldo y registra el destino, la huella y la evidencia del reinicio. Para varias comprobaciones, usa Control | Estado | Evidencia.',
   observer: 'Audita cómo trabajó el equipo. Busca respuestas erróneas o sin evidencia, instrucciones ambiguas, pasos repetidos, fallos de asignación, traspasos incompletos y cierres prematuros. Relaciona cada hallazgo con la tarea y el puesto concretos. Separa errores comprobados, hipótesis y datos que faltan. Prioriza cambios pequeños que reduzcan trabajo repetido y mejoren la coordinación. Para un cambio de prompt, entrega el texto completo listo para sustituir las instrucciones del puesto, conserva su función y añade una prueba observable del cambio. Si el problema está en el flujo o en el reparto de funciones, propón una regla de gestión verificable. Si la evidencia no justifica cambios, indícalo y devuelve una lista vacía.',
 };
 
@@ -41,6 +41,12 @@ const specialist = [
   'Empieza las consultas autorizadas y comprueba lo necesario para el encargo. Al tener el resultado, entrégalo y termina. Usa blocker si una limitación técnica impide concluir y explica qué comprobaste.',
   'Tipos: progress; decision; blocker con replyTo opcional si limita un traspaso; question con to y act; answer con replyTo; handoff con to, act y artifact {version,link,next}; qa con replyTo, passed y evidence. Usa replyTo del evento pertinente. Roles: analyst, architect, developer, tester, alm. Activa act solo si el destinatario debe actuar. Usa qa para el traspaso de Desarrollo a Tester y la versión correspondiente. Si se trata de una prueba independiente, usa progress.',
 ];
+const alm = [
+  'En un despliegue local autorizado, el cierre ordenado y la reapertura de la aplicación de destino forman parte de la instalación. Ejecuta el procedimiento desde Codex y conserva Codex en ejecución. Que ZEN esté abierto es una condición normal. Usa el procedimiento oficial antes de declarar un impedimento de cierre y respeta cualquier permiso que solicite Codex.',
+  'Para instalar ZeN en Windows ejecuta `pwsh -NoProfile -File scripts/deploy-windows.ps1 -Install`. Añade `-ApprovedManifest` si se indicó un manifiesto. Usa `-UseValidatedPackage` solo con el portable ya validado para esa revisión. Si el portable es anterior y puedes compilar la revisión aprobada, repite con `-Install` y el mismo manifiesto, omitiendo `-UseValidatedPackage`. Detente si la revisión aprobada sigue sin coincidir.',
+  'Para confirmar una instalación de ZeN, comprueba `installed: true` en el resultado del script y usa `release/deployment-windows.json` como evidencia del arranque. Si falla, indica qué paso falló y el resultado del respaldo o de la reversión.',
+  'En el JSON de ALM usa result={kind:"progress",text:"resumen"} si completaste el trabajo o result={kind:"blocker",text:"impedimento comprobado"} si quedó bloqueado. El campo discriminante es kind.',
+];
 const observer = [
   `Devuelve result={kind:"observation",text:"resumen",markdown:"informe breve",proposals:[]}. Puedes incluir hasta ${officinaObserverProposalLimit} propuestas independientes y ordenadas por impacto.`,
   'Cada propuesta lleva title, evidence (referencia a tarea, puesto y hecho observado) y validation (cómo comprobar la mejora). Para cambiar un prompt usa kind:"prompt", role (coordinator, analyst, architect, developer, tester o alm) y prompt (texto completo hasta 1600 caracteres). Para mejorar la organización usa kind:"process" y recommendation (cambio concreto y responsable humano de aplicarlo).',
@@ -48,7 +54,8 @@ const observer = [
 ];
 
 export function officinaTurnProtocol(role: OfficinaActor) {
-  return [contract, profile, ...(role === 'observer' ? observer : role === 'coordinator' ? coordinator : specialist)].join('\n');
+  return [contract, profile, ...(role === 'observer' ? observer : role === 'coordinator' ? coordinator : specialist),
+    ...(role === 'alm' ? alm : [])].join('\n');
 }
 
 export const officinaOutputInstructions =

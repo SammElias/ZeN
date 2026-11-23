@@ -7,8 +7,17 @@ import {
 
 export const goalFor = (project: OfficinaProject, task: string) => project.goals?.find(goal => goal.task === task);
 
+export function officinaImprovementQa(project: OfficinaProject, task: string) {
+  const goal = goalFor(project, task);
+  if (!goal?.improvement) return;
+  const last = goal.steps.length - 1;
+  const runs = new Set(project.runs.filter(run => run.task === task && run.state === 'completed' &&
+    (run.role === 'developer' && run.step === last - 2 || run.role === 'tester' && run.step === last - 1)).map(run => run.id));
+  return officinaDeliveryQa(project.events.filter(event => event.source === 'codex' && runs.has(event.id)), task);
+}
+
 export function createOfficinaRun(project: OfficinaProject, task: string, role: OfficinaActor,
-  options: Pick<OfficinaRun, 'event' | 'step'> & {depth?: number} = {}) {
+  options: Pick<OfficinaRun, 'event' | 'step' | 'closureRetried'> & {depth?: number} = {}) {
   project.runs.push({id: randomUUID(), task, role, depth: 0, ...options, state: 'waiting'});
 }
 
@@ -47,12 +56,29 @@ export function settleSavedOfficinaGoals(project: OfficinaProject) {
   }
 }
 
-export function plannedTesterHandoff(project: OfficinaProject, task: string, run: string, from: OfficinaActor,
+export function plannedOfficinaHandoff(project: OfficinaProject, task: string, run: string, from: OfficinaActor,
   data: OfficinaContribution, source: OfficinaEvent['source']) {
-  if (source !== 'codex' || from !== 'developer' || data.kind !== 'handoff' || data.to !== 'tester' || !data.act) return false;
+  if (source !== 'codex' || data.kind !== 'handoff' || !data.act) return false;
   const goal = goalFor(project, task);
-  return goal?.phase === 'work' && goal.steps[goal.cursor + 1]?.role === 'tester' &&
-    project.runs.some(item => item.id === run && item.task === task && item.step === goal.cursor && item.state === 'completed');
+  return goal?.phase === 'work' && goal.steps[goal.cursor + 1]?.role === data.to &&
+    project.runs.some(item => item.id === run && item.role === from && item.task === task && item.step === goal.cursor && item.state === 'completed');
+}
+
+export function recoverOfficinaHandoff(project: OfficinaProject, canDispatch: (run: OfficinaRun) => boolean) {
+  for (const goal of project.goals ?? []) {
+    if (goal.phase !== 'work' || goal.question) continue;
+    const task = project.tasks.find(item => item.id === goal.task && item.status === 'active');
+    const runs = project.runs.filter(run => run.task === goal.task);
+    const last = runs.at(-1);
+    if (!task || last?.state !== 'completed' || !canDispatch(last) ||
+      runs.some(run => ['waiting', 'sending', 'sent', 'uncertain'].includes(run.state))) continue;
+    const event = project.events.find(item => item.id === last.id && item.task === task.id);
+    if (!event || !plannedOfficinaHandoff(project, task.id, last.id, event.from, event.data, event.source)) continue;
+    const count = project.runs.length;
+    continueOfficinaGoal(project, task, goal);
+    if (project.runs.length !== count) return true;
+  }
+  return false;
 }
 
 export function continueOfficinaGoal(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal) {
@@ -79,10 +105,10 @@ export function continueOfficinaGoal(project: OfficinaProject, task: OfficinaTas
   }
   const step = goal.steps[goal.cursor];
   const qa = officinaDeliveryQa(events, task.id);
-  if (step && !(step.role === 'alm' && qa && qa.passed !== true)) {
+  const canDeploy = goal.improvement ? officinaImprovementQa(project, task.id)?.passed === true : !qa || qa.passed === true;
+  if (step && (step.role !== 'alm' || canDeploy)) {
     task.owner = step.role;
-    const delivery = step.role === 'tester' && last?.role === 'developer' && result?.kind === 'handoff' &&
-      result.to === 'tester' && result.act && last.step === goal.cursor - 1 ? last : undefined;
+    const delivery = result?.kind === 'handoff' && result.to === step.role && result.act && last?.step === goal.cursor - 1 ? last : undefined;
     createOfficinaRun(project, task.id, step.role, {
       step: goal.cursor, ...(delivery && {event: delivery.id, depth: delivery.depth + 1}),
     });
@@ -116,7 +142,10 @@ export function applyOfficinaCoordination(project: OfficinaProject, task: Offici
   if (result.kind === 'complete') {
     const events = project.events.filter(event => event.task === task.id);
     const qa = officinaDeliveryQa(events, task.id);
-    if (goal.phase !== 'verify' || qa && qa.passed !== true ||
+    const improvementDeployed = !goal.improvement || officinaImprovementQa(project, task.id)?.passed === true &&
+      project.runs.some(item => item.task === task.id && item.role === 'alm' && item.step === goal.steps.length - 1 &&
+        item.state === 'completed' && events.some(event => event.id === item.id && event.source === 'codex' && event.data.kind === 'progress'));
+    if (goal.phase !== 'verify' || !improvementDeployed || qa && qa.passed !== true ||
       officinaOpenItems(events).some(event => event.data.kind === 'question' && event.data.act)) {
       logOfficinaGoal(goal, source, result.text, result.markdown, reply);
       finishOfficinaGoal(project, task, goal, 'El encargo se cerró con verificaciones pendientes. Consulta el historial y el resultado de QA.', 'zen', true);
@@ -127,6 +156,11 @@ export function applyOfficinaCoordination(project: OfficinaProject, task: Offici
   }
   if (goal.round >= 4 || goal.steps.length + result.steps.length > 20) {
     finishOfficinaGoal(project, task, goal, 'Se alcanzó el límite de coordinación. El historial conserva las conclusiones y el trabajo disponible.', 'zen', true);
+    return;
+  }
+  if (goal.improvement && result.steps.map(step => step.role).join(',') !== 'developer,tester,alm') {
+    logOfficinaGoal(goal, source, result.text, result.markdown, reply);
+    finishOfficinaGoal(project, task, goal, 'La mejora requiere un plan de Desarrollo, Tester y ALM en ese orden.', 'zen', true);
     return;
   }
   logOfficinaGoal(goal, source, result.text, result.markdown, reply);
@@ -140,7 +174,7 @@ export function applyOfficinaCoordination(project: OfficinaProject, task: Offici
 
 export function planOfficinaTabReview(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal) {
   const request = officinaGoalRequest(goal);
-  if (goal.phase !== 'plan' || !isOfficinaTabReview(request, officinaGoalBrowser(project, goal))) return false;
+  if (goal.improvement || goal.phase !== 'plan' || !isOfficinaTabReview(request, officinaGoalBrowser(project, goal))) return false;
   goal.question = undefined;
   const active = officinaActiveTabRequested(request);
   applyOfficinaCoordination(project, task, goal, {

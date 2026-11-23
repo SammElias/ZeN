@@ -9,7 +9,7 @@ export function MessageSources({ text, notify }: { text: string; notify: (messag
   const sources = messageLinks(text);
   return sources.length ? <nav className="message-sources" aria-label="Fuentes consultadas">{sources.map(({ title, url }) => <button key={url} title={url} onClick={() => void window.zen.openPage(url).then(result => { if (!result.ok) notify(result.error); })}>{title}</button>)}</nav> : null;
 }
-export const MarkdownText=memo(function MarkdownText({text, className, open, renderCode, renderLink, renderInlineCode}: MarkdownProps) {
+export const MarkdownText=memo(function MarkdownText({text, className, open, renderCode, renderLink, renderInlineCode, renderTable}: MarkdownProps) {
   // React elements only: no raw HTML plugin, remote media loading or executable links.
   const allowed=(url:string,key:string)=>(renderLink && (key==='href' || key==='src')) || /^https?:\/\//i.test(url) ? url : '';
   return <div className={className+' markdown-text'}><Markdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={allowed} components={{
@@ -17,7 +17,7 @@ export const MarkdownText=memo(function MarkdownText({text, className, open, ren
       href&&open?<button type="button" className="message-link" title={href} onClick={()=>open(href)}>{children}</button>:<span title={href||undefined}>{children}</span>,
     img:({src,alt})=>typeof src==='string'&&src&&renderLink?renderLink(src,alt||'Imagen enlazada'):
       typeof src==='string'&&src&&open?<button type="button" className="message-link" title={src} onClick={()=>open(src)}>Ver imagen: {alt||'imagen enlazada'}</button>:<span>{alt}</span>,
-    table:({children})=><div className="markdown-table" role="region" tabIndex={0} aria-label="Tabla desplazable"><table>{children}</table></div>,
+    table:({children})=>renderTable ? renderTable(children) : <div className="markdown-table" role="region" tabIndex={0} aria-label="Tabla desplazable"><table>{children}</table></div>,
     pre:({children})=><pre tabIndex={0}>{children}</pre>,
     code:({className,children})=>renderCode&&className?.startsWith('language-')
       ? renderCode(String(children),className.slice(9))

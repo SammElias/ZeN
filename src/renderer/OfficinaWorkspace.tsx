@@ -1,14 +1,14 @@
 import React, {useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from 'react';
-import {ArrowRight, Box, ChevronRight, ClipboardCheck, CodeXml, Eye, FileText, FlaskConical, FolderOpen, Layers3, ListChecks, MessageSquare, Paperclip, Plus, Settings2, Users, X} from 'lucide-react';
+import {ArrowRight, Box, ChevronRight, ClipboardCheck, CodeXml, Copy, Eye, FileText, FlaskConical, FolderOpen, ImageIcon, Layers3, ListChecks, Maximize2, MessageSquare, Minimize2, Paperclip, Plus, Settings2, Trash2, Users, X} from 'lucide-react';
 import {
   OfficinaActor, OfficinaParticipant, OfficinaRole, officinaActorName, officinaEventLabels, officinaOpenItems,
   officinaPasteTitle, officinaQa, officinaRunLabels, officinaTaskLabels,
-  type OfficinaAction, type OfficinaContribution, type OfficinaEvent, type OfficinaGoal, type OfficinaProject, type OfficinaRunActivity,
+  type OfficinaAction, type OfficinaContribution, type OfficinaDirectActivity, type OfficinaEvent, type OfficinaGoal, type OfficinaProject, type OfficinaRunActivity,
   type OfficinaTask, type OfficinaTaskStatus, type OfficinaView,
 } from '../shared/companion-officina';
 import {ZenEmblem} from './ZenEmblem';
 import {isOfficinaTabReview, officinaGoalBrowser, officinaGoalRequest} from '../shared/officina-browser';
-import {officinaRoleTracking, officinaRunTracking, officinaTrackingLabels} from '../shared/officina-tracking';
+import {officinaObserverRun, officinaRoleTracking, officinaRunTracking, officinaTrackingLabels} from '../shared/officina-tracking';
 import {officinaDelegatedRoles, officinaResults} from '../shared/officina-results';
 import {officinaChatEntries, type OfficinaChatEntry} from '../shared/officina-chat';
 import {officinaAskedQuestion, officinaAttention, officinaClosureRetry} from '../shared/officina-attention';
@@ -16,27 +16,28 @@ import type {CompanionApproval} from '../shared/codex-companion';
 import {OfficinaAttentionCard} from './OfficinaAttentionCard';
 import {OfficinaComposer} from './OfficinaComposer';
 import {OfficinaRoleSettings} from './OfficinaRoleSettings';
-import {OfficinaFollowupNotice, OfficinaMonitorNotice, OfficinaObserverDesk, OfficinaObserverPanel} from './OfficinaObserver';
+import {OfficinaMonitorNotice, OfficinaObserverDesk, OfficinaObserverPanel} from './OfficinaObserver';
 import {officinaPendingProposals} from '../shared/officina-observer';
 import {OfficinaIdleScene, officinaCanRest, officinaIdleRoutines} from './OfficinaIdleScene';
+import {OfficinaCafe} from './OfficinaCafe';
 import {OfficinaScreens} from './OfficinaScreens';
 import {OfficinaMarkdown, OfficinaReference} from './OfficinaReference';
 import {formatNoteMarkdown} from './note-markdown';
-import officeScene from './assets/officina-office.png';
+import officeScene from './assets/officina-office-rooms.png';
 import './OfficinaWorkspace.css';
 
 const roleIcons = {coordinator: ListChecks, analyst: ClipboardCheck, architect: Layers3, developer: CodeXml, tester: FlaskConical, alm: Box, observer: Eye};
 const roles = OfficinaRole.options;
 const handoffTravelMs = 1900;
 const desks = {
-  analyst: {x: 32, y: 11, dot: [398, 321], path: 'M398 321 V350 Q398 366 415 366 H555 Q593 366 593 400 V436', hit: [39, 36]},
-  architect: {x: 78, y: 12, dot: [793, 330], path: 'M793 330 V361 Q793 375 778 375 H714 Q680 375 680 404 V436', hit: [66, 37.5]},
-  developer: {x: 21, y: 35, dot: [404, 535], path: 'M404 535 Q404 574 445 574 H459 Q484 574 500 594 T536 618 H573 Q605 618 605 590', hit: [40, 57.5]},
-  tester: {x: 82, y: 43, dot: [860, 608], path: 'M860 608 Q858 648 819 648 H694 Q663 648 663 617 V592', hit: [68, 65]},
-  alm: {x: 25, y: 63, dot: [497, 741], path: 'M497 741 V706 Q497 678 525 678 H600 Q633 678 633 648 V592', hit: [45, 68]},
+  analyst: {x: 32, y: 11, width: 20, height: 24, dot: [398, 321], path: 'M398 321 V374 Q398 386 412 386 H536 Q552 386 552 403 V420 Q552 436 569 436 H593', hit: [41, 38.6]},
+  architect: {x: 78, y: 12, width: 23, height: 24, dot: [866, 347], path: 'M866 347 V390 Q866 406 849 406 H715 Q691 406 691 423 V436', hit: [68.5, 40.6]},
+  developer: {x: 21, y: 35, width: 27, height: 27, dot: [363, 587], path: 'M363 587 V647 Q363 663 379 663 H463 Q478 663 478 647 V591 Q478 575 494 575 H542', hit: [44, 57.5]},
+  tester: {x: 82, y: 43, width: 23, height: 25, dot: [945, 624], path: 'M945 624 V696 Q945 708 930 708 H803 Q786 708 786 692 V606 Q786 590 771 590 H742', hit: [66, 69.7]},
+  alm: {x: 25, y: 63, width: 26, height: 24, dot: [497, 741], path: 'M497 741 V706 Q497 678 525 678 H600 Q633 678 633 648 V592', hit: [45, 68]},
 };
 type Panel = {type: 'project' | 'binding' | 'board'} | {type: 'role'; role: OfficinaParticipant} |
-  {type: 'task'; id: string} | {type: 'new'; role?: OfficinaRole} | {type: 'event'; id: string} |
+  {type: 'task'; id: string} | {type: 'new'; role?: OfficinaRole} | {type: 'event'; id: string} | {type: 'delete-project'; project: string} |
   {type: 'result'; project: string; task: string; role: OfficinaActor} | {type: 'settings'; role: OfficinaActor} |
   {type: 'chat-message'; project: string; task: string; entry: OfficinaChatEntry} | {type: 'observer'; project: string; review?: string};
 type Act = (action: OfficinaAction) => Promise<boolean>;
@@ -61,6 +62,10 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
   const latestHandoff = events.filter(event => event.data.kind === 'handoff').at(-1);
   const previous = useRef(latestHandoff?.id);
   const [pulse, setPulse] = useState<{id: string; path: string; to: OfficinaRole}>();
+  const stage = useRef<HTMLDivElement>(null);
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState('');
   const flightMarker = useRef<SVGCircleElement>(null);
   const paths = useRef<Partial<Record<OfficinaRole, SVGPathElement | null>>>({});
   useEffect(() => {
@@ -87,15 +92,51 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
   const flight = animate && pulse?.id === latestHandoff?.id ? pulse : undefined;
   useLayoutEffect(() => {
     // Start on receipt of the event, even if the SVG timeline is already running.
-    flightMarker.current?.querySelectorAll<SVGAnimationElement>('animateMotion, animate')
-      .forEach(animation => animation.beginElement());
+    const marker = flightMarker.current;
+    if (!marker) return;
+    const start = document.timeline.currentTime;
+    marker.querySelectorAll<SVGAnimationElement>('animateMotion, animate').forEach(animation => animation.beginElement());
+    const arrival = marker.closest('.officina-scene')?.querySelector('.officina-screen-arrival');
+    const [highlight] = arrival?.getAnimations() ?? [];
+    if (highlight && start !== null) highlight.startTime = start;
   }, [flight]);
-  return <div className="officina-stage" data-animate={animate}><div className="officina-scene" data-animate={animate} aria-label="Plano de Officina">
-    <img className="officina-photo" src={officeScene} alt="Cinco puestos alrededor de la mesa central de una oficina en miniatura" draggable={false}/>
+  useEffect(() => {
+    const element = stage.current;
+    let wasFullscreen = false;
+    const syncFullscreen = () => {
+      const isFullscreen = document.fullscreenElement === element;
+      setFullscreen(isFullscreen);
+      if (wasFullscreen || isFullscreen) fullscreenButton.current?.focus({preventScroll: true});
+      wasFullscreen = isFullscreen;
+    };
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+  async function toggleFullscreen() {
+    const element = stage.current;
+    if (!element) return;
+    setFullscreenError('');
+    try {
+      if (document.fullscreenElement === element) await document.exitFullscreen();
+      else await element.requestFullscreen({navigationUI: 'hide'});
+    } catch {
+      setFullscreenError('No se pudo cambiar a pantalla completa.');
+    }
+  }
+  async function openConnection(id: string) {
+    if (document.fullscreenElement === stage.current) await toggleFullscreen();
+    if (!document.fullscreenElement) open({type: 'event', id});
+  }
+  return <div ref={stage} className="officina-stage" data-animate={animate} onKeyDown={event => {
+    if (event.key !== 'Escape' || document.fullscreenElement !== stage.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void toggleFullscreen();
+  }}><div className="officina-scene" data-animate={animate} aria-label="Plano de Officina">
+    <img className="officina-photo" src={officeScene} alt="Siete salas de trabajo abiertas con mamparas de cristal, alrededor de la entrada y el salón común" draggable={false}/>
+    <OfficinaCafe/>
     {animate && <OfficinaIdleScene resting={resting}/>}
     <OfficinaScreens team={team} animate={animate} arrival={flight && {id: flight.id, role: flight.to, delay: handoffTravelMs}}/>
-    {animate && working.length > 0 && <div className="officina-gestures" aria-hidden="true">{working.map(role =>
-      <span key={role} data-role={role}/>)}</div>}
     <svg className="officina-paths" viewBox="0 0 1200 1000" aria-hidden="true">
       {roles.map(role => <path key={role} data-state={team[role].state} ref={node => {paths.current[role] = node;}} d={desks[role].path}
         className={events.some(event => event.from === role || transfer(event) === role) ? 'has-event' : undefined}/>)}
@@ -109,7 +150,8 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
       const desk = desks[role], activity = team[role];
       const name = officinaActorName(role, project);
       return <button type="button" key={role} className="officina-desk"
-        data-role={role} data-state={activity.state} style={{'--x': desk.x + '%', '--y': desk.y + '%'} as CSSProperties}
+        data-role={role} data-state={activity.state}
+        style={{'--x': desk.x + '%', '--y': desk.y + '%', width: desk.width + '%', height: desk.height + '%'} as CSSProperties}
         aria-label={name} aria-describedby={`officina-desk-${role}`} aria-pressed={selected === role}
         onClick={() => selectRole(role)}>
         <span className="officina-desk-label"><RoleIcon role={role}/><span>{name}</span></span>
@@ -140,18 +182,31 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
           style={{left: desk.hit[0] + '%', top: desk.hit[1] + '%'}}
           title={officinaEventLabels[event.data.kind] + ' · ' + event.data.text}
           aria-label={`Ver ${officinaEventLabels[event.data.kind].toLowerCase()} en conexión de ${officinaActorName(role, project)}`}
-          onClick={() => open({type: 'event', id: event.id})}/>}
+          onClick={() => void openConnection(event.id)}/>}
       </React.Fragment>;
     })}
+    <div className="officina-stage-actions">
+      {fullscreenError && <span role="alert">{fullscreenError}</span>}
+      <button ref={fullscreenButton} className="officina-fullscreen-button" type="button"
+        title={fullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'}
+        aria-label={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+        onClick={() => void toggleFullscreen()}>
+        {fullscreen ? <Minimize2 aria-hidden="true"/> : <Maximize2 aria-hidden="true"/>}
+      </button>
+    </div>
   </div></div>;
 }
 
 function Modal({children, title, close, wide}: {children: ReactNode; title: string; close: () => void; wide?: boolean}) {
   const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    dialog.current?.showModal();
+  useLayoutEffect(() => {
     const element = dialog.current;
-    return () => { element?.close(); };
+    const origin = document.activeElement;
+    element?.showModal();
+    return () => {
+      element?.close();
+      if (origin instanceof HTMLElement && origin.isConnected) origin.focus({preventScroll: true});
+    };
   }, []);
   return <dialog ref={dialog} className="officina-modal" data-wide={wide || undefined} aria-labelledby="officina-modal-title"
     onCancel={event => { event.preventDefault(); event.stopPropagation(); close(); }}
@@ -194,7 +249,17 @@ function OfficinaResponse({text, markdown, project, task, act}: {
 }) {
   const readable = markdown ?? formatNoteMarkdown(text.replace(/(^|(?<=[.!?]) )((?:Fortalezas?|Prioridad(?: \d+)?|Riesgos?|Limitaciones?):) /g,
     (_match, preceding, label) => `${preceding ? '\n\n' : ''}**${label}** `));
-  return <OfficinaMarkdown text={readable} project={project} task={task} act={act}/>;
+  const [copyStatus, setCopyStatus] = useState('');
+  return <>
+    <div className="officina-report-actions">
+      <button type="button" onClick={async () => {
+        const result = await window.companion.copy(markdown ?? text);
+        setCopyStatus(result.ok ? 'Copiado' : result.error);
+      }}><Copy aria-hidden="true"/>Copiar informe</button>
+      {copyStatus && <small role="status">{copyStatus}</small>}
+    </div>
+    <OfficinaMarkdown text={readable} project={project} task={task} act={act}/>
+  </>;
 }
 
 function EventDetail({event, events, project, act, showTitle = true}: {
@@ -361,9 +426,25 @@ function PanelContent({panel, project, team, activity: observed, observerQueued,
   }}><label>Nombre del proyecto<input name="name" required maxLength={120} data-hold-island-open/></label>
     <button type="submit" className="officina-accent">Crear proyecto</button></form>;
   if (panel.type === 'settings') return <OfficinaRoleSettings key={project?.id} project={project} initialRole={panel.role} act={act}/>;
+  if (panel.type === 'delete-project') {
+    if (project?.id !== panel.project) return <p>El proyecto visible cambió.</p>;
+    return <>
+      <p>Se eliminarán «{project.name}», sus tareas y sus resultados guardados en Officina.</p>
+      <p>Se conservarán el proyecto y sus chats en Codex, la carpeta de trabajo y los archivos adjuntos.</p>
+      {project.runs.some(run => ['sending', 'sent', 'uncertain'].includes(run.state)) &&
+        <p>Los encargos que ya hayan llegado a Codex continuarán allí.</p>}
+      <div className="officina-project-actions">
+        <button type="button" onClick={close}>Cancelar</button>
+        <button type="button" className="officina-danger" onClick={async () => {
+          if (await act({type: 'delete-project', project: panel.project})) close();
+        }}>Eliminar de Officina</button>
+      </div>
+    </>;
+  }
   if (!project) return <button className="officina-accent" onClick={() => open({type: 'project'})}>Crear proyecto</button>;
   if (panel.type === 'observer') return panel.project === project.id ?
-    <OfficinaObserverPanel project={project} act={act} initialReview={panel.review} activity={observed} queued={observerQueued}/> : null;
+    <OfficinaObserverPanel project={project} act={act} initialReview={panel.review} activity={observed} queued={observerQueued}
+      openTask={id => open({type: 'task', id})}/> : null;
   if (panel.type === 'result') return panel.project === project.id ?
     <ResultDetail project={project} task={panel.task} role={panel.role} act={act}/> : null;
   if (panel.type === 'chat-message') {
@@ -442,6 +523,19 @@ function TrackingLabel({activity}: {activity: Tracking}) {
   return <span className="officina-tracking-label"><i aria-hidden="true"/>{activity.label ?? officinaTrackingLabels[activity.state]}</span>;
 }
 
+function directTracking(activity: OfficinaDirectActivity): Tracking {
+  if (activity.state === 'finished') return {state: 'done', label: 'Resultado en Codex'};
+  return {state: activity.state};
+}
+
+function DirectChatButton({project, role, activity, act}: {
+  project: string; role: OfficinaActor; activity: OfficinaDirectActivity; act: Act;
+}) {
+  return <button onClick={() => void act({type: 'open-team-chat', project, role})}>
+    {activity.state === 'finished' ? 'Ver en Codex' : 'Abrir chat en Codex'} <ArrowRight aria-hidden="true"/>
+  </button>;
+}
+
 function DeskActivity({project, role, activity, open}: {project?: OfficinaProject; role: OfficinaParticipant;
   activity: Tracking; open: (panel: Panel) => void}) {
   const [chosen, setChosen] = useState('');
@@ -472,13 +566,13 @@ function DeskActivity({project, role, activity, open}: {project?: OfficinaProjec
     </header>
     {project && task ? <>
       <div className="officina-desk-task">
-        {tasks.length > 1 ? <select aria-label="Encargo del puesto" value={task.id} onChange={event => setChosen(event.target.value)}>
-          {tasks.slice().reverse().map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-        </select> : <strong>{task.title}</strong>}
+        <strong>{task.title}</strong>
         <button onClick={() => open({type: 'task', id: task.id})}>Ver tarea</button>
         <ResultButton project={project} task={task.id} role={role} open={open}/>
       </div>
-      {matchingStatus && activity.state !== 'idle' && <div data-state={activity.state}><TrackingLabel activity={activity}/></div>}
+      {tasks.length > 1 && <select aria-label="Encargo del puesto" value={task.id} onChange={event => setChosen(event.target.value)}>
+        {tasks.slice().reverse().map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+      </select>}
       {delegated.length > 0 && (delegated.length > 1 || !matchingStatus || !activity.label?.startsWith('Asignó')) &&
         <p>Asignación confirmada · {delegated.map(actor => officinaActorName(actor, project)).join(', ')}</p>}
       {last?.task === task.id && last.data.kind === 'handoff' && <p>
@@ -533,8 +627,8 @@ function chatEntryLabel(entry: OfficinaChatEntry, project: OfficinaProject) {
   return 'Asignación';
 }
 
-function ChatEntry({entry, goal, project, open}: {
-  entry: OfficinaChatEntry; goal: OfficinaGoal; project: OfficinaProject; open: (panel: Panel) => void;
+function ChatEntry({entry, goal, project, open, act}: {
+  entry: OfficinaChatEntry; goal: OfficinaGoal; project: OfficinaProject; open: (panel: Panel) => void; act: Act;
 }) {
   if ('message' in entry && entry.message.from === 'human') return <li className="officina-chat-row" data-from="human">
     <div className="officina-chat-author"><strong>Tú</strong>
@@ -543,6 +637,12 @@ function ChatEntry({entry, goal, project, open}: {
       <p>{entry.message.text}</p>
       {entry.first && !!goal.files?.length && <ul className="officina-goal-files" aria-label="Archivos adjuntos">
         {goal.files.map(file => <li key={file.id} title={file.path}><Paperclip aria-hidden="true"/>{file.name}</li>)}
+      </ul>}
+      {entry.first && !!goal.images?.length && <ul className="officina-goal-files" aria-label="Imágenes adjuntas">
+        {goal.images.map(image => <li key={image.id}>
+          <ImageIcon aria-hidden="true"/>
+          <OfficinaReference project={project.id} task={goal.task} target={image.path} act={act}>{image.name}</OfficinaReference>
+        </li>)}
       </ul>}
       {entry.first && goal.pastedText && <details className="officina-paste-history">
         <summary><FileText aria-hidden="true"/>Texto pegado · {officinaPasteTitle(goal.pastedText)}</summary>
@@ -609,6 +709,18 @@ function ProjectChat({view, taskId, selectTask, act, open, attention, controls}:
         {goal && <button onClick={() => open({type: 'task', id: goal.task})}>Ver tarea <ArrowRight aria-hidden="true"/></button>}
       </div>
       {attention && <div className="officina-chat-notice">{attention}</div>}
+      {project && view?.directActivity && Object.keys(view.directActivity).length > 0 &&
+        <details className="officina-project-tools officina-direct-activity">
+          <summary>Actividad directa en Codex</summary>
+          {OfficinaActor.options.map(role => {
+            const activity = view.directActivity?.[role];
+            return activity && <div className="officina-project-actions" key={role}>
+              <strong>{officinaActorName(role, project)}</strong>
+              <span data-state={directTracking(activity).state}><TrackingLabel activity={directTracking(activity)}/></span>
+              <DirectChatButton project={project.id} role={role} activity={activity} act={act}/>
+            </div>;
+          })}
+        </details>}
     </header>
     <div className="officina-chat-scroll" key={`${project?.id}-${goal?.task}`}>
       <div className="officina-chat-content">
@@ -651,7 +763,7 @@ function GoalConversation({project, goal, activity, act, open}: {
       <strong>{officinaActorName(active.role, project)}</strong><TrackingLabel activity={{state}}/>
     </p>}
     <ol className="officina-chat-thread" aria-label="Mensajes del encargo">
-      {officinaChatEntries(project, goal).map(entry => <ChatEntry key={entry.key} entry={entry} goal={goal} project={project} open={open}/>)}
+      {officinaChatEntries(project, goal).map(entry => <ChatEntry key={entry.key} entry={entry} goal={goal} project={project} open={open} act={act}/>)}
     </ol>
     {blocker?.source === 'user' && !closed && <p className="officina-attention">{officinaEventLabels.blocker} · {blocker.data.text}</p>}
     {browserReview && blocker?.from === 'analyst' && (goal.phase === 'work' || goal.outcome === 'limited') &&
@@ -667,6 +779,8 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
   const [error, setError] = useState('');
   const [hidden, setHidden] = useState(document.hidden);
   const [chat, setChat] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const mapToggle = useRef<HTMLButtonElement>(null);
   const [chatTasks, setChatTasks] = useState<Record<string, string>>({});
   const [selection, setSelection] = useState<{project?: string; role: OfficinaActor}>();
   const pending = useRef(false), generation = useRef(0);
@@ -701,7 +815,12 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
         if (action.role) setSelection({project, role: action.role});
         setChat(true);
       }
-      if (action.type === 'select' || action.type === 'project') setSelection(undefined);
+      if (action.type === 'select' || action.type === 'project' || action.type === 'delete-project') setSelection(undefined);
+      if (action.type === 'delete-project') setChatTasks(tasks => {
+        const next = {...tasks};
+        delete next[action.project];
+        return next;
+      });
       return true;
     } catch {
       setError('No se pudo completar la acción en Officina.');
@@ -716,19 +835,45 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
   const selected = selection && selection.project === project?.id ? selection.role : 'coordinator';
   const recipient = selected === 'observer' ? 'coordinator' : selected;
   const selectRole = (role: OfficinaActor) => setSelection({project: project?.id, role});
-  const team = Object.fromEntries(OfficinaActor.options.map(role => [role, officinaRoleTracking(project, role, view?.activity)])) as Team;
-  const waiting = project?.runs.filter(run => run.role !== 'observer' && run.state === 'waiting').length ?? 0;
+  const boardTeam = Object.fromEntries(OfficinaActor.options.map(role => [role, officinaRoleTracking(project, role, view?.activity)])) as Team;
+  const observedRole = project?.runs.find(run => run.id === view?.activity?.run)?.role;
+  const team = Object.fromEntries(OfficinaActor.options.map(role => {
+    const direct = view?.directActivity?.[role];
+    return [role, direct && role !== observedRole ? directTracking(direct) : boardTeam[role]];
+  })) as Team;
+  const blockedTasks = new Set(officinaOpenItems(project?.events ?? []).filter(event => event.data.kind === 'blocker').map(event => event.task));
+  const waiting = project?.runs.filter(run => run.role !== 'observer' && run.state === 'waiting' && !blockedTasks.has(run.task) &&
+    project.tasks.some(task => task.id === run.task && task.status !== 'done') &&
+    !project.goals?.some(goal => goal.task === run.task && goal.improvement)).length ?? 0;
   const attention = project && officinaAttention(project, view?.activity);
-  const incident = project?.reviews?.filter(review => review.source === 'monitor' && officinaPendingProposals(review) > 0).at(-1);
-  const followups = project?.runs.filter(run => run.followup);
-  const followup = followups?.find(run => ['sending', 'sent', 'uncertain'].includes(run.state)) ?? followups?.at(-1);
-  const attentionCard = project && (attention || incident || followup) && <>
+  const uncertain = project?.runs.find(run => run.role !== 'observer' && run.state === 'uncertain');
+  const unreported = uncertain && (attention?.kind !== 'dispatch' || attention.run.id !== uncertain.id) ? uncertain : undefined;
+  const queueStatus = project && (unreported || !uncertain && !view?.enabled && waiting > 0) && <div className="officina-compose-queue">
+    <span role="status">{unreported ? 'Envío sin confirmar. Revísalo en Codex.' : 'Cola desactivada · Hay turnos en espera'}</span>
+    {unreported?.destination && <button type="button" onClick={() =>
+      void act({type: 'open-run-chat', project: project.id, task: unreported.task, run: unreported.id})}>Revisar en Codex</button>}
+    {!unreported && (project.binding || project.team) && !view?.dispatchBlock &&
+      <button type="button" onClick={() => void act({type: 'queue', project: project.id, enabled: true})}>Activar cola</button>}
+  </div>;
+  const incident = project?.reviews?.filter(review => review.source === 'monitor' && officinaPendingProposals(review, project) > 0).at(-1);
+  const improvement = project?.goals?.filter(goal => goal.improvement).at(-1);
+  const followup = officinaObserverRun(project)?.followup;
+  const attentionCard = project && <>
     {attention && <OfficinaAttentionCard item={attention} project={project} approvals={approvals}
       act={act} openTask={id => open({type: 'task', id})}/>}
     {incident && <OfficinaMonitorNotice project={project} review={incident}
       open={() => open({type: 'observer', project: project.id, review: incident.id})}/>}
-    {followup && <OfficinaFollowupNotice project={project} run={followup} activity={view?.activity}
-      open={() => open({type: 'observer', project: project.id, review: followup.followup?.review})}/>}
+    {improvement && !improvement.improvementNoticeDismissed && <section className="officina-next" data-kind="monitor" aria-label="Mejora automática de ZEN">
+      <div className="officina-improvement-heading">
+        <strong>{improvement.phase === 'complete' ?
+          improvement.outcome === 'limited' ? 'ZEN · Mejora cerrada con limitaciones' : 'ZEN · Mejora completada' :
+          project.autoImprovements?.enabled ? 'ZEN · Mejora enviada a Coordinación' : 'ZEN · Mejora pausada'}</strong>
+        <button type="button" aria-label="Cerrar aviso de mejora" title="Cerrar aviso de mejora" onClick={() =>
+          void act({type: 'dismiss-improvement', project: project.id, task: improvement.task})}><X aria-hidden="true"/></button>
+      </div>
+      <small>{project.tasks.find(task => task.id === improvement.task)?.title}</small>
+      <button className="officina-next-action" onClick={() => open({type: 'task', id: improvement.task})}>Ver mejora <ArrowRight aria-hidden="true"/></button>
+    </section>}
   </>;
   const controls = project && <div className="officina-dispatch">
     {project.team?.issue && <p role="status">{project.team.issue}</p>}
@@ -737,13 +882,17 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
       <summary>Opciones del proyecto {waiting > 0 && <span>{waiting} en espera</span>}</summary>
       <div className="officina-project-actions">
         {!project.team && <button onClick={() => open({type: 'binding'})}><Settings2 aria-hidden="true"/>{project.binding?.environment ?? 'Vincular Codex'}</button>}
-        {(project.binding || project.team) && <button aria-pressed={view?.enabled} onClick={() => void act({type: 'queue', project: project.id, enabled: !view?.enabled})}>
-          {view?.enabled ? 'Detener cola' : 'Activar cola'}
+        {(view?.enabled || project.autoImprovements?.enabled) && <button onClick={() => void act({type: 'queue', project: project.id, enabled: false})}>
+          Detener cola
         </button>}
+        <button className="officina-danger" onClick={() => open({type: 'delete-project', project: project.id})}>
+          <Trash2 aria-hidden="true"/>Eliminar proyecto
+        </button>
       </div>
     </details>
   </div>;
-  const title = panel?.type === 'project' ? 'Nuevo proyecto' : panel?.type === 'binding' ? 'Vincular Codex' :
+  const title = panel?.type === 'project' ? 'Nuevo proyecto' : panel?.type === 'delete-project' ? 'Eliminar proyecto de Officina' :
+    panel?.type === 'binding' ? 'Vincular Codex' :
     panel?.type === 'settings' ? 'Configurar oficina' : panel?.type === 'observer' ? 'Revisiones de ZEN' :
     panel?.type === 'role' ? officinaActorName(panel.role, project) : panel?.type === 'task' ?
       project?.tasks.find(task => task.id === panel.id)?.title ?? 'Tarea' : panel?.type === 'new' ? 'Nueva tarea' :
@@ -774,14 +923,6 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
     {chat ? <ProjectChat view={view} taskId={project && chatTasks[project.id]}
       selectTask={task => project && setChatTasks(tasks => ({...tasks, [project.id]: task}))}
       act={act} open={open} attention={attentionCard} controls={controls}/> : <div className="officina-layout">
-      <div className="officina-floor">
-        <Scene key={project?.id} project={project} team={team} animate={motion && !hidden}
-          open={open} selected={selected} selectRole={selectRole}/>
-        {selected === 'observer' ? <OfficinaObserverDesk key={project?.id} project={project} queued={view?.observerQueued} act={act}
-          settings={() => open({type: 'settings', role: 'observer'})}
-          open={() => project && open({type: 'observer', project: project.id})}/> :
-          <DeskActivity key={`${project?.id}-${selected}`} project={project} role={selected} activity={team[selected]} open={open}/>}
-      </div>
       <aside className="officina-side">
         {attentionCard}
         <div className="officina-side-content" key={project?.id}>
@@ -794,7 +935,11 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
                     <RoleIcon role={role}/><span><strong>{officinaActorName(role, project)}</strong><TrackingLabel activity={activity}/></span>
                   </button>
                   {role === 'observer' && project?.reviews?.some(review => review.report) &&
-                    <button className="officina-result-button" onClick={() => open({type: 'observer', project: project.id})}>Revisiones</button>}
+                    <button className="officina-result-button" onClick={() => open({type: 'observer', project: project.id, review: followup?.review})}>
+                      {followup ? 'Ver seguimiento' : 'Revisiones'}
+                    </button>}
+                  {project && view?.directActivity?.[role] &&
+                    <DirectChatButton project={project.id} role={role} activity={view.directActivity[role]!} act={act}/>}
                   {project && activity.task && <ResultButton project={project} task={activity.task} role={role} open={open}/>}
                 </div>;
               })}
@@ -803,10 +948,35 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
           {controls}
         </div>
       </aside>
+      <div className="officina-floor">
+        <button ref={mapToggle} className="officina-map-toggle" type="button" aria-controls="officina-team-map"
+          aria-expanded={mapOpen} onClick={() => setMapOpen(value => !value)}>{mapOpen ? 'Ocultar mapa' : 'Ver mapa'}</button>
+        <div className="officina-team-map" id="officina-team-map" data-open={mapOpen}
+          onKeyDown={event => {
+            if (event.key !== 'Escape' || !mapToggle.current?.getClientRects().length) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setMapOpen(false);
+            mapToggle.current.focus();
+          }}>
+          <Scene key={project?.id} project={project} team={team} animate={motion && !hidden}
+            open={open} selected={selected} selectRole={selectRole}/>
+        </div>
+        {project && view?.directActivity?.[selected] && <div className="officina-desk-activity officina-direct-current">
+          <strong>Actividad directa en Codex</strong>
+          <span data-state={team[selected].state}><TrackingLabel activity={team[selected]}/></span>
+          <DirectChatButton project={project.id} role={selected} activity={view.directActivity[selected]!} act={act}/>
+        </div>}
+        {selected === 'observer' ? <OfficinaObserverDesk key={project?.id} project={project} queued={view?.observerQueued} act={act}
+          settings={() => open({type: 'settings', role: 'observer'})}
+          open={() => project && open({type: 'observer', project: project.id})}/> :
+          <DeskActivity key={`${project?.id}-${selected}`} project={project} role={selected} activity={boardTeam[selected]} open={open}/>}
+      </div>
     </div>}
     <OfficinaComposer key={project?.id} project={project} context={view?.context} act={act} ready={!!view} recipient={recipient}
-      hidden={!chat && selected === 'observer'} recipientIcon={<RoleIcon role={recipient}/>} selectRecipient={chat ? selectRole : undefined}/>
-    {panel && <Modal title={title} close={close} wide={panel.type === 'chat-message' || panel.type === 'observer'}>
+      recipientIcon={<RoleIcon role={recipient}/>} selectRecipient={chat ? selectRole : undefined}
+      queueStatus={queueStatus}/>
+    {panel && <Modal title={title} close={close} wide={panel.type === 'chat-message' || panel.type === 'result' || panel.type === 'observer'}>
       {error && <p className="officina-error" role="alert">{error}</p>}
       <PanelContent key={panel.type === 'chat-message' ? panel.entry.key : JSON.stringify(panel)}
         panel={panel} project={project} team={team} activity={view?.activity} observerQueued={view?.observerQueued}
