@@ -30,7 +30,11 @@ Cada ficha de puesto describe su personalidad y su rutina cuando queda libre. Al
 
 Escribe en el campo fijo de abajo, visible desde **Equipo** y **Chat global**. Si todavía no hay un proyecto seleccionado, el campo pide el nombre. **Enviar** abre el historial junto al plano. Officina deduce qué resultado cumple tu petición, crea o reutiliza su proyecto en Codex y prepara los cinco puestos y Coordinación. En **Chats en Codex** están los accesos a los chats de los puestos y a la carpeta del proyecto.
 
+Pulsa **Elegir carpeta de trabajo** y selecciona la raíz del proyecto que quieres analizar. Al enviar el objetivo, los chats de Codex trabajan desde esa carpeta y pueden recorrer sus subcarpetas. Un tablero que ya tiene chats vinculados a otra raíz conserva su historial y Officina selecciona el proyecto de la carpeta elegida. Con **Adjuntar archivos** puedes añadir hasta ocho al próximo encargo. Los adjuntos enviados aparecen en su historial y puedes retirar los que aún estén en el borrador.
+
 En **Equipo**, cada puesto y Coordinación muestran su encargo y su estado. La señal cian que recorre la conexión de un puesto indica que Codex ya empezó su turno. **Aprobación pendiente** aparece cuando el turno tiene una solicitud de permiso abierta en Codex. Desde ahí puedes abrir **Permisos de Codex**. Cuando el equipo concluye, **Chat global** muestra **Objetivo completado** o **Cerrado con limitaciones**, junto con el resultado guardado. Pulsa un puesto para abrir el encargo o su chat. **Chats en Codex → Añadir a Proyectos de Codex** incluye **Copiar ruta de la carpeta** para registrarla como origen en Codex.
+
+La **Conclusión** aparece destacada en cada encargo. En **Respuestas del equipo**, abre la ficha de un puesto para leer su aportación. Las respuestas admiten encabezados, listas, tablas y código.
 
 Para revisar las pestañas abiertas de tu navegador habitual, pide en el objetivo la extensión de ChatGPT y el nombre del navegador si lo conoces. El Analista empieza por las pestañas accesibles. Las demás consultas usan el navegador integrado por defecto. Cuando Codex solicite acceso a un sitio o iniciar sesión, atiende la solicitud en Codex. Los encargos anteriores de revisión que quedaron esperando capturas muestran **Asignar revisión al Analista**.
 

@@ -1,8 +1,8 @@
 import React, {useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from 'react';
-import {ArrowRight, Box, ClipboardCheck, CodeXml, FlaskConical, Layers3, ListChecks, MessageSquare, Plus, Send, Settings2, Users, X} from 'lucide-react';
+import {ArrowRight, Box, ClipboardCheck, CodeXml, FlaskConical, FolderOpen, Layers3, ListChecks, MessageSquare, Paperclip, Plus, Send, Settings2, Users, X} from 'lucide-react';
 import {
   OfficinaActor, OfficinaRole, officinaActorName, officinaEventLabels, officinaOpenItems, officinaQa, officinaRoles, officinaRunLabels, officinaTaskLabels,
-  type OfficinaAction, type OfficinaContribution, type OfficinaEvent, type OfficinaProject, type OfficinaRunActivity,
+  type OfficinaAction, type OfficinaContribution, type OfficinaEvent, type OfficinaGoal, type OfficinaProject, type OfficinaRunActivity,
   type OfficinaTask, type OfficinaTaskStatus, type OfficinaView,
 } from '../shared/companion-officina';
 import {ZenEmblem} from './ZenEmblem';
@@ -10,6 +10,8 @@ import {isOfficinaTabReview, officinaGoalBrowser, officinaGoalRequest} from '../
 import {officinaRoleTracking, officinaRunTracking, officinaTrackingLabels} from '../shared/officina-tracking';
 import {OfficinaIdleScene, officinaCanRest, officinaIdleRoutines} from './OfficinaIdleScene';
 import {OfficinaScreens} from './OfficinaScreens';
+import {MarkdownPreview} from './MarkdownPreview';
+import {formatNoteMarkdown} from './note-markdown';
 import officeScene from './assets/officina-office.png';
 import './OfficinaWorkspace.css';
 
@@ -168,15 +170,21 @@ function TaskForm({project, task, role, act, done}: {project: string; task?: Off
   </form>;
 }
 
-function EventDetail({event, events}: {event: OfficinaEvent; events: OfficinaEvent[]}) {
+function OfficinaResponse({text, markdown}: {text: string; markdown?: string}) {
+  const readable = markdown ?? formatNoteMarkdown(text.replace(/(^|(?<=[.!?]) )((?:Fortalezas?|Prioridad(?: \d+)?|Riesgos?|Limitaciones?):) /g,
+    (_match, preceding, label) => `${preceding ? '\n\n' : ''}**${label}** `));
+  return <MarkdownPreview className="officina-response" text={readable}/>;
+}
+
+function EventDetail({event, events, showTitle = true}: {event: OfficinaEvent; events: OfficinaEvent[]; showTitle?: boolean}) {
   const {data} = event;
   const related = 'replyTo' in data && events.find(item => item.id === data.replyTo);
   const to = transfer(event);
   return <article className="officina-event">
-    <strong>{officinaEventLabels[data.kind]} · {officinaRoles[event.from].name}{to ? ` → ${officinaRoles[to].name}` : ''}</strong>
+    {showTitle && <strong>{officinaEventLabels[data.kind]} · {officinaRoles[event.from].name}{to ? ` → ${officinaRoles[to].name}` : ''}</strong>}
     <small>{event.source === 'codex' ? 'Codex' : 'Registro manual'} · {new Date(event.at).toLocaleString('es-ES')}</small>
     {related && <small>{officinaEventLabels[related.data.kind]} · {related.data.text}</small>}
-    <p>{data.text}</p>
+    {event.source === 'codex' ? <OfficinaResponse text={data.text} markdown={data.markdown}/> : <p>{data.text}</p>}
     {data.kind === 'handoff' && <dl><dt>Versión</dt><dd>{data.artifact.version}</dd><dt>Entregable</dt><dd>{data.artifact.link}</dd>
       <dt>Siguiente paso</dt><dd>{data.artifact.next}</dd></dl>}
     {data.kind === 'qa' && <p><strong>{data.passed ? 'Validado' : 'Incidencia'}</strong> · {data.evidence}</p>}
@@ -363,6 +371,17 @@ function ProjectFolder({project, act}: {project: OfficinaProject; act: Act}) {
   </div>;
 }
 
+function ChatMessage({message, files, conclusion}: {message: OfficinaGoal['history'][number]; files?: OfficinaGoal['files']; conclusion?: boolean}) {
+  const author = message.from === 'human' ? 'Tú' : message.from === 'zen' ? 'Officina' : 'Coordinación';
+  return <div className="officina-chat-message" data-from={message.from} data-conclusion={conclusion || undefined}>
+    {conclusion ? <header className="officina-conclusion"><strong>Conclusión</strong><small>{author}</small></header> : <strong>{author}</strong>}
+    {message.from === 'human' ? <p>{message.text}</p> : <OfficinaResponse text={message.text} markdown={message.markdown}/>}
+    {message.from === 'human' && !!files?.length && <ul className="officina-goal-files" aria-label="Archivos adjuntos">
+      {files.map(file => <li key={file.id} title={file.path}><Paperclip aria-hidden="true"/>{file.name}</li>)}
+    </ul>}
+  </div>;
+}
+
 function ProjectChat({view, act, open}: {view?: OfficinaView; act: Act; open: (panel: Panel) => void}) {
   const project = view?.project;
   const teamSize = project?.team ? Object.keys(project.team.threads).length : 0;
@@ -382,6 +401,9 @@ function ProjectChat({view, act, open}: {view?: OfficinaView; act: Act; open: (p
       const task = project.tasks.find(item => item.id === goal.task);
       const closed = goal.phase === 'complete' || task?.status === 'done';
       const events = project.events.filter(event => event.task === goal.task);
+      const replies = events.filter(event => event.source === 'codex');
+      const lastMessage = goal.history.at(-1);
+      const conclusion = closed && lastMessage?.from !== 'human' ? lastMessage : undefined;
       const blocker = officinaOpenItems(events).filter(event => event.data.kind === 'blocker').at(-1);
       const runs = project.runs.filter(run => run.task === goal.task);
       const active = closed ? undefined : runs.find(run => ['sending', 'sent', 'uncertain'].includes(run.state)) ??
@@ -396,9 +418,20 @@ function ProjectChat({view, act, open}: {view?: OfficinaView; act: Act; open: (p
         {closed && <p className="officina-current" data-state={goal.outcome === 'limited' ? 'limited' : 'done'}>
           <span>{goal.outcome === 'limited' ? 'Cerrado con limitaciones' : 'Objetivo completado'}</span>
         </p>}
-        {goal.history.map((message, index) => <div key={index} className="officina-chat-message" data-from={message.from}>
-          <strong>{message.from === 'human' ? 'Tú' : message.from === 'zen' ? 'Officina' : 'Coordinación'}</strong><p>{message.text}</p>
-        </div>)}
+        {(conclusion ? goal.history.slice(0, -1) : goal.history).map((message, index) =>
+          <ChatMessage key={index} message={message} files={index === 0 ? goal.files : undefined}/>)}
+        {conclusion && <ChatMessage message={conclusion} conclusion/>}
+        {!!replies.length && <section className="officina-team-replies" aria-label="Respuestas del equipo">
+          <h4>Respuestas del equipo</h4>
+          {replies.map(event => {
+            const recipient = transfer(event);
+            return <details key={event.id}>
+              <summary><strong>{officinaRoles[event.from].name}</strong><small>{officinaEventLabels[event.data.kind]}
+                {recipient && ` → ${officinaRoles[recipient].name}`}</small></summary>
+              <EventDetail event={event} events={events} showTitle={false}/>
+            </details>;
+          })}
+        </section>}
         {goal.steps.length > 0 && <details className="officina-project-tools"><summary>Pasos del encargo</summary>
           <ol className="officina-goal-steps">{goal.steps.map((step, index) => {
           const run = runs.filter(item => item.step === index).at(-1);
@@ -431,21 +464,40 @@ function ProjectChat({view, act, open}: {view?: OfficinaView; act: Act; open: (p
   </section>;
 }
 
-function ProjectComposer({project, act, showChat, ready}: {project?: OfficinaProject; act: Act; showChat: () => void; ready: boolean}) {
+function ProjectComposer({project, context, act, showChat, ready}: {project?: OfficinaProject; context?: OfficinaView['context'];
+  act: Act; showChat: () => void; ready: boolean}) {
   const requestId = useRef(crypto.randomUUID());
+  const folder = context?.folder ?? project?.folder;
+  const files = context?.files ?? [];
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget, fields = new FormData(form);
-    const name = project?.name ?? String(fields.get('projectName') ?? '');
+    const name = project?.name ?? (context?.folder?.name.slice(0, 120).replace(/[\uD800-\uDBFF]$/u, '') || String(fields.get('projectName') ?? ''));
     if (!await act({type: 'chat', id: requestId.current, name, message: String(fields.get('message'))})) return;
     requestId.current = crypto.randomUUID();
     form.reset();
     showChat();
   }
   return <form className="officina-chat-compose" aria-label="Escribir en Chat global" onSubmit={submit}>
-    <MessageSquare className="officina-compose-icon" aria-hidden="true"/>
-    {!project && ready && <input aria-label="Proyecto en Codex" required maxLength={120} name="projectName"
+    {(folder || files.length > 0) && <div className="officina-context-items" role="group" aria-label="Contexto local del encargo">
+      {folder && <span className="officina-context-item" title={folder.path}>
+        <FolderOpen aria-hidden="true"/><span>{context?.folder ? 'Carpeta elegida' : 'Carpeta de trabajo'} · {folder.name}</span>
+        {context?.folder && <button type="button" aria-label={`Quitar carpeta ${folder.name}`}
+          onClick={() => void act({type: 'remove-context', id: folder.id})}><X aria-hidden="true"/></button>}
+      </span>}
+      {files.map(file => <span key={file.id} className="officina-context-item" title={file.path}>
+        <Paperclip aria-hidden="true"/><span>{file.name}</span>
+        <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => void act({type: 'remove-context', id: file.id})}>
+          <X aria-hidden="true"/>
+        </button>
+      </span>)}
+    </div>}
+    {!project && !context?.folder && ready && <input aria-label="Proyecto en Codex" required maxLength={120} name="projectName"
       placeholder="Nombre del proyecto" data-hold-island-open/>}
+    <button type="button" title="Elegir carpeta de trabajo" aria-label="Elegir carpeta de trabajo" disabled={!ready}
+      onClick={() => void act({type: 'pick-context', kind: 'folder'})}><FolderOpen aria-hidden="true"/></button>
+    <button type="button" title="Adjuntar archivos" aria-label="Adjuntar archivos" disabled={!ready}
+      onClick={() => void act({type: 'pick-context', kind: 'file'})}><Paperclip aria-hidden="true"/></button>
     <textarea aria-label="Objetivo" required maxLength={800} name="message" rows={1}
       placeholder="Describe lo que quieres" disabled={!ready} data-hold-island-open/>
     <button className="officina-accent" aria-label="Enviar a coordinación" type="submit" disabled={!ready}>
@@ -570,7 +622,7 @@ export function OfficinaWorkspace({motion}: {motion: boolean}) {
         </div>}
       </aside>
     </div>
-    <ProjectComposer key={project?.id} project={project} act={act} ready={!!view} showChat={() => {
+    <ProjectComposer key={project?.id} project={project} context={view?.context} act={act} ready={!!view} showChat={() => {
       setChat(true);
       sideContent.current?.scrollTo(0, 0);
     }}/>

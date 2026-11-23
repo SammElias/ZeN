@@ -47,7 +47,7 @@ Para fijar un chat, guarda `companion-target.json` en `%APPDATA%\ZEN` con los va
 
 Sin chat fijado, ZEN prepara un borrador para enviar desde Codex. Con chat fijado, la entrega directa requiere un CLI que admita `queue` y una versión de Codex de escritorio que pueda reactivar ese chat desde el enlace de ZEN.
 
-**Officina → Chat global** requiere una versión del Codex de escritorio con `project/create`, `thread/start` con proyecto y `queue`. El acceso al navegador habitual usa `thread/queue/add` con la mención de la extensión de ChatGPT, que se conecta desde Codex. La carpeta de cada proyecto vive en `%APPDATA%\ZEN\officina-projects`. Los proyectos con vínculo manual siguen usando su chat hasta que se envía un objetivo desde Chat global. Los permisos de trabajo y navegador se administran en Codex. Con ZEN cerrado, conserva `officina.sqlite` para respaldar el tablero y copia también las carpetas de los proyectos si contienen entregables.
+**Officina → Chat global** requiere una versión del Codex de escritorio con `project/create`, `thread/start` con proyecto y `queue`. El acceso al navegador habitual usa `thread/queue/add` con la mención de la extensión de ChatGPT, que se conecta desde Codex. Los proyectos sin carpeta elegida tienen su raíz en `%APPDATA%\ZEN\officina-projects`. Con **Elegir carpeta de trabajo**, la raíz es la carpeta local seleccionada. Los proyectos con vínculo manual siguen usando su chat hasta que se envía un objetivo desde Chat global. Los permisos de trabajo y navegador se administran en Codex. Con ZEN cerrado, conserva `officina.sqlite` para respaldar el tablero y copia también las carpetas de los proyectos y sus archivos adjuntos si contienen entregables.
 
 ## 04 · Trasladar datos y preferencias ![](assets/violeta.svg)
 

@@ -12,8 +12,8 @@ export function createOfficinaRun(project: OfficinaProject, task: string, role: 
   project.runs.push({id: randomUUID(), task, role, depth: 0, ...options, state: 'waiting'});
 }
 
-export function logOfficinaGoal(goal: OfficinaGoal, from: OfficinaGoal['history'][number]['from'], text: string) {
-  goal.history = [...goal.history, {from, text}].slice(-32);
+export function logOfficinaGoal(goal: OfficinaGoal, from: OfficinaGoal['history'][number]['from'], text: string, markdown?: string) {
+  goal.history = [...goal.history, {from, text, markdown}].slice(-32);
 }
 
 export function pauseOfficinaGoal(goal: OfficinaGoal, text: string) {
@@ -23,14 +23,14 @@ export function pauseOfficinaGoal(goal: OfficinaGoal, text: string) {
 }
 
 export function finishOfficinaGoal(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal, text: string,
-  source: 'codex' | 'zen', limited = false) {
+  source: 'codex' | 'zen', limited = false, markdown?: string) {
   if (goal.phase === 'complete') return;
   goal.phase = 'complete';
   goal.outcome = limited ? 'limited' : undefined;
   goal.question = undefined;
   task.status = 'done';
   for (const run of project.runs) if (run.task === task.id && run.state === 'waiting') run.state = 'skipped';
-  logOfficinaGoal(goal, source, text);
+  logOfficinaGoal(goal, source, text, markdown);
 }
 
 export function settleSavedOfficinaGoals(project: OfficinaProject) {
@@ -42,7 +42,7 @@ export function settleSavedOfficinaGoals(project: OfficinaProject) {
     if (last?.state !== 'completed' || runs.some(run => ['waiting', 'sending', 'sent', 'uncertain'].includes(run.state))) continue;
     const task = project.tasks.find(item => item.id === goal.task);
     const limitation = limitations.find(event => event.task === goal.task && event.id === last.id);
-    if (task && limitation) finishOfficinaGoal(project, task, goal, limitation.data.text, 'zen', true);
+    if (task && limitation) finishOfficinaGoal(project, task, goal, limitation.data.text, 'zen', true, limitation.data.markdown);
   }
 }
 
@@ -84,12 +84,14 @@ export function applyOfficinaCoordination(project: OfficinaProject, task: Offici
   result: OfficinaCoordinatorResult['result'], source: 'codex' | 'zen' = 'codex') {
   if (goal.phase === 'complete' || task.status === 'done') return;
   if (result.kind === 'question') {
-    if (goal.phase === 'plan') pauseOfficinaGoal(goal, result.text);
-    else finishOfficinaGoal(project, task, goal, result.text, source, true);
+    if (goal.phase === 'plan') {
+      if (result.markdown) logOfficinaGoal(goal, source, result.text, result.markdown);
+      pauseOfficinaGoal(goal, result.text);
+    } else finishOfficinaGoal(project, task, goal, result.text, source, true, result.markdown);
     return;
   }
   if (result.kind === 'limited') {
-    finishOfficinaGoal(project, task, goal, result.text, source, true);
+    finishOfficinaGoal(project, task, goal, result.text, source, true, result.markdown);
     return;
   }
   if (result.kind === 'complete') {
@@ -97,18 +99,18 @@ export function applyOfficinaCoordination(project: OfficinaProject, task: Offici
     const qa = officinaDeliveryQa(events, task.id);
     if (goal.phase !== 'verify' || qa && qa.passed !== true ||
       officinaOpenItems(events).some(event => event.data.kind === 'question' && event.data.act)) {
-      logOfficinaGoal(goal, source, result.text);
+      logOfficinaGoal(goal, source, result.text, result.markdown);
       finishOfficinaGoal(project, task, goal, 'El encargo se cerró con verificaciones pendientes. Consulta el historial y el resultado de QA.', 'zen', true);
       return;
     }
-    finishOfficinaGoal(project, task, goal, result.text, source);
+    finishOfficinaGoal(project, task, goal, result.text, source, false, result.markdown);
     return;
   }
   if (goal.round >= 4 || goal.steps.length + result.steps.length > 20) {
     finishOfficinaGoal(project, task, goal, 'Se alcanzó el límite de coordinación. El historial conserva las conclusiones y el trabajo disponible.', 'zen', true);
     return;
   }
-  logOfficinaGoal(goal, source, result.text);
+  logOfficinaGoal(goal, source, result.text, result.markdown);
   goal.cursor = goal.steps.length;
   goal.steps.push(...result.steps);
   goal.round++;

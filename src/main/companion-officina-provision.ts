@@ -6,6 +6,7 @@ import {
 } from '../shared/companion-officina';
 import {normalizeTargetFolder} from '../shared/companion-target';
 import {CodexMissingThread, type CodexTransport} from './codex-rpc';
+import {verifyOfficinaSource} from './companion-officina-context';
 
 const SavedProject = z.object({id: z.string().min(1).max(200), name: z.string(),
   metadata: z.record(z.string(), z.string()), roots: z.array(z.object({path: z.string()}))});
@@ -29,22 +30,20 @@ export class OfficinaProvisioning {
     const team: OfficinaTeam = structuredClone(project.team ?? {threads: {}});
     const persist = () => checkpoint(structuredClone(team));
     authorize();
-    await mkdir(this.directory, {recursive: true});
-    const root = await realpath(this.directory);
-    const label = project.name.replace(/[^\p{L}\p{N} -]/gu, '-').slice(0, 40).trim() || 'Proyecto';
-    const folder = join(root, label + '-' + project.id);
-    await mkdir(folder, {recursive: true});
-    if ((await lstat(folder)).isSymbolicLink()) throw Error('La carpeta del proyecto apunta fuera de Officina.');
-    const cwd = await realpath(folder);
-    if (normalizeTargetFolder(dirname(cwd)) !== normalizeTargetFolder(root) ||
-      team.cwd && normalizeTargetFolder(team.cwd) !== normalizeTargetFolder(cwd)) {
+    const cwd = project.folder ? await verifyOfficinaSource(project.folder, 'folder') : await this.managedFolder(project);
+    if (team.cwd && normalizeTargetFolder(team.cwd) !== normalizeTargetFolder(cwd)) {
       throw Error('La carpeta de este proyecto cambió.');
     }
     team.cwd = cwd;
+    authorize();
     const rpc = await this.connect();
     try {
       const identity = {zenOfficina: project.id};
       authorize();
+      if (project.folder) {
+        await verifyOfficinaSource(project.folder, 'folder');
+        authorize();
+      }
       const response = team.projectId
         ? await rpc.request('project/read', {projectId: team.projectId})
         : await rpc.request('project/create', {name: project.name, roots: [{path: cwd}], idempotencyKey: project.id, metadata: identity});
@@ -81,11 +80,13 @@ export class OfficinaProvisioning {
           thread = unregistered[0];
         }
         if (!thread) {
+          if (project.folder) await verifyOfficinaSource(project.folder, 'folder');
           authorize();
           team.pending = {role};
           persist();
           const started = await rpc.request('thread/start', {projectId: saved.id, cwd, ephemeral: false,
             approvalsReviewer: 'user', approvalPolicy: 'on-request', sandbox: 'read-only',
+            ...(project.folder ? {runtimeWorkspaceRoots: [cwd]} : {}),
             developerInstructions: officinaRoleInstructions(role)});
           const created = SavedThread.parse(started.thread);
           assertThread(created, saved.id, cwd);
@@ -106,6 +107,18 @@ export class OfficinaProvisioning {
     } finally {
       rpc.close();
     }
+  }
+
+  private async managedFolder(project: OfficinaProject) {
+    await mkdir(this.directory, {recursive: true});
+    const root = await realpath(this.directory);
+    const label = project.name.replace(/[^\p{L}\p{N} -]/gu, '-').slice(0, 40).trim() || 'Proyecto';
+    const folder = join(root, label + '-' + project.id);
+    await mkdir(folder, {recursive: true});
+    if ((await lstat(folder)).isSymbolicLink()) throw Error('La carpeta del proyecto apunta fuera de Officina.');
+    const cwd = await realpath(folder);
+    if (normalizeTargetFolder(dirname(cwd)) !== normalizeTargetFolder(root)) throw Error('La carpeta de este proyecto cambió.');
+    return cwd;
   }
 }
 

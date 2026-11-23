@@ -45,6 +45,8 @@ El pipe local usa un token guardado en el perfil de ZEN. Se excluye de repositor
 | Copia portable | JSON sin cifrar con contenido personal. Importar requiere una vista autorizada y confirmación. Se valida formato y tamaño y se guarda primero una copia recuperable. Sesiones, credenciales y hooks quedan fuera del formato. |
 | Perfil compartido | Main autoriza desde Preferencias y usa AES-256-GCM para los archivos de Syncthing. El código aleatorio se protege con el almacén seguro de Windows. La bóveda usa una activación separada y conserva su cifrado KDBX dentro del archivo de transporte. Pausa y Presentación detienen el intercambio. |
 
+Las carpetas de trabajo y los archivos de Officina se eligen mediante el selector nativo. Main conserva su ruta canónica e identidad local, y comprueba que las fuentes sigan disponibles antes de cada turno. Los chats de equipo se crean con el sandbox de solo lectura y el revisor humano. Los nombres y las rutas quedan en el tablero local y en el contexto de los chats que trabajan en el encargo. Codex lee los contenidos desde el disco.
+
 ## 05 · Verificar y diagnosticar ![](assets/verde.svg)
 
 Probar accesos desde un frame ajeno, destino distinto, vista oculta, contexto caducado, permiso consumido y archivos inválidos. Diagnosticar con perfiles sintéticos y datos mínimos. Si se comparte evidencia, excluir rutas personales, cuentas, texto privado, capturas y valores secretos. Los auxiliares de producción se compilan sin símbolos de depuración para evitar incluir rutas de compilación. [Pruebas](TESTING.md)

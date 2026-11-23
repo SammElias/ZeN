@@ -61,6 +61,10 @@ Cuando un puesto queda libre alterna poses localizadas sobre el plano con su pro
 
 El campo de **Chat global** queda fijo en la parte inferior. El historial comparte el panel desplazable con **Equipo** y mantiene el plano visible. Identifica los mensajes del usuario, de Coordinación y las asignaciones automáticas de Officina. Las solicitudes de aprobación conservan su acceso al panel de Permisos de Codex.
 
+Los controles de carpeta y archivos quedan junto al campo de Chat global. Las etiquetas compactas muestran la raíz actual o pendiente y los adjuntos del borrador. Si faltara espacio, la lista de adjuntos se desplaza dentro del campo de composición.
+
+Las aportaciones del equipo se agrupan por encargo en fichas plegables con puesto y tipo de respuesta. La conclusión ocupa el ancho del panel de chat. Las tablas y el código se desplazan dentro de la respuesta a ancho estrecho.
+
 **Actividad del equipo** muestra el puesto, su estado y el encargo. El color acompaña a la etiqueta de texto. El plano resalta el puesto que trabaja en Codex y su gesto se detiene cuando el turno espera permiso, finaliza o se reduce el movimiento.
 
 `--zen-surface` y `--zen-field` distinguen tarjetas y campos del fondo translúcido. El ámbar identifica acciones principales, el violeta identifica ZEN y Monocromo usa tonos neutros para los controles. Los estados de sesión conservan texto y un indicador de color. Las transiciones breves siguen el ajuste de movimiento y la preferencia del sistema.

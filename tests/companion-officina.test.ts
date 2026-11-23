@@ -1,6 +1,6 @@
-import {mkdtempSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, renameSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {dirname, join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
 import {expect, it, vi} from 'vitest';
@@ -11,12 +11,14 @@ import type {CompanionLastReply} from '../src/shared/codex-companion';
 import {isOfficinaTabReview, officinaBrowserFor} from '../src/shared/officina-browser';
 import {officinaRoleTracking} from '../src/shared/officina-tracking';
 import type {OfficinaCodexTurn} from '../src/main/companion-codex-reader';
+import {OfficinaProvisioning} from '../src/main/companion-officina-provision';
+import {captureOfficinaSource} from '../src/main/companion-officina-context';
 
 const rule = 'Nadie puede aprobar su propio gasto.';
 const fields = {title: 'Permisos de aprobación', objective: 'Bloquear autoaprobaciones', criteria: rule, owner: 'architect' as const};
 const browserRequest = 'Analizar el contenido que tenemos en google chrome usa la heramienta de chat gpt en el navegador para averiguar el contenido';
 
-function fixture() {
+function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>) {
   const path = join(mkdtempSync(join(tmpdir(), 'zen-officina-')), 'test.sqlite');
   let now = 1000, reply: CompanionLastReply | undefined;
   let observed: OfficinaCodexTurn | undefined, permission = false;
@@ -24,11 +26,11 @@ function fixture() {
   const queue = vi.fn(async (_: string, _prompt: string, verify: () => Promise<void>, _browser?: {id: string; name?: string}) => {await verify();});
   const verify = vi.fn(async () => true);
   const threads = Object.fromEntries(OfficinaActor.options.map(role => [role, randomUUID()])) as Record<Actor, string>;
-  const provision = vi.fn(async (project: {id: string}, checkpoint: (team: OfficinaTeam) => void, authorize: () => void) => {
+  const provision = vi.fn(async (project: {id: string; folder?: {path: string}}, checkpoint: (team: OfficinaTeam) => void, authorize: () => void) => {
     authorize();
-    checkpoint({projectId: project.id, cwd: 'C:\\fixtures\\expenses', threads});
+    checkpoint({projectId: project.id, cwd: project.folder?.path ?? 'C:\\fixtures\\expenses', threads});
   });
-  const connection = {allowed: () => allowed, now: () => now, verify, queue, provision, read: async () => reply,
+  const connection = {allowed: () => allowed, now: () => now, verify, queue, provision, pickContext, read: async () => reply,
     readTurn: async () => observed, needsPermission: () => permission};
   const newSession = () => new CompanionOfficina(path, connection);
   const binding = {thread: randomUUID(), cwd: 'C:\\fixtures\\expenses', environment: 'UAT de prueba'};
@@ -40,6 +42,71 @@ function fixture() {
       text: `<zen_officina>${JSON.stringify({...identity, ...overrides, result})}</zen_officina>`};
   }, allow: (value: boolean) => {allowed = value;}};
 }
+
+it.skipIf(process.platform !== 'win32')('provisions the selected directory as the read-only root of each role chat', async () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'zen-officina-root-'));
+  const selected = join(fixtureRoot, 'Proyecto (con espacios)');
+  mkdirSync(join(selected, 'src', 'nested'), {recursive: true});
+  const folder = await captureOfficinaSource(selected, 'folder');
+  const project = {id: randomUUID(), name: 'Proyecto', folder, tasks: [], events: [], runs: []};
+  const savedProject = {id: 'test-project', name: project.name, metadata: {zenOfficina: project.id}, roots: [{path: folder.path}]};
+  const threads = new Map<string, {id: string; projectId: string; cwd: string; ephemeral: boolean; name?: string}>();
+  const request = vi.fn(async (method: string, raw: unknown) => {
+    const params = raw as {idempotencyKey?: string; cwd: string; threadId: string; name: string};
+    switch (method) {
+      case 'project/create': return {project: savedProject};
+      case 'thread/start': {
+        const thread = {id: randomUUID(), projectId: savedProject.id, cwd: params.cwd, ephemeral: false};
+        threads.set(thread.id, thread);
+        return {thread};
+      }
+      case 'thread/name/set': threads.get(params.threadId)!.name = params.name; return {};
+      case 'thread/read': return {thread: threads.get(params.threadId)};
+      default: throw Error(method);
+    }
+  });
+  const noop = () => {};
+  const provisioning = new OfficinaProvisioning(join(fixtureRoot, 'interno'), async () => ({request,
+    respond: noop, reject: noop, onMessage: noop, onClose: noop, close: noop}), async () => []);
+  const checkpoint = vi.fn<(team: OfficinaTeam) => void>();
+  await provisioning.ensure(project, checkpoint, noop);
+  expect(request).toHaveBeenCalledWith('project/create', expect.objectContaining({roots: [{path: folder.path}]}));
+  const started = request.mock.calls.filter(([method]) => method === 'thread/start');
+  expect(started).toHaveLength(6);
+  for (const [, params] of started) expect(params).toMatchObject({cwd: folder.path, runtimeWorkspaceRoots: [folder.path],
+    sandbox: 'read-only', approvalsReviewer: 'user'});
+  expect(checkpoint.mock.lastCall?.[0]).toMatchObject({cwd: folder.path, projectId: savedProject.id});
+});
+
+it.skipIf(process.platform !== 'win32')('keeps references with the goal and blocks a replaced attachment before queueing', async () => {
+  let file = '';
+  const f = fixture(async () => [file]), app = f.newSession();
+  const original = join(dirname(f.path), 'guía.txt');
+  file = original;
+  writeFileSync(file, 'Contenido sintético');
+  try {
+    const picked = await app.handle({type: 'pick-context', kind: 'file'});
+    expect(picked.context?.files[0].name).toBe('guía.txt');
+    const mockDelivery = vi.fn();
+    f.queue.mockImplementationOnce(async (_, prompt, verify) => {
+      renameSync(original, join(dirname(f.path), 'guía anterior.txt'));
+      writeFileSync(original, 'Archivo de reemplazo');
+      await verify();
+      mockDelivery(prompt);
+    });
+    const view = await app.handle({type: 'chat', name: 'Análisis de archivo', message: 'Lee el adjunto.', id: randomUUID()});
+    expect(view.context).toBeUndefined();
+    expect(view.project?.goals?.[0].files?.[0].name).toBe('guía.txt');
+    await vi.waitFor(async () => {
+      await app.tick();
+      const state = await app.handle({type: 'read'});
+      expect(state.project?.runs[0]).toMatchObject({state: 'review', issue: expect.stringContaining('Vuelve a adjuntarlo')});
+    });
+    const payload = JSON.parse(f.queue.mock.lastCall![1].split('\n').at(-1)!);
+    expect(payload.localContext.files).toEqual([picked.context?.files[0].path]);
+    expect(mockDelivery).not.toHaveBeenCalled();
+  } finally { app.close(); }
+});
 
 it('starts a clear Chrome review in the analyst chat and hands the evidence to coordination', async () => {
   const f = fixture(), app = f.newSession();
@@ -224,7 +291,8 @@ it('shares the policy and version with Tester, rejects stale signals, and recove
 });
 
 it('waits for an observed Codex approval and closes a verified goal without another turn', async () => {
-  const f = fixture(), app = f.newSession();
+  const f = fixture();
+  let app = f.newSession();
   const id = randomUUID();
   try {
     const initial = await app.handle({type: 'chat', id, name: 'Aprobación de gastos', message: fields.objective});
@@ -259,15 +327,24 @@ it('waits for an observed Codex approval and closes a verified goal without anot
     await app.tick();
     await sentTo('tester', 3);
     expect(f.queue.mock.lastCall?.[1]).toContain(rule);
-    f.applyReply({kind: 'progress', text: 'Ambos ejemplos sintéticos cumplen la regla de aprobación.'});
+    const markdown = '## Verificación\n\n- Dos ejemplos comprobados en `fixtures/aprobaciones.json`.';
+    f.applyReply({kind: 'progress', text: 'Ambos ejemplos sintéticos cumplen la regla de aprobación.', markdown});
     await app.tick();
     await sentTo('coordinator', 4);
     expect(f.queue.mock.lastCall?.[1]).toContain('Ambos ejemplos sintéticos');
-    f.applyReply({kind: 'complete', text: 'Objetivo verificado con los ejemplos de QA.'});
+    expect(JSON.parse(f.queue.mock.lastCall![1].split('\n').at(-1)!).reports).toEqual([{role: 'tester', excerpt: markdown}]);
+    const legacy = 'Objetivo verificado con los ejemplos de QA.\n\n' + 'Detalle de la comprobación sintética. '.repeat(24).trim();
+    expect(legacy.length).toBeGreaterThan(700);
+    f.applyReply({kind: 'complete', text: legacy});
+    app.close();
+    app = f.newSession();
+    expect((await app.handle({type: 'read'})).project?.goals?.[0].phase).toBe('verify');
     await app.tick();
     const done = (await app.handle({type: 'read'})).project!;
     expect(done.goals).toHaveLength(1);
     expect(done.goals?.[0].phase).toBe('complete');
+    expect(done.goals?.[0].history.at(-1)).toMatchObject({text: 'Objetivo verificado con los ejemplos de QA.', markdown: legacy});
+    expect(done.events.at(-1)?.data.markdown).toBe(markdown);
     expect(done.tasks[0].status).toBe('done');
     await app.tick();
     expect(f.queue).toHaveBeenCalledTimes(4);

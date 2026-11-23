@@ -343,6 +343,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    (id,cwd,name)=>replyReader.officinaProjectThreads(id,cwd,name));
   const officina=new CompanionOfficina(join(profile,'officina.sqlite'),{
    allowed:officinaAllowed,
+   pickContext:kind=>withWindowDialog(async()=>{
+    const selection=await dialog.showOpenDialog(cap,kind==='folder'
+     ?{title:'Elegir carpeta de trabajo para Officina',properties:['openDirectory']}
+     :{title:'Adjuntar archivos al encargo de Officina',properties:['openFile','multiSelections']});
+    return selection.canceled?[]:selection.filePaths;
+   }),
    verify:binding=>binding.thread===target?.session.toLowerCase()?Promise.resolve(false):
     replyReader.hasDedicatedThread({session:binding.thread,cwd:binding.cwd,title:'Officina'},binding.projectId),
    provision:(...args)=>officinaProvisioning.ensure(...args),
@@ -364,7 +370,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock())app.quit();else{
    read:selected=>replyReader.read(selected),
    readTurn:(selected,identity,since)=>replyReader.readOfficinaTurn(selected,identity,since),
    needsPermission:(selected,turn)=>hub.turnNeedsPermission(selected,turn),
-   ...(officinaSmokeProfile?makeOfficinaSmokeTeam():undefined),
+   ...(officinaSmokeProfile?makeOfficinaSmokeTeam(profile):undefined),
   });
   powerMonitor.on('lock-screen',()=>officina.suspend(true));
   powerMonitor.on('suspend',()=>officina.suspend(true));

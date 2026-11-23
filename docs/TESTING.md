@@ -8,6 +8,10 @@ El recorrido de Officina en Electron comprueba que conserva la geometría habitu
 
 La regresión de cierre comprueba que una limitación de navegación termina el objetivo, conserva la conclusión, omite los turnos pendientes de la misma tarea y mantiene el historial al reabrir los datos antiguos. El recorrido de Electron comprueba que la limitación final figura como cerrada en el plano y en el chat.
 
+El recorrido de contexto local usa una carpeta con subcarpetas y un archivo adjunto de prueba. Comprueba la selección, retirada, envío, respuesta simulada y recuperación tras reiniciar. Las pruebas del puente verifican que los seis chats reciban la raíz elegida en modo de solo lectura y que cambiar la identidad de un archivo bloquee el envío.
+
+El recorrido de respuestas comprueba las fichas por puesto, los encabezados, las listas y el código en Markdown. La regresión del puente reabre un tablero que espera una conclusión de más de 700 caracteres, comprueba que se recupera el cuerpo completo y que el turno se cierra sin reenviar el encargo.
+
 **Perfil entre equipos.** `tests/profile-sync.test.ts` usa dos perfiles aislados para verificar el alta, la transferencia cifrada, el rechazo de un código incorrecto o un archivo alterado, la convergencia de ediciones independientes, los conflictos y los borrados. En la bóveda usa una maestra ficticia y guarda dos ediciones de la misma cuenta en el mismo segundo. Verifica ambas variantes en el KDBX de cada perfil.
 
 La entrega local inicial pasó 723 pruebas en 78 archivos, build y arranque del portable extraído. En Windows real se verificó el perfil vinculado en Preferencias y la llegada a la Raspberry de los dos archivos cifrados con huellas SHA-256 idénticas. La última instantánea de Restic contiene ambos. La comprobación bidireccional entre dos instalaciones físicas queda pendiente.

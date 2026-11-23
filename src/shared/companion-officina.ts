@@ -16,6 +16,10 @@ export const officinaActorName = (role: OfficinaActor) => role === 'coordinator'
 export const OfficinaId = z.uuid();
 const text = (max: number) => z.string().trim().min(1).max(max)
   .refine(value => !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\uD800-\uDFFF]/u.test(value));
+export const officinaReplySummaryLimit = 700;
+export const officinaReplyMarkdownLimit = 4000;
+const replyMarkdown = text(officinaReplyMarkdownLimit).optional();
+const response = {text: text(officinaReplySummaryLimit), markdown: replyMarkdown};
 const attachment = z.object({version: text(100), link: text(360), next: text(360)}).strict();
 export const OfficinaTaskFields = z.object({
   title: text(120), objective: text(800), criteria: text(800), owner: OfficinaRole,
@@ -25,13 +29,13 @@ export const officinaTaskLabels = {pending: 'Pendiente', active: 'En curso', blo
 export type OfficinaTaskStatus = z.infer<typeof OfficinaTaskStatus>;
 
 export const OfficinaContribution = z.discriminatedUnion('kind', [
-  z.object({kind: z.literal('progress'), text: text(700)}).strict(),
-  z.object({kind: z.literal('decision'), text: text(700), replyTo: OfficinaId.optional()}).strict(),
-  z.object({kind: z.literal('blocker'), text: text(700)}).strict(),
-  z.object({kind: z.literal('question'), text: text(700), to: OfficinaRole, act: z.boolean()}).strict(),
-  z.object({kind: z.literal('answer'), text: text(700), replyTo: OfficinaId}).strict(),
-  z.object({kind: z.literal('handoff'), text: text(700), to: OfficinaRole, act: z.boolean(), artifact: attachment}).strict(),
-  z.object({kind: z.literal('qa'), text: text(700), replyTo: OfficinaId, passed: z.boolean(), evidence: text(360)}).strict(),
+  z.object({kind: z.literal('progress'), ...response}).strict(),
+  z.object({kind: z.literal('decision'), ...response, replyTo: OfficinaId.optional()}).strict(),
+  z.object({kind: z.literal('blocker'), ...response}).strict(),
+  z.object({kind: z.literal('question'), ...response, to: OfficinaRole, act: z.boolean()}).strict(),
+  z.object({kind: z.literal('answer'), ...response, replyTo: OfficinaId}).strict(),
+  z.object({kind: z.literal('handoff'), ...response, to: OfficinaRole, act: z.boolean(), artifact: attachment}).strict(),
+  z.object({kind: z.literal('qa'), ...response, replyTo: OfficinaId, passed: z.boolean(), evidence: text(360)}).strict(),
 ]);
 export type OfficinaContribution = z.infer<typeof OfficinaContribution>;
 export const OfficinaEvent = z.object({
@@ -41,6 +45,11 @@ export const OfficinaEvent = z.object({
 export type OfficinaEvent = z.infer<typeof OfficinaEvent>;
 
 const windowsFolder = text(1024).refine(value => /^(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/i.test(value) && !/[\r\n]/.test(value));
+export const officinaMaxFiles = 8;
+export const OfficinaLocalSource = z.object({id: OfficinaId, name: text(260), path: windowsFolder,
+  device: z.string().regex(/^\d+$/), inode: z.string().regex(/^\d+$/)}).strict();
+export type OfficinaLocalSource = z.infer<typeof OfficinaLocalSource>;
+type SourceLabel = Pick<OfficinaLocalSource, 'id' | 'name' | 'path'>;
 export const OfficinaBinding = z.object({thread: OfficinaId, cwd: windowsFolder, environment: text(120)}).strict();
 export type OfficinaBinding = z.infer<typeof OfficinaBinding>;
 const destination = OfficinaBinding.extend({projectId: z.string().min(1).max(200).optional()});
@@ -55,8 +64,9 @@ export const OfficinaStep = z.object({role: OfficinaRole, instruction: text(500)
 export type OfficinaStep = z.infer<typeof OfficinaStep>;
 const goal = z.object({
   task: OfficinaId, request: text(800), steps: z.array(OfficinaStep).max(20), cursor: z.number().int().min(0),
-  round: z.number().int().min(0), history: z.array(z.object({from: z.enum(['human', 'codex', 'zen']), text: text(900)})).max(32),
+  round: z.number().int().min(0), history: z.array(z.object({from: z.enum(['human', 'codex', 'zen']), text: text(900), markdown: replyMarkdown})).max(32),
   phase: z.enum(['plan', 'work', 'verify', 'complete']), outcome: z.literal('limited').optional(), question: text(700).optional(),
+  files: z.array(OfficinaLocalSource).max(officinaMaxFiles).optional(),
 });
 export type OfficinaGoal = z.infer<typeof goal>;
 const task = OfficinaTaskFields.extend({id: OfficinaId, status: OfficinaTaskStatus});
@@ -77,6 +87,7 @@ export type OfficinaRunIdentity = {project: string; task: string; role: Officina
 export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number};
 export const OfficinaProject = z.object({
   id: OfficinaId, name: text(120), binding: OfficinaBinding.optional(), team: provision.optional(),
+  folder: OfficinaLocalSource.optional(),
   goals: z.array(goal).max(100).optional(),
   tasks: z.array(task).max(150), events: z.array(OfficinaEvent).max(1800), runs: z.array(run).max(450),
 });
@@ -87,6 +98,7 @@ export type OfficinaView = {
   activity?: OfficinaRunActivity;
   enabled: boolean;
   dispatchBlock?: string;
+  context?: {folder?: SourceLabel; files: SourceLabel[]};
 };
 
 export const OfficinaAction = z.discriminatedUnion('type', [
@@ -94,6 +106,8 @@ export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('select'), project: OfficinaId}).strict(),
   z.object({type: z.literal('project'), name: text(120)}).strict(),
   z.object({type: z.literal('chat'), name: text(120), message: text(800), id: OfficinaId}).strict(),
+  z.object({type: z.literal('pick-context'), kind: z.enum(['folder', 'file'])}).strict(),
+  z.object({type: z.literal('remove-context'), id: OfficinaId}).strict(),
   z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700)}).strict(),
   z.object({type: z.literal('resume-browser-review'), project: OfficinaId, task: OfficinaId}).strict(),
   z.object({type: z.literal('open-team-chat'), project: OfficinaId, role: OfficinaActor}).strict(),
@@ -114,10 +128,10 @@ export const OfficinaCodexResult = z.object({
 export const OfficinaCoordinatorResult = z.object({
   project: OfficinaId, task: OfficinaId, run: OfficinaId, role: z.literal('coordinator'),
   result: z.discriminatedUnion('kind', [
-    z.object({kind: z.literal('plan'), text: text(700), steps: z.array(OfficinaStep).min(1).max(5)}).strict(),
-    z.object({kind: z.literal('complete'), text: text(700)}).strict(),
-    z.object({kind: z.literal('limited'), text: text(700)}).strict(),
-    z.object({kind: z.literal('question'), text: text(700)}).strict(),
+    z.object({kind: z.literal('plan'), ...response, steps: z.array(OfficinaStep).min(1).max(5)}).strict(),
+    z.object({kind: z.literal('complete'), ...response}).strict(),
+    z.object({kind: z.literal('limited'), ...response}).strict(),
+    z.object({kind: z.literal('question'), ...response}).strict(),
   ]),
 }).strict();
 export type OfficinaCoordinatorResult = z.infer<typeof OfficinaCoordinatorResult>;
