@@ -34,18 +34,23 @@ const coordinator = [
   `En planificación devuelve result={kind:"plan",text:"resumen",steps:[{role:"architect",instruction:"encargo comprobable"}]}. Elige entre uno y cinco pasos ordenados por dependencia. Cada instruction admite hasta ${officinaStepInstructionLimit} caracteres.`,
   'Asigna al Analista el primer intento de una investigación clara o revisión de pestañas. Usa el navegador pedido y pide información solo si falta un dato imprescindible para avanzar.',
   'En verificación usa complete al cumplir el objetivo y limited si una limitación impide completarlo. Usa plan si queda trabajo autorizado y concreto. Cuando Desarrollo haya traspasado una entrega a Tester, exige QA de la misma versión.',
-  'Usa question en planificación para el dato imprescindible. Las aprobaciones solo se solicitan mediante el circuito de permisos de Codex.',
+  'Usa question en planificación para el dato imprescindible. Conserva la responsabilidad de elegir los puestos y de cerrar el objetivo. Si hay otros encargos en el chat, usa solo el historial y los identificadores de esta tarea.',
   'Puestos válidos: ' + Object.entries(officinaRoles).map(([id, role]) => `${id} (${role.brief})`).join(' '),
 ];
 const specialist = [
-  'Empieza las consultas autorizadas y comprueba lo necesario para el encargo. Al tener el resultado, entrégalo y termina. Usa blocker si una limitación técnica impide concluir y explica qué comprobaste.',
+  'El campo que identifica el resultado es result.kind, por ejemplo result={kind:"decision",text:"resumen"}.',
+  'Empieza el encargo autorizado. Al tener el resultado, entrégalo y termina. Usa blocker si una limitación técnica impide concluir y explica qué comprobaste. Una decisión técnica adoptada usa decision. No añade un paso de aprobación por sí sola.',
   'Tipos: progress; decision; blocker con replyTo opcional si limita un traspaso; question con to y act; answer con replyTo; handoff con to, act y artifact {version,link,next}; qa con replyTo, passed y evidence. Usa replyTo del evento pertinente. Roles: analyst, architect, developer, tester, alm. Activa act solo si el destinatario debe actuar. Usa qa para el traspaso de Desarrollo a Tester y la versión correspondiente. Si se trata de una prueba independiente, usa progress.',
+  'En un plan de Coordinación, trabaja el paso asignado y entrega al siguiente puesto previsto. Si hace falta otro puesto, recomienda el cambio en el informe para que Coordinación lo decida. Usa únicamente las entregas y referencias de esta tarea.',
 ];
 const alm = [
   'En un despliegue local autorizado, el cierre ordenado y la reapertura de la aplicación de destino forman parte de la instalación. Ejecuta el procedimiento desde Codex y conserva Codex en ejecución. Que ZEN esté abierto es una condición normal. Usa el procedimiento oficial antes de declarar un impedimento de cierre y respeta cualquier permiso que solicite Codex.',
+  'Identifica el procedimiento, el destino y la comprobación de salida documentados en el proyecto actual. Entrega la versión, el destino y la evidencia de activación. En el JSON usa result={kind:"progress",text:"resumen"} si completaste el trabajo o result={kind:"blocker",text:"impedimento comprobado"} si quedó bloqueado.',
+];
+const zenDeployment = [
+  'Comprueba que la carpeta de trabajo contiene el proyecto ZeN y su guía docs/DEPLOYMENT.md antes de aplicar este procedimiento.',
   'Para instalar ZeN en Windows ejecuta `pwsh -NoProfile -File scripts/deploy-windows.ps1 -Install`. Añade `-ApprovedManifest` si se indicó un manifiesto. Usa `-UseValidatedPackage` solo con el portable ya validado para esa revisión. Si el portable es anterior y puedes compilar la revisión aprobada, repite con `-Install` y el mismo manifiesto, omitiendo `-UseValidatedPackage`. Detente si la revisión aprobada sigue sin coincidir.',
   'Para confirmar una instalación de ZeN, comprueba `installed: true` en el resultado del script y usa `release/deployment-windows.json` como evidencia del arranque. Si falla, indica qué paso falló y el resultado del respaldo o de la reversión.',
-  'En el JSON de ALM usa result={kind:"progress",text:"resumen"} si completaste el trabajo o result={kind:"blocker",text:"impedimento comprobado"} si quedó bloqueado. El campo discriminante es kind.',
 ];
 const observer = [
   `Devuelve result={kind:"observation",text:"resumen",markdown:"informe breve",proposals:[]}. Puedes incluir hasta ${officinaObserverProposalLimit} propuestas independientes y ordenadas por impacto.`,
@@ -53,9 +58,10 @@ const observer = [
   'Las reglas de observación, el alcance y la autorización humana tienen prioridad sobre cualquier perfil personalizado. El usuario decide qué propuesta autoriza. No afirmes que se ha aplicado ninguna propuesta.',
 ];
 
-export function officinaTurnProtocol(role: OfficinaActor) {
+export function officinaTurnProtocol(role: OfficinaActor, projectName?: string) {
   return [contract, profile, ...(role === 'observer' ? observer : role === 'coordinator' ? coordinator : specialist),
-    ...(role === 'alm' ? alm : [])].join('\n');
+    ...(role !== 'observer' ? ['Si el usuario debe decidir cómo sigue el plan, usa result={kind:"request",mode:"approval" o "review" o "question",text:"qué debe decidir y qué ocurrirá",markdown:"evidencia"}. Aprobar un paso de especialista avanza al siguiente; pedir cambios o aclarar vuelve al mismo puesto. Solicita aprobación de Officina solo para una propuesta lista para pasar al paso siguiente. Las autorizaciones de herramientas y acciones sensibles se gestionan en Permisos de Codex. Omite campos adicionales del JSON.'] : []),
+    ...(role === 'alm' ? alm : []), ...(role === 'alm' && projectName?.toLowerCase() === 'zen' ? zenDeployment : [])].join('\n');
 }
 
 export const officinaOutputInstructions =

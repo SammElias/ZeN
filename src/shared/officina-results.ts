@@ -19,18 +19,19 @@ export function officinaDelegatedRoles(project: OfficinaProject, task: string) {
 
 export function officinaResults(project: OfficinaProject, task: string, role: OfficinaActor): OfficinaResult[] {
   const runs = project.runs.filter(run => run.task === task && run.role === role);
+  const goal = project.goals?.find(item => item.task === task);
   if (role !== 'coordinator') {
     const events = project.events.filter(event => event.task === task && event.from === role &&
       (event.source === 'codex' || event.data.kind === 'handoff' || event.data.kind === 'qa'));
     const results: OfficinaResult[] = [
       ...runs.filter(run => run.state === 'completed' || run.state === 'review' && run.destination).map(run =>
-        ({run, event: events.find(event => event.source === 'codex' && event.id === run.id)})),
+        ({run, event: events.find(event => event.source === 'codex' && event.id === run.id),
+          message: goal?.history.find(item => item.reply?.run === run.id && item.reply.kind === 'request')})),
       ...events.filter(event => event.source === 'user').map(event => ({event})),
     ];
     if (!results.length && project.tasks.some(item => item.id === task && item.status === 'done' && item.owner === role)) return [{}];
     return results.sort((a, b) => (a.event?.at ?? a.run?.sentAt ?? 0) - (b.event?.at ?? b.run?.sentAt ?? 0));
   }
-  const goal = project.goals?.find(item => item.task === task);
   const messages = goal?.history.filter(message => message.from === 'codex') ?? [];
   const last = goal?.history.at(-1), lastRun = runs.at(-1);
   // Older boards kept the conclusion in goal history and the verified turn in a separate record.

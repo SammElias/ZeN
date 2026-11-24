@@ -3,21 +3,20 @@ import {ArrowRight, Box, ChevronRight, ClipboardCheck, CodeXml, Copy, Eye, FileT
 import {
   OfficinaActor, OfficinaParticipant, OfficinaRole, officinaActorName, officinaEventLabels, officinaOpenItems,
   officinaPasteTitle, officinaQa, officinaRunLabels, officinaTaskLabels,
-  type OfficinaAction, type OfficinaContribution, type OfficinaDirectActivity, type OfficinaEvent, type OfficinaGoal, type OfficinaProject, type OfficinaRunActivity,
+  type OfficinaAction, type OfficinaDirectActivity, type OfficinaEvent, type OfficinaGoal, type OfficinaProject, type OfficinaRunActivity,
   type OfficinaTask, type OfficinaTaskStatus, type OfficinaView,
 } from '../shared/companion-officina';
 import {ZenEmblem} from './ZenEmblem';
 import {isOfficinaTabReview, officinaGoalBrowser, officinaGoalRequest} from '../shared/officina-browser';
-import {officinaObserverRun, officinaRoleTracking, officinaRunTracking, officinaTrackingLabels} from '../shared/officina-tracking';
-import {officinaDelegatedRoles, officinaResults} from '../shared/officina-results';
+import {officinaFocusedTask, officinaObserverRun, officinaRoleTracking, officinaRunTracking, officinaTaskBoard, officinaTrackingLabels} from '../shared/officina-tracking';
+import {officinaResults, type OfficinaResult} from '../shared/officina-results';
 import {officinaChatEntries, type OfficinaChatEntry} from '../shared/officina-chat';
-import {officinaAskedQuestion, officinaAttention, officinaClosureRetry} from '../shared/officina-attention';
+import {officinaAskedQuestion, officinaAttention, officinaAttentionItems, officinaClosureRetry, officinaWaitingRuns, type OfficinaAttention} from '../shared/officina-attention';
 import type {CompanionApproval} from '../shared/codex-companion';
 import {OfficinaAttentionCard} from './OfficinaAttentionCard';
 import {OfficinaComposer} from './OfficinaComposer';
 import {OfficinaRoleSettings} from './OfficinaRoleSettings';
-import {OfficinaMonitorNotice, OfficinaObserverDesk, OfficinaObserverPanel} from './OfficinaObserver';
-import {officinaPendingProposals} from '../shared/officina-observer';
+import {OfficinaObserverDesk, OfficinaObserverPanel} from './OfficinaObserver';
 import {OfficinaIdleScene, officinaCanRest, officinaIdleRoutines} from './OfficinaIdleScene';
 import {OfficinaCafe} from './OfficinaCafe';
 import {OfficinaScreens} from './OfficinaScreens';
@@ -52,7 +51,20 @@ function RoleIcon({role}: {role: OfficinaActor}) {
   return <span className="officina-role-icon"><Icon aria-hidden="true"/></span>;
 }
 
-function Scene({project, team, animate, open, selected, selectRole}: {project?: OfficinaProject; team: Team; animate: boolean;
+type HumanRequest = Extract<OfficinaAttention, {kind: 'request' | 'question'}>;
+
+function RequestBadge({items}: {items: HumanRequest[]}) {
+  const first = items[0];
+  if (!first) return null;
+  const mode = first.kind === 'request' ? first.request.mode : 'question';
+  return <span className="officina-request-badge">
+    {items.length > 1 ? `! ${items.length} pendientes` :
+      mode === 'question' ? '? Responder' : mode === 'review' ? '! Revisar' : '! Aprobar'}
+  </span>;
+}
+
+function Scene({project, taskTitle, team, animate, open, selected, selectRole, requests}: {requests: (role: OfficinaActor) => HumanRequest[];
+  project?: OfficinaProject; taskTitle?: string; team: Team; animate: boolean;
   open: (panel: Panel) => void; selected: OfficinaActor; selectRole: (role: OfficinaActor) => void}) {
   const events = project?.events ?? [];
   const working = roles.filter(role => team[role].state === 'working');
@@ -123,6 +135,10 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
       setFullscreenError('No se pudo cambiar a pantalla completa.');
     }
   }
+  async function openDesk(role: OfficinaActor) {
+    if (requests(role).length && document.fullscreenElement === stage.current) await toggleFullscreen();
+    selectRole(role);
+  }
   async function openConnection(id: string) {
     if (document.fullscreenElement === stage.current) await toggleFullscreen();
     if (!document.fullscreenElement) open({type: 'event', id});
@@ -153,16 +169,20 @@ function Scene({project, team, animate, open, selected, selectRole}: {project?: 
         data-role={role} data-state={activity.state}
         style={{'--x': desk.x + '%', '--y': desk.y + '%', width: desk.width + '%', height: desk.height + '%'} as CSSProperties}
         aria-label={name} aria-describedby={`officina-desk-${role}`} aria-pressed={selected === role}
-        onClick={() => selectRole(role)}>
+        onClick={() => void openDesk(role)}>
         <span className="officina-desk-label"><RoleIcon role={role}/><span>{name}</span></span>
+        <RequestBadge items={requests(role)}/>
         <span className="officina-desk-tooltip" id={`officina-desk-${role}`}>
-          {[name, activity.label ?? officinaTrackingLabels[activity.state], activity.title].filter(Boolean).join(' · ')}
+          {name} · {activity.label ?? officinaTrackingLabels[activity.state]}
         </span>
       </button>;
     })}
     <button type="button" className="officina-table" data-role="coordinator" data-state={team.coordinator.state}
-      aria-label={officinaActorName('coordinator', project)} aria-pressed={selected === 'coordinator'} onClick={() => selectRole('coordinator')}>
+      aria-label={officinaActorName('coordinator', project)} aria-pressed={selected === 'coordinator'}
+      aria-describedby={taskTitle ? 'officina-coordination-task' : undefined} title={taskTitle} onClick={() => void openDesk('coordinator')}>
+      {taskTitle && <span className="officina-coordination-task" id="officina-coordination-task">{taskTitle}</span>}
       <span className="officina-desk-label"><RoleIcon role="coordinator"/><span>{officinaActorName('coordinator', project)}</span></span>
+      <RequestBadge items={requests('coordinator')}/>
     </button>
     <button type="button" className="officina-observer-marker" data-role="observer" data-state={team.observer.state}
       aria-label="ZEN · Observador" aria-pressed={selected === 'observer'} onClick={() => selectRole('observer')}>
@@ -297,73 +317,32 @@ function ResultButton({project, task, role, open}: {
 }
 
 function ResultDetail({project, task, role, act}: {project: OfficinaProject; task: string; role: OfficinaActor; act: Act}) {
-  const results = officinaResults(project, task, role).reverse();
-  const events = project.events.filter(event => event.task === task);
   return <div className="officina-results">
     <p className="officina-result-context">{project.name} · {project.tasks.find(item => item.id === task)?.title}</p>
-    {results.map(({run, event, message}, index) => <div className="officina-result-entry" key={run?.id ?? event?.id ?? index}>
+    <ResultList results={officinaResults(project, task, role).reverse()} events={project.events.filter(event => event.task === task)}
+      project={project} task={task} act={act}/>
+  </div>;
+}
+
+function ResultList({results, events, project, task, act}: {
+  results: OfficinaResult[]; events: OfficinaEvent[]; project: OfficinaProject; task: string; act: Act;
+}) {
+  return results.map(({run, event, message}, index) => {
+    const content = <div className="officina-result-entry">
       {event ? <EventDetail event={event} events={events} project={project} act={act} showTitle={false}/> : message ?
         <OfficinaResponse text={message.text} markdown={message.markdown} project={project.id} task={task} act={act}/> :
         <p>La respuesta de este encargo no está disponible en Officina.</p>}
       {run?.destination && run.sentAt !== undefined && <button onClick={() =>
         void act({type: 'open-run-chat', project: project.id, task, run: run.id})}>Abrir en Codex <ArrowRight aria-hidden="true"/></button>}
-    </div>)}
-  </div>;
-}
-
-function EventForm({project, task, initialRole, act}: {project: OfficinaProject; task: OfficinaTask; initialRole?: OfficinaRole; act: Act}) {
-  const [kind, setKind] = useState<OfficinaContribution['kind']>('progress');
-  const nonce = useRef(crypto.randomUUID());
-  const events = forTask(project, task), open = officinaOpenItems(events);
-  const applicable = kind === 'qa' ? events.filter(event => event.data.kind === 'handoff' && event.from === 'developer' && event.data.to === 'tester') :
-    open.filter(event => event.data.kind === (kind === 'answer' ? 'question' : 'blocker'));
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const element = event.currentTarget, form = new FormData(element);
-    const value = String(form.get('text')), replyTo = String(form.get('replyTo') ?? ''),
-      to = form.get('to') as OfficinaRole, requiresAction = form.has('act');
-    const data: OfficinaContribution = kind === 'handoff' ? {kind, text: value, to, act: requiresAction,
-      artifact: {version: String(form.get('version')), link: String(form.get('link')), next: String(form.get('next'))}} :
-      kind === 'qa' ? {kind, text: value, replyTo, passed: form.get('result') === 'pass', evidence: String(form.get('evidence'))} :
-      kind === 'question' ? {kind, text: value, to, act: requiresAction} :
-      kind === 'answer' ? {kind, text: value, replyTo} :
-      kind === 'decision' ? {kind, text: value, replyTo: replyTo || undefined} : {kind, text: value};
-    const role = kind === 'qa' ? 'tester' : form.get('from') as OfficinaRole;
-    if (await act({type: 'contribute', project: project.id, task: task.id, role, nonce: nonce.current, data})) {
-      nonce.current = crypto.randomUUID();
-      element.reset();
-      setKind('progress');
-    }
-  }
-  return <form className="officina-form" onSubmit={submit}>
-    <label>Tipo de registro<select value={kind} onChange={event => setKind(event.target.value as typeof kind)} data-hold-island-open>
-      {Object.entries(officinaEventLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-    </select></label>
-    {kind !== 'qa' && <label>Desde<SelectRole name="from" project={project} initial={initialRole ?? task.owner}/></label>}
-    {(kind === 'question' || kind === 'handoff') && <>
-      <label>Destinatario<SelectRole name="to" project={project} initial={kind === 'handoff' ? 'tester' : 'architect'}/></label>
-      <label className="officina-check"><input type="checkbox" name="act"/> Requiere actuación</label>
-    </>}
-    {(kind === 'answer' || kind === 'decision' || kind === 'qa') && <label>{kind === 'qa' ? 'Versión entregada' : 'Relacionado con'}
-      <select name="replyTo" required={kind !== 'decision'} data-hold-island-open>
-        <option value="">{kind === 'decision' ? 'Nueva resolución' : 'Selecciona un registro'}</option>
-        {applicable.map(event => <option key={event.id} value={event.id}>
-          {event.data.kind === 'handoff' ? event.data.artifact.version + ' · ' : ''}{event.data.text}
-        </option>)}
-      </select>
-    </label>}
-    <label>{officinaEventLabels[kind]}<textarea name="text" required maxLength={700} data-hold-island-open/></label>
-    {kind === 'handoff' && <>
-      <label>Versión<input name="version" required maxLength={100} data-hold-island-open/></label>
-      <label>Enlace o ruta del entregable<input name="link" required maxLength={360} data-hold-island-open/></label>
-      <label>Siguiente paso<textarea name="next" required maxLength={360} data-hold-island-open/></label>
-    </>}
-    {kind === 'qa' && <>
-      <label>Resultado<select name="result" data-hold-island-open><option value="pass">Validado</option><option value="fail">Incidencia</option></select></label>
-      <label>Evidencia<input name="evidence" required maxLength={360} data-hold-island-open/></label>
-    </>}
-    <button className="officina-accent" type="submit">Registrar</button>
-  </form>;
+    </div>;
+    const key = run?.id ?? event?.id ?? index;
+    if (results.length === 1) return <React.Fragment key={key}>{content}</React.Fragment>;
+    const label = event ? officinaEventLabels[event.data.kind] : message?.reply?.kind === 'plan' ? 'Asignación' :
+      message?.reply?.kind === 'request' ? 'Solicitud de decisión' : message ? 'Respuesta' : 'Respuesta en Codex';
+    return <details className="officina-result-fold" key={key}>
+      <summary><strong>{label}</strong><span>{event?.data.text ?? message?.text}</span></summary>{content}
+    </details>;
+  });
 }
 
 function TaskDetail({project, task, activity, approvals, act}: {
@@ -373,15 +352,72 @@ function TaskDetail({project, task, activity, approvals, act}: {
   const open = task.status === 'done' ? [] : officinaOpenItems(events);
   const goal = project.goals?.find(item => item.task === task.id);
   const attention = officinaAttention(project, activity, task.id);
+  const participants = new Set<OfficinaActor>([...runs.map(run => run.role), ...events.map(item => item.from),
+    ...(goal?.steps.map(step => step.role) ?? [])]);
+  const team = OfficinaParticipant.options.filter(role => participants.has(role) || !participants.size && task.owner === role);
+  const qa = officinaQa(events, task.id);
+  const conclusion = goal?.outcome === 'limited' && goal.history.at(-1);
   return <>
     {attention && <OfficinaAttentionCard item={attention} project={project} approvals={approvals} act={act}/>}
     {goal && task.status !== 'done' && <GoalContinuation project={project} goal={goal} act={act}/>}
-    <div className="officina-task-fields">
-      <p><strong>{officinaActorName(task.owner, project)} · {officinaTaskLabels[task.status]}</strong></p>
-      <p>{task.objective}</p><h3>Criterios de aceptación</h3><p>{task.criteria}</p>
-      <p role="status">{officinaQa(project.events, task.id)}</p>
-      {open.map(item => <p className="officina-attention" key={item.id}>{officinaEventLabels[item.data.kind]} · {item.data.text}</p>)}
-    </div>
+    <section className="officina-agent-work" aria-label="Equipo del encargo">
+      <h3>Equipo del encargo</h3>
+      {team.map(role => {
+        const results = officinaResults(project, task.id, role).reverse();
+        const represented = new Set(results.flatMap(item => item.event ? [item.event.id] : []));
+        const additional = events.filter(item => item.from === role && !represented.has(item.id)).reverse();
+        const plans = role === 'coordinator' ? goal?.history.filter(item => item.reply?.kind === 'plan').slice().reverse() ?? [] : [];
+        const contributions: OfficinaResult[] = [...results.filter(item => item.run || item.event || item.message),
+          ...additional.map(event => ({event})), ...plans.map(message => ({message}))];
+        const latest = contributions.find(item => item.event || item.message);
+        const roleRuns = runs.filter(run => run.role === role);
+        const run = roleRuns.at(-1);
+        const state = run ? officinaRunTracking(run, activity) : latest ? 'done' : task.status === 'done' ? 'skipped' : 'scheduled';
+        const summary = latest?.event?.data.text ?? latest?.message?.text;
+        const runtimeIssues = roleRuns.filter(turn => turn.state === 'sent' || turn.state === 'uncertain' || turn.issue && turn.id !== run?.id);
+        return <details key={role} className="officina-agent-group">
+          <summary>
+            <RoleIcon role={role}/>
+            <span className="officina-agent-summary">
+              <strong>{officinaActorName(role, project)}</strong>
+              {summary && <span>{summary}</span>}
+            </span>
+            <span className="officina-agent-state" data-state={state}>{officinaTrackingLabels[state]}</span>
+            <ChevronRight className="officina-agent-chevron" aria-hidden="true"/>
+          </summary>
+          <div className="officina-agent-contributions">
+            {contributions.length ? <ResultList results={contributions} events={events} project={project} task={task.id} act={act}/> :
+              <p>{state === 'done' || state === 'review' ? 'La respuesta de este encargo no está disponible en Officina.' :
+                'Aún no hay aportaciones de este puesto.'}</p>}
+            {run?.issue && <p>{run.issue}</p>}
+            {runtimeIssues.map(turn => <details key={turn.id}>
+              <summary>{officinaRunLabels[turn.state]}</summary>
+              {turn.id !== run?.id && turn.issue && <p>{turn.issue}</p>}
+              {(turn.state === 'sent' || turn.state === 'uncertain') && <>
+                {turn.destination && <button type="button" onClick={() => void act({type: 'open-run-chat', project: project.id, task: task.id, run: turn.id})}>
+                  Revisar en Codex <ArrowRight aria-hidden="true"/>
+                </button>}
+                <details><summary>Revisé el chat de Codex</summary>
+                  <button type="button" onClick={() => void act({type: 'release', project: project.id, run: turn.id})}>
+                    Liberar el turno y detener la cola
+                  </button>
+                </details>
+              </>}
+            </details>)}
+          </div>
+        </details>;
+      })}
+    </section>
+    <details><summary>Detalles del encargo</summary>
+      <div className="officina-task-fields">
+        <p>{officinaTaskLabels[task.status]}</p>
+        {task.objective !== task.title && <p>{task.objective}</p>}
+        <h3>Criterios de aceptación</h3><p>{task.criteria}</p>
+        {qa && <p>{qa}</p>}
+        {conclusion && conclusion.from === 'zen' && !events.some(event => event.data.text === conclusion.text) && <p>{conclusion.text}</p>}
+        {open.map(item => <p className="officina-attention" key={item.id}>{officinaEventLabels[item.data.kind]} · {item.data.text}</p>)}
+      </div>
+    </details>
     {!!goal?.steps.length && <details><summary>Pasos del encargo</summary>
       <ol className="officina-goal-steps">{goal.steps.map((step, index) => {
         const run = runs.filter(item => item.step === index).at(-1);
@@ -397,21 +433,6 @@ function TaskDetail({project, task, activity, approvals, act}: {
       event.preventDefault();
       void act({type: 'assign', project: project.id, task: task.id, role: new FormData(event.currentTarget).get('role') as OfficinaRole});
     }}><label>Puesto<SelectRole name="role" project={project} initial={task.owner}/></label><button type="submit">Poner en cola</button></form></details>}
-    <details><summary>Registrar actividad</summary><EventForm project={project} task={task} act={act}/></details>
-    {!!runs.length && <section className="officina-history"><h3>Encargos de Codex</h3>
-      {runs.slice().reverse().map(run => <article key={run.id}>
-        <strong>{officinaActorName(run.role, project)} · {attention?.kind === 'closure' && attention.run.id === run.id ?
-          'Cierre pendiente de envío' : officinaRunLabels[run.state]}</strong>
-        {run.issue && !(attention?.kind === 'closure' && attention.run.id === run.id) && <p>{run.issue}</p>}
-        {(run.state === 'sent' || run.state === 'uncertain') && <details>
-          <summary>Revisé el chat de Codex</summary>
-          <button onClick={() => void act({type: 'release', project: project.id, run: run.id})}>Liberar el turno y detener la cola</button>
-        </details>}
-      </article>)}
-    </section>}
-    {!!events.length && <section className="officina-history"><h3>Historial de la tarea</h3>
-      {events.slice().reverse().map(event => <EventDetail key={event.id} event={event} events={events} project={project} act={act}/>)}
-    </section>}
   </>;
 }
 
@@ -536,23 +557,8 @@ function DirectChatButton({project, role, activity, act}: {
   </button>;
 }
 
-function DeskActivity({project, role, activity, open}: {project?: OfficinaProject; role: OfficinaParticipant;
-  activity: Tracking; open: (panel: Panel) => void}) {
-  const [chosen, setChosen] = useState('');
-  const tasks = project?.tasks.filter(task => role === 'coordinator' || task.owner === role ||
-    project.runs.some(run => run.task === task.id && run.role === role) ||
-    project.events.some(event => event.task === task.id && (event.from === role || transfer(event) === role))) ?? [];
-  const last = role === 'coordinator' ? project?.events.filter(event => event.data.kind === 'handoff').at(-1) : undefined;
-  const task = tasks.find(item => item.id === (chosen || activity.task || last?.task)) ?? tasks.at(-1);
-  const goal = project?.goals?.find(item => item.task === task?.id);
-  const result = project && task && officinaResults(project, task.id, role).filter(item => item.event || item.message).at(-1);
-  const preview = result && (result.message?.text ?? result.event?.data.text);
-  const delegated = project && task && role === 'coordinator' ? officinaDelegatedRoles(project, task.id) : [];
-  const waiting = project && task && role === 'coordinator' && task.status !== 'done' ?
-    officinaOpenItems(forTask(project, task)).filter(event => event.data.kind === 'question') : [];
-  const active = role === 'coordinator' && task?.status !== 'done' ? project?.runs.find(run => run.task === task?.id &&
-    ['sending', 'sent', 'uncertain', 'waiting'].includes(run.state)) : undefined;
-  const matchingStatus = !chosen || chosen === activity.task;
+function DeskActivity({project, task, role, activity, open, decision}: {project?: OfficinaProject; task?: OfficinaTask; role: OfficinaParticipant;
+  activity: Tracking; open: (panel: Panel) => void; decision?: ReactNode}) {
   const name = officinaActorName(role, project);
   return <section className="officina-desk-activity" aria-label={`Actividad de ${name}`}>
     <header>
@@ -564,29 +570,16 @@ function DeskActivity({project, role, activity, open}: {project?: OfficinaProjec
         </button>}
       </div>
     </header>
+    {decision}
     {project && task ? <>
       <div className="officina-desk-task">
-        <strong>{task.title}</strong>
-        <button onClick={() => open({type: 'task', id: task.id})}>Ver tarea</button>
-        <ResultButton project={project} task={task.id} role={role} open={open}/>
+        <TrackingLabel activity={activity}/>
+        {role === 'coordinator' && <button onClick={() => open({type: 'task', id: task.id})}>Ver equipo</button>}
+        {role !== 'coordinator' && activity.task === task.id && <>
+          <button onClick={() => open({type: 'task', id: task.id})}>Ver tarea</button>
+          <ResultButton project={project} task={task.id} role={role} open={open}/>
+        </>}
       </div>
-      {tasks.length > 1 && <select aria-label="Encargo del puesto" value={task.id} onChange={event => setChosen(event.target.value)}>
-        {tasks.slice().reverse().map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
-      </select>}
-      {delegated.length > 0 && (delegated.length > 1 || !matchingStatus || !activity.label?.startsWith('Asignó')) &&
-        <p>Asignación confirmada · {delegated.map(actor => officinaActorName(actor, project)).join(', ')}</p>}
-      {last?.task === task.id && last.data.kind === 'handoff' && <p>
-        Último traspaso · {officinaActorName(last.from, project)} → {officinaActorName(last.data.to, project)}
-      </p>}
-      {preview && <p className="officina-result-preview">{preview}</p>}
-      {active && <p>{active.role !== 'coordinator' && active.role !== 'observer' && delegated.includes(active.role) ?
-        `${name} espera el resultado de ${officinaActorName(active.role, project)}` : officinaActorName(active.role, project)}
-        {' · '}{officinaRunLabels[active.state]}</p>}
-      {waiting.map(event => event.data.kind === 'question' && <p key={event.id}>
-        {officinaActorName(event.from, project)} espera respuesta de {officinaActorName(event.data.to, project)}
-      </p>)}
-      {goal?.phase === 'verify' && role === 'coordinator' && task.status !== 'done' &&
-        project.events.some(event => event.task === task.id && event.data.kind === 'qa') && <p>{officinaQa(project.events, task.id)}</p>}
     </> : <p>{project ? 'Sin encargos para este puesto.' : 'Selecciona o crea un proyecto para empezar.'}</p>}
   </section>;
 }
@@ -609,7 +602,7 @@ function ProjectFolder({project, act}: {project: OfficinaProject; act: Act}) {
 }
 
 const chatEntryActor = (entry: OfficinaChatEntry) => 'event' in entry ? entry.event.from :
-  entry.message.from === 'codex' ? 'coordinator' : undefined;
+  entry.message.from === 'codex' ? entry.message.reply?.role ?? 'coordinator' : undefined;
 function chatEntryAuthor(entry: OfficinaChatEntry, project: OfficinaProject) {
   const actor = chatEntryActor(entry);
   return actor ? officinaActorName(actor, project) : 'Officina';
@@ -623,6 +616,7 @@ function chatEntryLabel(entry: OfficinaChatEntry, project: OfficinaProject) {
   }
   if (entry.conclusion) return 'Conclusión';
   if (entry.message.reply?.kind === 'question') return 'Pregunta';
+  if (entry.message.reply?.kind === 'request') return 'Solicitud de decisión';
   if (entry.message.reply?.kind === 'complete') return 'Resultado';
   return 'Asignación';
 }
@@ -668,6 +662,43 @@ function ChatEntry({entry, goal, project, open, act}: {
 }
 
 function GoalContinuation({project, goal, act}: {project: OfficinaProject; goal: OfficinaGoal; act: Act}) {
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const request = goal.humanRequest;
+  if (request) {
+    const question = request.mode === 'question';
+    const origin = project.runs.find(run => run.id === request.run);
+    const next = origin?.role === 'coordinator' ? 'coordinator' : goal.steps[goal.cursor + 1]?.role ?? 'coordinator';
+    const send = async (decision: 'approve' | 'request-changes' | 'respond', message?: string) => {
+      setBusy(true);
+      try {
+        await act({type: 'resolve-request', project: project.id, task: goal.task, run: request.run, decision, message});
+      } finally {
+        setBusy(false);
+      }
+    };
+    return <form key={request.run} className="officina-form officina-continuation" aria-label="Decisión de Officina" onSubmit={event => {
+      event.preventDefault();
+      const message = String(new FormData(event.currentTarget).get('answer')).trim();
+      if (message) void send(question ? 'respond' : 'request-changes', message);
+    }}>
+      <p><strong>{request.text}</strong></p>
+      <small>{question ? 'Tu respuesta vuelve al puesto solicitante.' :
+        `Al aprobar, continúa ${officinaActorName(next, project)}. Si pides cambios, se retoma el paso actual.`}</small>
+      {request.markdown && <details>
+        <summary>Ver propuesta y evidencia</summary>
+        <OfficinaMarkdown text={request.markdown} project={project.id} task={goal.task} act={act}/>
+      </details>}
+      {(question || editing) && <label>{question ? 'Tu respuesta' : 'Indica qué quieres cambiar'}
+        <textarea name="answer" required maxLength={700} data-hold-island-open/>
+      </label>}
+      <div className="officina-next-actions">
+        {!question && <button disabled={busy} type="button" className="officina-accent" onClick={() => void send('approve')}>Aprobar y continuar</button>}
+        {question || editing ? <button disabled={busy} type="submit">{question ? 'Enviar respuesta' : 'Enviar cambios'}</button> :
+          <button type="button" disabled={busy} onClick={() => setEditing(true)}>Pedir cambios</button>}
+      </div>
+    </form>;
+  }
   if (!goal.question || officinaClosureRetry(project, goal.task)) return null;
   const browserReview = goal.phase === 'plan' && isOfficinaTabReview(officinaGoalRequest(goal), officinaGoalBrowser(project, goal));
   const asked = officinaAskedQuestion(goal);
@@ -689,30 +720,26 @@ function GoalContinuation({project, goal, act}: {project: OfficinaProject; goal:
   </form>;
 }
 
-function ProjectChat({view, taskId, selectTask, act, open, attention, controls}: {
-  view?: OfficinaView; taskId?: string; selectTask: (task: string) => void;
+function ProjectChat({view, task, act, open, attention, controls}: {
+  view?: OfficinaView; task?: OfficinaTask;
   act: Act; open: (panel: Panel) => void; attention: ReactNode; controls: ReactNode;
 }) {
   const project = view?.project;
-  const goals = project?.goals ?? [];
-  const goal = goals.find(item => item.task === taskId) ?? goals.at(-1);
-  const title = (item: OfficinaGoal) => project?.tasks.find(task => task.id === item.task)?.title ?? item.request;
-  const teamSize = project?.team ? Object.keys(project.team.threads).length : 0;
-  const total = project?.team?.threads.observer ? OfficinaActor.options.length : OfficinaParticipant.options.length;
+  const goal = project?.goals?.find(goal => goal.task === task?.id && !goal.improvement);
+  const teamSize = OfficinaParticipant.options.filter(role => project?.team?.threads[role]).length;
+  const total = OfficinaParticipant.options.length;
   return <section className="officina-chat" aria-label="Chat global">
     <header className="officina-chat-toolbar">
       <div className="officina-chat-heading">
         <MessageSquare aria-hidden="true"/>
-        {goals.length > 1 && goal ? <select aria-label="Encargo de Chat global" value={goal.task} onChange={event => selectTask(event.target.value)}>
-          {goals.slice().reverse().map(item => <option key={item.task} value={item.task}>{title(item)}</option>)}
-        </select> : <h2>{goal ? title(goal) : 'Chat global'}</h2>}
-        {goal && <button onClick={() => open({type: 'task', id: goal.task})}>Ver tarea <ArrowRight aria-hidden="true"/></button>}
+        <h2>{task ? 'Conversación' : 'Chat global'}</h2>
+        {task && <button onClick={() => open({type: 'task', id: task.id})}>Ver tarea <ArrowRight aria-hidden="true"/></button>}
       </div>
       {attention && <div className="officina-chat-notice">{attention}</div>}
-      {project && view?.directActivity && Object.keys(view.directActivity).length > 0 &&
+      {project && OfficinaParticipant.options.some(role => view?.directActivity?.[role]) &&
         <details className="officina-project-tools officina-direct-activity">
           <summary>Actividad directa en Codex</summary>
-          {OfficinaActor.options.map(role => {
+          {OfficinaParticipant.options.map(role => {
             const activity = view.directActivity?.[role];
             return activity && <div className="officina-project-actions" key={role}>
               <strong>{officinaActorName(role, project)}</strong>
@@ -722,16 +749,16 @@ function ProjectChat({view, taskId, selectTask, act, open, attention, controls}:
           })}
         </details>}
     </header>
-    <div className="officina-chat-scroll" key={`${project?.id}-${goal?.task}`}>
+    <div className="officina-chat-scroll" key={`${project?.id}-${task?.id}`}>
       <div className="officina-chat-content">
         {project && goal ? <GoalConversation project={project} goal={goal} activity={view?.activity} act={act} open={open}/> :
-          <p className="officina-empty-chat">Aún no hay mensajes en este proyecto.</p>}
+          <p className="officina-empty-chat">{task ? 'Consulta los resultados de este encargo en Equipo.' : 'Aún no hay encargos en este proyecto.'}</p>}
         <footer className="officina-chat-tools">
           {project?.team && <details className="officina-project-tools">
             <summary>Chats en Codex <span>{teamSize === total ? `${teamSize} chats vinculados` : `${teamSize} de ${total} chats vinculados`}</span></summary>
             {project.team.projectId && project.team.cwd && <ProjectFolder project={project} act={act}/>}
             {project.team.projectId && <div className="officina-chat-team" aria-label="Chats del proyecto en Codex">
-              {OfficinaActor.options.filter(role => project.team?.threads[role]).map(role =>
+              {OfficinaParticipant.options.filter(role => project.team?.threads[role]).map(role =>
                 <button key={role} data-role={role} onClick={() => void act({type: 'open-team-chat', project: project.id, role})}>
                   {officinaActorName(role, project)} <ArrowRight aria-hidden="true"/>
                 </button>)}
@@ -763,7 +790,8 @@ function GoalConversation({project, goal, activity, act, open}: {
       <strong>{officinaActorName(active.role, project)}</strong><TrackingLabel activity={{state}}/>
     </p>}
     <ol className="officina-chat-thread" aria-label="Mensajes del encargo">
-      {officinaChatEntries(project, goal).map(entry => <ChatEntry key={entry.key} entry={entry} goal={goal} project={project} open={open} act={act}/>)}
+      {officinaChatEntries(project, goal).filter(entry => 'event' in entry || entry.message.from !== 'zen')
+        .map(entry => <ChatEntry key={entry.key} entry={entry} goal={goal} project={project} open={open} act={act}/>)}
     </ol>
     {blocker?.source === 'user' && !closed && <p className="officina-attention">{officinaEventLabels.blocker} · {blocker.data.text}</p>}
     {browserReview && blocker?.from === 'analyst' && (goal.phase === 'work' || goal.outcome === 'limited') &&
@@ -773,7 +801,11 @@ function GoalConversation({project, goal, activity, act, open}: {
   </article>;
 }
 
-export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; approvals?: CompanionApproval[]}) {
+export function OfficinaWorkspace({motion, approvals = [], glanceItems, openDecisionOnEntry}: {
+  motion: boolean; approvals?: CompanionApproval[];
+  glanceItems?: import('../shared/companion-officina').OfficinaGlanceItem[];
+  openDecisionOnEntry?: boolean;
+}) {
   const [view, setView] = useState<OfficinaView>();
   const [panel, setPanel] = useState<Panel>();
   const [error, setError] = useState('');
@@ -781,8 +813,15 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
   const [chat, setChat] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const mapToggle = useRef<HTMLButtonElement>(null);
-  const [chatTasks, setChatTasks] = useState<Record<string, string>>({});
+  const [taskSelections, setTaskSelections] = useState<Record<string, string>>({});
   const [selection, setSelection] = useState<{project?: string; role: OfficinaActor}>();
+  const [decisionStatus, setDecisionStatus] = useState('');
+  const project = view?.project;
+  const task = project && officinaFocusedTask(project, taskSelections[project.id]);
+  const focusTask = (projectId: string, taskId: string) => {
+    setTaskSelections(selections => selections[projectId] === taskId ? selections : {...selections, [projectId]: taskId});
+    if (task?.id !== taskId) setDecisionStatus('');
+  };
   const pending = useRef(false), generation = useRef(0);
   useEffect(() => {
     let mounted = true;
@@ -809,14 +848,39 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
       const result = await window.companion.officina(action);
       if (!result.ok) {setError(result.error); return false;}
       setView(result.value);
+      if (action.type === 'resolve-request') {
+        setDecisionStatus(action.decision === 'approve' ? 'Aprobación registrada.' :
+          action.decision === 'request-changes' ? 'Cambios solicitados.' : 'Respuesta registrada.');
+      }
+      if (action.type === 'select-activity' && result.value.project?.id === action.project) {
+        setSelection({project: action.project, role: action.role});
+        const task = result.value.project.tasks.find(item => item.id === action.task && item.status !== 'done');
+        if (task) focusTask(action.project, task.id);
+        if (task && action.kind === 'question') {
+          setDecisionStatus('');
+          setChat(false);
+        } else if (task) setPanel({type: 'task', id: task.id});
+        else {
+          setChat(false);
+          if (action.kind === 'permission') await window.companion.navigate('permissions');
+        }
+      }
       if (action.type === 'chat' && result.value.project) {
         const project = result.value.project.id;
-        setChatTasks(tasks => ({...tasks, [project]: action.id}));
+        focusTask(project, action.id);
         if (action.role) setSelection({project, role: action.role});
         setChat(true);
       }
-      if (action.type === 'select' || action.type === 'project' || action.type === 'delete-project') setSelection(undefined);
-      if (action.type === 'delete-project') setChatTasks(tasks => {
+      if (action.type === 'task' && result.value.project) {
+        const created = result.value.project.tasks.at(-1);
+        if (created) focusTask(result.value.project.id, created.id);
+      }
+      if (action.type === 'observe-team' && action.task) focusTask(action.project, action.task);
+      if (action.type === 'select' || action.type === 'project' || action.type === 'delete-project') {
+        setSelection(undefined);
+        setDecisionStatus('');
+      }
+      if (action.type === 'delete-project') setTaskSelections(tasks => {
         const next = {...tasks};
         delete next[action.project];
         return next;
@@ -829,23 +893,49 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
       pending.current = false;
     }
   };
-  const open = (value: Panel) => {setError(''); setPanel(value);};
+  const open = (value: Panel) => {
+    if (project && value.type === 'task') focusTask(project.id, value.id);
+    setError('');
+    setPanel(value);
+  };
+  const openedDecision = useRef(false);
+  useEffect(() => {
+    const item = glanceItems?.length === 1 ? glanceItems[0] : undefined;
+    if (!openDecisionOnEntry || openedDecision.current || !item || item.kind === 'working') return;
+    openedDecision.current = true;
+    void act({type: 'select-activity', project: item.project, task: item.task, role: item.role, kind: item.kind});
+  }, [openDecisionOnEntry, glanceItems]);
   const close = () => {setError(''); setPanel(undefined);};
-  const project = view?.project;
   const selected = selection && selection.project === project?.id ? selection.role : 'coordinator';
   const recipient = selected === 'observer' ? 'coordinator' : selected;
-  const selectRole = (role: OfficinaActor) => setSelection({project: project?.id, role});
-  const boardTeam = Object.fromEntries(OfficinaActor.options.map(role => [role, officinaRoleTracking(project, role, view?.activity)])) as Team;
-  const observedRole = project?.runs.find(run => run.id === view?.activity?.run)?.role;
-  const team = Object.fromEntries(OfficinaActor.options.map(role => {
-    const direct = view?.directActivity?.[role];
-    return [role, direct && role !== observedRole ? directTracking(direct) : boardTeam[role]];
-  })) as Team;
-  const blockedTasks = new Set(officinaOpenItems(project?.events ?? []).filter(event => event.data.kind === 'blocker').map(event => event.task));
-  const waiting = project?.runs.filter(run => run.role !== 'observer' && run.state === 'waiting' && !blockedTasks.has(run.task) &&
-    project.tasks.some(task => task.id === run.task && task.status !== 'done') &&
-    !project.goals?.some(goal => goal.task === run.task && goal.improvement)).length ?? 0;
-  const attention = project && officinaAttention(project, view?.activity);
+  const selectRole = (role: OfficinaActor) => {
+    setSelection({project: project?.id, role});
+    setDecisionStatus('');
+  };
+  const team = Object.fromEntries(OfficinaActor.options.map(role => [role,
+    officinaRoleTracking(task ? project : undefined, role, view?.activity, task?.id)])) as Team;
+  const sceneProject = project && task ? officinaTaskBoard(project, task.id) : project;
+  const attentionItems = project ? officinaAttentionItems(project, view?.activity) : [];
+  const humanRequests = attentionItems.filter((item): item is HumanRequest => item.kind === 'request' || item.kind === 'question');
+  const requestRole = (item: HumanRequest) => item.kind === 'request' ? item.run.role : 'coordinator';
+  const requests = (role: OfficinaActor) => humanRequests.filter(item => item.task.id === task?.id && requestRole(item) === role);
+  const activeRequest = requests(selected)[0];
+  const decisionGoal = activeRequest && project?.goals?.find(goal => goal.task === activeRequest.task.id);
+  const showRequest = (item: HumanRequest) => {
+    if (!project) return;
+    setSelection({project: project.id, role: requestRole(item)});
+    focusTask(project.id, item.task.id);
+    setDecisionStatus('');
+    setChat(false);
+  };
+  const decision = project && decisionGoal && <section className="officina-desk-decisions" aria-label="Solicitudes del puesto">
+    <GoalContinuation key={decisionGoal.humanRequest?.run ?? decisionGoal.task} project={project} goal={decisionGoal} act={act}/>
+  </section>;
+  const queued = project ? officinaWaitingRuns(project) : [];
+  const waiting = queued.filter(run => !project?.goals?.some(goal => goal.task === run.task && goal.improvement)).length;
+  const needsUser = (item: OfficinaAttention) => item.kind === 'permission' || item.kind === 'request' || item.kind === 'question';
+  const attention = attentionItems.find(item => item.task.id === task?.id);
+  const otherDecisions = attentionItems.filter(item => item.task.id !== task?.id && needsUser(item));
   const uncertain = project?.runs.find(run => run.role !== 'observer' && run.state === 'uncertain');
   const unreported = uncertain && (attention?.kind !== 'dispatch' || attention.run.id !== uncertain.id) ? uncertain : undefined;
   const queueStatus = project && (unreported || !uncertain && !view?.enabled && waiting > 0) && <div className="officina-compose-queue">
@@ -855,31 +945,38 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
     {!unreported && (project.binding || project.team) && !view?.dispatchBlock &&
       <button type="button" onClick={() => void act({type: 'queue', project: project.id, enabled: true})}>Activar cola</button>}
   </div>;
-  const incident = project?.reviews?.filter(review => review.source === 'monitor' && officinaPendingProposals(review, project) > 0).at(-1);
-  const improvement = project?.goals?.filter(goal => goal.improvement).at(-1);
-  const followup = officinaObserverRun(project)?.followup;
+  const followup = task && officinaObserverRun(project, task.id)?.followup;
   const attentionCard = project && <>
     {attention && <OfficinaAttentionCard item={attention} project={project} approvals={approvals}
-      act={act} openTask={id => open({type: 'task', id})}/>}
-    {incident && <OfficinaMonitorNotice project={project} review={incident}
-      open={() => open({type: 'observer', project: project.id, review: incident.id})}/>}
-    {improvement && !improvement.improvementNoticeDismissed && <section className="officina-next" data-kind="monitor" aria-label="Mejora automática de ZEN">
-      <div className="officina-improvement-heading">
-        <strong>{improvement.phase === 'complete' ?
-          improvement.outcome === 'limited' ? 'ZEN · Mejora cerrada con limitaciones' : 'ZEN · Mejora completada' :
-          project.autoImprovements?.enabled ? 'ZEN · Mejora enviada a Coordinación' : 'ZEN · Mejora pausada'}</strong>
-        <button type="button" aria-label="Cerrar aviso de mejora" title="Cerrar aviso de mejora" onClick={() =>
-          void act({type: 'dismiss-improvement', project: project.id, task: improvement.task})}><X aria-hidden="true"/></button>
-      </div>
-      <small>{project.tasks.find(task => task.id === improvement.task)?.title}</small>
-      <button className="officina-next-action" onClick={() => open({type: 'task', id: improvement.task})}>Ver mejora <ArrowRight aria-hidden="true"/></button>
-    </section>}
+      act={act} openTask={id => {
+        const item = humanRequests.find(item => item.task.id === id);
+        if (item && !chat) showRequest(item);
+        else open({type: 'task', id});
+      }}/>}
+    {otherDecisions.length > 0 && <details className="officina-project-tools officina-queue-list officina-other-decisions">
+      <summary>Decisiones de otros encargos <span>{otherDecisions.length}</span></summary>
+      {otherDecisions.map(item => <button key={item.task.id} type="button" onClick={() => {
+        if (item.kind === 'request' || item.kind === 'question') showRequest(item);
+        else open({type: 'task', id: item.task.id});
+      }}>
+        {item.task.title}
+      </button>)}
+    </details>}
   </>;
   const controls = project && <div className="officina-dispatch">
     {project.team?.issue && <p role="status">{project.team.issue}</p>}
     {view?.dispatchBlock && <p role="status">{view.dispatchBlock}</p>}
+    {queued.length > 0 && <details className="officina-project-tools officina-queue-list">
+      <summary>Cola de Officina <span>{queued.length} en espera</span></summary>
+      <ol>{queued.map(run => <li key={run.id}>
+        <button type="button" onClick={() => open({type: 'task', id: run.task})}>
+          <strong>{project.tasks.find(task => task.id === run.task)?.title}</strong>
+          <small>{officinaActorName(run.role, project)} · {run.retryAt === undefined ? 'En espera' : 'Esperando a Codex'}</small>
+        </button>
+      </li>)}</ol>
+    </details>}
     <details className="officina-project-tools">
-      <summary>Opciones del proyecto {waiting > 0 && <span>{waiting} en espera</span>}</summary>
+      <summary>Opciones del proyecto</summary>
       <div className="officina-project-actions">
         {!project.team && <button onClick={() => open({type: 'binding'})}><Settings2 aria-hidden="true"/>{project.binding?.environment ?? 'Vincular Codex'}</button>}
         {(view?.enabled || project.autoImprovements?.enabled) && <button onClick={() => void act({type: 'queue', project: project.id, enabled: false})}>
@@ -918,11 +1015,24 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
         <button className="officina-new" aria-label={project ? 'Nueva tarea' : 'Nuevo proyecto'}
           onClick={() => open({type: project ? 'new' : 'project'})}><Plus aria-hidden="true"/><span>{project ? 'Nueva tarea' : 'Nuevo proyecto'}</span></button>
       </div>
+      {project && task && <label className="officina-task-focus">
+        <span>Encargo</span>
+        <select aria-label="Encargo de Officina" title={task.title} value={task.id}
+          onChange={event => focusTask(project.id, event.target.value)}>
+          {project.tasks.slice().reverse().map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+      </label>}
+      {decisionStatus && <p role="status">{decisionStatus}</p>}
       {!panel && error && <p role="alert" className="officina-error">{error}</p>}
+      {!!glanceItems?.length && <details open className="officina-glance-list">
+        <summary>{glanceItems[0].kind === 'working' ? 'Actividad actual' : 'Pendientes de ti'}</summary>
+        {glanceItems.map((item, index) => <button key={`${item.project}:${item.role}:${item.task ?? index}`} type="button"
+          onClick={() => void act({type: 'select-activity', project: item.project, task: item.task, role: item.role, kind: item.kind})}>
+          {officinaActorName(item.role, item.project === project?.id ? project : undefined)} · {item.projectName} · {item.title ?? 'Chat del puesto'}
+        </button>)}
+      </details>}
     </header>
-    {chat ? <ProjectChat view={view} taskId={project && chatTasks[project.id]}
-      selectTask={task => project && setChatTasks(tasks => ({...tasks, [project.id]: task}))}
-      act={act} open={open} attention={attentionCard} controls={controls}/> : <div className="officina-layout">
+    {chat ? <ProjectChat view={view} task={task} act={act} open={open} attention={attentionCard} controls={controls}/> : <div className="officina-layout">
       <aside className="officina-side">
         {attentionCard}
         <div className="officina-side-content" key={project?.id}>
@@ -932,15 +1042,18 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
                 const activity = team[role];
                 return <div key={role} className="officina-team-member" data-state={activity.state} data-selected={selected === role}>
                   <button className="officina-team-select" data-role={role} aria-pressed={selected === role} onClick={() => selectRole(role)}>
-                    <RoleIcon role={role}/><span><strong>{officinaActorName(role, project)}</strong><TrackingLabel activity={activity}/></span>
+                    <RoleIcon role={role}/><span><strong>{officinaActorName(role, project)}</strong><TrackingLabel activity={activity}/><RequestBadge items={requests(role)}/></span>
                   </button>
-                  {role === 'observer' && project?.reviews?.some(review => review.report) &&
+                  {role === 'observer' && task && project?.reviews?.some(review => review.scope === task.id && review.report) &&
                     <button className="officina-result-button" onClick={() => open({type: 'observer', project: project.id, review: followup?.review})}>
                       {followup ? 'Ver seguimiento' : 'Revisiones'}
                     </button>}
-                  {project && view?.directActivity?.[role] &&
-                    <DirectChatButton project={project.id} role={role} activity={view.directActivity[role]!} act={act}/>}
-                  {project && activity.task && <ResultButton project={project} task={activity.task} role={role} open={open}/>}
+                  {project && activity.task && activity.state !== 'information' && (role === 'coordinator' ?
+                    <button className="officina-result-button officina-accent" type="button" onClick={() => open({type: 'task', id: activity.task!})}>
+                      Ver equipo <ArrowRight aria-hidden="true"/>
+                    </button> : <ResultButton project={project} task={activity.task} role={role} open={open}/>)}
+                  {!requests(role).length && activity.task && activity.state === 'information' && <button className="officina-result-button" type="button"
+                    onClick={() => open({type: 'task', id: activity.task!})}>Ver decisión</button>}
                 </div>;
               })}
             </div>
@@ -959,18 +1072,13 @@ export function OfficinaWorkspace({motion, approvals = []}: {motion: boolean; ap
             setMapOpen(false);
             mapToggle.current.focus();
           }}>
-          <Scene key={project?.id} project={project} team={team} animate={motion && !hidden}
-            open={open} selected={selected} selectRole={selectRole}/>
+          <Scene key={`${project?.id}-${task?.id}`} project={sceneProject} taskTitle={task?.title} team={team} animate={motion && !hidden}
+            open={open} selected={selected} selectRole={selectRole} requests={requests}/>
         </div>
-        {project && view?.directActivity?.[selected] && <div className="officina-desk-activity officina-direct-current">
-          <strong>Actividad directa en Codex</strong>
-          <span data-state={team[selected].state}><TrackingLabel activity={team[selected]}/></span>
-          <DirectChatButton project={project.id} role={selected} activity={view.directActivity[selected]!} act={act}/>
-        </div>}
-        {selected === 'observer' ? <OfficinaObserverDesk key={project?.id} project={project} queued={view?.observerQueued} act={act}
+        {selected === 'observer' ? <OfficinaObserverDesk key={`${project?.id}-${task?.id}`} project={project} task={task?.id} queued={view?.observerQueued} act={act}
           settings={() => open({type: 'settings', role: 'observer'})}
           open={() => project && open({type: 'observer', project: project.id})}/> :
-          <DeskActivity key={`${project?.id}-${selected}`} project={project} role={selected} activity={boardTeam[selected]} open={open}/>}
+          <DeskActivity project={project} task={task} role={selected} activity={team[selected]} open={open} decision={decision}/>}
       </div>
     </div>}
     <OfficinaComposer key={project?.id} project={project} context={view?.context} act={act} ready={!!view} recipient={recipient}

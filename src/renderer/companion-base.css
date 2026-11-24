@@ -37,3 +37,21 @@
 .music-heading>.actions{justify-content:flex-end;max-width:55%}.music-blocked>.primary{margin:6px 8px 0 0}.music-blocked>small{margin-top:14px}
 @media(max-width:510px){.music-heading>.actions{max-width:100%;justify-content:flex-start}}
 .capsule-menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.capsule-menu-grid button{justify-content:flex-start;padding:15px;text-align:left}.capsule-menu-grid button[aria-pressed=true]{background:#b4a0ec24;border-color:#b4a0ec55;color:#e1d2ff}.capsule-menu-grid button:disabled{opacity:.3}@media(max-width:510px){.capsule-menu-grid{grid-template-columns:1fr}.codex-last-response>header{flex-wrap:wrap}}
+.capsule-launcher button > .officina-glance-badge {
+  position: absolute;
+  inset: 1px 1px auto auto;
+  display: grid;
+  place-items: center;
+  min-width: 12px;
+  height: 12px;
+  padding-inline: 2px;
+  border-radius: 7px;
+  background: #c9ccd2;
+  color: #101620;
+  font-size: 9px;
+  line-height: 1;
+  pointer-events: none;
+}
+.officina-glance-badge[data-kind=working] { background: #79eaff; }
+.officina-glance-badge[data-kind=decision] { background: #ffce83; }
+.officina-glance-badge[data-kind=finished] { background: #a6e8bd; }

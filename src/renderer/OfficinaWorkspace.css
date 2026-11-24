@@ -83,6 +83,8 @@
 .officina .officina-accent { border-color: #39d7ed; background: #10212c; }
 .officina-accent svg { color: var(--office-cyan); }
 .officina-project-controls select { width: clamp(124px, 16cqi, 245px); }
+.officina-task-focus { display: flex; flex: 0 0 100%; min-width: 0; align-items: center; gap: 8px; font-size: 12px; color: var(--office-muted); }
+.officina .officina-task-focus select { flex: 1; width: 0; min-width: 0; min-height: 28px; padding-block: 3px; color: var(--office-ink); }
 .officina-new svg { width: 14px; height: 14px; }
 .officina-header > .officina-error { flex-basis: 100%; margin: 0; }
 .officina p,
@@ -317,6 +319,27 @@
 .officina-table .officina-role-icon { width: 1.5em; }
 .officina-table .officina-desk-label { flex-shrink: 0; transform: translateY(-52%); }
 .officina-table[data-state=permission] .officina-desk-label { border-color: #ffca86; }
+.officina-coordination-task {
+  position: absolute;
+  inset-block-end: calc(100% + clamp(13px, 2.5cqi, 19px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(39cqi, 300px);
+  overflow: hidden;
+  padding: .2em .65em;
+  border: 1px solid var(--office-line);
+  border-radius: 7px;
+  color: var(--office-ink);
+  background: #101620f2;
+  box-shadow: 0 2px 8px #04060a69;
+  font-size: clamp(10px, 1.65cqi, 13px);
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .officina .officina-observer-marker {
   left: 46.7%; top: 11.2%; width: 17.7%; height: 21.3%;
   display: flex; align-items: flex-start; justify-content: center;
@@ -467,10 +490,8 @@
   overflow-wrap: anywhere;
 }
 .officina .officina-desk-activity select { width: 100%; min-width: 0; max-width: 100%; }
-.officina-direct-current { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .officina-direct-activity { width: 100%; padding-block: 4px; }
-.officina-desk-task strong { flex: 1 1 150px; min-width: 0; }
-.officina-desk-task strong { overflow-wrap: anywhere; }
+.officina-desk-task .officina-tracking-label { margin-inline-end: auto; }
 .officina-dispatch { display: grid; gap: 5px; margin-top: 8px; font-size: 12px; }
 .officina-dispatch p { margin: 0; }
 .officina-dispatch button { text-align: left; overflow-wrap: anywhere; }
@@ -492,7 +513,7 @@
   background: #14232d;
   font-size: 12px;
 }
-.officina-next[data-kind=permission], .officina-next[data-kind=question] {
+.officina-next[data-kind=permission], .officina-next[data-kind=question], .officina-next[data-kind=request] {
   border-color: #f3b973ad;
   background: #2d241c;
 }
@@ -509,8 +530,6 @@
 .officina .officina-next .officina-qa-passed { color: #a8ead0; }
 .officina-next-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 .officina .officina-next button { min-height: 28px; font-size: 12px; gap: 4px; }
-.officina-improvement-heading { display: flex; width: 100%; justify-content: space-between; align-items: flex-start; gap: 6px; }
-.officina .officina-improvement-heading button { flex: none; width: 28px; padding: 0; justify-content: center; }
 .officina .officina-next .officina-next-action { border-color: var(--office-cyan); background: #19323e; }
 .officina .officina-next:is([data-kind=permission], [data-kind=question]) .officina-next-action {
   border-color: #f3b973; background: #3b2a1c;
@@ -578,12 +597,10 @@
 .officina-role-settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .officina-role-settings details { width: 100%; padding-block-start: 5px; border-top: 1px solid var(--office-line); }
 .officina-role-settings details p { max-width: 70ch; font-size: 12px; line-height: 1.55; }
-.officina-task-list,
-.officina-history { display: grid; gap: 7px; margin-top: 10px; }
+.officina-task-list { display: grid; gap: 7px; margin-top: 10px; }
 .officina-task-list button { justify-content: space-between; text-align: left; min-width: 0; }
 .officina-task-list small,
 .officina-event small { display: block; }
-.officina-history article,
 .officina-event {
   min-width: 0;
   padding: 8px 10px;
@@ -594,6 +611,38 @@
 .officina-event dl { margin: 8px 0 2px; font-size: 13px; }
 .officina-event dt { font-weight: 700; }
 .officina-event dd { margin: 0 0 5px; user-select: text; overflow-wrap: anywhere; }
+.officina-agent-work, .officina-agent-contributions { display: grid; gap: 7px; min-width: 0; }
+.officina-agent-work h3 { margin: 4px 0 1px; }
+.officina-agent-group { background: #111620; border: 1px solid var(--office-line); border-radius: 8px; }
+.officina-agent-group > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, max-content) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  list-style: none;
+  cursor: pointer;
+}
+.officina-agent-summary { display: grid; gap: 2px; }
+.officina-agent-summary strong, .officina-agent-state { overflow-wrap: anywhere; }
+.officina-agent-summary > span, .officina-result-fold summary > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--office-muted);
+  font-size: 12px;
+}
+.officina-agent-state { max-width: 100px; color: var(--office-muted); font-size: 11px; text-align: end; }
+.officina-agent-state[data-state=working] { color: var(--office-working); }
+.officina-agent-state[data-state=permission] { color: #ffcf92; }
+.officina-agent-chevron { width: 14px; height: 14px; color: var(--office-muted); }
+.officina-agent-group[open] .officina-agent-chevron { rotate: 90deg; }
+.officina-agent-contributions { padding: 0 9px 9px; }
+.officina-result-fold { border: 1px solid var(--office-line); border-radius: 8px; }
+.officina-result-fold summary { cursor: pointer; padding: 6px 10px; }
+.officina-result-fold .officina-result-entry { border: 0; border-top: 1px solid var(--office-line); }
 
 .officina-chat {
   display: grid;
@@ -635,6 +684,10 @@
 }
 .officina-project-tools > summary { cursor: pointer; padding: 5px 0; color: var(--office-muted); font-size: 12px; }
 .officina-project-tools > summary span { float: right; font-size: 11px; }
+.officina-queue-list { min-width: 0; padding: 4px 8px; border: 1px solid var(--office-line); border-radius: 8px; }
+.officina-queue-list ol { display: grid; gap: 4px; margin: 4px 0; padding-inline-start: 24px; }
+.officina-queue-list button { display: grid; width: 100%; text-align: start; overflow-wrap: anywhere; }
+.officina-queue-list small { color: var(--office-muted); }
 .officina-project-actions,
 .officina-chat-team { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0; }
 .officina-chat-team button { font-size: 11px; }
@@ -895,6 +948,7 @@
   .officina-prompt-comparison { grid-template-columns: minmax(0, 1fr); }
   .officina-view-switch { order: 1; width: 100%; }
   .officina-view-switch button { flex: 1; }
+  .officina-task-focus { order: 2; }
   .officina-header > .officina-error { order: 2; }
   .officina-chat-heading > svg { display: none; }
   .officina-role-settings-fields { grid-template-columns: minmax(0, 1fr); }
@@ -907,4 +961,41 @@
 @media (prefers-reduced-motion: reduce) {
   .officina-paths path.officina-signal,
   .officina-scene[data-animate=true] .officina-node[data-state=working] { animation: none; }
+}
+.officina-glance-list { flex: 1 0 100%; min-width: 0; max-height: 105px; overflow: auto; font-size: 12px; }
+.officina-glance-list summary { cursor: pointer; }
+.officina-glance-list button { display: block; max-width: 100%; margin-top: 4px; text-align: start; overflow-wrap: anywhere; }
+
+.officina-request-badge {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 1px 5px;
+  border: 1px solid #ffca8680;
+  border-radius: 99px;
+  background: #2a2019;
+  color: #ffda9b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.officina :is(.officina-desk, .officina-table) > .officina-request-badge {
+  position: absolute;
+  z-index: 1;
+  top: clamp(12px, 3.5cqi, 27px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: none;
+  font-size: clamp(8px, 1.5cqi, 12px);
+  white-space: nowrap;
+}
+.officina-table > .officina-request-badge { margin-top: -.5em; }
+.officina-desk-decisions { display: grid; gap: 5px; border-block: 1px solid var(--office-line); padding-block: 5px; }
+@media (prefers-reduced-motion: no-preference) {
+  .officina-request-badge { animation: officina-request-enter 180ms ease-out both; }
+}
+@keyframes officina-request-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

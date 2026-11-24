@@ -2,7 +2,7 @@ import {
   officinaActorName, officinaOpenItems, officinaQa, type OfficinaActor, type OfficinaProject, type OfficinaRun, type OfficinaRunActivity,
 } from './companion-officina';
 import {officinaDelegatedRoles, officinaResults} from './officina-results';
-import {officinaAskedQuestion, officinaClosureRetry} from './officina-attention';
+import {officinaAskedQuestion, officinaAttentionItems, officinaClosureRetry} from './officina-attention';
 import {officinaImprovementGoal, officinaPendingProposals} from './officina-observer';
 
 export const officinaTrackingLabels = {
@@ -15,6 +15,23 @@ export const officinaTrackingLabels = {
 } as const;
 type TrackingState = keyof typeof officinaTrackingLabels;
 type RoleStatus = {state: TrackingState; task?: string; title?: string; detail?: string; label?: string};
+const inFlightStates = ['sending', 'sent', 'uncertain'];
+
+export function officinaFocusedTask(project: OfficinaProject, selected?: string) {
+  const explicit = project.tasks.find(task => task.id === selected);
+  if (explicit) return explicit;
+  const automated = new Set(project.goals?.filter(goal => goal.improvement).map(goal => goal.task));
+  const userTasks = project.tasks.filter(task => !automated.has(task.id));
+  const tasks = userTasks.length ? userTasks : project.tasks;
+  const inFlight = project.runs.find(run => inFlightStates.includes(run.state) &&
+    tasks.some(task => task.id === run.task && task.status !== 'done'));
+  return tasks.find(task => task.id === inFlight?.task) ?? tasks.filter(task => task.status !== 'done').at(-1) ?? tasks.at(-1);
+}
+
+export function officinaTaskBoard(project: OfficinaProject, task: string): OfficinaProject {
+  return {...project, tasks: project.tasks.filter(item => item.id === task), runs: project.runs.filter(run => run.task === task),
+    events: project.events.filter(event => event.task === task), goals: project.goals?.filter(goal => goal.task === task)};
+}
 
 export function officinaRunTracking(run: OfficinaRun, observed?: OfficinaRunActivity): TrackingState {
   if ((run.state === 'sent' || run.state === 'uncertain' && observed?.state !== 'working') && observed?.run === run.id) {
@@ -38,30 +55,37 @@ export function officinaFollowupTracking(run: OfficinaRun, observed?: OfficinaRu
   return {state, label: state === 'waiting' ? 'Seguimiento en cola' : undefined, detail: run.issue};
 }
 
-export function officinaObserverRun(project?: OfficinaProject) {
+export function officinaObserverRun(project?: OfficinaProject, task?: string) {
   if (!project) return;
+  const reviews = task === undefined ? undefined : new Set(project.reviews?.filter(review => review.scope === task).map(review => review.id));
   const runs = project.runs.filter(run => run.role === 'observer' &&
+    (!reviews || reviews.has(run.followup?.review ?? run.id)) &&
     !(run.followup && run.state === 'completed' && officinaImprovementGoal(project, run.followup.review)));
-  return runs.find(run => ['sending', 'sent', 'uncertain'].includes(run.state)) ?? runs.at(-1);
+  return runs.find(run => inFlightStates.includes(run.state)) ?? runs.at(-1);
 }
 
-export function officinaRoleTracking(project: OfficinaProject | undefined, role: OfficinaActor, observed?: OfficinaRunActivity): RoleStatus {
+export function officinaRoleTracking(project: OfficinaProject | undefined, role: OfficinaActor, observed?: OfficinaRunActivity,
+  taskId?: string): RoleStatus {
   if (role === 'observer') {
-    const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review, project), 0);
-    const last = officinaObserverRun(project);
+    const reviews = project?.reviews?.filter(review => taskId === undefined || review.scope === taskId) ?? [];
+    const pending = reviews.reduce((total, review) => total + officinaPendingProposals(review, project), 0);
+    const last = officinaObserverRun(project, taskId);
     if (last?.followup) return officinaFollowupTracking(last, observed);
     if (last && last.state !== 'completed') return {state: officinaRunTracking(last, observed), detail: last.issue};
     return last || pending ? {state: 'done', label: pending ? `${pending} ${pending === 1 ? 'propuesta pendiente' : 'propuestas pendientes'}` : 'Revisión lista'} :
       {state: 'idle', label: 'Observador'};
   }
   if (!project) return {state: 'idle'};
+  if (taskId !== undefined) project = officinaTaskBoard(project, taskId);
   const runs = project.runs.filter(run => run.role === role && run.state !== 'skipped'), last = runs.at(-1);
   const closed = new Set(project.tasks.filter(task => task.status === 'done').map(task => task.id));
   const status = (state: TrackingState, task?: string, detail?: string): RoleStatus => ({
     state, task, title: project.tasks.find(item => item.id === task)?.title, detail,
   });
-  const inFlight = runs.find(run => ['sending', 'sent', 'uncertain'].includes(run.state));
+  const inFlight = runs.find(run => inFlightStates.includes(run.state));
   if (inFlight) return status(officinaRunTracking(inFlight, observed), inFlight.task, inFlight.issue);
+  const request = officinaAttentionItems(project).find(item => item.kind === 'request' && item.run.role === role);
+  if (request?.kind === 'request') return {...status('information', request.task.id, request.request.text), label: 'Espera tu decisión'};
   const open = officinaOpenItems(project.events).filter(event => event.data.kind === 'blocker' && event.from === role && !closed.has(event.task)).at(-1);
   if (open) return status('blocked', open.task, open.data.text);
   if (last && role === 'coordinator' && officinaClosureRetry(project, last.task)?.id === last.id) {
@@ -94,10 +118,17 @@ export function officinaRoleTracking(project: OfficinaProject | undefined, role:
   const event = project.events.filter(item => item.from === role || 'to' in item.data && item.data.to === role).at(-1);
   const assigned = project.tasks.filter(task => task.owner === role && task.status !== 'done' &&
     !project.goals?.some(goal => goal.task === task.id)).at(-1);
-  const qa = role === 'alm' && project.tasks.length ? officinaQa(project.events, event?.task ?? project.tasks.at(-1)!.id) : undefined;
+  const qa = role === 'alm' && project.tasks.length && (taskId === undefined || event?.from === role) ?
+    officinaQa(project.events, event?.task ?? project.tasks.at(-1)!.id) : undefined;
   const completed = project.tasks.filter(task => task.status === 'done' && task.owner === role).at(-1);
   const task = assigned?.id ?? event?.task ?? completed?.id;
   const delivery = task && officinaResults(project, task, role).at(-1);
-  if (!assigned && delivery) return {...status('done', task, qa), label: delivery.event ? 'Entrega registrada' : 'Resultado no disponible'};
+  if (!assigned && delivery && (taskId === undefined || delivery.event || delivery.run || delivery.message)) {
+    return {...status('done', task, qa), label: delivery.event ? 'Entrega registrada' : 'Resultado no disponible'};
+  }
+  if (taskId !== undefined && !assigned) {
+    const focused = project.tasks[0];
+    return {state: 'idle', label: focused?.status === 'done' ? 'Sin participación' : 'En espera'};
+  }
   return status(assigned ? 'assigned' : 'idle', task, qa ?? event?.data.text);
 }

@@ -18,10 +18,12 @@ import {officinaRoleProfile} from '../shared/officina-instructions';
 import {officinaApprovedImprovement, officinaObservationTasks} from '../shared/officina-observer';
 import {decideOfficinaObservation, officinaFollowupTurn, officinaObserveTurn, queueOfficinaFollowup,
   queueOfficinaImprovement, recordOfficinaIncident} from './companion-officina-observer';
-import {legacyOfficinaContextQuestion, officinaClosureRetry, officinaContextIssue, officinaSendRetry} from '../shared/officina-attention';
+import {legacyOfficinaContextQuestion, officinaClosureRetry, officinaContextIssue, officinaReplyReviewQuestion,
+  officinaSendRetry, officinaWaitingRuns} from '../shared/officina-attention';
 import {browserForTask, getRunBinding, officinaTurn, officinaReply} from './companion-officina-turn';
 import {applyOfficinaCoordination, continueOfficinaGoal, createOfficinaRun, finishOfficinaGoal, goalFor, logOfficinaGoal, officinaImprovementQa,
-  pauseOfficinaGoal, planOfficinaTabReview, plannedOfficinaHandoff, recoverOfficinaHandoff, settleSavedOfficinaGoals} from './companion-officina-workflow';
+  pauseOfficinaGoal, planOfficinaTabReview, recoverOfficinaHandoff, recoverOfficinaPlan, recordOfficinaRequest, resolveOfficinaRequest,
+  restoreOfficinaReviewStep, settleSavedOfficinaGoals, plannedOfficinaHandoff} from './companion-officina-workflow';
 
 const maxDepth = 5;
 const waitLimit = 15 * 60_000;
@@ -512,12 +514,19 @@ export class CompanionOfficina {
         } else createOfficinaRun(project, task.id, 'coordinator');
         project.queueEnabled = true;
       }
+      if (action.type === 'resolve-request') {
+        const origin = project.runs.find(run => run.id === action.run && run.task === task.id);
+        resolveOfficinaRequest(project, task, goal, origin, {action: action.decision, message: action.message});
+      }
       if (action.type === 'edit') {
         if (goal?.phase === 'complete' && action.status !== 'done') throw Error('Este encargo está cerrado. Envía un objetivo nuevo para continuar.');
         Object.assign(task, action.fields, {status: action.status});
         if (goal && task.status === 'done') finishOfficinaGoal(project, task, goal, 'El usuario cerró el encargo desde el tablero.', 'zen');
       }
-      if (action.type === 'assign') this.addRun(project, task, action.role);
+      if (action.type === 'assign') {
+        if (goal?.humanRequest) throw Error('Resuelve la decisión pendiente antes de asignar otro turno a este encargo.');
+        this.addRun(project, task, action.role);
+      }
       if (action.type === 'contribute') this.addEvent(project, task, action.role, action.data, 'user', action.nonce);
       if (goal) continueOfficinaGoal(project, task, goal);
     }
@@ -580,7 +589,7 @@ export class CompanionOfficina {
         throw Error('El contexto del encargo supera el límite del puente de Codex.');
       }
     }
-    project.queueEnabled = true;
+    project.queueEnabled ??= true;
     db.exec('BEGIN');
     try {
       this.write(db, project);
@@ -657,7 +666,9 @@ export class CompanionOfficina {
       throw Error('La tarea se cerró mientras Codex preparaba su respuesta.');
     }
     project.events.push({id, task: task.id, from, at: this.now(), data, source});
-    if ('to' in data && data.act && !duplicate &&
+    const goal = goalFor(project, task.id);
+    const managed = source === 'codex' && goal && !goal.recipient;
+    if ('to' in data && data.act && !duplicate && !managed &&
       !(depth < maxDepth && plannedOfficinaHandoff(project, task.id, id, from, data, source))) {
       if (depth < maxDepth) this.addRun(project, task, data.to, id, depth + 1);
       else project.events.push({id: randomUUID(), task: task.id, from, at: this.now(), source,
@@ -665,7 +676,6 @@ export class CompanionOfficina {
     }
     if (source === 'user' && data.kind === 'decision' && data.replyTo) {
       const blocked = project.runs.find(run => run.id === data.replyTo);
-      const goal = goalFor(project, task.id);
       if (goal && blocked?.event && blocked.step === undefined) {
         const attempts = project.runs.filter(run => run.task === task.id && run.event === blocked.event &&
           run.role === blocked.role).length;
@@ -687,17 +697,20 @@ export class CompanionOfficina {
         return;
       }
       if (!id) return;
-      if (await this.recoverReviewedLimitation(this.readProject(id))) return;
+      if (await this.recoverReviewedReply(this.readProject(id))) return;
       let project = this.requireProject(id);
+      const restored = project.goals?.some(goal => {
+        const task = project.tasks.find(item => item.id === goal.task);
+        return task && recoverOfficinaPlan(project, task, goal);
+      });
+      if (restored) this.write(this.database(), project);
       if (!project.queueEnabled && !this.observerQueue.size && !project.autoImprovements?.enabled) return;
       if (this.recoverHandoffsAndClosure(project)) {
         this.write(this.database(), project);
         project = this.requireProject(id);
       }
-      const blocked = new Set(officinaOpenItems(project.events).filter(item => item.data.kind === 'blocker').map(item => item.task));
-      let run = project.runs.find(item => item.role !== 'observer' && item.state === 'waiting' && this.canDispatch(project, item) &&
-        (item.retryAt === undefined || item.retryAt <= this.now()) &&
-        !blocked.has(item.task) && project.tasks.some(task => task.id === item.task && task.status !== 'done'));
+      let run = officinaWaitingRuns(project).find(item => this.canDispatch(project, item) &&
+        (item.retryAt === undefined || item.retryAt <= this.now()));
       run ??= project.runs.find(item => item.role === 'observer' && item.state === 'waiting' && this.canDispatch(project, item));
       if (!run && project.autoImprovements?.enabled && queueOfficinaImprovement(project, project.autoImprovements.since)) {
         this.write(this.database(), project);
@@ -761,31 +774,58 @@ export class CompanionOfficina {
     finally { this.readingDirect = false; }
   }
 
-  private async recoverReviewedLimitation(project: OfficinaProject) {
+  private async recoverReviewedReply(project: OfficinaProject) {
     const read = this.deps.readTurnReply;
     if (!read) return false;
-    const run = project.runs.filter(item => item.state === 'review' && item.issue === invalidReplyIssue && item.turn &&
-      item.destination && item.role !== 'observer' && item.role !== 'coordinator' &&
-      (this.checkedReviews.get(item.id) ?? 0) <= this.now()).at(-1);
+    const run = project.runs.find(item => item.state === 'review' && item.issue === invalidReplyIssue && item.turn &&
+      item.destination && item.role !== 'observer' && (this.checkedReviews.get(item.id) ?? 0) <= this.now() &&
+      project.tasks.some(task => task.id === item.task && task.status !== 'done') &&
+      project.runs.filter(candidate => candidate.task === item.task).at(-1)?.id === item.id);
     if (!run?.destination || !run.turn) return false;
     this.checkedReviews.set(run.id, this.now() + 30_000);
     const target = targetFor(run.destination);
     if (!await this.deps.verify(run.destination)) return false;
     const reply = await read(target, run.turn);
-    const result = officinaReply(reply, project.id, run);
-    if (!reply || reply.turn !== run.turn || !result || result.role === 'observer' || result.role === 'coordinator' ||
-      result.result.kind !== 'blocker' || this.deps.needsPermission?.(target, run.turn)) return false;
+    const result = officinaReply(reply, project.id, run, !!goalFor(project, run.task)?.improvement);
+    if (!result || result.role === 'observer' || this.deps.needsPermission?.(target, run.turn)) return false;
     const current = this.requireProject(project.id);
     const saved = current.runs.filter(item => item.task === run.task).at(-1);
     const task = current.tasks.find(item => item.id === run.task && item.status !== 'done');
     if (!task || !saved || saved.id !== run.id || saved.state !== 'review' || saved.turn !== run.turn) return false;
-    this.addEvent(current, task, result.role, result.result, 'codex', saved.id, saved.depth);
-    saved.state = 'completed';
-    saved.issue = undefined;
-    const goal = goalFor(current, task.id);
-    if (goal) finishOfficinaGoal(current, task, goal, result.result.text, 'zen', true, result.result.markdown);
+    try {
+      this.acceptReply(current, task, saved, result, run.turn);
+    } catch { return false; }
     this.write(this.database(), current);
     return true;
+  }
+
+  private acceptReply(project: OfficinaProject, task: OfficinaTask, run: OfficinaRun,
+    result: Exclude<NonNullable<ReturnType<typeof officinaReply>>, {role: 'observer'}>, turn?: string) {
+    if (project.events.length >= 1798 || project.runs.length >= 450) throw Error('Tablero lleno.');
+    const goal = goalFor(project, task.id);
+    if (result.result.kind === 'request') {
+      if (!goal || task.status === 'done') throw Error('El objetivo no está disponible.');
+      restoreOfficinaReviewStep(goal, run);
+      recordOfficinaRequest(goal, run, result.result);
+    } else if (result.role === 'coordinator') {
+      if (!goal) throw Error('El objetivo no está disponible.');
+      restoreOfficinaReviewStep(goal, run);
+      run.state = 'completed';
+      if (result.result.kind !== 'question' || !planOfficinaTabReview(project, task, goal)) {
+        applyOfficinaCoordination(project, task, goal, result.result, run.id);
+      }
+    } else {
+      run.state = 'completed';
+      this.addEvent(project, task, result.role, result.result, 'codex', run.id, run.depth);
+      if (goal) restoreOfficinaReviewStep(goal, run);
+      if (result.result.kind === 'blocker') {
+        if (result.result.replyTo) recordOfficinaIncident(project, run, this.now(), result.result.text);
+        if (goal) finishOfficinaGoal(project, task, goal, result.result.text, 'zen', true, result.result.markdown);
+      } else if (goal) continueOfficinaGoal(project, task, goal);
+    }
+    run.state = 'completed';
+    run.turn = turn;
+    run.issue = undefined;
   }
 
   private async provision(project: OfficinaProject, run: OfficinaRun, repair?: {role: OfficinaActor; thread: string}) {
@@ -961,8 +1001,19 @@ export class CompanionOfficina {
     const latest = this.readProject(projectId);
     const run = latest.runs.find(item => item.id === runId);
     if (!run || !inFlight(run) || run.sentAt === undefined) return;
-    const result = officinaReply(reply, projectId, exact?.state === 'finished' ? {...run, turn: exact.turn} : run);
+    const verified = exact?.state === 'finished' && !run.turn ? {...run, turn: exact.turn} : run;
+    const result = officinaReply(reply, projectId, verified, !!goalFor(latest, run.task)?.improvement);
     if (!result) {
+      if (exact?.state === 'interrupted' && (!run.turn || run.turn === exact.turn) &&
+        !this.deps.needsPermission?.(target, exact.turn)) {
+        run.state = 'review';
+        run.turn = exact.turn;
+        run.issue = 'Codex interrumpió este encargo. Revisa su chat para decidir cómo retomarlo.';
+        const goal = goalFor(latest, run.task);
+        if (goal) pauseOfficinaGoal(goal, run.issue);
+        this.write(this.database(), latest);
+        return;
+      }
       if (exact && run.state === 'uncertain') {
         run.state = 'sent';
         run.turn = exact.turn;
@@ -973,9 +1024,9 @@ export class CompanionOfficina {
         run.issue = 'Falta una respuesta verificable de Codex. Decide si esperar o liberar el turno tras revisar el chat.';
         this.write(this.database(), latest);
       }
-      if (this.selected() === projectId) {
-        const turn = exact;
-        if (turn?.state === 'finished' && reply?.turn === turn.turn && reply.at >= run.sentAt &&
+      const turn = exact;
+      if (turn?.state === 'finished' && (!run.turn || run.turn === turn.turn) &&
+          (reply?.turn === turn.turn && reply.at >= run.sentAt || this.now() - turn.at >= 30_000) &&
           !this.deps.needsPermission?.(target, turn.turn)) {
           const saved = this.readProject(projectId);
           const pending = saved.runs.find(item => item.id === runId && inFlight(item));
@@ -988,13 +1039,14 @@ export class CompanionOfficina {
               !saved.runs.some(item => item.task === pending.task && item.closureRetried)) {
               createOfficinaRun(saved, pending.task, 'coordinator', {closureRetried: true});
             } else {
-              if (goal) pauseOfficinaGoal(goal, 'Revisa la respuesta de Codex e indica cómo retomar el objetivo.');
+              if (goal) pauseOfficinaGoal(goal, officinaReplyReviewQuestion);
               recordOfficinaIncident(saved, pending, this.now());
             }
             this.write(this.database(), saved);
           }
           return;
-        }
+      }
+      if (this.selected() === projectId) {
         this.observedTurn = turn ? {project: projectId, run: runId, target, turn} : undefined;
         if (!turn && run.state === 'uncertain') await this.reconcileQueued(latest, run, destination, identity);
       }
@@ -1025,27 +1077,12 @@ export class CompanionOfficina {
     if (!task) return;
     const goal = goalFor(latest, task.id);
     try {
-      if (latest.events.length >= 1798 || latest.runs.length >= 450) throw Error('Tablero lleno.');
-      run.state = 'completed';
-      run.turn = reply?.turn;
-      run.issue = undefined;
-      if (result.role === 'coordinator') {
-        if (!goal) throw Error('El objetivo no está disponible.');
-        if (result.result.kind !== 'question' || !planOfficinaTabReview(latest, task, goal)) {
-          applyOfficinaCoordination(latest, task, goal, result.result, run.id);
-        }
-      } else {
-        this.addEvent(latest, task, result.role, result.result, 'codex', run.id, run.depth);
-        if (result.result.kind === 'blocker') {
-          if (result.result.replyTo) recordOfficinaIncident(latest, run, this.now(), result.result.text);
-          if (goal) finishOfficinaGoal(latest, task, goal, result.result.text, 'zen', true, result.result.markdown);
-        }
-        else if (goal) continueOfficinaGoal(latest, task, goal);
-      }
+      this.acceptReply(latest, task, run, result, reply?.turn);
     } catch {
       run.state = 'review';
+      run.turn = reply?.turn;
       run.issue = 'Codex terminó. Revisa la contribución en el chat y regístrala desde la ficha de la tarea.';
-      if (goal) pauseOfficinaGoal(goal, 'Revisa la respuesta de Codex e indica cómo retomar el objetivo.');
+      if (goal) pauseOfficinaGoal(goal, officinaReplyReviewQuestion);
       recordOfficinaIncident(latest, run, this.now());
     }
     this.write(this.database(), latest);

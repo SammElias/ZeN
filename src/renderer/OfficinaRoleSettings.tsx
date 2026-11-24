@@ -68,7 +68,7 @@ export function OfficinaRoleSettings({project, initialRole, act}: {
     <details>
       <summary>Reglas fijas y formato de las respuestas</summary>
       <p>{officinaRoleInstructions(role)}</p>
-      <p>{officinaTurnProtocol(role)}</p>
+      <p>{officinaTurnProtocol(role, project?.name)}</p>
       <p>{officinaOutputInstructions}</p>
     </details>
   </form>;

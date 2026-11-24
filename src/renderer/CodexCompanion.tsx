@@ -180,6 +180,10 @@ export function CodexCompanion(){
  const [notesRevision,setNotesRevision]=useState(0);
  const focusDestination=useRef(false);
  const activationAttempt=useRef(0);
+ const [openOfficinaDecision,setOpenOfficinaDecision]=useState(false);
+ useEffect(()=>{
+  if(!expanded||page!=='officina')setOpenOfficinaDecision(false);
+ },[expanded,page]);
  const [sectionFocus,setSectionFocus]=useState<(SectionActivation&{section:SectionPage})>();
  const menuOpener=useRef<HTMLElement|null>(null);
  const [themePreview,setThemePreview]=useState<AppearanceState>();
@@ -240,6 +244,7 @@ export function CodexCompanion(){
   }).catch(()=>{focusDestination.current=false;setError('No se pudo abrir la revisión de permisos.');});
  };
  const activateSection=async(section:SectionPage,keyboard:boolean)=>{
+  setOpenOfficinaDecision(section==='officina'&&!expanded&&status.officinaGlance?.kind==='decision');
   const attempt=++activationAttempt.current;
   focusDestination.current=false;
   setSectionFocus(undefined);
@@ -401,7 +406,8 @@ export function CodexCompanion(){
      <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision} simpleMode={status.workspace?.simpleMode===true}/>
     </div>}
     {expanded&&page==='officina'&&(safeNotes
-      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening} approvals={status.approvals}/>
+      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening} approvals={status.approvals}
+        glanceItems={status.officinaGlanceItems} openDecisionOnEntry={openOfficinaDecision}/>
       : <div className="companion-empty"><h2>Officina en pausa</h2><p>Desactiva Pausa o Presentación para abrir el tablero.</p></div>)}
     {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura} simpleMode={simpleMode}/>}
     {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}

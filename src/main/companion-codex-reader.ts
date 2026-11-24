@@ -262,7 +262,8 @@ export class CodexReplyReader {
   return titles;
  }
 
- private async withRollout<T>(target:CompanionTarget, use:(handle:FileHandle,stat:Stats,file:string,checkHeader:()=>Promise<boolean>)=>Promise<T>):Promise<T|undefined>{
+ private async withRollout<T>(target:CompanionTarget, use:(handle:FileHandle,stat:Stats,file:string,checkHeader:()=>Promise<boolean>)=>Promise<T>,
+  empty?:()=>T):Promise<T|undefined>{
  const codexHome = this.codexHome;
  if(!CompanionTargetSchema.safeParse(target).success)return undefined;
  try{
@@ -270,7 +271,9 @@ export class CodexReplyReader {
   const db=new DatabaseSync(database,{readOnly:true});let row:Record<string,unknown>|undefined;
   try{db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=50');row=db.prepare('SELECT rollout_path,cwd,agent_path FROM threads WHERE id=? LIMIT 1').get(target.session);}
   finally{db.close();}
-  if(!row||!matchesTarget(target,target.session,row.cwd)||row.agent_path!==null&&row.agent_path!==''||typeof row.rollout_path!=='string')return undefined;
+  if(!row||!matchesTarget(target,target.session,row.cwd)||row.agent_path!==null&&row.agent_path!=='')return undefined;
+  if(row.rollout_path===null||row.rollout_path==='')return empty?.();
+  if(typeof row.rollout_path!=='string')return undefined;
   const rollout=resolve(stripWindowsPathPrefix(row.rollout_path)),folder=relative(resolve(codexHome),rollout).split(sep)[0];
   if(!['sessions','archived_sessions'].includes(folder)||!basename(rollout).endsWith('-'+target.session+'.jsonl'))return undefined;
   const file=await confinedFile(codexHome,rollout),handle=await open(file,'r');
@@ -289,12 +292,20 @@ export class CodexReplyReader {
  return undefined;
  }
 
- readOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+ async readOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number):Promise<OfficinaCodexTurn|undefined>{
+  return (await this.probeOfficinaTurn(target,identity,since))?.turn;
+ }
+
+ probeOfficinaTurn(target:CompanionTarget,identity:OfficinaRunIdentity,since:number){
   const scope=JSON.stringify([identity.project,identity.task,identity.run,identity.role,since]);
   return this.readOfficinaActivity(target,scope,(handle,size)=>scanOfficinaTurn(handle,size,target,identity,since));
  }
 
- readOfficinaDirectTurn(target:CompanionTarget):Promise<OfficinaCodexTurn|undefined>{
+ async readOfficinaDirectTurn(target:CompanionTarget):Promise<OfficinaCodexTurn|undefined>{
+  return (await this.probeOfficinaDirectTurn(target))?.turn;
+ }
+
+ probeOfficinaDirectTurn(target:CompanionTarget){
   return this.readOfficinaActivity(target,'direct',(handle,size)=>scanOfficinaDirectTurn(handle,size,target));
  }
 
@@ -303,7 +314,7 @@ export class CodexReplyReader {
   return this.withRollout(target,async(handle,stat,file,checkHeader)=>{
    const key=[file,normalizeTargetFolder(target.cwd),scope].join('\0');
    const cached=this.turnCheckpoints.get(key);
-   if(cached&&sameVersion(cached,stat))return cached.turn;
+   if(cached&&sameVersion(cached,stat))return {turn:cached.turn};
    if(!await checkHeader())return undefined;
    const through=await completeLogEnd(handle,stat.size);
    if(through===undefined)return undefined;
@@ -314,8 +325,8 @@ export class CodexReplyReader {
    if(!sameVersion(stat,after)&&!isAppend(stat,after))return undefined;
    if(this.turnCheckpoints.size>=24&&!cached)this.turnCheckpoints.delete(this.turnCheckpoints.keys().next().value!);
    this.turnCheckpoints.set(key,{dev:stat.dev,ino:stat.ino,size:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs,through,turn});
-   return turn;
-  });
+   return {turn};
+  }, scope==='direct'?()=>({turn:undefined}):undefined);
  }
 
  async readOfficinaTurnReply(target:CompanionTarget,turn:string):Promise<CompanionLastReply|undefined>{

@@ -2,8 +2,10 @@ import {randomUUID} from 'node:crypto';
 import {isOfficinaTabReview, officinaActiveTabRequested, officinaGoalBrowser, officinaGoalRequest} from '../shared/officina-browser';
 import {
   officinaActorName, officinaDeliveryQa, officinaOpenItems, type OfficinaActor, type OfficinaCoordinatorResult,
-  type OfficinaContribution, type OfficinaEvent, type OfficinaGoal, type OfficinaGoalMessage, type OfficinaProject, type OfficinaRun, type OfficinaTask,
+  type OfficinaContribution, type OfficinaEvent, type OfficinaGoal, type OfficinaGoalMessage, type OfficinaHumanRequest,
+  type OfficinaProject, type OfficinaRun, type OfficinaTask,
 } from '../shared/companion-officina';
+import {officinaReplyReviewQuestion} from '../shared/officina-attention';
 
 export const goalFor = (project: OfficinaProject, task: string) => project.goals?.find(goal => goal.task === task);
 
@@ -38,6 +40,7 @@ export function finishOfficinaGoal(project: OfficinaProject, task: OfficinaTask,
   goal.phase = 'complete';
   goal.outcome = limited ? 'limited' : undefined;
   goal.question = undefined;
+  goal.humanRequest = undefined;
   task.status = 'done';
   for (const run of project.runs) if (run.task === task.id && run.state === 'waiting') run.state = 'skipped';
   logOfficinaGoal(goal, source, text, markdown, reply);
@@ -82,7 +85,7 @@ export function recoverOfficinaHandoff(project: OfficinaProject, canDispatch: (r
 }
 
 export function continueOfficinaGoal(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal) {
-  if (goal.phase !== 'work' || goal.question || task.status === 'done') return;
+  if (goal.phase !== 'work' || goal.question || goal.humanRequest || task.status === 'done') return;
   const runs = project.runs.filter(run => run.task === task.id);
   if (runs.some(run => ['waiting', 'sending', 'sent', 'uncertain'].includes(run.state))) return;
   if (['review', 'released'].includes(runs.at(-1)?.state ?? '')) {
@@ -123,8 +126,56 @@ export function continueOfficinaGoal(project: OfficinaProject, task: OfficinaTas
   }
 }
 
+export function restoreOfficinaReviewStep(goal: OfficinaGoal, run: OfficinaRun) {
+  if (goal.question !== officinaReplyReviewQuestion) return;
+  if (run.step !== undefined && run.step === goal.cursor && goal.steps[run.step]?.role === run.role) goal.phase = 'work';
+  goal.question = undefined;
+}
+
+export function recoverOfficinaPlan(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal) {
+  if (task.status !== 'active' || goal.phase !== 'verify' || goal.question !== officinaReplyReviewQuestion) return false;
+  const last = project.runs.filter(item => item.task === task.id).at(-1);
+  if (last?.state !== 'completed' || last.step !== goal.cursor || goal.steps[last.step]?.role !== last.role ||
+    !project.events.some(event => event.task === task.id && event.id === last.id && event.from === last.role &&
+      event.source === 'codex' && event.data.kind === 'decision')) return false;
+  restoreOfficinaReviewStep(goal, last);
+  continueOfficinaGoal(project, task, goal);
+  return true;
+}
+
+export function recordOfficinaRequest(goal: OfficinaGoal, run: OfficinaRun, request: OfficinaHumanRequest) {
+  if (goal.humanRequest || goal.question || run.role === 'observer' || goal.improvement) {
+    throw Error('El encargo no admite otra decisión de Officina.');
+  }
+  goal.humanRequest = {...request, run: run.id};
+  logOfficinaGoal(goal, 'codex', request.text, request.markdown, {run: run.id, kind: 'request', role: run.role});
+}
+
+export function resolveOfficinaRequest(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal | undefined,
+  run: OfficinaRun | undefined, answer: NonNullable<OfficinaRun['humanAnswer']>) {
+  if (run?.humanAnswer) {
+    if (answer.action === run.humanAnswer.action && answer.message === run.humanAnswer.message) return;
+    throw Error('La decisión ya se registró.');
+  }
+  const request = goal?.humanRequest;
+  if (!goal || !request || !run || request.run !== run.id || run.state !== 'completed' || task.status === 'done' ||
+    project.runs.filter(item => item.task === task.id).at(-1)?.id !== run.id ||
+    (run.role !== 'coordinator' && (run.step !== goal.cursor || goal.steps[goal.cursor]?.role !== run.role))) {
+    throw Error('Esta decisión ya no está pendiente.');
+  }
+  if ((request.mode === 'question') !== (answer.action === 'respond') || answer.action !== 'approve' && !answer.message) {
+    throw Error('Elige una acción disponible e incluye la respuesta correspondiente.');
+  }
+  run.humanAnswer = answer;
+  goal.humanRequest = undefined;
+  const label = {approve: 'Aprobado', 'request-changes': 'Cambios solicitados', respond: 'Respuesta'}[answer.action];
+  logOfficinaGoal(goal, 'human', `${label} · ${request.text.slice(0, 140)}${answer.message ? `\n\n${answer.message}` : ''}`);
+  if (answer.action === 'approve' && run.role !== 'coordinator') continueOfficinaGoal(project, task, goal);
+  else createOfficinaRun(project, task.id, run.role, {step: run.step, event: run.event, depth: run.depth});
+}
+
 export function applyOfficinaCoordination(project: OfficinaProject, task: OfficinaTask, goal: OfficinaGoal,
-  result: OfficinaCoordinatorResult['result'], run?: string) {
+  result: Exclude<OfficinaCoordinatorResult['result'], OfficinaHumanRequest>, run?: string) {
   if (goal.phase === 'complete' || task.status === 'done') return;
   const source = run ? 'codex' : 'zen';
   const reply = run ? {run, kind: result.kind} : undefined;

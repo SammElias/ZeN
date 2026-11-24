@@ -12,6 +12,7 @@ import {createSmokeWeather} from './companion-smoke-weather';
 import {TranslatorAction} from '../shared/companion-translator';
 import {OfficinaAction} from '../shared/companion-officina';
 import {CompanionOfficina} from './companion-officina';
+import {OfficinaGlanceState,readOfficinaGlance} from './officina-glance';
 import {OfficinaProvisioning} from './companion-officina-provision';
 import {makeOfficinaSmokeTeam} from './companion-officina-smoke';
 import {CompanionTranslator} from './companion-translator';
@@ -219,8 +220,13 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   cap.webContents.on('render-process-gone',vault.lock);
   app.on('before-quit',vault.lock);
   const activityVisible=()=>workspaceVisible()&&isLauncherPageSelected(workspacePage,'codex')&&privateEffectsAllowed();
+  const glanceAllowed=()=>!quitting&&!desktopLocked&&privateEffectsAllowed()&&surfaceVisible();
+  const glanceState=new OfficinaGlanceState();
+  let glance:ReturnType<OfficinaGlanceState['update']>|undefined, glanceBusy=false, glanceGeneration=0;
   const snapshot=(status=hub.status())=>displayStatus({
    ...status,
+   officinaGlance:glanceAllowed()?glance?.badge:undefined,
+   officinaGlanceItems:glanceAllowed()&&workspaceVisible('officina')?glance?.items:undefined,
    oura:privateEffectsAllowed()&&workspaceVisible('metrics')?oura.snapshot():undefined,
    ouraGlance:privateEffectsAllowed()&&!expanded&&surfaceVisible()?oura.glance():undefined,
    ouraHomeSleep:privateEffectsAllowed()&&workspaceVisible('home')?oura.homeSleep():undefined,
@@ -347,6 +353,28 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
    queue:(thread,text,verify)=>withRequest(()=>submitRequest(thread,text,verify)),changed:()=>{calendarRevision++;broadcast();},
   });
   const officinaAllowed=()=>!quitting&&!desktopLocked&&privateEffectsAllowed()&&workspaceVisible('officina')&&!panelTransition.hoverClosing;
+  const verifyOfficinaBinding=(binding:import('../shared/companion-officina').OfficinaDestination)=>
+   binding.thread===target?.session.toLowerCase()?Promise.resolve(false):
+    replyReader.hasDedicatedThread({session:binding.thread,cwd:binding.cwd,title:'Officina'},binding.projectId);
+  const resetOfficinaGlance=()=>{glanceGeneration++;glanceState.reset();glance=undefined;};
+  const refreshOfficinaGlance=async()=>{
+   if(!glanceAllowed()){resetOfficinaGlance();return;}
+   if(glanceBusy)return;
+   glanceBusy=true;
+   const generation=glanceGeneration, disconnected=hub.connection.state==='unavailable';
+   try {
+    const reading=await readOfficinaGlance(join(profile,'officina.sqlite'),replyReader,disconnected,
+      verifyOfficinaBinding,(selected,turn)=>hub.turnNeedsPermission(selected,turn),key=>glanceState.wasWorking(key));
+    if(generation!==glanceGeneration||!glanceAllowed()||disconnected!==(hub.connection.state==='unavailable'))return;
+    const next=glanceState.update(reading,Date.now());
+    if(JSON.stringify(next)!==JSON.stringify(glance)){glance=next;broadcast();}
+   }catch{
+    if(generation!==glanceGeneration||!glanceAllowed())return;
+    const changed=glance?.badge?.kind!=='unknown';
+    resetOfficinaGlance();glance={badge:{kind:'unknown'},items:[]};
+    if(changed)broadcast();
+   }finally{glanceBusy=false;}
+  };
   const connectOfficina=async()=>{
    const rpc=new CodexRpc(30000,{binary:await desktopCodex(),codexHome});
    try{
@@ -366,8 +394,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
      :{title:'Adjuntar archivos al encargo de Officina',properties:['openFile','multiSelections']});
     return selection.canceled?[]:selection.filePaths;
    }),
-   verify:binding=>binding.thread===target?.session.toLowerCase()?Promise.resolve(false):
-    replyReader.hasDedicatedThread({session:binding.thread,cwd:binding.cwd,title:'Officina'},binding.projectId),
+   verify:verifyOfficinaBinding,
    provision:(...args)=>officinaProvisioning.ensure(...args),
    missingThread:(projectId,cwd,thread)=>replyReader.missingOfficinaThread(projectId,cwd,thread),
    verifyProject:(projectId,cwd)=>replyReader.hasOfficinaProject(projectId,cwd),
@@ -410,6 +437,12 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
    ...(officinaSmokeProfile?makeOfficinaSmokeTeam(profile):undefined),
   });
   powerMonitor.on('lock-screen',()=>officina.suspend(true));
+  powerMonitor.on('lock-screen',()=>{resetOfficinaGlance();broadcast();});
+  powerMonitor.on('unlock-screen',()=>void refreshOfficinaGlance());
+  powerMonitor.on('resume',()=>{resetOfficinaGlance();void refreshOfficinaGlance();});
+  powerMonitor.on('suspend',resetOfficinaGlance);
+  cap.on('hide',resetOfficinaGlance);
+  cap.on('minimize',resetOfficinaGlance);
   powerMonitor.on('suspend',()=>officina.suspend(true));
   cap.webContents.on('render-process-gone',()=>officina.suspend(true));
   const smokeOura=smoke?createSmokeOura():undefined;
@@ -1031,7 +1064,17 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   const requireWorkspace=(page?:WorkspacePage)=>{
    if(!workspaceVisible(page))throw Error('Abre la sección correspondiente en ZEN.');
   };
-  handle('officina',OfficinaAction,action=>officina.handle(action));
+  handle('officina',OfficinaAction,async action=>{
+   if(action.type!=='select-activity')return officina.handle(action);
+   if(!officinaAllowed())throw Error('La vista de Officina cambió.');
+   const generation=glanceGeneration;
+   const reading=await readOfficinaGlance(join(profile,'officina.sqlite'),replyReader,hub.connection.state==='unavailable',
+     verifyOfficinaBinding,(selected,turn)=>hub.turnNeedsPermission(selected,turn));
+   if(generation!==glanceGeneration||!officinaAllowed()||![...reading.items.values()].some(item=>
+     item.project===action.project&&item.task===action.task&&item.role===action.role&&item.kind===action.kind))
+    throw Error('La actividad de Officina cambió.');
+   return officina.handle({type:'select',project:action.project});
+  });
   handle('status',none,snapshot);
   handle('dailyHome',DailyHomeAction,action=>{
    requireWorkspace('settings');
@@ -1156,6 +1199,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
    if(lockChanged||!v.collapseOnBlur||v.keepExpanded)cancelAutoCollapse();
    const ouraPolicyChanged=v.paused!==settings.paused||v.presentation!==settings.presentation;
    settings=v;
+   if(ouraPolicyChanged)resetOfficinaGlance();
    setTopmost();
    if(ouraPolicyChanged)oura.policyChanged();
    if(lockChanged){
@@ -1293,6 +1337,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   handle('copy',z.string().max(64000),value=>{if(settings.presentation)throw Error('Desactiva Presentación para copiar detalles.');copyText(value);return true;});
   if(!smoke)try{registerCompanionShortcuts(globalShortcut,settings,reveal,()=>void openCurrent());}catch(e){shortcutIssue=(e as Error).message;hub.error=shortcutIssue;}
   const officinaTicker=setInterval(()=>{if(officinaAllowed())void officina.tick();else officina.suspend();},2000);
+  const officinaGlanceTicker=setInterval(()=>void refreshOfficinaGlance(),1000);
+  app.once('before-quit',()=>clearInterval(officinaGlanceTicker));
   const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearTimeout(priorityTimer);panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);clearInterval(officinaTicker);officina.close();powerMonitor.removeListener('resume',wakeOura);powerMonitor.removeListener('resume',wakeHome);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
   await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
   setCaptionTheme();

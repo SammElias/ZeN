@@ -14,9 +14,19 @@ Los enlaces de informes se prueban con un archivo dentro del proyecto y una URL 
 
 La eliminación de proyectos se comprueba al cancelar y confirmar desde Officina, al recuperar el proyecto seleccionado tras reabrir el tablero y al terminar una comprobación de chat después de eliminar su proyecto. Las pruebas usan datos temporales y un puente simulado.
 
-Las pruebas del lector de Codex comprueban la transición de un turno directo, la exclusión de los turnos iniciados por Officina y la recuperación de una respuesta anterior por su turno exacto. Las pruebas reproducen registros largos de Desarrollador y Tester, escrituras durante la lectura y cierres parciales. La limitación antigua de ALM requiere además la coincidencia de la identidad del encargo.
+El ensayo sintético de la insignia de Officina comprueba el recuento por puesto, la prioridad de decisiones, la desconexión, la caducidad de ✓, la interrupción y la lectura del tablero sin escrituras. El recorrido `node scripts/officina-glance-smoke.mjs` usa un índice y registros sintéticos para comprobar el maletín replegado, ambas orientaciones y los destinos de actividad y decisión. En Equipo, el recorrido comprueba la insignia en el plano y la fila, la confirmación doble con una sola continuación, el historial en Chat global y la resolución de dos solicitudes del mismo puesto.
+
+Las pruebas del lector de Codex comprueban la transición de un turno directo, la exclusión de los turnos iniciados por Officina y la recuperación de una respuesta anterior por su turno exacto. Las pruebas reproducen registros largos de Desarrollador y Tester, escrituras durante la lectura y cierres parciales. La limitación antigua de ALM requiere además la coincidencia de la identidad del encargo. La recuperación de decisiones de Arquitecto con los campos `type` y `kind` prueba un Markdown de 4001 caracteres, el rechazo de una tarea ajena y el registro único al volver a consultar el turno.
+
+Las pruebas de Officina reproducen la reanudación desde una respuesta de Arquitectura en revisión y desde una decisión guardada con el plan detenido. Con tres solicitudes comprueban orden, evidencia aislada por encargo, reinicio con una aprobación pendiente, doble confirmación, rechazo de otra tarea y entrega única al siguiente puesto. También comprueban la pausa y la continuidad tras un turno interrumpido.
 
 El mismo recorrido prueba una delegación de Coordinación al Analista, la apertura de sus dos aportaciones con un clic y la recuperación del resultado al cambiar de proyecto y reiniciar. Comprueba que abrir un resultado conserva el tablero y que seleccionar al Tester envía el turno al chat de ese puesto. Guarda capturas y medidas con tamaños de ventana de 948 × 977 y 1280 × 700. Las pruebas de servicio cubren además la respuesta antigua ausente y la comprobación del chat original.
+
+El recorrido valida que **Ver equipo** abre una fila plegada por puesto, que los informes se pueden ampliar sin generar turnos y que las detecciones automáticas se consultan desde ZEN. Un encargo automático de ZEN queda accesible en su ficha mientras Chat global conserva la conversación del usuario.
+
+Las pruebas comprueban que un encargo nuevo oculta las entregas, los estados y las señales de otros encargos. El recorrido de Electron alterna entre el encargo del Analista y el de Tester, confirma que Chat global y Equipo conservan la misma selección y vuelve a abrir los resultados anteriores. Las solicitudes de otros encargos se resuelven al seleccionar su tarea.
+
+El recorrido del maletín comprueba que el título del encargo cambia con la selección y queda centrado encima del rótulo de Coordinación dentro del plano.
 
 En esas dos resoluciones, el recorrido comprueba que **Chat global** ocupa el panel completo, centra la conversación y mantiene visible el campo de envío. Comprueba la secuencia de autores, el cambio de encargo y la apertura de un mensaje concreto con ratón y teclado. Las tablas y listas completas se muestran al abrir el mensaje y consultar el informe conserva el tablero.
 

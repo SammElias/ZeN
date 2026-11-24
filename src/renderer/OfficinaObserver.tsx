@@ -13,20 +13,10 @@ function scopeName(project: OfficinaProject, review: OfficinaObserverReview) {
   return project.tasks.find(task => task.id === review.scope)?.title ?? 'Actividad reciente del proyecto';
 }
 
-export function OfficinaMonitorNotice({project, review, open}: {
-  project: OfficinaProject; review: OfficinaObserverReview; open: () => void;
+export function OfficinaObserverDesk({project, task, queued, act, open, settings}: {
+  project?: OfficinaProject; task?: string; queued?: string[]; act: Act; open: () => void; settings: () => void;
 }) {
-  return <section className="officina-next" data-kind="monitor" aria-label="Propuesta automática de ZEN" role="status">
-    <strong><Eye aria-hidden="true"/>ZEN detectó una incidencia</strong>
-    <small title={scopeName(project, review)}>{scopeName(project, review)}</small>
-    <button className="officina-next-action" onClick={open}>Ver propuesta <ArrowRight aria-hidden="true"/></button>
-  </section>;
-}
-
-export function OfficinaObserverDesk({project, queued, act, open, settings}: {
-  project?: OfficinaProject; queued?: string[]; act: Act; open: () => void; settings: () => void;
-}) {
-  const [scope, setScope] = useState('');
+  const [scope, setScope] = useState<string>();
   const id = useRef(crypto.randomUUID());
   const last = project?.reviews?.filter(review => !review.source).at(-1);
   const run = project?.runs.find(item => item.id === last?.id && item.role === 'observer');
@@ -34,6 +24,7 @@ export function OfficinaObserverDesk({project, queued, act, open, settings}: {
   const waiting = !!run && queued?.includes(run.id);
   const active = run && ['sending', 'sent', 'uncertain'].includes(run.state);
   const tasks = project ? officinaObservationTasks(project) : [];
+  const selectedTask = scope ?? tasks.find(item => item.id === task)?.id ?? '';
   const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review, project), 0);
   return <section className="officina-desk-activity officina-observer-desk" aria-label="Puesto de ZEN">
     <header>
@@ -51,9 +42,9 @@ export function OfficinaObserverDesk({project, queued, act, open, settings}: {
         onSubmit={async event => {
           event.preventDefault();
           if (await act({type: 'observe-team', project: project.id, id: restart && last ? last.id : id.current,
-            task: restart ? last?.scope : scope || undefined})) id.current = crypto.randomUUID();
+            task: restart ? last?.scope : selectedTask || undefined})) id.current = crypto.randomUUID();
         }}>
-        {!active && !restart && <select aria-label="Ámbito de la revisión de ZEN" value={scope} onChange={event => setScope(event.target.value)}>
+        {!active && !restart && <select aria-label="Ámbito de la revisión de ZEN" value={selectedTask} onChange={event => setScope(event.target.value)}>
           <option value="">Actividad reciente · hasta {officinaObservationTaskLimit} tareas</option>
           {tasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}
         </select>}

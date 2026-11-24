@@ -196,6 +196,13 @@
       "to": "completed"
     },
     {
+      "id": "review-completed",
+      "label": "Recupera el turno exacto",
+      "variant": "default",
+      "from": "review",
+      "to": "completed"
+    },
+    {
       "id": "uncertain-released",
       "label": "Liberación manual",
       "variant": "default",
@@ -209,7 +216,8 @@
       "dot": "amber",
       "items": [
         "Si el envío se vuelve incierto, Officina intenta confirmar la respuesta mediante el historial. Un fallo del despacho suspende la cola.",
-        "Enviado → Sin confirmar: 15 minutos sin respuesta verificable."
+        "Enviado → Sin confirmar: 15 minutos sin respuesta verificable.",
+        "El turno completo puede dejar una decisión humana que pausa solo su objetivo. La respuesta y su continuación quedan guardadas juntas."
       ]
     }
   ]

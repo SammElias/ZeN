@@ -69,59 +69,46 @@ async function taskFromBoard(page) {
   await page.getByRole('heading', {name: 'Permisos de aprobación'}).waitFor();
 }
 
-async function record(page, kind, values) {
-  const dialog = page.getByRole('dialog');
-  const summary = dialog.getByText('Registrar actividad', {exact: true});
-  if (!await summary.evaluate(node => node.parentElement.open)) await summary.click();
-  await dialog.getByLabel('Tipo de registro').selectOption(kind);
-  for (const [name, value] of Object.entries(values)) {
-    const control = dialog.locator(`[name="${name}"]`);
-    if (await control.evaluate(node => node.tagName === 'SELECT')) await control.selectOption(value);
-    else await control.fill(value);
-  }
-  await dialog.getByRole('button', {name: 'Registrar', exact: true}).click();
-  await dialog.getByRole('heading', {name: 'Historial de la tarea'}).waitFor();
-  await page.waitForFunction(() => document.querySelector('dialog select') !== null &&
-    [...document.querySelectorAll('dialog select')].some(select => select.value === 'progress'));
+async function record(page, role, data) {
+  const result = await page.evaluate(async ({role, data}) => {
+    const {value:{project}} = await window.companion.officina({type: 'read'});
+    const task = project.tasks.find(item => item.title === 'Permisos de aprobación').id;
+    return window.companion.officina({type: 'contribute', project: project.id, task, role, data, nonce: crypto.randomUUID()});
+  }, {role, data});
+  assert.equal(result.ok, true, result.error);
+}
+
+async function openAgent(dialog, role) {
+  const summary = dialog.locator('.officina-agent-group > summary').filter({has: dialog.page().getByText(role, {exact: true})});
+  const group = summary.locator('..');
+  if (!await group.evaluate(node => node.open)) await summary.click();
+  return group;
 }
 
 async function checkCoordinationWidth(page, width) {
   const card = page.getByRole('region', {name: 'Actividad de Coordinación'});
-  const {previousTitle, ...geometry} = await card.evaluate(node => {
-    const title = node.querySelector('.officina-desk-task strong');
+  const geometry = await card.evaluate(node => {
+    const selection = document.querySelector('.officina-task-focus select');
+    const title = selection.selectedOptions[0];
     const previousTitle = title.textContent;
-    const select = document.createElement('select');
-    const result = document.createElement('p');
-    select.dataset.widthFixture = result.dataset.widthFixture = 'true';
-    const token = 'segmento_sin_espacios_'.repeat(24);
-    title.textContent = token.slice(0, 120);
-    select.add(new Option('Encargo de Coordinación con un título largo '.repeat(3)));
-    result.className = 'officina-result-preview';
-    result.textContent = 'Resultado de Coordinación · ' + token;
-    node.append(select, result);
-    const card = node.getBoundingClientRect();
-    const fits = element => {
-      const box = element.getBoundingClientRect();
-      return box.width > 0 && box.left >= card.left && box.right <= card.right + 1;
-    };
-    const composer = document.querySelector('.officina-chat-compose').getBoundingClientRect();
-    const resultBox = result.getBoundingClientRect();
-    return {previousTitle, width: innerWidth, overflow: node.scrollWidth - node.clientWidth,
-      controlsFit: [...node.querySelectorAll('button, select'), title].every(fits),
-      wraps: resultBox.height > parseFloat(getComputedStyle(result).fontSize) * 2,
-      composerVisible: composer.height > 0 && composer.bottom <= innerHeight + 1,
-      sidebarVisible: document.querySelector('.officina-side').getBoundingClientRect().width > 0};
+    title.textContent = 'segmento_sin_espacios_'.repeat(24).slice(0, 120);
+    try {
+      const card = node.getBoundingClientRect();
+      const fits = element => {
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.left >= card.left && box.right <= card.right + 1;
+      };
+      const composer = document.querySelector('.officina-chat-compose').getBoundingClientRect();
+      return {width: innerWidth, overflow: node.scrollWidth - node.clientWidth,
+        controlsFit: [...node.querySelectorAll('button')].every(fits),
+        taskSelectorFits: selection.getBoundingClientRect().right <= innerWidth,
+        composerVisible: composer.height > 0 && composer.bottom <= innerHeight + 1,
+        sidebarVisible: document.querySelector('.officina-side').getBoundingClientRect().width > 0};
+    } finally {title.textContent = previousTitle;}
   });
-  try {
-    assert.deepEqual(geometry, {width, overflow: 0, controlsFit: true, wraps: true, composerVisible: true, sidebarVisible: true});
-    if (width === 320) await card.evaluate(node => node.scrollIntoView({block: 'start'}));
-    await page.screenshot({path: resolve(evidence, 'officina-coordinacion-' + width + '.png')});
-  } finally {
-    await card.evaluate((node, title) => {
-      node.querySelectorAll('[data-width-fixture]').forEach(element => element.remove());
-      node.querySelector('.officina-desk-task strong').textContent = title;
-    }, previousTitle);
-  }
+  assert.deepEqual(geometry, {width, overflow: 0, controlsFit: true, taskSelectorFits: true, composerVisible: true, sidebarVisible: true});
+  if (width === 320) await card.evaluate(node => node.scrollIntoView({block: 'start'}));
+  await page.screenshot({path: resolve(evidence, 'officina-coordinacion-' + width + '.png')});
 }
 
 await withZen(async (page, app) => {
@@ -340,9 +327,9 @@ await withZen(async (page, app) => {
   assert.equal(await page.locator('[data-coffee=developer]').count(), 0);
   await analystIdle.waitFor();
   await taskFromBoard(page);
-  await record(page, 'decision', {from: 'architect', text: rule});
-  await record(page, 'handoff', {from: 'developer', to: 'tester', text: 'Flujo preparado',
-    version, link: 'dist/gastos.zip', next: 'Verificar permisos'});
+  await record(page, 'architect', {kind: 'decision', text: rule});
+  await record(page, 'developer', {kind: 'handoff', to: 'tester', act: false, text: 'Flujo preparado',
+    artifact: {version, link: 'dist/gastos.zip', next: 'Verificar permisos'}});
   const receipt = page.locator('.officina-test-screen .officina-screen-arrival');
   await receipt.waitFor({state: 'attached'});
   assert.equal(await page.locator('.officina-screen-arrival').count(), 1);
@@ -365,14 +352,17 @@ await withZen(async (page, app) => {
   assert.equal(arrival.synchronized, true, JSON.stringify(arrival));
   assert.deepEqual(arrival.opacity, [0, .85, 0]);
   let dialog = page.getByRole('dialog');
-  const versionOption = await dialog.locator('.officina-event').filter({hasText: 'dist/gastos.zip'}).getAttribute('class');
-  assert.equal(versionOption, 'officina-event');
+  assert.equal(await dialog.getByText('Registrar actividad', {exact: true}).count(), 0);
+  assert.equal(await dialog.locator('.officina-agent-group[open]').count(), 0);
+  const deliveryGroup = await openAgent(dialog, 'Desarrollador');
+  await deliveryGroup.locator('.officina-event').getByText('dist/gastos.zip', {exact: true}).waitFor();
   const replyTo = await page.evaluate(async () => {
     const result = await window.companion.officina({type: 'read'});
     return result.value.project.events.find(event => event.data.kind === 'handoff').id;
   });
-  await record(page, 'qa', {replyTo, result: 'fail',
+  await record(page, 'tester', {kind: 'qa', replyTo, passed: false,
     text: 'El solicitante todavía puede aprobar.', evidence: 'QA-18'});
+  await dialog.getByText('Detalles del encargo', {exact: true}).click();
   await dialog.getByText('QA bloqueó 1.0.4', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await page.locator('.officina-desk[data-role=alm]').click();
@@ -413,7 +403,7 @@ await withZen(async (page, app) => {
   assert.equal(await page.locator('.officina-desk-activity').getByText('Último traspaso', {exact: false}).count(), 0);
   const options = page.getByRole('combobox', {name: 'Proyecto de Officina'});
   await options.selectOption({label: 'Aprobación de gastos'});
-  await page.getByRole('button', {name: 'Ver tarea', exact: true}).waitFor();
+  await page.locator('.officina-desk-activity').getByRole('button', {name: 'Ver equipo', exact: true}).waitFor();
   await createProject(page, 'Coordinación de prueba');
   await composer.fill('Define la regla de aprobación de un gasto ficticio.');
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
@@ -454,8 +444,8 @@ await withZen(async (page, app) => {
   await composer.fill('Analiza el contenido en Google Chrome con la herramienta de ChatGPT en el navegador.');
   await page.getByRole('button', {name: 'Enviar a coordinación'}).click();
   const browserGoal = page.locator('.officina-goal').filter({hasText: 'Analiza el contenido en Google Chrome'});
-  await browserGoal.getByText('El Analista revisará las pestañas abiertas por medio de la extensión de ChatGPT.').waitFor();
   await browserGoal.locator('.officina-current').getByText('Trabajando en Codex', {exact: true}).waitFor();
+  assert.equal(await browserGoal.getByText('El Analista revisará las pestañas abiertas por medio de la extensión de ChatGPT.').count(), 0);
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
   await page.locator('.officina-signal').waitFor();
   await analystIdle.waitFor({state: 'detached'});
@@ -506,12 +496,14 @@ await withZen(async (page, app) => {
   await page.getByRole('button', {name: 'Enviar a coordinación'}).click();
   const limitedGoal = page.locator('.officina-goal').filter({hasText: 'sin pestañas accesibles'});
   await limitedGoal.getByText('Cerrado con limitaciones', {exact: true}).waitFor();
-  await limitedGoal.locator('[data-conclusion=true]').getByText('El navegador de prueba devolvió una lista vacía de pestañas.', {exact: true}).waitFor();
+  const browserLimitation = limitedGoal.getByText('El navegador de prueba devolvió una lista vacía de pestañas.', {exact: true});
+  await browserLimitation.waitFor();
+  assert.equal(await browserLimitation.count(), 1);
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
   await analyst.getByText('Cerrado con limitaciones', {exact: true}).waitFor();
   assert.equal(await page.getByText(/^(?:Decisión|Aprobación) pendiente$/).count(), 0);
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
-  const chatTasks = page.getByRole('combobox', {name: 'Encargo de Chat global'});
+  const chatTasks = page.getByRole('combobox', {name: 'Encargo de Officina'});
   await chatTasks.selectOption({label: 'Define la regla de aprobación de un gasto ficticio.'});
   await formattedGoal.getByText('Objetivo de prueba completado.', {exact: true}).waitFor();
   assert.equal(await limitedGoal.count(), 0);
@@ -554,7 +546,7 @@ await withZen(async (page, app) => {
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await options.selectOption({label: 'Aprobación de gastos'});
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
-  await page.getByRole('button', {name: 'Ver tarea', exact: true}).waitFor();
+  await page.locator('.officina-desk-activity').getByRole('button', {name: 'Ver equipo', exact: true}).waitFor();
   assert.equal(await receipt.count(), 0);
 
   const reviewRequest = 'Analiza el proyecto y dime qué opinas.';
@@ -580,9 +572,15 @@ await withZen(async (page, app) => {
   await dialog.getByRole('heading', {name: 'Opinión del Analista'}).waitFor();
   await dialog.getByText('El siguiente paso es medir la cobertura del puente.', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
-  await resultFor('Coordinación').click();
-  await dialog.getByText('Conclusión independiente de Coordinación.', {exact: true}).waitFor();
-  assert.equal(await dialog.getByText('El Analista funcional revisará el proyecto de prueba.', {exact: true}).count(), 0);
+  await team.getByRole('button', {name: 'Ver equipo', exact: true}).click();
+  const summary = dialog.getByRole('region', {name: 'Equipo del encargo'});
+  assert.deepEqual(await summary.locator('.officina-agent-summary strong').allTextContents(), ['Coordinación', 'Analista funcional']);
+  assert.equal(await summary.locator('.officina-agent-group[open]').count(), 0);
+  await dialog.screenshot({path: resolve(evidence, 'officina-resumen-equipo.png')});
+  const coordinationGroup = await openAgent(dialog, 'Coordinación');
+  assert.equal(await coordinationGroup.locator('.officina-result-fold:not([open])').count(), 2);
+  const analystGroup = await openAgent(dialog, 'Analista funcional');
+  await analystGroup.getByRole('heading', {name: 'Opinión del Analista'}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await options.selectOption({label: 'Inventario'});
   await page.locator('.officina-desk-activity').getByText('Sin encargos para este puesto.').waitFor();
@@ -713,7 +711,12 @@ await withZen(async (page, app) => {
   assert.equal(await composer.inputValue(), 'Comprueba el destinatario del encargo.');
   await page.getByRole('button', {name: 'Enviar a QA de aplicaciones', exact: true}).click();
   const direct = page.locator('.officina-goal').filter({hasText: 'Comprueba el destinatario del encargo.'});
-  await direct.getByText('Resultado registrado por QA de aplicaciones.', {exact: true}).waitFor();
+  await direct.waitFor();
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  await analyst.getByText(/^(En espera|Sin participación)$/).waitFor();
+  assert.equal(await resultFor('Analista funcional').count(), 0);
+  await page.getByRole('button', {name: 'Chat global', exact: true}).click();
+  await direct.getByText('Objetivo completado', {exact: true}).waitFor();
   const sent = await readBoard();
   const directGoal = sent.goals.find(goal => goal.task !== reviewTask);
   assert.equal(sent.id, before.id);
@@ -730,6 +733,15 @@ await withZen(async (page, app) => {
   await dialog.waitFor({state: 'hidden'});
   assert.ok(await resultOrigin.evaluate(node => node === document.activeElement));
   assert.deepEqual(sent.profiles.tester, {name: 'QA de aplicaciones', prompt: customPrompt});
+  await chatTasks.selectOption(reviewTask);
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  await analyst.getByText('Análisis listo', {exact: true}).waitFor();
+  assert.equal(await resultFor('QA de aplicaciones').count(), 0);
+  await page.getByRole('button', {name: 'Chat global', exact: true}).click();
+  assert.equal(await chatTasks.inputValue(), reviewTask);
+  await page.locator('.officina-goal').getByText(reviewRequest, {exact: true}).waitFor();
+  await chatTasks.selectOption(directGoal.task);
+  await direct.waitFor();
 
   const pasted = '# Diagnóstico detallado\n\n' + 'Conserva los contratos y el comportamiento esperado.\n'.repeat(34);
   await composer.evaluate((input, value) => {
@@ -749,7 +761,7 @@ await withZen(async (page, app) => {
   await page.locator('.officina').screenshot({path: resolve(evidence, 'officina-texto-pegado.png')});
   await page.getByRole('button', {name: 'Enviar a QA de aplicaciones', exact: true}).click();
   const pastedGoal = page.locator('.officina-goal').filter({hasText: 'Diagnóstico detallado'});
-  await pastedGoal.getByText('Resultado registrado por QA de aplicaciones.', {exact: true}).waitFor();
+  await pastedGoal.getByText('Objetivo completado', {exact: true}).waitFor();
   const pasteHistory = pastedGoal.locator('.officina-paste-history');
   await pasteHistory.locator('summary').click();
   assert.equal(await pasteHistory.locator('pre').textContent(), edited);
@@ -853,17 +865,19 @@ await withZen(async (page) => {
   const selector = page.getByRole('combobox', {name: 'Proyecto de Officina'});
   await selector.getByRole('option', {name: 'Aprobación de gastos'}).waitFor({state: 'attached'});
   assert.equal(await selector.locator('option:checked').textContent(), 'Aprobación de gastos');
-  await page.locator('.officina-desk-activity').getByRole('button', {name: 'Ver tarea', exact: true}).click();
+  await page.locator('.officina-desk-activity').getByRole('button', {name: 'Ver equipo', exact: true}).click();
   const dialog = page.getByRole('dialog');
+  await dialog.getByText('Detalles del encargo', {exact: true}).click();
   await dialog.getByText('QA bloqueó 1.0.4', {exact: true}).waitFor();
-  await dialog.getByText('QA-18', {exact: false}).waitFor();
+  const testerGroup = await openAgent(dialog, 'Tester');
+  await testerGroup.getByText('QA-18', {exact: false}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await selector.selectOption({label: 'Inventario'});
   await page.locator('.officina-desk-activity').getByText('Sin encargos para este puesto.').waitFor();
   assert.equal(await page.locator('.officina-desk-activity').getByText('Último traspaso', {exact: false}).count(), 0);
   await selector.selectOption({label: 'Coordinación de prueba'});
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
-  await page.getByRole('combobox', {name: 'Encargo de Chat global'}).selectOption({label: 'Define la regla de aprobación de un gasto ficticio.'});
+  await page.getByRole('combobox', {name: 'Encargo de Officina'}).selectOption({label: 'Define la regla de aprobación de un gasto ficticio.'});
   await page.getByText('Objetivo de prueba completado.', {exact: true}).last().waitFor();
   await selector.selectOption({label: 'Proyecto sintético'});
   await page.getByText('Carpeta de trabajo · Proyecto sintético').waitFor();
@@ -874,6 +888,8 @@ await withZen(async (page) => {
   await page.getByRole('button', {name: /Ver revisiones|Ver propuestas/}).click();
   await dialog.getByText('Prompt aplicado', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
+  assert.equal(await page.locator('.officina-team-list').getByRole('button', {name: 'Ver resultado de Analista funcional'}).count(), 0);
+  await page.getByRole('combobox', {name: 'Encargo de Officina'}).selectOption({label: 'Analiza el proyecto y dime qué opinas.'});
   await page.locator('.officina-team-list').getByRole('button', {name: 'Ver resultado de Analista funcional'}).click();
   await dialog.getByRole('heading', {name: 'Opinión del Analista'}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
@@ -894,6 +910,7 @@ await withZen(async (page) => {
   await page.locator('.officina-chat-toolbar .officina-next').getByText('Cierre de Coordinación pendiente', {exact: true}).waitFor();
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
   await closureCard.getByRole('button', {name: 'Ver informes'}).click();
+  await dialog.getByText('Detalles del encargo', {exact: true}).click();
   await dialog.getByText('QA validó v2', {exact: true}).waitFor();
   assert.equal(await dialog.locator('textarea[name=answer]').count(), 0);
   await dialog.getByRole('button', {name: 'Reintentar cierre'}).click();
@@ -905,13 +922,16 @@ await withZen(async (page) => {
   await page.getByRole('combobox', {name: 'Destinatario del encargo'}).selectOption('developer');
   await page.getByRole('textbox', {name: 'Objetivo'}).fill('Verifica el traspaso de laboratorio.');
   await page.getByRole('button', {name: 'Enviar a Desarrollador'}).click();
-  const notice = page.locator('.officina-chat-toolbar .officina-next[data-kind=monitor]');
-  await notice.getByText('ZEN detectó una incidencia').waitFor();
   await page.locator('.officina-goal').getByText('Cerrado con limitaciones', {exact: true}).waitFor();
+  assert.equal(await page.getByText('ZEN detectó una incidencia', {exact: true}).count(), 0);
+  assert.ok(!(await page.locator('.officina-goal .officina-chat-author strong').allTextContents()).includes('Officina'));
   const board = await page.evaluate(async () => (await window.companion.officina({type: 'read'})).value.project);
   assert.deepEqual(board.runs.map(run => [run.role, run.state]), [['developer', 'completed'], ['tester', 'completed']]);
   assert.equal(board.team.threads.observer, undefined);
-  await notice.getByRole('button', {name: 'Ver propuesta'}).click();
+  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
+  const zenMember = page.locator('.officina-team-member').filter({has: page.locator('[data-role=observer]')});
+  await zenMember.locator('[data-role=observer]').click();
+  await page.getByRole('button', {name: 'Ver propuestas (1)'}).click();
   await dialog.getByRole('heading', {name: 'Preparar una comprobación independiente de la entrega'}).waitFor();
   await dialog.getByText(/La interacción quedó pendiente/).waitFor();
   await dialog.getByRole('button', {name: 'Abrir turno en Codex'}).waitFor();
@@ -919,9 +939,6 @@ await withZen(async (page) => {
   await dialog.getByText('Recomendación aprobada', {exact: true}).waitFor();
   await dialog.getByText('ZEN · Trabajando en Codex', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
-  await notice.waitFor({state: 'detached'});
-  await page.getByRole('button', {name: 'Equipo', exact: true}).click();
-  const zenMember = page.locator('.officina-team-member').filter({has: page.locator('[data-role=observer]')});
   await zenMember.getByText('Seguimiento listo', {exact: true}).waitFor();
   assert.equal(await page.getByText('Seguimiento listo', {exact: true}).count(), 1);
   await zenMember.getByRole('button', {name: 'Ver seguimiento'}).click();
@@ -929,11 +946,11 @@ await withZen(async (page) => {
   await dialog.getByRole('button', {name: 'Cerrar ficha'}).click();
   await zenMember.locator('[data-role=observer]').click();
   await page.getByRole('checkbox', {name: 'Mejoras automáticas', exact: false}).check();
-  const improvement = page.getByRole('region', {name: 'Mejora automática de ZEN'});
-  await improvement.getByRole('button', {name: 'Cerrar aviso de mejora'}).click();
-  await improvement.waitFor({state: 'detached'});
+  await page.waitForFunction(async () => (await window.companion.officina({type: 'read'})).value.project.goals.some(goal => goal.improvement));
+  assert.equal(await page.getByRole('region', {name: 'Mejora automática de ZEN'}).count(), 0);
   await page.getByRole('button', {name: 'Chat global', exact: true}).click();
-  assert.equal(await improvement.count(), 0);
+  assert.equal(await page.getByRole('region', {name: 'Mejora automática de ZEN'}).count(), 0);
+  await page.locator('.officina-goal').getByText('Verifica el traspaso de laboratorio.', {exact: true}).waitFor();
 
   const removable = 'Proyecto para eliminar';
   await createProject(page, removable);

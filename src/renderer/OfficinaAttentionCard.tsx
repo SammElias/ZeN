@@ -16,6 +16,7 @@ export function OfficinaAttentionCard({item, project, act, approvals, openTask}:
   const completedReply = item.kind === 'dispatch' && item.run.state === 'review' && item.run.turn && item.run.destination;
   const title = item.kind === 'permission' ? 'Tu autorización es necesaria' :
     item.kind === 'closure' ? 'Cierre de Coordinación pendiente' :
+      item.kind === 'request' ? `${officinaActorName(item.run.role, project)} espera tu decisión` :
       item.kind === 'question' ? 'Coordinación necesita una respuesta' : completedReply ? 'Revisar respuesta' : 'Revisar envío';
   const Icon = item.kind === 'permission' ? ShieldCheck : item.kind === 'closure' ? RotateCw : AlertCircle;
   return <section className="officina-next" data-kind={item.kind} aria-label={title} role="status">
@@ -43,6 +44,12 @@ export function OfficinaAttentionCard({item, project, act, approvals, openTask}:
     {item.kind === 'question' && <>
       {openTask && <p className="officina-question-preview">{item.question}</p>}
       {openTask && <button className="officina-next-action" onClick={() => openTask(task.id)}>Responder <ArrowRight aria-hidden="true"/></button>}
+    </>}
+    {item.kind === 'request' && openTask && <>
+      <p className="officina-question-preview">{item.request.text}</p>
+      <button className="officina-next-action" onClick={() => openTask(task.id)}>
+        {item.request.mode === 'question' ? 'Responder' : 'Ver decisión'} <ArrowRight aria-hidden="true"/>
+      </button>
     </>}
     {item.kind === 'dispatch' && <>
       <p>{item.run.issue}</p>

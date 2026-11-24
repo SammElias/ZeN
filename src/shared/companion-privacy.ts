@@ -11,6 +11,8 @@ export function displayStatus(raw:CompanionStatus,revision:number,visible:boolea
   delete value.homeBrief;
  }
  if(!privateView||value.workspace?.expanded)delete value.ouraGlance;
+ if(!privateView)delete value.officinaGlance;
+ if(!privateView||!value.workspace?.expanded||value.workspace.page!=='officina')delete value.officinaGlanceItems;
  const showActivity=visible&&value.workspace?.expanded&&isLauncherPageSelected(value.workspace.page,'codex')&&!value.settings.presentation&&!value.settings.paused;
  if(!showActivity)delete value.activitySessions;
  for(const approval of value.approvals){

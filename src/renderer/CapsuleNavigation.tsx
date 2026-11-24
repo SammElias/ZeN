@@ -40,6 +40,14 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
   const nav=useRef<HTMLElement>(null);
   const marker=useRef<HTMLSpanElement>(null);
   const [dragged, setDragged] = useState<LauncherPage>();
+  const glanceBadge=useRef<HTMLElement>(null), lastGlancePulse=useRef(0);
+  const glancePulse=status.officinaGlance?.pulse;
+  useLayoutEffect(()=>{
+    if(glancePulse===undefined||glancePulse===lastGlancePulse.current)return;
+    lastGlancePulse.current=glancePulse;
+    if(compact&&status.settings.motion&&!matchMedia('(prefers-reduced-motion: reduce)').matches)
+      glanceBadge.current?.animate([{transform:'scale(1)'},{transform:'scale(1.18)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});
+  },[compact,glancePulse,status.settings.motion]);
   const expanded = status.workspace?.expanded === true;
   const page = status.workspace?.page ?? 'home';
   const order = launcherOrder(status);
@@ -117,11 +125,16 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
       const active = activeSection === value;
       const recent = !expanded && status.workspace?.recentSection === value;
       const tooltip = 'Abrir ' + label;
+      const officina=compact&&!expanded&&value==='officina'?status.officinaGlance:undefined;
+      const officinaDescription=officina?.kind==='working'?
+        (officina.count===1?'un agente trabajando':`${officina.count} agentes trabajando`):
+        officina?.kind==='decision'?'decisión pendiente':officina?.kind==='finished'?'actividad terminada':
+        officina?.kind==='unknown'?'estado desconocido':undefined;
       const glance=compact&&!expanded&&value==='metrics'?status.ouraGlance:undefined;
       const measured=glance?glanceDate.format(new Date(glance.day+'T12:00:00Z')):undefined;
       const metric=glance?`Sueño · ${ouraDuration(glance.seconds)} · ${measured}`:undefined;
       return <button key={value} type="button" data-page={value} data-section={value} data-hover-app={compact?value:undefined} data-recent={recent || undefined}
-        aria-label={name} aria-description={metric??(value==='home'&&homeNotices?homeNotices:recent?'Última sección usada':undefined)} aria-expanded={active} disabled={!ready}
+        aria-label={officinaDescription?`${name}, ${officinaDescription}`:name} aria-description={metric??(value==='home'&&homeNotices?homeNotices:recent?'Última sección usada':undefined)} aria-expanded={active} disabled={!ready}
         aria-controls="capsule-content"
         title={value==='home'&&homeNotices?`${tooltip} · ${homeNotices}`:metric??tooltip}
         aria-current={active ? 'page' : undefined} data-dragging={dragged === value}
@@ -163,6 +176,9 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
           : glance?<b className="oura-glance" aria-hidden="true"><small>{glance.current?'Sueño':measured}</small>{ouraDuration(glance.seconds,true)}</b>
           : <CompanionIcon name={settings?'settings':value==='spotify'?'sound':value==='notes'?'notebook':value==='calendar'?'calendar':value==='officina'?'office':'metrics'}/>}
         <span>{label}</span>
+        {officina&&<b ref={glanceBadge} className="officina-glance-badge" data-kind={officina.kind} aria-hidden="true">
+          {officina.kind==='working'?officina.count:officina.kind==='decision'?'!':officina.kind==='finished'?'✓':'?'}
+        </b>}
         {value==='home'&&approvals+unread>0&&<b className={approvals?'integration-badge permission-badge':'integration-badge'} aria-hidden="true">{approvals+unread>99?'99+':approvals+unread}</b>}
       </button>;
     })}

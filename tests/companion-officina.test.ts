@@ -7,11 +7,12 @@ import {expect, it, vi} from 'vitest';
 import {CompanionOfficina} from '../src/main/companion-officina';
 import {OfficinaAction, OfficinaActor, officinaActorName, officinaOpenItems, officinaPasteLimit, officinaQa,
   type OfficinaActor as Actor, type OfficinaContribution, type OfficinaCoordinatorResult, type OfficinaDestination,
-  type OfficinaObserverResult, type OfficinaRole, type OfficinaRunIdentity, type OfficinaTeam} from '../src/shared/companion-officina';
+  type OfficinaObserverResult, type OfficinaProject, type OfficinaRole, type OfficinaRunIdentity, type OfficinaTeam} from '../src/shared/companion-officina';
 import type {CompanionLastReply} from '../src/shared/codex-companion';
 import {isOfficinaTabReview, officinaBrowserFor} from '../src/shared/officina-browser';
-import {officinaRoleTracking} from '../src/shared/officina-tracking';
-import {legacyOfficinaContextQuestion, officinaAttention, officinaContextIssue} from '../src/shared/officina-attention';
+import {officinaFocusedTask, officinaRoleTracking, officinaTaskBoard} from '../src/shared/officina-tracking';
+import {legacyOfficinaContextQuestion, officinaAttention, officinaContextIssue, officinaReplyReviewQuestion,
+  officinaWaitingRuns} from '../src/shared/officina-attention';
 import {MAX_CODEX_REQUEST} from '../src/shared/companion-request';
 import {officinaDelegatedRoles, officinaResults} from '../src/shared/officina-results';
 import {officinaOutputInstructions, officinaRoleProfile} from '../src/shared/officina-instructions';
@@ -23,6 +24,35 @@ import {officinaReply} from '../src/main/companion-officina-turn';
 const rule = 'Nadie puede aprobar su propio gasto.';
 const fields = {title: 'Permisos de aprobación', objective: 'Bloquear autoaprobaciones', criteria: rule, owner: 'architect' as const};
 const browserRequest = 'Analizar el contenido que tenemos en google chrome usa la heramienta de chat gpt en el navegador para averiguar el contenido';
+
+it('projects each role on the focused task and keeps a previous delivery in its own task', () => {
+  const previous = randomUUID(), current = randomUUID(), automation = randomUUID();
+  const review = randomUUID(), analyst = randomUUID(), coordinator = randomUUID(), tester = randomUUID();
+  const project: OfficinaProject = {id: randomUUID(), name: 'Oficina de prueba',
+    tasks: [{...fields, id: previous, status: 'done'}, {...fields, id: current, title: 'Revisa el flujo', status: 'active'},
+      {...fields, id: automation, status: 'active'}],
+    runs: [{id: analyst, task: previous, role: 'analyst', state: 'completed', turn: 'analyst', depth: 0},
+      {id: coordinator, task: current, role: 'coordinator', state: 'sent', depth: 0},
+      {id: tester, task: automation, role: 'tester', state: 'sent', depth: 0}],
+    events: [{id: analyst, task: previous, from: 'analyst', source: 'codex', at: 1000,
+      data: {kind: 'decision', text: 'Informe anterior'}}],
+    reviews: [{id: review, scope: previous, at: 1000, source: 'monitor', report: {kind: 'observation', text: 'Revisión anterior',
+      proposals: [{kind: 'process', title: 'Mejora', evidence: 'Caso de prueba', validation: 'Revisión', recommendation: 'Comparar casos'}]}}],
+    goals: [{task: current, request: 'Revisa el flujo', phase: 'work', history: [], round: 1, cursor: 0,
+      steps: [{role: 'architect', instruction: 'Analiza la estructura'}, {role: 'tester', instruction: 'Contrasta el resultado'}]},
+    {task: automation, improvement: randomUUID(), request: 'Incidencia automática', phase: 'plan', history: [], round: 0, cursor: 0, steps: []}]};
+
+  expect(officinaFocusedTask(project)?.id).toBe(current);
+  expect(officinaFocusedTask(project, previous)?.id).toBe(previous);
+  expect(officinaTaskBoard(project, current).events).toEqual([]);
+  expect(officinaRoleTracking(project, 'coordinator', {run: coordinator, state: 'working', at: 1100}, current)).toMatchObject({state: 'working', task: current});
+  expect(officinaRoleTracking(project, 'analyst', {run: analyst, state: 'working', at: 1100}, current)).toEqual({state: 'idle', label: 'En espera'});
+  expect(officinaRoleTracking(project, 'tester', {run: tester, state: 'working', at: 1100}, current)).toMatchObject({state: 'scheduled', task: current});
+  expect(officinaRoleTracking(project, 'observer', undefined, current)).toMatchObject({state: 'idle'});
+  expect(officinaRoleTracking(project, 'analyst', undefined, previous)).toMatchObject({state: 'done', task: previous, detail: 'Informe anterior'});
+  expect(officinaRoleTracking(project, 'observer', undefined, previous)).toMatchObject({label: '1 propuesta pendiente'});
+  expect(officinaRoleTracking(project, 'developer', undefined, previous)).toEqual({state: 'idle', label: 'Sin participación'});
+});
 
 it('recovers the legacy ALM limitation only for the verified turn', () => {
   const project = randomUUID(), task = randomUUID(), id = randomUUID();
@@ -60,7 +90,8 @@ function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>,
   const connection = {allowed: () => allowed, now: () => now, verify, queue, wakeQueued, provision, pickContext, missingThread, openChat,
     openReferenceUrl, revealReference, read: async () => reply,
     readTurn: async () => observed, needsPermission: () => permission};
-  const newSession = () => new CompanionOfficina(path, connection);
+  const newSession = (exactReplies = false) => new CompanionOfficina(path, {...connection,
+    readTurnReply: exactReplies ? async (_target, turn) => reply?.turn === turn ? reply : undefined : undefined});
   const binding = {thread: randomUUID(), cwd: 'C:\\fixtures\\expenses', environment: 'UAT de prueba'};
   return {newSession, queue, wakeQueued, binding, verify, threads, provision, path, openChat, openReferenceUrl, revealReference,
     advance(ms: number) {now += ms;},
@@ -72,6 +103,166 @@ function fixture(pickContext?: (kind: 'folder' | 'file') => Promise<string[]>,
     return reply;
   }, allow: (value: boolean) => {allowed = value;}};
 }
+
+it.each(['type', 'kind'])('records the reviewed architect decision with %s only under its original task and turn', async discriminant => {
+  const f = fixture(), app = f.newSession(true), task = randomUUID();
+  try {
+    const view = await app.handle({type: 'chat', name: 'Decisión de prueba', id: task, role: 'architect', message: 'Diseña el indicador.'});
+    const read = async () => (await app.handle({type: 'read'})).project!;
+    const run = await vi.waitFor(async () => {
+      await app.tick();
+      const current = (await read()).runs[0];
+      expect(current.state).toBe('sent');
+      return current;
+    });
+    const incompatible = f.applyReply({kind: 'decision', text: 'Decisión de prueba.'}, {extra: true});
+    f.observe({turn: incompatible.turn!, state: 'finished', at: incompatible.at});
+    await app.tick();
+    expect((await read()).runs[0].state).toBe('review');
+    const reply = f.applyReply({kind: 'decision', text: 'Diseño comprobado.'});
+    reply.turn = incompatible.turn;
+    const legacy = (taskId: string) => `<zen_officina>${JSON.stringify({
+      project: view.project!.id, task: taskId, run: run.id, role: 'architect',
+      result: {[discriminant]: 'decision', text: 'Diseño comprobado.', markdown: 'a'.repeat(4001)},
+    })}</zen_officina>`;
+    reply.text = legacy(randomUUID());
+    await app.tick();
+    expect((await read()).events).toHaveLength(0);
+    f.advance(30_001);
+    reply.text = legacy(task);
+    expect(officinaReply({...reply, turn: 'otro'}, view.project!.id, {...run, turn: incompatible.turn})).toBeUndefined();
+    await app.tick();
+    const recovered = await read();
+    expect(recovered.runs[0]).toMatchObject({id: run.id, state: 'completed', turn: incompatible.turn});
+    expect(recovered.events).toMatchObject([{id: run.id, task, from: 'architect', data: {
+      kind: 'decision', text: 'Diseño comprobado.', markdown: expect.stringContaining('Informe abreviado'),
+    }}]);
+    expect(recovered.events[0].data.markdown!.length).toBeLessThanOrEqual(4000);
+    await app.tick();
+    expect((await read()).events).toHaveLength(1);
+    expect(f.queue).toHaveBeenCalledTimes(1);
+  } finally {app.close();}
+});
+
+it.each([false, true])('resumes a coordinated plan from Architecture exactly once after recovery (already saved: %s)', async alreadySaved => {
+  const f = fixture(), task = randomUUID();
+  let app = f.newSession(true);
+  const read = async () => (await app.handle({type: 'read'})).project!;
+  const sent = (role: Actor, count: number) => vi.waitFor(async () => {
+    await app.tick();
+    expect(f.queue).toHaveBeenCalledTimes(count);
+    expect((await read()).runs.at(-1)).toMatchObject({role, state: 'sent'});
+  });
+  try {
+    await app.handle({type: 'chat', name: 'Proyecto recuperado', id: task, message: 'Diseña y aplica la mejora.'});
+    await sent('coordinator', 1);
+    f.applyReply({kind: 'plan', text: 'Diseño y desarrollo.', steps: [{role: 'architect', instruction: 'Diseña.'},
+      {role: 'developer', instruction: 'Aplica el diseño.'}]});
+    await app.tick();
+    await sent('architect', 2);
+    const reply = f.applyReply({kind: 'decision', text: 'Diseño recuperado.'}, {extra: true});
+    f.observe({turn: reply.turn!, state: 'finished', at: reply.at});
+    await app.tick();
+    const saved = await read(), architecture = saved.runs.at(-1)!;
+    expect(saved.goals?.[0]).toMatchObject({phase: 'verify', cursor: 0, question: officinaReplyReviewQuestion});
+    expect(architecture.state).toBe('review');
+    const {extra, ...payload} = JSON.parse(reply.text.slice(14, -15));
+    expect(extra).toBe(true);
+    reply.text = `<zen_officina>${JSON.stringify(payload)}</zen_officina>`;
+    app.close();
+    if (alreadySaved) {
+      architecture.state = 'completed';
+      delete architecture.issue;
+      saved.events.push({id: architecture.id, task, from: 'architect', at: reply.at, source: 'codex', data: payload.result});
+      const db = new DatabaseSync(f.path);
+      db.prepare('UPDATE officina_projects SET body=? WHERE id=?').run(JSON.stringify(saved), saved.id);
+      db.close();
+    }
+    app = f.newSession(true);
+    await read();
+    await sent('developer', 3);
+    expect((await read()).goals?.[0]).toMatchObject({phase: 'work', cursor: 1});
+    expect((await read()).goals?.[0].question).toBeUndefined();
+    expect((await read()).events.filter(event => event.id === architecture.id)).toHaveLength(1);
+    expect((await read()).runs.filter(run => run.role === 'developer')).toHaveLength(1);
+  } finally {app.close();}
+});
+
+it('handles a decision once after restart while other requests keep their order and task evidence', async () => {
+  const f = fixture(), first = randomUUID(), second = randomUUID(), third = randomUUID();
+  let app = f.newSession(true);
+  const read = async () => (await app.handle({type: 'read'})).project!;
+  const sent = (task: string, role: Actor, count: number) => vi.waitFor(async () => {
+    await app.tick();
+    expect(f.queue).toHaveBeenCalledTimes(count);
+    expect((await read()).runs.find(run => run.task === task && run.state === 'sent')).toMatchObject({role});
+  });
+  const submit = (id: string, message: string, project?: string) => app.handle({type: 'chat', name: 'Decisiones de prueba', id, message, project});
+  try {
+    const {project: initial} = await submit(first, 'Prepara una propuesta.');
+    const project = initial!.id;
+    await sent(first, 'coordinator', 1);
+    f.applyReply({kind: 'plan', text: 'Plan acordado.', steps: [{role: 'architect', instruction: 'Propón un diseño.'},
+      {role: 'developer', instruction: 'Aplica el diseño aprobado.'}]});
+    await app.tick();
+    await sent(first, 'architect', 2);
+    await submit(second, 'Segundo objetivo independiente.', project);
+    await submit(third, 'Tercer objetivo independiente.', project);
+    expect(officinaWaitingRuns(await read()).map(run => run.task)).toEqual([second, third]);
+    f.applyReply({kind: 'request', mode: 'approval', text: 'Aprueba la propuesta para pasar a Desarrollo.', markdown: '## Propuesta'});
+    await app.tick();
+    const pending = officinaAttention(await read(), undefined, first);
+    expect(pending?.kind).toBe('request');
+    if (pending?.kind !== 'request') throw Error('Missing request');
+    app.close();
+    app = f.newSession(true);
+    await read();
+    await sent(second, 'coordinator', 3);
+    expect(f.queue.mock.lastCall?.[1]).not.toContain('Aprueba la propuesta');
+    const answer = {type: 'resolve-request', project, task: first, run: pending.run.id, decision: 'approve'} as const;
+    await expect(app.handle({...answer, task: third})).rejects.toThrow('ya no está pendiente');
+    await expect(app.handle({...answer, decision: 'respond', message: 'Sí'})).rejects.toThrow('acción disponible');
+    await Promise.all([app.handle(answer), app.handle(answer)]);
+    await expect(app.handle({...answer, decision: 'request-changes', message: 'Cambia el diseño'})).rejects.toThrow('ya se registró');
+    expect(officinaWaitingRuns(await read()).map(run => run.task)).toEqual([third, first]);
+    f.applyReply({kind: 'limited', text: 'Segundo encargo concluido.'});
+    await app.tick();
+    await sent(third, 'coordinator', 4);
+    f.applyReply({kind: 'limited', text: 'Tercer encargo concluido.'});
+    await app.tick();
+    await sent(first, 'developer', 5);
+    expect(f.queue.mock.lastCall?.[1]).toContain('Aprobado');
+    expect((await read()).runs.filter(run => run.task === first && run.role === 'developer')).toHaveLength(1);
+  } finally {app.close();}
+});
+
+it('keeps new requests in a paused queue and moves past a confirmed interruption without resending it', async () => {
+  const f = fixture(), app = f.newSession(true), first = randomUUID(), second = randomUUID();
+  try {
+    const {project} = await app.handle({type: 'project', name: 'Cola de prueba'});
+    const read = async () => (await app.handle({type: 'read'})).project!;
+    const toggle = (enabled: boolean) => app.handle({type: 'queue', project: project!.id, enabled});
+    await toggle(false);
+    for (const id of [first, second]) await app.handle({type: 'chat', project: project!.id, name: project!.name, id, message: 'Una tarea.'});
+    await app.tick();
+    expect(f.queue).not.toHaveBeenCalled();
+    expect(officinaWaitingRuns(await read()).map(run => run.task)).toEqual([first, second]);
+    await toggle(true);
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await read()).runs[0].state).toBe('sent');
+    });
+    f.observe({turn: 'interrupted', state: 'interrupted', at: 1100});
+    await app.tick();
+    expect((await read()).runs[0]).toMatchObject({state: 'review', issue: expect.stringContaining('interrumpió')});
+    f.observe(undefined);
+    await vi.waitFor(async () => {
+      await app.tick();
+      expect((await read()).runs[1].state).toBe('sent');
+      expect(f.queue).toHaveBeenCalledTimes(2);
+    });
+  } finally {app.close();}
+});
 
 it('deletes only the selected local board and saves the fallback selection', async () => {
   const f = fixture();

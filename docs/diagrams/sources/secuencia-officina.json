@@ -134,7 +134,8 @@
       "title": "IMPLEMENTADO",
       "dot": "cyan",
       "items": [
-        "Una lectura de la sesión puede recuperar un envío anterior. El permiso pendiente se correlaciona antes de registrar la respuesta."
+        "Una lectura de la sesión puede recuperar un envío anterior. El permiso pendiente se correlaciona antes de registrar la respuesta.",
+        "Coordinación conserva la asignación. Una decisión interna suspende su encargo mientras se despachan los demás turnos habilitados."
       ]
     },
     {

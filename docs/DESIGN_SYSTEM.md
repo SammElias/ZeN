@@ -55,7 +55,7 @@ Pizarra reúne tres grosores, cinco colores, goma y Deshacer en una barra que se
 
 Traductor reúne los idiomas, los campos de texto y las acciones en un panel de cristal de HUB. Original y traducción aparecen lado a lado cuando hay espacio y se apilan en ancho estrecho. La clave se introduce en un campo enmascarado.
 
-Officina usa un escenario prerenderizado con luz cálida y conexiones cian. Los cinco especialistas, ZEN y Coordinación tienen salas abiertas con mamparas bajas de cristal. Los pasillos separan las salas y conectan la entrada acristalada con el salón elevado y su cafetera. El plano empieza arriba, conserva sus proporciones y ajusta rótulos y áreas pulsables a su tamaño. La ficha de actividad queda debajo del plano y pasa a su lado en ventanas anchas con poca altura. El título y el resultado se ajustan a la columna y las acciones pasan a otra fila cuando falta ancho. A 480 DIP o menos, la lista de Equipo precede al mapa plegable. La selección usa el mismo realce cian en el plano y en Equipo. Los gestos y las señales se suspenden al ocultar la vista o al reducir el movimiento.
+Officina usa un escenario prerenderizado con luz cálida y conexiones cian. Los cinco especialistas, ZEN y Coordinación tienen salas abiertas con mamparas bajas de cristal. Los pasillos separan las salas y conectan la entrada acristalada con el salón elevado y su cafetera. El plano empieza arriba, conserva sus proporciones y ajusta rótulos y áreas pulsables a su tamaño. La ficha de actividad queda debajo del plano y pasa a su lado en ventanas anchas con poca altura. El selector o el título del encargo se ajustan a la columna. Las acciones pasan a otra fila cuando falta ancho. A 480 DIP o menos, la lista de Equipo precede al mapa plegable. La selección usa el mismo realce cian en el plano y en Equipo. Los gestos y las señales se suspenden al ocultar la vista o al reducir el movimiento.
 
 Los personajes tienen ciclos escalonados de cabeza y manos dentro de su puesto. Los monitores y el portátil de Coordinación se animan continuamente mientras el plano está visible. Las pantallas simulan revisar notas, seguir dependencias, leer código, recorrer pruebas y verificar un despliegue. Los ciclos enlazan el último fotograma con el primero, aceleran durante el encargo y recuperan el ritmo ambiental al terminar conservando su fase. Cuando llega un traspaso, aparece un aviso luminoso breve en el monitor receptor. Con movimiento reducido, las pantallas muestran una imagen estática. La iluminación y la planta de la mesa también tienen movimiento ambiental. Los efectos se ajustan a la perspectiva del plano y quedan detrás de los controles.
 
@@ -69,7 +69,7 @@ El compositor muestra las miniaturas encima del campo y conserva los saltos de l
 
 Los controles de carpeta y archivos quedan junto al campo de Chat global. Las etiquetas compactas muestran la raíz actual o pendiente y los adjuntos del borrador. Si faltara espacio, la lista de adjuntos se desplaza dentro del campo de composición.
 
-Las aportaciones del equipo se agrupan por encargo en fichas plegables con puesto y tipo de respuesta. La conclusión ocupa el ancho del panel de chat. Las tablas y el código se desplazan dentro de la respuesta a ancho estrecho.
+La ficha de un encargo muestra una fila plegable por puesto con el estado y un resumen de hasta dos líneas. Cada fila abre las aportaciones del puesto. La conclusión ocupa el ancho del panel de chat. Las tablas y el código se desplazan dentro de la respuesta a ancho estrecho.
 
 Los resultados usan una composición de lectura con títulos, listas cortas y tablas Markdown de encabezado visible. El editor de puestos reúne nombre e instrucciones en una ficha. Las reglas comunes se consultan en un bloque desplegable.
 
@@ -78,6 +78,10 @@ El aviso de Officina queda encima del panel desplazable. El ámbar identifica un
 El puesto **ZEN** está en el centro superior del plano. Una mesa iluminada y un monitor con una lista de comprobaciones y un gráfico acompañan al rótulo. Las animaciones se aceleran al revisar y regresan al ritmo ambiental al entregar el resultado. El puesto aparece también en **Equipo**. Su ficha muestra el ámbito de la revisión, las instrucciones y el acceso a propuestas. La comparación de prompts se muestra en dos columnas que se apilan en un panel estrecho.
 
 **Actividad del equipo** muestra el puesto, su estado y el encargo. El verde lima acompaña al texto de trabajo en curso, al rótulo del puesto y a su conexión. El cian identifica la selección y los traspasos, y el ámbar señala una aprobación pendiente. La animación ambiental acompaña también a los estados de espera y cierre.
+
+La cabecera usa un único selector de encargo en Equipo y Chat global. Los estados, resultados, insignias y conexiones siguen esa selección. Las solicitudes pendientes de otros encargos se pueden abrir desde un desplegable propio.
+
+El título del encargo seleccionado aparece centrado sobre el rótulo de Coordinación en el plano. Se acorta con puntos suspensivos según el ancho del plano.
 
 `--zen-surface` y `--zen-field` distinguen tarjetas y campos del fondo translúcido. El ámbar identifica acciones principales, el violeta identifica ZEN y Monocromo usa tonos neutros para los controles. Los estados de sesión conservan texto y un indicador de color. Las transiciones breves siguen el ajuste de movimiento y la preferencia del sistema.
 

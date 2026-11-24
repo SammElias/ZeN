@@ -77,6 +77,10 @@ export const OfficinaContribution = z.discriminatedUnion('kind', [
   z.object({kind: z.literal('qa'), ...response, replyTo: OfficinaId, passed: z.boolean(), evidence: text(360)}).strict(),
 ]);
 export type OfficinaContribution = z.infer<typeof OfficinaContribution>;
+export const OfficinaHumanRequest = z.object({kind: z.literal('request'), ...response,
+  mode: z.enum(['approval', 'review', 'question'])}).strict();
+export type OfficinaHumanRequest = z.infer<typeof OfficinaHumanRequest>;
+const humanAnswer = z.enum(['approve', 'request-changes', 'respond']);
 export const OfficinaEvent = z.object({
   id: OfficinaId, task: OfficinaId, from: OfficinaRole, at: z.number(),
   source: z.enum(['user', 'codex']), data: OfficinaContribution,
@@ -104,13 +108,14 @@ export const OfficinaStep = z.object({role: OfficinaRole, instruction: text(offi
 export type OfficinaStep = z.infer<typeof OfficinaStep>;
 const goalMessage = z.object({
   from: z.enum(['human', 'codex', 'zen']), text: text(900), markdown: replyMarkdown,
-  reply: z.object({run: OfficinaId, kind: z.enum(['plan', 'complete', 'limited', 'question'])}).optional(),
+  reply: z.object({run: OfficinaId, kind: z.enum(['plan', 'complete', 'limited', 'question', 'request']), role: OfficinaParticipant.optional()}).optional(),
 });
 export type OfficinaGoalMessage = z.infer<typeof goalMessage>;
 const goal = z.object({
   task: OfficinaId, request: text(officinaMessageLimit), steps: z.array(OfficinaStep).max(20), cursor: z.number().int().min(0),
   round: z.number().int().min(0), history: z.array(goalMessage).max(32),
   phase: z.enum(['plan', 'work', 'verify', 'complete']), outcome: z.literal('limited').optional(), question: text(700).optional(),
+  humanRequest: OfficinaHumanRequest.extend({run: OfficinaId}).optional(),
   recipient: OfficinaRole.optional(),
   improvement: OfficinaId.optional(),
   improvementNoticeDismissed: z.literal(true).optional(),
@@ -133,6 +138,7 @@ const run = z.object({
   sentAt: z.number().optional(), queuedAt: z.number().optional(), turn: z.string().max(160).optional(), issue: z.string().optional(),
   retryAttempt: z.number().int().min(1).max(4).optional(), retryAt: z.number().optional(),
   closureRetried: z.literal(true).optional(),
+  humanAnswer: z.object({action: humanAnswer, message: text(700).optional()}).optional(),
   followup: z.object({review: OfficinaId, index: proposalIndex, result: observerFollowupReport.optional()}).optional(),
 });
 export type OfficinaRun = z.infer<typeof run>;
@@ -147,6 +153,9 @@ export function officinaInputMatches(text: string, identity: OfficinaRunIdentity
 }
 export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number; turn?: string};
 export type OfficinaDirectActivity = {state: OfficinaRunActivity['state']; at: number};
+export type OfficinaGlance = {kind: 'working' | 'decision' | 'unknown' | 'finished'; count?: number; pulse?: number};
+export type OfficinaGlanceItem = {project: string; projectName: string; task?: string; title?: string; role: OfficinaActor;
+  kind: 'working' | 'question' | 'permission'};
 export const OfficinaProject = z.object({
   id: OfficinaId, name: text(120), binding: OfficinaBinding.optional(), team: provision.optional(),
   folder: OfficinaLocalSource.optional(),
@@ -171,6 +180,8 @@ export type OfficinaView = {
 
 export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('read')}).strict(),
+  z.object({type: z.literal('select-activity'), project: OfficinaId, task: OfficinaId.optional(),
+    role: OfficinaActor, kind: z.enum(['working', 'question', 'permission'])}).strict(),
   z.object({type: z.literal('select'), project: OfficinaId}).strict(),
   z.object({type: z.literal('project'), name: text(120)}).strict(),
   z.object({type: z.literal('delete-project'), project: OfficinaId}).strict(),
@@ -181,6 +192,8 @@ export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('pick-context'), kind: z.enum(['folder', 'file'])}).strict(),
   z.object({type: z.literal('remove-context'), id: OfficinaId}).strict(),
   z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700)}).strict(),
+  z.object({type: z.literal('resolve-request'), project: OfficinaId, task: OfficinaId, run: OfficinaId,
+    decision: humanAnswer, message: text(700).optional()}).strict(),
   z.object({type: z.literal('retry-closure'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('retry-send'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('resume-browser-review'), project: OfficinaId, task: OfficinaId}).strict(),
@@ -207,7 +220,8 @@ export const OfficinaAction = z.discriminatedUnion('type', [
 ]);
 export type OfficinaAction = z.infer<typeof OfficinaAction>;
 export const OfficinaCodexResult = z.object({
-  project: OfficinaId, task: OfficinaId, run: OfficinaId, role: OfficinaRole, result: OfficinaContribution,
+  project: OfficinaId, task: OfficinaId, run: OfficinaId, role: OfficinaRole,
+  result: z.union([OfficinaContribution, OfficinaHumanRequest]),
 }).strict();
 export const OfficinaCoordinatorResult = z.object({
   project: OfficinaId, task: OfficinaId, run: OfficinaId, role: z.literal('coordinator'),
@@ -216,6 +230,7 @@ export const OfficinaCoordinatorResult = z.object({
     z.object({kind: z.literal('complete'), ...response}).strict(),
     z.object({kind: z.literal('limited'), ...response}).strict(),
     z.object({kind: z.literal('question'), ...response}).strict(),
+    OfficinaHumanRequest,
   ]),
 }).strict();
 export type OfficinaCoordinatorResult = z.infer<typeof OfficinaCoordinatorResult>;
