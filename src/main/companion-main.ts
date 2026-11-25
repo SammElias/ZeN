@@ -1340,7 +1340,7 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   const officinaGlanceTicker=setInterval(()=>void refreshOfficinaGlance(),1000);
   app.once('before-quit',()=>clearInterval(officinaGlanceTicker));
   const ticker=setInterval(broadcast,15000);app.on('before-quit',()=>{quitting=true;surfaceReady=false;clearTimeout(priorityTimer);panelTransition.reset();hover.reset();clearInterval(ticker);clearInterval(replyTicker);clearInterval(officinaTicker);officina.close();powerMonitor.removeListener('resume',wakeOura);powerMonitor.removeListener('resume',wakeHome);oura.close();weather.cancel();translator.cancel();cancelAutoCollapse();rememberWorkspace();replyEpoch++;endDrag();media?.close();mediaObserver?.close();systemVolume.close();context?.close();desktop?.close();integration.close();globalShortcut.unregisterAll();tray.destroy();});
-  await integration.start();if(!smoke)desktop.start();await cap.loadFile(renderer,{query:rendererQuery});
+  await integration.start();if(!smoke)desktop.start();await cap.loadURL(rendererUrl);
   setCaptionTheme();
   if(workspaceWindow.startupMode==='workspace')enterWorkspace();
   else positionSurface();

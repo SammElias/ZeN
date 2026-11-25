@@ -793,7 +793,7 @@ void app.whenReady().then(async () => {
     const current = preferences; current.setMenu(null); current.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     current.webContents.on('will-navigate', (event, url) => { if (url !== preferencesUrl) event.preventDefault(); });
     current.on('closed', () => { if (preferences === current) preferences = undefined; });
-    await current.loadFile(rendererPath, { query: { view: 'preferences' } });
+    await current.loadURL(preferencesUrl);
     if (show && !current.isDestroyed()) current.show();
   };
   handle('focus-overlay',noArg,(_v,source)=>{if(desktopShell?.receivingWindow)return false;if(source===desktopShell?.capsule){desktopShell.capsule.focus();return true;}window.show();window.focus();return true;});
@@ -823,7 +823,7 @@ void app.whenReady().then(async () => {
   window.on('will-resize',(_event,bounds)=>{if(layout.mode==='card')expandedSize={width:bounds.width,height:bounds.height};});
   window.on('close', event => { if (!quitting) { event.preventDefault(); void hide(); } });
   app.on('before-quit', event => { if(quitting)return;quitting = true;codexRuntime.dispose();desktopShell?.dispose();windowDropWatcher?.dispose();gaze.dispose();endDrag();cancelResize?.();if(voice.active){event.preventDefault();void emergencyStop().finally(()=>app.quit());}else void emergencyStop(); });
-  await window.loadFile(rendererPath,shellEnabled?{query:{view:'workspace'}}:undefined);
+  await window.loadURL(rendererUrl);
   if(desktopShell)await desktopShell.load();else window.showInactive();
   if(process.argv.includes('--zen-shell-smoke')){let passed=false;try{const {desktopShellSmoke}=await import('./desktop-shell-smoke');const result=process.argv.includes('--capture-fixture')?await (await import('./capture-fix-smoke')).captureFixSmoke(desktopShell!,nativeDirectory):await (await import('./coucou-smoke')).coucouSmoke(desktopShell!,chats);passed=result.passed===true;console.log(JSON.stringify(result));}catch(e){console.error(e);}finally{quitting=true;desktopShell?.dispose();gaze.dispose();windowDropWatcher?.dispose();nativeAbort.abort();tray.destroy();window.destroy();app.exit(passed?0:1);}return;}
   async function runPetSmoke(){
