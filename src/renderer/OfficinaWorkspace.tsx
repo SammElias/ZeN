@@ -59,8 +59,13 @@ function RequestBadge({items, count = items.length}: {items: HumanRequest[]; cou
   </span>;
 }
 
-function Modal({children, title, close, wide, outside = false}: {children: ReactNode; title: string; close: () => void; wide?: boolean; outside?: boolean}) {
+function OfficinaSheet({children, title, close, navigationKey, motion, wide, outside}: {
+  children: ReactNode; title: string; close: () => void; navigationKey: string;
+  motion: boolean; wide: boolean; outside: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const element = dialog.current;
     const origin = document.activeElement;
@@ -70,12 +75,16 @@ function Modal({children, title, close, wide, outside = false}: {children: React
       if (origin instanceof HTMLElement && origin.isConnected) origin.focus({preventScroll: true});
     };
   }, []);
-  return <dialog ref={dialog} className="officina-modal" data-wide={wide || undefined} aria-labelledby="officina-modal-title"
+  useLayoutEffect(() => {
+    content.current?.scrollTo(0, 0);
+    heading.current?.focus({preventScroll: true});
+  }, [navigationKey]);
+  return <dialog ref={dialog} className="officina-modal" data-wide={wide || undefined} data-motion={motion || undefined} aria-labelledby="officina-modal-title"
     onCancel={event => { event.preventDefault(); event.stopPropagation(); close(); }}
     onClick={event => {if (outside && event.target === event.currentTarget) close();}}
     onKeyDown={event => {if (event.key === 'Escape') event.stopPropagation();}}>
-    <header><h2 id="officina-modal-title">{title}</h2><button aria-label="Cerrar ficha" onClick={close}><X/></button></header>
-    {children}
+    <header><h2 ref={heading} id="officina-modal-title" tabIndex={-1}>{title}</h2><button type="button" aria-label="Cerrar ficha" onClick={close}><X/></button></header>
+    <div ref={content} className="officina-sheet-scroll"><div className="officina-sheet-content">{children}</div></div>
   </dialog>;
 }
 
@@ -1054,6 +1063,7 @@ export function OfficinaWorkspace({motion, visible, design, approvals = [], glan
   const roomPermissions = room ? roleDecisions(room).filter(item => item.task === task?.id && item.kind === 'permission') : [];
   const targetPermission = roomPermissions.find(item => item.id === decisionTarget) ?? roomPermissions[0];
   const permissionAttention = targetPermission && attentionItems.find(item => item.kind === 'permission' && item.run.id === targetPermission.id);
+  const panelKey = !panel ? '' : panel.type === 'chat-message' ? panel.entry.key : JSON.stringify(panel);
   return <OfficinaDecisionContext.Provider value={{drafts, offline}}><section ref={office} className="officina" aria-label="Officina" data-desk={room} data-closeup={closeup || undefined} data-view={chat ? 'chat' : 'team'}>
     <header className="officina-header">
       <div className="officina-brand"><ZenEmblem/><h1>Officina</h1></div>
@@ -1225,13 +1235,13 @@ export function OfficinaWorkspace({motion, visible, design, approvals = [], glan
     <OfficinaComposer key={project?.id} project={project} context={view?.context} act={act} ready={!!view} recipient={recipient}
       recipientIcon={<RoleIcon role={recipient}/>} selectRecipient={chat ? selectRole : undefined}
       queueStatus={queueStatus}/>
-    {panel && <Modal title={title} close={close} outside={panel.type === 'decisions'}
-      wide={panel.type === 'chat-message' || panel.type === 'result' || panel.type === 'observer' || panel.type === 'decisions'}>
+    {visible && panel && <OfficinaSheet title={title} close={close} navigationKey={panelKey} motion={motion} outside={panel.type === 'decisions'}
+      wide={panel.type === 'board' || panel.type === 'task' || panel.type === 'chat-message' || panel.type === 'result' || panel.type === 'observer' || panel.type === 'decisions'}>
       {error && <p className="officina-error" role="alert">{error}</p>}
       {panel.type === 'decisions' ? <OfficinaDecisionCenter items={decisions} projects={view?.projects ?? []}
-        onOpen={openDecision} automatic={automaticInbox}/> : <PanelContent key={panel.type === 'chat-message' ? panel.entry.key : JSON.stringify(panel)}
+        onOpen={openDecision} automatic={automaticInbox}/> : <PanelContent key={panelKey}
         panel={panel} project={project} team={team} activity={view?.activity} observerQueued={view?.observerQueued}
         approvals={approvals} act={act} open={open} close={close}/>}
-    </Modal>}
+    </OfficinaSheet>}
   </section></OfficinaDecisionContext.Provider>;
 }

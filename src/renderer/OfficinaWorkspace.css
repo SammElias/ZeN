@@ -4,6 +4,7 @@
 }
 
 .officina {
+  anchor-name: --officina-panel;
   --office-ink: #f7f8ff;
   --office-muted: #c5cddd;
   --office-line: #555d737d;
@@ -534,24 +535,46 @@
 .officina .officina-next:is([data-kind=permission], [data-kind=question]) .officina-next-action {
   border-color: #f3b973; background: #3b2a1c;
 }
-.officina-modal > .officina-next { margin-inline: 0; }
+.officina-sheet-content > .officina-next { margin-inline: 0; }
 .officina-continuation p { margin: 0; overflow-wrap: anywhere; }
 
 .officina-modal {
-  width: min(600px, calc(100% - 32px));
-  max-height: 84vh;
-  overflow: auto;
+  position: fixed;
+  position-anchor: --officina-panel;
+  inset: anchor(top) auto auto anchor(left);
+  box-sizing: border-box;
+  width: anchor-size(width);
+  height: anchor-size(height);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   color: var(--office-ink);
-  background: #191d29;
-  border: 1px solid #686f86;
-  border-radius: 16px;
-  padding: 14px 18px 20px;
-  box-shadow: 0 24px 80px #02040bbd;
+  background: #141924;
+  border: 0;
+  border-radius: calc(var(--workspace-radius, 18px) - 1px);
   overflow-wrap: anywhere;
 }
-.officina-modal::backdrop { background: #070a13bd; }
-.officina-modal[data-wide] { width: min(840px, calc(100% - 32px)); }
-.officina-modal header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 14px; }
+.officina-modal[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.officina-modal::backdrop { background: transparent; }
+.officina:fullscreen .officina-modal { border-radius: 0; }
+.officina-modal > header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px clamp(12px, 2.2cqi, 22px);
+  border-bottom: 1px solid var(--office-line); background: #1a1f2b;
+}
+.officina-modal > header button { flex: none; }
+.officina-sheet-scroll { min-height: 0; overflow: auto; scrollbar-width: thin; }
+.officina-sheet-content { box-sizing: border-box; max-width: 640px; margin-inline: auto; padding: 16px clamp(12px, 2.2cqi, 22px) 22px; }
+.officina-modal[data-wide] .officina-sheet-content { max-width: 880px; }
+@media (prefers-reduced-motion: no-preference) {
+  .officina-modal[open][data-motion] { animation: officina-reveal-sheet 170ms ease-out; }
+}
+@keyframes officina-reveal-sheet {
+  from { clip-path: inset(0 0 100% 0 round calc(var(--workspace-radius, 18px) - 1px)); }
+  to { clip-path: inset(0 round calc(var(--workspace-radius, 18px) - 1px)); }
+}
 .officina-modal h2 { margin: 0; font-size: 20px; }
 .officina-modal h3 { margin: 7px 0 3px; font-size: 14px; }
 .officina-modal p { margin: 4px 0 8px; white-space: pre-wrap; }

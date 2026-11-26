@@ -1,7 +1,8 @@
 .officina-retained { height: 100%; min-height: 0; }
 .officina-retained[hidden] { display: none; }
 .officina-chat-retained { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
-.officina-chat-retained[hidden], .officina-layout[hidden] { display: none; }
+/* Keep the inactive tab out of the grid when responsive scene styles set display. */
+.officina-chat-retained[hidden], .officina-layout[hidden] { display: none !important; }
 .officina-engine-note {
   position: absolute; z-index: 3; inset: auto auto 10px 10px;
   max-width: calc(100% - 62px); padding: 4px 7px; border-radius: 6px;

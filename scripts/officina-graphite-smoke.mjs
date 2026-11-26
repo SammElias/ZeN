@@ -87,8 +87,39 @@ export async function checkGraphite({app,page,office,resize,load,update,db,board
     await button('Salir de pantalla completa').click();
     await page.waitForFunction(()=>!document.fullscreenElement);
   }
+  async function checkChatLayout() {
+    await office.getByRole('button',{name:'Chat global',exact:true}).click();
+    await office.locator('.officina-chat').waitFor();
+    assert.equal(await office.locator('.officina-layout').evaluate(el=>getComputedStyle(el).display),'none',
+      'El plano y Equipo ocupan espacio en Chat global');
+    const [above,below,unusedWidth]=await office.evaluate(root=>{
+      const box=selector=>root.querySelector(selector).getBoundingClientRect();
+      const chat=box('.officina-chat');
+      return [chat.top-box('.officina-header').bottom,box('.officina-chat-compose').top-chat.bottom,root.clientWidth-chat.width];
+    });
+    assert.ok(above>=0 && above<=10 && below>=0 && below<=10 && unusedWidth<=18,
+      'Chat global debe llenar el espacio entre la cabecera y el compositor');
+  }
+  async function checkSheet(opener) {
+    await opener.click();
+    const sheet=office.getByRole('dialog');
+    await sheet.waitFor();
+    await page.waitForFunction(el=>{
+      const sheet=el.querySelector('dialog[open]').getBoundingClientRect();
+      const bounds=el.getBoundingClientRect();
+      return ['top','left','width','height'].every(axis=>Math.abs(sheet[axis]-bounds[axis])<=1);
+    },await office.elementHandle());
+    assert.equal(await sheet.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor),'rgba(0, 0, 0, 0)');
+    return sheet;
+  }
   await fullscreen();
-  await office.getByRole('button',{name:'Chat global',exact:true}).click();
+  await checkChatLayout();
+  await page.screenshot({path:join(output,'chat-global.png')});
+  const taskButton=office.locator('.officina-chat-toolbar').getByRole('button',{name:'Ver tarea'});
+  await checkSheet(taskButton);
+  await page.keyboard.press('Escape');
+  await office.getByRole('dialog').waitFor({state:'hidden'});
+  assert.equal(await taskButton.evaluate(el=>document.activeElement===el),true);
   assert.equal(await stage.locator('.graphite-instrument').first().evaluate(el=>el.getAnimations({subtree:true}).length),0);
   await office.getByRole('button',{name:'Equipo',exact:true}).click();
   await expectMotion('developer');
@@ -134,6 +165,10 @@ export async function checkGraphite({app,page,office,resize,load,update,db,board
   for(const [w,h,dpr] of [[1280,700,1],[948,977,1.25],[640,850,1.5]]) {
     await resize(app,page,w,h);
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:w,height:h,deviceScaleFactor:dpr,mobile:false});
+    await checkChatLayout();
+    const sheet=await checkSheet(taskButton);
+    await sheet.getByRole('button',{name:'Cerrar ficha'}).click();
+    await office.getByRole('button',{name:'Equipo',exact:true}).click();
     await geometry();
     if(w===640){
       await clickPerson('observer');
@@ -143,6 +178,14 @@ export async function checkGraphite({app,page,office,resize,load,update,db,board
     await cdp.send('Emulation.clearDeviceMetricsOverride');
   }
   await cdp.detach();await resize(app,page,948,977);
+  await office.locator('.officina-team-select[data-role="coordinator"]').click();
+  await camera('coordinator');
+  const boardSheet=await checkSheet(panel('coordinator').getByRole('button',{name:'Tablero del proyecto'}));
+  await boardSheet.getByRole('button',{name:'Nueva tarea'}).waitFor();
+  await boardSheet.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished)));
+  await page.screenshot({path:join(output,'tablero-integrado.png')});
+  await boardSheet.getByRole('button',{name:'Cerrar ficha'}).click();
+  await back('coordinator',true);
   assert.equal((await page.evaluate(()=>window.companion.togglePanel())).ok,true);
   const capsule=page.locator('.companion-capsule.collapsed');
   await capsule.waitFor();
