@@ -55,3 +55,44 @@
 .officina-glance-badge[data-kind=working] { background: #79eaff; }
 .officina-glance-badge[data-kind=decision] { background: #ffce83; }
 .officina-glance-badge[data-kind=finished] { background: #a6e8bd; }
+.capsule-launcher button > .officina-glance-badge[data-kind=decision] { display: flex; gap: 1px; justify-content: center; }
+.officina-glance-badge small { display: block; font-size: 8px; }
+.capsule-launcher button > .officina-glance-active {
+  position: absolute;
+  inset: auto 0 0 auto;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: #a3f4ff;
+  color: #102632;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.capsule-launcher button > .officina-queue-badge {
+  position: absolute;
+  inset: auto auto 0 0;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: #cec5ff;
+  color: #1c1637;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+}
+.officina-queue-badge i { width: 2px; height: 5px; border-radius: 1px; background: currentColor; }
+.officina-queue-badge i:last-of-type { margin-right: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .companion-capsule[data-motion=true] .officina-queue-badge i {
+    animation: officina-queue-wave 1.6s ease-in-out infinite;
+  }
+  .companion-capsule[data-motion=true] .officina-queue-badge i:nth-child(2) { animation-delay: .13s; }
+  .companion-capsule[data-motion=true] .officina-queue-badge i:nth-child(3) { animation-delay: .26s; }
+}
+@keyframes officina-queue-wave {
+  0%, 55%, 100% { transform: scaleY(.6); }
+  22% { transform: scaleY(1.3); }
+}

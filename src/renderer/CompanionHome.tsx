@@ -19,7 +19,6 @@ type Props = {
   weatherVisible: boolean;
   draft: string;
   setDraft: (value:string)=>void;
-  onDismissAssessment?:()=>void;
   nowPlaying: MediaNowPlaying | null;
   onNavigate: (page: WorkspacePage) => void;
 };
@@ -83,13 +82,11 @@ function HomeSleep({sleep,onOpen}:{sleep:OuraHomeSleep;onOpen:()=>void}) {
   </section>;
 }
 
-export function CompanionHome({status, ready, visible, weatherVisible, draft, setDraft, onDismissAssessment, nowPlaying, onNavigate}: Props) {
+export function CompanionHome({status, ready, visible, weatherVisible, draft, setDraft, nowPlaying, onNavigate}: Props) {
   const [navigationError, setNavigationError] = useState('');
   const [requestOpen, setRequestOpen] = useState(false);
   const greetingSeen=useRef(false);
   const simpleMode = status.workspace?.simpleMode;
-  const assessmentPending = Boolean(onDismissAssessment);
-  useEffect(()=>{if(assessmentPending)setRequestOpen(true);},[assessmentPending]);
   const hidden = status.settings.presentation || status.settings.paused;
   const track = hidden ? null : nowPlaying;
   const session = activeSession(status);
@@ -106,7 +103,7 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
       .catch(()=>setNavigationError('No se pudo abrir la vista de Codex.'));
   }
 
-  const request=<CodexRequestForm fixedChat={status.target?.title} draft={draft} setDraft={setDraft} onDismissAssessment={onDismissAssessment}/>;
+  const request=<CodexRequestForm fixedChat={status.target?.title} draft={draft} setDraft={setDraft}/>;
   const openActivity=()=>onNavigate(permission?'permissions':'codex');
 
   return <section className="home-status" aria-labelledby="home-title" data-phase={phase}>
@@ -167,7 +164,7 @@ export function CompanionHome({status, ready, visible, weatherVisible, draft, se
 
     {!hidden && <details className={simpleMode?'simple-disclosure home-simple-codex':undefined} open={!simpleMode||requestOpen}
       onToggle={event=>{if(simpleMode)setRequestOpen(event.currentTarget.open);}}>
-      <summary hidden={!simpleMode}>{assessmentPending?'Valoración para Codex':'Petición para Codex'}</summary>
+      <summary hidden={!simpleMode}>Petición para Codex</summary>
       {simpleMode&&<div className="home-header-actions">
         <button type="button" onClick={openActivity}>{permission?'Permisos pendientes':'Ver actividad'}</button>
         <button type="button" onClick={()=>open(()=>window.companion.openCodex())}>Abrir chat en Codex<CompanionIcon name="arrow"/></button>

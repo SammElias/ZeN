@@ -1,6 +1,12 @@
 # Sistema de diseño de ZEN
 
+Los cuatro acabados comparten el edificio de Grafito, la entrada inferior, el pasillo diagonal, la posición de los siete agentes y la cámara de cada despacho. Grafito conserva la madera oscura. Monocromo combina paredes blancas con piedra clara y mobiliario negro. Línea Roja incorpora hormigón oscuro y perfiles de acero bermellón. Nexo combina aluminio, vidrio y luz cian. En ambas vistas los monitores proyectan la actividad visual del puesto sobre sus superficies. El recorrido de código, la revisión de filas, las conexiones de arquitectura, la planificación, el cohete de ALM y el seguimiento de ZEN son ambientales. Versiones, resultados y traspasos proceden del tablero. El movimiento se detiene con movimiento reducido o al ocultar la oficina.
+
 Contraseñas reutiliza la navegación, paneles, menús, botones y tokens de HUB. Una sola pantalla compacta contiene buscador, proyectos plegables y filas de cuentas. Los controles de copia y visibilidad permanecen en cada fila con nombres accesibles; el menú secundario agrupa edición y eliminación. La máscara fija no comunica la longitud de la clave. El formulario de desbloqueo no muestra metadatos. En ancho estrecho las acciones pasan a la siguiente línea.
+
+Cada [acabado](../src/renderer/assets/officina-plans/) contiene una planta completa y siete vistas de despacho. ImageGen tomó como referencia la planta y los despachos originales con cámara, silueta, reparto y mobiliario fijos. Las imágenes se alinearon con Grafito para que las pantallas y los primeros planos coincidan con las coordenadas de interacción. Las [miniaturas](../src/renderer/assets/officina-previews/) proceden de la planta que se muestra en la aplicación.
+
+Cada habitación tiene una zona pulsable calibrada con la ilustración. Los avisos ámbar siguen la habitación al mover la cámara. Cada puesto muestra su nombre y un estado escrito con el color de Equipo. El verde lima indica trabajo, el cian verificación, el verde menta entrega y el gris espera o inactividad. Una decisión pendiente destaca en ámbar. Coordinación muestra también el encargo seleccionado.
 
 ## 01 · Identidad y superficies ![](assets/violeta.svg)
 
@@ -47,8 +53,6 @@ Templates usa las superficies de HUB y miniaturas de proporción fija que conser
 
 La navegación y Templates heredan el tema general de ZEN. El ajuste claro u oscuro guardado por HUB se conserva como **Tema del lector** para apuntes y prompts. Sus campos y superficies de lectura mantienen más opacidad para facilitar el contraste.
 
-Descubrimiento de apps reutiliza los paneles de HUB. Cada pregunta destaca el inglés y muestra debajo su apoyo en español. Los cuatro botones de bloque se ajustan al ancho y el formulario conserva un área de scroll propia.
-
 Apuntes usa el encabezado y los márgenes de HUB, un único campo de texto con foco accesible y scroll interno. En vacío el campo muestra «Escribe aquí…». El aviso y el botón de reintento aparecen si el almacenamiento falla.
 
 Pizarra reúne tres grosores, cinco colores, goma y Deshacer en una barra que se ajusta al ancho disponible. Reiniciar queda al extremo. La selección usa borde y fondo, y la muestra de color activa lleva una marca. El lienzo ocupa todo el ancho y alto bajo la barra. Al cambiar de tamaño, el dibujo conserva sus proporciones y sus trazos cercanos a los bordes. Los cinco colores tienen variantes claras y oscuras de alto contraste.
@@ -59,7 +63,7 @@ Officina usa un escenario prerenderizado con luz cálida y conexiones cian. Los 
 
 Los personajes tienen ciclos escalonados de cabeza y manos dentro de su puesto. Los monitores y el portátil de Coordinación se animan continuamente mientras el plano está visible. Las pantallas simulan revisar notas, seguir dependencias, leer código, recorrer pruebas y verificar un despliegue. Los ciclos enlazan el último fotograma con el primero, aceleran durante el encargo y recuperan el ritmo ambiental al terminar conservando su fase. Cuando llega un traspaso, aparece un aviso luminoso breve en el monitor receptor. Con movimiento reducido, las pantallas muestran una imagen estática. La iluminación y la planta de la mesa también tienen movimiento ambiental. Los efectos se ajustan a la perspectiva del plano y quedan detrás de los controles.
 
-En pantalla completa, el plano conserva su proporción y ocupa todo el alto o el ancho disponible. Una extensión difuminada de la escena llena el espacio sobrante. El monitor de Tester desplaza filas de pruebas junto a un indicador de progreso. ZEN muestra barras de telemetría en movimiento y Arquitecto recorre las conexiones de su diagrama con pulsos.
+En pantalla completa horizontal, los cuatro acabados tienen una planta panorámica registrada sobre una composición común con cuatro puestos al fondo y tres en primer plano. Los rótulos, las pantallas y las zonas pulsables se proyectan sobre esta geometría. Cada despacho abre con la imagen completa a escala uniforme. En un monitor ancho, la lista de agentes y el panel del encargo flanquean la habitación. El primer plano opcional utiliza esa misma imagen y los mismos monitores a mayor escala. La navegación queda superpuesta en el borde superior. El monitor de Tester desplaza filas de pruebas junto a un indicador de progreso. ZEN muestra barras de telemetría en movimiento y Arquitecto recorre las conexiones de su diagrama con pulsos.
 
 La cafetera ocupa el pasillo del fondo como parte del decorado. En las pausas, los cinco especialistas y ZEN toman café sentados. Cada puesto alterna sus poses con una fase propia en ciclos de 56 a 86 segundos. Los monitores, reflejos y gestos de trabajo siguen su propio ritmo. Al empezar un encargo se retira el gesto de descanso de ese puesto.
 
@@ -79,7 +83,7 @@ El puesto **ZEN** está en el centro superior del plano. Una mesa iluminada y un
 
 **Actividad del equipo** muestra el puesto, su estado y el encargo. El verde lima acompaña al texto de trabajo en curso, al rótulo del puesto y a su conexión. El cian identifica la selección y los traspasos, y el ámbar señala una aprobación pendiente. La animación ambiental acompaña también a los estados de espera y cierre.
 
-La cabecera usa un único selector de encargo en Equipo y Chat global. Los estados, resultados, insignias y conexiones siguen esa selección. Las solicitudes pendientes de otros encargos se pueden abrir desde un desplegable propio.
+La cabecera usa un único selector de encargo en Equipo y Chat global. Los estados, resultados, insignias y conexiones siguen esa selección. Las solicitudes pendientes de otros encargos se pueden abrir desde un desplegable propio. El contador de cola ocupa la esquina inferior izquierda del maletín y las señales de actividad conservan la esquina superior derecha. La marca ámbar muestra el número de decisiones y deja el total activo en una marca secundaria cian. Las cápsulas del plano combinan texto e icono en dos líneas y abrevian el título de la tarea cuando cabe. La ficha inferior o lateral ofrece la propuesta completa. Las barras se animan según la preferencia de movimiento.
 
 El título del encargo seleccionado aparece centrado sobre el rótulo de Coordinación en el plano. Se acorta con puntos suspensivos según el ancho del plano.
 

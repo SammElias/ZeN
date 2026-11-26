@@ -11,10 +11,13 @@ import {CapsulePosition} from './CapsulePosition';
 import {CompanionIcon, OpenCodex, Quiet, Signal} from './CompanionActions';
 import {PreferenceRow,PreferenceSave,PreferenceSwitch,type PreferenceFeedback} from './PreferencesControls';
 import {interfaceAudio, interfaceAudioMuted} from './companion-interface-audio';
+import {officeNames,type OfficinaDesign} from '../shared/officina-design';
 import {ZenEmblem} from './ZenEmblem';
 
+const previews=import.meta.glob<string>('./assets/officina-previews/*.webp',{eager:true,query:'?url',import:'default'});
 const categories={
  appearance:{title:'Apariencia',icon:'settings',description:'Personaliza el tema, el fondo y el acabado del cristal.'},
+ officina:{title:'Officina',icon:'steps',description:'Elige los materiales y la iluminación de tus siete despachos.'},
  capsule:{title:'Cápsula y panel',icon:'presentation',description:'Elige dónde aparece ZEN y cómo se comporta su ventana.'},
  audio:{title:'Sonidos y avisos',icon:'bell',description:'Controla los efectos de interfaz, los avisos y las notificaciones.'},
  daily:{title:'Resumen diario',icon:'calendar',description:'Configura el saludo, la agenda y el clima de Home.'},
@@ -146,7 +149,7 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
     </button>)}
    </nav>}
   </aside>
-  <section className="preferences-content" id="preferences-panel" aria-labelledby="preferences-category-title">
+  <section className="preferences-content" data-category={category} id="preferences-panel" aria-labelledby="preferences-category-title">
    <header className="preferences-category-heading" key={category}>
     <h2 id="preferences-category-title">{categoryMeta.title}</h2><p>{categoryMeta.description}</p>
    </header>
@@ -154,6 +157,27 @@ export function CompanionSettings({status,visible,onBack,onLayout,onPreview,onCa
     {status.settings.presentation?<p role="status">Desactiva Presentación para editar la apariencia.</p>:
      <AppearanceSettings key={backupRevision} value={status.appearance??defaultAppearance} visible={visible&&status.workspace?.surfaceVisible===true&&category==='appearance'} motion={status.settings.motion} reset={restoreAppearance} onPreview={onPreview}/>}
    </div>
+   {category==='officina'&&<div className="preferences-page">
+    <h3>Diseño de oficina</h3>
+    <div className="officina-design-grid" role="group" aria-label="Diseño de oficina">
+      {(Object.keys(officeNames) as OfficinaDesign[]).map(design=><button key={design} type="button" data-design={design}
+        className="officina-design-card" aria-pressed={status.settings.officinaDesign===design}
+        disabled={busy||status.settings.presentation} onClick={async()=>{
+          if(design===status.settings.officinaDesign) return;
+          setBusy(true);
+          try {await immediate(()=>window.companion.save({...status.settings,officinaDesign:design}));}
+          finally {setBusy(false);}
+        }}>
+        <figure><img src={previews['./assets/officina-previews/'+design+'.webp']} alt="" loading="lazy"/></figure>
+        <strong>{officeNames[design]}</strong>
+        {status.settings.officinaDesign===design&&<CompanionIcon name="check"/>}
+      </button>)}
+    </div>
+    {immediateFeedback?.error&&<p role="alert">{immediateFeedback.text}</p>}
+    <PreferenceSwitch title="Animaciones de ZEN" description="Anima las pantallas de los agentes y las transiciones de ZEN. Respeta el movimiento reducido de Windows."
+      checked={draft.motion} onChange={value=>edit('motion',value)}/>
+    {saveBar}
+   </div>}
    {category==='capsule'&&<div className="preferences-page">
     <h3>Ubicación y restauración</h3>
     <PreferenceRow title="Ubicación de ZEN" description="Se aplica al elegir una posición.">

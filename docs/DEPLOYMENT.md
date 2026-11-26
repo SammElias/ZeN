@@ -62,7 +62,7 @@ En **HUB → Respaldo y exportación → Restaurar biblioteca** puedes abrir tan
 
 Las copias nuevas incluyen los templates, sus referencias y sus miniaturas. La copia completa también incluye el borrador de Templates. Al importar una copia antigua sin galería, ZEN conserva los templates locales. Usa una versión que incluya Templates en el equipo de destino para recuperar la nueva galería.
 
-Las copias de HUB y de ZEN incluyen las fichas guardadas de Descubrimiento de apps. Para recuperarlas, usa una versión con Descubrimiento. Una copia anterior a esa función conserva las fichas que ya existan en el equipo de destino.
+Las copias de HUB y de ZEN incluyen las fichas guardadas de Descubrimiento de apps. Puedes consultar esas fichas desde el JSON exportado o desde una versión anterior con Descubrimiento. Una copia que carezca de las fichas conserva las que ya existan en el equipo de destino.
 
 Para activar **HUB → Traductor**, crea o utiliza un recurso de **Azure Translator** en región **Global**. En el portal, abre **Claves y punto de conexión** del recurso y copia una de sus dos claves en el campo **Clave de Azure** de ZEN. Cada instalación guarda su clave cifrada en su perfil. [Configurar Azure Translator](https://learn.microsoft.com/en-us/azure/ai-services/translator/how-to/create-translator-resource)
 
@@ -88,7 +88,7 @@ El comando compila, ejecuta las pruebas, coteja el paquete con el portable extra
 - El portable crea o repara el acceso de ZEN en el menú Inicio del usuario. Tanto el acceso como la ventana comunican a Windows el icono y la ruta del portable, que permite volver a abrir ZEN después de salir. Si había un anclaje que apuntaba a una copia temporal, vuelve a anclar ZEN desde Inicio.
 - Si falla el arranque, cierra ZEN y restaura el EXE anterior. Para recuperar datos tras una importación, importa la copia que ZEN guardó en `backups` con una versión compatible.
 - Antes de publicar, revisa qué archivos se subirán. El repositorio admite fuentes y documentación revisadas. El EXE se distribuye como activo de Release únicamente cuando se autoriza esa entrega. [Reglas de trabajo](../AGENTS.md)
-- Templates incluye treinta vistas previas originales de interfaces empresariales, con prompts para Power Apps Canvas y React. Cada usuario puede añadir sus referencias en HUB.
+- Templates incluye treinta vistas previas de interfaces empresariales en inglés, con prompts para Power Apps Canvas y React. Cada usuario puede añadir sus referencias en HUB.
 
 ## 06 · Conectar Oura Ring
 

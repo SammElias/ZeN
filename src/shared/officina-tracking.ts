@@ -11,7 +11,7 @@ export const officinaTrackingLabels = {
   checking: 'Verificando la respuesta', review: 'Requiere revisión',
   interrupted: 'Turno interrumpido', blocked: 'Limitación registrada', information: 'Falta información', waiting: 'En cola de Officina',
   scheduled: 'Espera su turno', done: 'Terminó el encargo', limited: 'Cerrado con limitaciones',
-  skipped: 'Omitido por cierre', assigned: 'Asignado', idle: 'Sin encargos',
+  skipped: 'Omitido por cierre', assigned: 'Asignado', idle: 'Sin encargos', unknown: 'Sin conexión',
 } as const;
 type TrackingState = keyof typeof officinaTrackingLabels;
 type RoleStatus = {state: TrackingState; task?: string; title?: string; detail?: string; label?: string};

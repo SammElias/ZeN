@@ -19,7 +19,8 @@ import {officinaOutputInstructions, officinaRoleProfile} from '../src/shared/off
 import type {OfficinaCodexTurn} from '../src/main/companion-codex-reader';
 import {OfficinaProvisioning} from '../src/main/companion-officina-provision';
 import {captureOfficinaSource} from '../src/main/companion-officina-context';
-import {officinaReply} from '../src/main/companion-officina-turn';
+import {getRunBinding, officinaReply, officinaTurn} from '../src/main/companion-officina-turn';
+import {officinaProjectDecisions} from '../src/shared/officina-decisions';
 
 const rule = 'Nadie puede aprobar su propio gasto.';
 const fields = {title: 'Permisos de aprobación', objective: 'Bloquear autoaprobaciones', criteria: rule, owner: 'architect' as const};
@@ -209,7 +210,8 @@ it('handles a decision once after restart while other requests keep their order 
     await submit(second, 'Segundo objetivo independiente.', project);
     await submit(third, 'Tercer objetivo independiente.', project);
     expect(officinaWaitingRuns(await read()).map(run => run.task)).toEqual([second, third]);
-    f.applyReply({kind: 'request', mode: 'approval', text: 'Aprueba la propuesta para pasar a Desarrollo.', markdown: '## Propuesta'});
+    f.applyReply({kind: 'request', mode: 'approval', text: 'Aprueba la propuesta para pasar a Desarrollo.', markdown: '## Propuesta',
+      priority: 'blocking', impact: 'Puede modificar el entorno de producción.', sensitive: true});
     await app.tick();
     const pending = officinaAttention(await read(), undefined, first);
     expect(pending?.kind).toBe('request');
@@ -222,9 +224,13 @@ it('handles a decision once after restart while other requests keep their order 
     const answer = {type: 'resolve-request', project, task: first, run: pending.run.id, decision: 'approve'} as const;
     await expect(app.handle({...answer, task: third})).rejects.toThrow('ya no está pendiente');
     await expect(app.handle({...answer, decision: 'respond', message: 'Sí'})).rejects.toThrow('acción disponible');
-    await Promise.all([app.handle(answer), app.handle(answer)]);
+    await expect(app.handle(answer)).rejects.toThrow('confirma la decisión');
+    await expect(app.handle({...answer, decision: 'reject'})).rejects.toThrow('confirma la decisión');
+    expect(officinaProjectDecisions(await read())).toMatchObject([{id: pending.run.id, status: 'pending', priority: 'blocking'}]);
+    await Promise.all([app.handle({...answer, confirmed: true}), app.handle({...answer, confirmed: true})]);
     await expect(app.handle({...answer, decision: 'request-changes', message: 'Cambia el diseño'})).rejects.toThrow('ya se registró');
     expect(officinaWaitingRuns(await read()).map(run => run.task)).toEqual([third, first]);
+    expect(officinaProjectDecisions(await read())).toMatchObject([{id: pending.run.id, status: 'approve', delivery: 'waiting'}]);
     f.applyReply({kind: 'limited', text: 'Segundo encargo concluido.'});
     await app.tick();
     await sent(third, 'coordinator', 4);
@@ -232,8 +238,30 @@ it('handles a decision once after restart while other requests keep their order 
     await app.tick();
     await sent(first, 'developer', 5);
     expect(f.queue.mock.lastCall?.[1]).toContain('Aprobado');
+    expect(f.queue.mock.lastCall?.[1]).toContain(pending.run.id);
     expect((await read()).runs.filter(run => run.task === first && run.role === 'developer')).toHaveLength(1);
+    expect(officinaProjectDecisions(await read())).toMatchObject([{id: pending.run.id, status: 'approve', delivery: 'accepted'}]);
   } finally {app.close();}
+});
+
+it('keeps a continuation for the same agent in the chat that originated the decision', () => {
+  const taskId = randomUUID(), originId = randomUUID(), continuationId = randomUUID();
+  const original = {projectId: 'dedicated', cwd: 'C:\\Fixture', thread: randomUUID(), environment: 'Local'};
+  const project: OfficinaProject = {
+    id: randomUUID(), name: 'Decisión versionada', tasks: [{...fields, id: taskId, status: 'active'}], events: [],
+    team: {projectId: original.projectId, cwd: original.cwd, threads: {architect: randomUUID()}},
+    runs: [
+      {id: originId, task: taskId, role: 'architect', state: 'completed', depth: 0, destination: original,
+        humanAnswer: {action: 'request-changes', message: 'Conserva los permisos del equipo.', continuation: continuationId}},
+      {id: continuationId, task: taskId, role: 'architect', state: 'waiting', depth: 0},
+    ],
+  };
+  const continuation = project.runs[1];
+  expect(getRunBinding(project, continuation)).toEqual(original);
+  const turn = officinaTurn(project, project.tasks[0], continuation, original.cwd);
+  expect(JSON.parse(turn!.prompt.split('\n').at(-1)!).humanDecision).toEqual({
+    version: originId, action: 'request-changes', feedback: 'Conserva los permisos del equipo.',
+  });
 });
 
 it('keeps new requests in a paused queue and moves past a confirmed interruption without resending it', async () => {

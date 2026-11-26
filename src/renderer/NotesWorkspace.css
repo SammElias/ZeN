@@ -183,7 +183,7 @@
   padding: clamp(12px, 2.1vw, 25px);
   scrollbar-width: thin;
 }
-.hub-main > :not(.hub-library, .templates-view, .discovery-workspace, .hub-quick-notes, .hub-whiteboard) { flex: none; }
+.hub-main > :not(.hub-library, .templates-view, .hub-quick-notes, .hub-whiteboard) { flex: none; }
 .hub-main[data-local-sheet] { overflow: hidden; }
 .hub-quick-notes {
   display: flex;

@@ -10,7 +10,6 @@ import {KnowledgeEditor} from './KnowledgeEditor';
 import {QuickNotesEditor} from './QuickNotesEditor';
 import {Whiteboard} from './Whiteboard';
 import {TemplatesWorkspace} from './TemplatesWorkspace';
-import {DiscoveryWorkspace} from './DiscoveryWorkspace';
 import {TranslatorWorkspace} from './TranslatorWorkspace';
 import {PasswordVault,concealVaultView} from './PasswordVault';
 import {motion,navigationHoverDelay} from '../shared/companion-motion';
@@ -22,7 +21,7 @@ import './NotesWorkspace.css';
 type Mode = 'read' | 'edit' | 'preview';
 type Confirmation = {text: string; label: string; run: () => void};
 const sidebarGroups: readonly {title:string;sections:readonly (keyof typeof sectionIcons)[]}[] = [
-  {title:'Espacio de trabajo',sections:['prompt','passwords','templates','discovery','translator']},
+  {title:'Espacio de trabajo',sections:['prompt','passwords','templates','translator']},
   {title:'Sistema',sections:['settings','backup']},
   {title:'Bloc personal',sections:['quickNotes','whiteboard']},
 ];
@@ -40,13 +39,12 @@ function validDraft(draft: HubDraft | undefined) {
   return kind !== 'resource' || /^https?:\/\//i.test(url) && URL.canParse(url);
 }
 
-export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverEnabled,onAssess}: {
-  appearance:AppearanceState;visible:boolean;surfaceVisible:boolean;animate:boolean;hoverEnabled:boolean;onAssess:(text:string)=>Promise<void>;
+export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverEnabled}: {
+  appearance:AppearanceState;visible:boolean;surfaceVisible:boolean;animate:boolean;hoverEnabled:boolean;
 }) {
   const [data,setData] = useState<HubData>();
   const [section,setSection] = useState<HubSection>('prompt');
   const [templatesOpened,setTemplatesOpened] = useState(false);
-  const [discoveryOpened,setDiscoveryOpened] = useState(false);
   const [libraryRevision,setLibraryRevision] = useState(0);
   const [draft,setDraft] = useState<HubDraft>();
   const [mode,setMode] = useState<Mode>('read');
@@ -285,7 +283,6 @@ export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverE
 
   function showLocation(next: HubSection) {
     if(next==='templates')setTemplatesOpened(true);
-    if(next==='discovery')setDiscoveryOpened(true);
     listScroll.current=0;
     setSection(next);
     setDraft(undefined);
@@ -442,7 +439,7 @@ export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverE
   },[draft, dirty, valid, mode, busy, autoBlocked, draftBackedUp, confirmation, visible]);
 
   const independentSection = section==='quickNotes' || section==='whiteboard';
-  const showLibraryTools = !independentSection && section!=='templates' && section!=='discovery' && section!=='passwords' && section!=='translator';
+  const showLibraryTools = !independentSection && section!=='templates' && section!=='passwords' && section!=='translator';
   useEffect(()=>{
     if(!visible)return;
     function shortcuts(event:KeyboardEvent) {
@@ -601,8 +598,6 @@ export function NotesWorkspace({appearance,visible,surfaceVisible,animate,hoverE
         <Whiteboard visible={visible&&surfaceVisible&&section==='whiteboard'} dark={appearance.theme==='dark'} confirm={setConfirmation}/>
         {visible&&section==='passwords'&&<PasswordVault/>}
         {visible&&surfaceVisible&&section==='translator'&&<TranslatorWorkspace/>}
-        {data&&discoveryOpened&&<DiscoveryWorkspace key={`discovery-${libraryRevision}`} visible={visible&&section==='discovery'}
-          records={data.discoveries??[]} busy={busy} mutate={mutate} confirm={setConfirmation} onAssess={onAssess}/>}
         {data && section==='settings' && <div className="hub-panel">
           <h2>Tema del lector</h2>
           <p>El lector conserva su contraste claro u oscuro. La navegación y Templates usan la apariencia general de ZEN.</p>

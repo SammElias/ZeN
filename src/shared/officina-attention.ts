@@ -1,4 +1,4 @@
-import {officinaOpenItems, type OfficinaGoal, type OfficinaProject, type OfficinaRun, type OfficinaRunActivity,
+import {officinaOpenItems, type OfficinaGoal, type OfficinaHumanRequest, type OfficinaProject, type OfficinaRun, type OfficinaRunActivity,
   type OfficinaTask} from './companion-officina';
 
 export const officinaContextIssue = 'El contexto de decisiones y dependencias supera el límite del puente. Revisa el encargo en el tablero.';
@@ -29,6 +29,12 @@ export function officinaAskedQuestion(goal: OfficinaGoal) {
   return !!goal.question && last?.from === 'codex' && last.reply?.kind === 'question' && last.text === goal.question;
 }
 
+export function officinaConfirmApproval(request: OfficinaHumanRequest, nextRole?: string) {
+  return request.sensitive === true || nextRole === 'alm' ||
+    /\b(?:desplieg\w*|deploy\w*|producci[oó]n|production|elimin\w*|delet\w*|credencial\w*|credentials?|permisos?|permissions?|publica\w*|publish\w*|escritura|write)\b/i
+      .test([request.text, request.impact, request.markdown].filter(Boolean).join(' '));
+}
+
 export function officinaWaitingRuns(project: OfficinaProject) {
   const open = new Set(project.tasks.filter(task => task.status !== 'done').map(task => task.id));
   for (const item of officinaOpenItems(project.events)) if (item.data.kind === 'blocker') open.delete(item.task);
@@ -40,7 +46,7 @@ export type OfficinaAttention = {task: OfficinaTask} & (
   {kind: 'permission'; run: OfficinaRun; turn?: string} |
   {kind: 'request'; run: OfficinaRun; request: NonNullable<OfficinaGoal['humanRequest']>} |
   {kind: 'closure' | 'dispatch'; run: OfficinaRun} |
-  {kind: 'question'; question: string}
+  {kind: 'question'; question: string; run?: OfficinaRun}
 );
 
 export function officinaAttentionItems(project: OfficinaProject, activity?: OfficinaRunActivity, taskId?: string): OfficinaAttention[] {
@@ -60,7 +66,8 @@ export function officinaAttentionItems(project: OfficinaProject, activity?: Offi
     }
     const closure = officinaClosureRetry(project, task.id);
     if (closure) items.push({kind: 'closure', task, run: closure});
-    else if (goal?.question && officinaAskedQuestion(goal)) items.push({kind: 'question', task, question: goal.question});
+    else if (goal?.question && officinaAskedQuestion(goal)) items.push({kind: 'question', task, question: goal.question,
+      run: project.runs.find(candidate => candidate.id === goal.history.at(-1)?.reply?.run && candidate.task === task.id)});
     else if (run?.issue && ['uncertain', 'review', 'waiting', 'released'].includes(run.state) && run.retryAt === undefined) {
       items.push({kind: 'dispatch', task, run});
     }

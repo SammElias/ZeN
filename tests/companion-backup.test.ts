@@ -1,11 +1,14 @@
+import {createHash} from 'node:crypto';
 import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {DatabaseSync} from 'node:sqlite';
 import {describe, expect, it} from 'vitest';
 import {CompanionAppearance} from '../src/main/companion-appearance';
 import {readBackup, readLibraryBackup, restoreBackup, snapshotBackup, writeBackup} from '../src/main/companion-backup';
 import {CompanionLauncher} from '../src/main/companion-launcher';
 import {KnowledgeHub} from '../src/main/knowledge-hub';
+import {PortableSettings} from '../src/shared/companion-backup';
 import {CompanionSettingsSchema} from '../src/shared/codex-companion';
 import {libraryFolders,newFields,type HubData} from '../src/shared/knowledge-hub';
 import {emptyTemplate} from '../src/shared/knowledge-templates';
@@ -22,6 +25,19 @@ function profile(root:string) {
 }
 
 describe('portable ZEN backup',()=>{
+  it('opens every previous office layout in Grafito and retains desktop and backup settings',()=>{
+    for(const schema of [CompanionSettingsSchema,PortableSettings]) {
+      for(const officinaDesign of ['monochrome','redline','nexus']) {
+        expect(schema.parse({officinaDesign,motion:false})).toMatchObject({officinaDesign,motion:false});
+      }
+      for(const officinaDesign of [undefined,'classic','aureo','greenhouse','prism','refuge','workshop','graphite']) {
+        expect(schema.parse({officinaDesign,motion:false,interfaceVolume:32})).toMatchObject({
+          officinaDesign:'graphite',motion:false,interfaceVolume:32,
+        });
+      }
+    }
+  });
+
   it('keeps empty folders and assigned legacy categories selectable in the right library',()=>{
     const built='77fc2ea1-5952-4d90-88de-0591b99e6123', used='77fc2ea1-5952-4d90-88de-0591b99e6124';
     const empty='77fc2ea1-5952-4d90-88de-0591b99e6125', entry='77fc2ea1-5952-4d90-88de-0591b99e6126';
@@ -41,6 +57,37 @@ describe('portable ZEN backup',()=>{
     const root=mkdtempSync(join(tmpdir(),'zen-empty-hub-'));
     try {expect(profile(root).notes.read().data.folders).toEqual([]);}
     finally {rmSync(root,{recursive:true,force:true});}
+  });
+
+  it('updates only the shipped preview on upgrade and backup restore',()=>{
+    const root=mkdtempSync(join(tmpdir(),'zen-preview-upgrade-'));
+    try {
+      const path=join(root,'knowledge-hub.sqlite'), legacy=join(root,'missing-legacy.json');
+      const stock={id:'45b8c011-f3ba-479a-8d10-000000000001',...emptyTemplate(),name:'Editado en español',
+        description:'Descripción guardada',prompt:'Prompt en español',
+        favorite:true,createdAt:1,updatedAt:2};
+      const oldImage={name:'preview.png',mime:'image/png' as const,
+        original:readFileSync('public/icons/zen-16.png','base64'),thumbnail:jpeg};
+      const english={...oldImage,original:readFileSync('public/hub-templates/mesa-de-servicio.png','base64')};
+      const custom={...stock,id:'45b8c011-f3ba-479a-8d10-000000000002',
+        image:{...oldImage,original:readFileSync('public/icons/zen-256.png','base64')}};
+      const removed={...stock,id:'45b8c011-f3ba-479a-8d10-000000000003'};
+      const legacyHash=createHash('sha256').update(Buffer.from(oldImage.original,'base64')).digest('hex');
+      const originals=[{...stock,image:oldImage},custom];
+      const oldHub=new KnowledgeHub(path,legacy);
+      const draft={id:stock.id,expected:stock.updatedAt,fields:{...emptyTemplate(),name:'Borrador'},image:custom.image};
+      oldHub.restore({...oldHub.read().data,templates:originals},undefined,draft);
+      const db=new DatabaseSync(path);
+      try {db.exec("UPDATE hub_state SET value='3' WHERE key='templates-initialized'");}
+      finally {db.close();}
+      const migrated=new KnowledgeHub(path,legacy,()=>[stock,custom,removed].map(record=>({
+        ...record, image:english, previousPreviewHash:legacyHash,
+      })));
+      const expected=[{...stock,image:english},custom];
+      expect(migrated.read(true)).toMatchObject({data:{templates:expected},templateDraft:draft});
+      migrated.restore({...oldHub.read().data,templates:originals},undefined,draft);
+      expect(migrated.read(true)).toMatchObject({data:{templates:expected},templateDraft:draft});
+    } finally {rmSync(root,{recursive:true,force:true});}
   });
 
   it('moves library, draft and wallpaper to another profile and keeps a recoverable previous copy',()=>{

@@ -13,8 +13,8 @@ function scopeName(project: OfficinaProject, review: OfficinaObserverReview) {
   return project.tasks.find(task => task.id === review.scope)?.title ?? 'Actividad reciente del proyecto';
 }
 
-export function OfficinaObserverDesk({project, task, queued, act, open, settings}: {
-  project?: OfficinaProject; task?: string; queued?: string[]; act: Act; open: () => void; settings: () => void;
+export function OfficinaObserverDesk({project, task, queued, act, open, settings, embedded}: {
+  project?: OfficinaProject; task?: string; queued?: string[]; act: Act; open: () => void; settings: () => void; embedded?: boolean;
 }) {
   const [scope, setScope] = useState<string>();
   const id = useRef(crypto.randomUUID());
@@ -26,11 +26,13 @@ export function OfficinaObserverDesk({project, task, queued, act, open, settings
   const tasks = project ? officinaObservationTasks(project) : [];
   const selectedTask = scope ?? tasks.find(item => item.id === task)?.id ?? '';
   const pending = (project?.reviews ?? []).reduce((total, review) => total + officinaPendingProposals(review, project), 0);
-  return <section className="officina-desk-activity officina-observer-desk" aria-label="Puesto de ZEN">
+  return <section className={embedded ? 'officina-observer-embedded' : 'officina-desk-activity officina-observer-desk'}
+    aria-label={embedded ? 'Herramientas de ZEN' : 'Puesto de ZEN'}>
+    {!embedded &&
     <header>
       <div><span className="officina-role-icon"><Eye aria-hidden="true"/></span><h2>ZEN</h2></div>
       <button onClick={settings}><Settings2 aria-hidden="true"/>Instrucciones</button>
-    </header>
+    </header>}
     <p>Revisa cómo trabajó el equipo y te propone mejoras para sus prompts, funciones y coordinación.</p>
     {project?.team?.projectId && <label className="officina-auto-improvements">
       <input type="checkbox" checked={!!project.autoImprovements?.enabled} onChange={event =>

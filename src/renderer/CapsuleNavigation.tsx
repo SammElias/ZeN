@@ -126,17 +126,24 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
       const recent = !expanded && status.workspace?.recentSection === value;
       const tooltip = 'Abrir ' + label;
       const officina=compact&&!expanded&&value==='officina'?status.officinaGlance:undefined;
-      const officinaDescription=officina?.kind==='working'?
-        (officina.count===1?'un agente trabajando':`${officina.count} agentes trabajando`):
-        officina?.kind==='decision'?'decisión pendiente':officina?.kind==='finished'?'actividad terminada':
-        officina?.kind==='unknown'?'estado desconocido':undefined;
+      const activeCount=officina?.count;
+      const activeDescription=activeCount===1?'un agente trabajando':activeCount?`${activeCount} agentes trabajando`:undefined;
+      const decisionCount=officina?.decisions;
+      const decision=decisionCount===1?'decisión pendiente':decisionCount?`${decisionCount} decisiones pendientes`:undefined;
+      const officinaDescription=[
+        decision, activeDescription, officina?.kind==='finished'?'actividad terminada':undefined,
+        officina?.kind==='unknown'||officina?.offline?'estado desconocido':undefined,
+      ].filter(Boolean).join(', ');
+      const queued = value === 'officina' ? status.officinaQueueCount : undefined;
+      const queueDescription = queued ? `${queued} ${queued === 1 ? 'turno' : 'turnos'} en cola` : undefined;
+      const officinaStatus = [officinaDescription, queueDescription].filter(Boolean).join(', ');
       const glance=compact&&!expanded&&value==='metrics'?status.ouraGlance:undefined;
       const measured=glance?glanceDate.format(new Date(glance.day+'T12:00:00Z')):undefined;
       const metric=glance?`Sueño · ${ouraDuration(glance.seconds)} · ${measured}`:undefined;
       return <button key={value} type="button" data-page={value} data-section={value} data-hover-app={compact?value:undefined} data-recent={recent || undefined}
-        aria-label={officinaDescription?`${name}, ${officinaDescription}`:name} aria-description={metric??(value==='home'&&homeNotices?homeNotices:recent?'Última sección usada':undefined)} aria-expanded={active} disabled={!ready}
+        aria-label={officinaStatus?`${name}, ${officinaStatus}`:name} aria-description={metric??(value==='home'&&homeNotices?homeNotices:recent?'Última sección usada':undefined)} aria-expanded={active} disabled={!ready}
         aria-controls="capsule-content"
-        title={value==='home'&&homeNotices?`${tooltip} · ${homeNotices}`:metric??tooltip}
+        title={value==='home'&&homeNotices?`${tooltip} · ${homeNotices}`:metric??(officinaStatus?`${tooltip} · ${officinaStatus}`:tooltip)}
         aria-current={active ? 'page' : undefined} data-dragging={dragged === value}
         draggable={!compact&&!settings} onDragStart={compact||settings ? undefined : event => {
           setDragged(value);
@@ -177,7 +184,11 @@ export function CapsuleNavigation({status, ready, compact = false, onActivate, o
           : <CompanionIcon name={settings?'settings':value==='spotify'?'sound':value==='notes'?'notebook':value==='calendar'?'calendar':value==='officina'?'office':'metrics'}/>}
         <span>{label}</span>
         {officina&&<b ref={glanceBadge} className="officina-glance-badge" data-kind={officina.kind} aria-hidden="true">
-          {officina.kind==='working'?officina.count:officina.kind==='decision'?'!':officina.kind==='finished'?'✓':'?'}
+          {officina.kind==='working'?officina.count:officina.kind==='decision'?<>!<small>{(decisionCount??0)>99?'99+':decisionCount}</small></>:officina.kind==='finished'?'✓':'?'}
+        </b>}
+        {officina?.kind==='decision'&&!!activeCount&&<b className="officina-glance-active" aria-hidden="true">{activeCount}</b>}
+        {!!queued && <b className="officina-queue-badge" aria-hidden="true">
+          <i/><i/><i/>{queued > 99 ? '99+' : queued}
         </b>}
         {value==='home'&&approvals+unread>0&&<b className={approvals?'integration-badge permission-badge':'integration-badge'} aria-hidden="true">{approvals+unread>99?'99+':approvals+unread}</b>}
       </button>;

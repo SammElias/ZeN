@@ -20,7 +20,7 @@ import {decideOfficinaObservation, officinaFollowupTurn, officinaObserveTurn, qu
   queueOfficinaImprovement, recordOfficinaIncident} from './companion-officina-observer';
 import {legacyOfficinaContextQuestion, officinaClosureRetry, officinaContextIssue, officinaReplyReviewQuestion,
   officinaSendRetry, officinaWaitingRuns} from '../shared/officina-attention';
-import {browserForTask, getRunBinding, officinaTurn, officinaReply} from './companion-officina-turn';
+import {browserForTask, getRunBinding, officinaDecisionDestination, officinaTurn, officinaReply} from './companion-officina-turn';
 import {applyOfficinaCoordination, continueOfficinaGoal, createOfficinaRun, finishOfficinaGoal, goalFor, logOfficinaGoal, officinaImprovementQa,
   pauseOfficinaGoal, planOfficinaTabReview, recoverOfficinaHandoff, recoverOfficinaPlan, recordOfficinaRequest, resolveOfficinaRequest,
   restoreOfficinaReviewStep, settleSavedOfficinaGoals, plannedOfficinaHandoff} from './companion-officina-workflow';
@@ -501,8 +501,15 @@ export class CompanionOfficina {
         project.queueEnabled = true;
       }
       if (action.type === 'answer-goal') {
+        const origin = action.run && project.runs.find(run => run.id === action.run && run.task === task.id);
+        if (origin && origin.humanAnswer?.action === 'respond' && origin.humanAnswer.message === action.message) return this.snapshot();
+        if (action.run && (!origin || origin.humanAnswer || goal?.history.at(-1)?.reply?.run !== origin.id)) {
+          throw Error('La pregunta cambió. Reabre la decisión vigente.');
+        }
         if (!goal?.question || task.status === 'done') throw Error('La pregunta ya no está pendiente.');
         if (officinaClosureRetry(project, task.id)) throw Error('Usa Reintentar cierre para recuperar el encargo de Coordinación.');
+        if (origin) origin.humanAnswer = {action: 'respond', message: action.message, at: Date.now(),
+          request: {kind: 'request', mode: 'question', text: goal.question}};
         logOfficinaGoal(goal, 'human', action.message);
         goal.question = undefined;
         goal.round = 0;
@@ -512,11 +519,14 @@ export class CompanionOfficina {
           createOfficinaRun(project, task.id, previous?.role ?? goal.recipient,
             {step: previous?.step, event: previous?.event, depth: previous?.depth ?? 0});
         } else createOfficinaRun(project, task.id, 'coordinator');
-        project.queueEnabled = true;
+        if (origin && origin.humanAnswer) origin.humanAnswer.continuation = project.runs.at(-1)?.id;
+        if (!action.run) project.queueEnabled = true;
       }
       if (action.type === 'resolve-request') {
         const origin = project.runs.find(run => run.id === action.run && run.task === task.id);
-        resolveOfficinaRequest(project, task, goal, origin, {action: action.decision, message: action.message});
+        if (!resolveOfficinaRequest(project, task, goal, origin, {action: action.decision, message: action.message}, action.confirmed)) {
+          return this.snapshot();
+        }
       }
       if (action.type === 'edit') {
         if (goal?.phase === 'complete' && action.status !== 'done') throw Error('Este encargo está cerrado. Envía un objetivo nuevo para continuar.');
@@ -719,7 +729,8 @@ export class CompanionOfficina {
       }
       if (!run) return;
       const observer = run.role === 'observer';
-      if (project.team && (!project.team.projectId || !project.team.cwd ||
+      const original = officinaDecisionDestination(project, run);
+      if (!original && project.team && (!project.team.projectId || !project.team.cwd ||
         (observer ? !project.team.threads.observer : !OfficinaParticipant.options.every(role => project.team?.threads[role])))) {
         await this.provision(project, run);
         return;
@@ -739,6 +750,16 @@ export class CompanionOfficina {
         }
         if (!this.canDispatch(this.requireProject(id), run)) return;
         if (missing) {
+          if (original) {
+            const latest = this.requireProject(id);
+            const pending = latest.runs.find(item => item.id === run.id && item.state === 'waiting');
+            if (pending) {
+              pending.state = 'review';
+              pending.issue = 'El chat original de la decisión ya no está disponible. Revisa el encargo en Codex.';
+              this.write(this.database(), latest);
+            }
+            return;
+          }
           await this.provision(project, run, {role: run.role, thread: binding.thread});
           return;
         }

@@ -78,9 +78,10 @@ export const OfficinaContribution = z.discriminatedUnion('kind', [
 ]);
 export type OfficinaContribution = z.infer<typeof OfficinaContribution>;
 export const OfficinaHumanRequest = z.object({kind: z.literal('request'), ...response,
-  mode: z.enum(['approval', 'review', 'question'])}).strict();
+  mode: z.enum(['approval', 'review', 'question']), priority: z.enum(['blocking', 'high', 'normal']).optional(),
+  impact: text(360).optional(), sensitive: z.boolean().optional()}).strict();
 export type OfficinaHumanRequest = z.infer<typeof OfficinaHumanRequest>;
-const humanAnswer = z.enum(['approve', 'request-changes', 'respond']);
+const humanAnswer = z.enum(['approve', 'request-changes', 'reject', 'respond']);
 export const OfficinaEvent = z.object({
   id: OfficinaId, task: OfficinaId, from: OfficinaRole, at: z.number(),
   source: z.enum(['user', 'codex']), data: OfficinaContribution,
@@ -138,7 +139,9 @@ const run = z.object({
   sentAt: z.number().optional(), queuedAt: z.number().optional(), turn: z.string().max(160).optional(), issue: z.string().optional(),
   retryAttempt: z.number().int().min(1).max(4).optional(), retryAt: z.number().optional(),
   closureRetried: z.literal(true).optional(),
-  humanAnswer: z.object({action: humanAnswer, message: text(700).optional()}).optional(),
+  humanAnswer: z.object({action: humanAnswer, message: text(700).optional(), at: z.number().optional(),
+    request: OfficinaHumanRequest.optional(), continuation: OfficinaId.optional()}).optional(),
+  requestedAt: z.number().optional(),
   followup: z.object({review: OfficinaId, index: proposalIndex, result: observerFollowupReport.optional()}).optional(),
 });
 export type OfficinaRun = z.infer<typeof run>;
@@ -153,9 +156,13 @@ export function officinaInputMatches(text: string, identity: OfficinaRunIdentity
 }
 export type OfficinaRunActivity = {run: string; state: 'working' | 'permission' | 'finished' | 'interrupted'; at: number; turn?: string};
 export type OfficinaDirectActivity = {state: OfficinaRunActivity['state']; at: number};
-export type OfficinaGlance = {kind: 'working' | 'decision' | 'unknown' | 'finished'; count?: number; pulse?: number};
+export type OfficinaGlance = {kind: 'working' | 'decision' | 'unknown' | 'finished'; count?: number; decisions?: number;
+  pulse?: number; lastSync?: number; offline?: boolean};
 export type OfficinaGlanceItem = {project: string; projectName: string; task?: string; title?: string; role: OfficinaActor;
-  kind: 'working' | 'question' | 'permission'};
+  kind: 'working' | 'question' | 'permission' | 'finished'; id?: string; at?: number; roleName?: string};
+export type OfficinaDecision = OfficinaGlanceItem & {kind: 'question' | 'permission'; id: string;
+  summary: string; priority: 'blocking' | 'high' | 'normal'; status: 'pending' | z.infer<typeof humanAnswer>;
+  mode?: OfficinaHumanRequest['mode']; delivery?: 'waiting' | 'accepted' | 'uncertain'; feedback?: string};
 export const OfficinaProject = z.object({
   id: OfficinaId, name: text(120), binding: OfficinaBinding.optional(), team: provision.optional(),
   folder: OfficinaLocalSource.optional(),
@@ -181,7 +188,7 @@ export type OfficinaView = {
 export const OfficinaAction = z.discriminatedUnion('type', [
   z.object({type: z.literal('read')}).strict(),
   z.object({type: z.literal('select-activity'), project: OfficinaId, task: OfficinaId.optional(),
-    role: OfficinaActor, kind: z.enum(['working', 'question', 'permission'])}).strict(),
+    role: OfficinaActor, kind: z.enum(['working', 'question', 'permission', 'finished']), id: z.string().max(400).optional()}).strict(),
   z.object({type: z.literal('select'), project: OfficinaId}).strict(),
   z.object({type: z.literal('project'), name: text(120)}).strict(),
   z.object({type: z.literal('delete-project'), project: OfficinaId}).strict(),
@@ -191,9 +198,9 @@ export const OfficinaAction = z.discriminatedUnion('type', [
     .strict().refine(value => !!(value.message || value.pastedText || value.images?.length)),
   z.object({type: z.literal('pick-context'), kind: z.enum(['folder', 'file'])}).strict(),
   z.object({type: z.literal('remove-context'), id: OfficinaId}).strict(),
-  z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700)}).strict(),
+  z.object({type: z.literal('answer-goal'), project: OfficinaId, task: OfficinaId, message: text(700), run: OfficinaId.optional()}).strict(),
   z.object({type: z.literal('resolve-request'), project: OfficinaId, task: OfficinaId, run: OfficinaId,
-    decision: humanAnswer, message: text(700).optional()}).strict(),
+    decision: humanAnswer, message: text(700).optional(), confirmed: z.literal(true).optional()}).strict(),
   z.object({type: z.literal('retry-closure'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('retry-send'), project: OfficinaId, task: OfficinaId, run: OfficinaId}).strict(),
   z.object({type: z.literal('resume-browser-review'), project: OfficinaId, task: OfficinaId}).strict(),

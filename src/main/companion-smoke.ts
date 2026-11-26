@@ -239,7 +239,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  check('hubSimplifiedNavigation',await js(cap,`(()=>{
   const nav=document.querySelector('.hub-sidebar nav');
   const labels=[...nav?.querySelectorAll('h2,button')??[]].map(item=>item.textContent.trim());
-  return labels.join('|')==='Espacio de trabajo|Biblioteca de prompts|Contraseñas|Templates|Descubrimiento de apps|Traductor|Sistema|Configuración|Respaldo y exportación|Bloc personal|Apuntes|Pizarra'&&
+  return labels.join('|')==='Espacio de trabajo|Biblioteca de prompts|Contraseñas|Templates|Traductor|Sistema|Configuración|Respaldo y exportación|Bloc personal|Apuntes|Pizarra'&&
    nav.querySelector('[aria-current=page]')?.textContent.trim()==='Biblioteca de prompts';
  })()`));
  const noteFolder=await js(cap,"window.companion.notesChange({type:'folder',name:'AI ENGINER',group:'folder'})");
@@ -686,7 +686,6 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
   ['Pizarra','.hub-whiteboard'],
   ['Contraseñas','.password-vault'],
   ['Templates','.templates-view'],
-  ['Descubrimiento de apps','.discovery-workspace'],
   ['Traductor','.translator-workspace'],
  ];
  const sidebarSettings=await js(cap,"window.companion.status().then(result=>result.value.settings)");
@@ -709,13 +708,11 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
    await clickLabel('.hub-sidebar',label);
    await wait(()=>js(cap,`document.querySelector('.hub-sidebar [aria-current=page]')?.textContent.trim()===${JSON.stringify(label)}`));
    const exclusive=await js(cap,`(()=>{
-    const views=[...document.querySelectorAll('.knowledge-hub :is(.templates-view,.discovery-workspace,.translator-workspace,.password-vault,.hub-library,.hub-quick-notes,.hub-whiteboard)')];
+    const views=[...document.querySelectorAll('.knowledge-hub :is(.templates-view,.translator-workspace,.password-vault,.hub-library,.hub-quick-notes,.hub-whiteboard)')];
     const visible=views.filter(view=>view.getClientRects().length>0);
+    const retained=views.filter(view=>view.matches('.templates-view'));
     return visible.length===1&&visible[0].matches(${JSON.stringify(activeView)})&&
-     ['.templates-view','.discovery-workspace'].every(selector=>{
-      const retained=views.filter(view=>view.matches(selector));
-      return retained.length<=1&&retained.every(view=>view===visible[0]?!view.inert:view.hidden&&view.inert);
-     });
+     retained.length<=1&&retained.every(view=>view===visible[0]?!view.inert:view.hidden&&view.inert);
    })()`);
    if(!exclusive)throw Error('El HUB muestra vistas superpuestas o duplicadas en '+label);
   }
@@ -879,36 +876,7 @@ export async function companionSmoke({cap,hub,integration,calendar,profile,opene
  await clickLabel('.vault-form','Activar Windows Hello');
  await wait(()=>js(cap,"document.querySelector('.password-vault [role=status]')?.textContent.includes('contraseña maestra no es correcta')"));
  check('vaultHelloValidatesMaster',!existsSync(join(profile,'passwords-hello.json')));
- await clickLabel('.hub-sidebar','Descubrimiento de apps');
- await wait(()=>js(cap,"!!document.querySelector('.discovery-workspace:not([hidden])')"));
- await clickLabel('.discovery-workspace','Nueva ficha');
- check('discoveryBilingual',await js(cap,"document.querySelector('[for=discovery-objective][lang=en]')?.textContent.includes('What problem')&&document.querySelector('#discovery-es-objective')?.textContent.includes('¿Qué problema')"));
- await fill('.discovery-project input','Help desk pilot');
- await fill('#discovery-objective','Reduce the time to resolve support tickets.');
- await shot(cap,'discovery-interview');
- await clickLabel('.discovery-workspace','Guardar ficha');
- await wait(()=>js(cap,"document.querySelector('.discovery-status [role=status]')?.textContent==='Ficha guardada.'"));
- await clickLabel('.discovery-workspace','Volver a las fichas');
- await js(cap,"document.querySelector('.discovery-records button').click()");
- check('discoveryReopensAnswers',await js(cap,"document.querySelector('#discovery-objective')?.value==='Reduce the time to resolve support tickets.'"));
- const queueBeforeDiscovery=queuedRequests.length,copyBeforeDiscovery=copiedText.length;
- await clickLabel('.discovery-workspace','Generar propuesta');
- check('discoveryLocalIdea',await js(cap,"document.querySelector('.discovery-idea strong')?.textContent==='Service desk'"));
- await clickLabel('.discovery-workspace','Copiar resumen');
- await wait(async()=>copiedText.length===copyBeforeDiscovery+1);
- check('discoveryBriefToClipboard',copiedText.at(-1)?.includes('Application discovery · Help desk pilot'));
- await wait(()=>js(cap,"document.querySelector('.discovery-status [role=status]')?.textContent==='Resumen copiado.'"));
- await clickLabel('.discovery-steps','Datos, integración y licencias');
- await fill('#discovery-licences','Confirm seat assignments with IT');
- await js(cap,"document.querySelector('[aria-label=\"Por confirmar · Licences\"]').click()");
- await clickLabel('.discovery-workspace','Valorar en Codex');
- await wait(()=>js(cap,"document.querySelector('.workspace-content')?.dataset.page==='home'&&document.querySelector('#codex-request')?.value.includes('Licences · To confirm (Confirm seat assignments with IT)')"));
- check('discoveryStagesWithoutSending',queuedRequests.length===queueBeforeDiscovery);
- await js(cap,"document.querySelector('.codex-request-form').requestSubmit()");
- await wait(()=>js(cap,"document.querySelector('#codex-request')?.value==='Borrador habitual de prueba'"));
- check('discoveryUsesExistingRequest',queuedRequests.length===queueBeforeDiscovery+1&&queuedRequests.at(-1)?.text.includes('Help desk pilot'));
- await nav('notes');
- check('discoveryAssessmentSaves',await js(cap,"window.companion.notesRead().then(result=>result.ok&&result.value.data.discoveries?.[0]?.answers.licences?.pending===true)"));
+ check('discoveryRemovedFromHub',await js(cap,"![...document.querySelectorAll('.hub-sidebar button')].some(button=>button.textContent.includes('Descubrimiento de apps'))"));
  await nav('home');
  await fill('#codex-request','');
  Object.assign(report,await smokeAppearance({cap,js,wait,nav,shot,selectPosition,compact,resize:resizeForFixture}));

@@ -1,0 +1,150 @@
+.graphite-stage {
+  position:relative; isolation:isolate; overflow:hidden; container-type:size;
+  width:100%; min-width:0; min-height:260px; flex:1 1 auto;
+  border:1px solid #414044; border-radius:12px;
+  background:radial-gradient(ellipse at center,#373737 0,#232428 68%,#1b1d20 100%);
+}
+.graphite-stage {touch-action:none; user-select:none; overflow:clip; cursor:grab}
+.graphite-stage:focus-visible {outline:2px solid #a0d8d0;outline-offset:-3px}
+.graphite-stage[data-dragging=true],.graphite-stage[data-dragging=true] .graphite-room {cursor:grabbing}
+.graphite-frame {position:absolute;isolation:isolate}
+.graphite-plate,.graphite-overlay {position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.graphite-screen {position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;overflow:hidden;color:#a1dace}
+.graphite-screen canvas {display:block;width:100%;height:100%}
+.graphite-instrument {position:absolute;right:3%;width:31%;height:62%;top:18%;overflow:hidden;opacity:.92}
+.graphite-screen[data-board=true] {color:#465755}
+.graphite-screen[data-ambient=true] .graphite-instrument {inset:5%;width:90%;height:90%;opacity:.74}
+.graphite-screen[data-source=secondary][data-monitor=alm] .graphite-instrument {inset:72% 0 2%;width:100%;height:26%}
+.graphite-node {fill:currentColor;stroke:none}
+.graphite-wire {opacity:.34}
+.graphite-signal {stroke-dasharray:14 86;stroke-dashoffset:14}
+.graphite-exhaust {stroke:#efbd78}
+.graphite-screen[data-animate=true] {--cycle:5.8s}
+.graphite-screen[data-busy=true] {--cycle:3.8s}
+.graphite-screen[data-animate=true] .graphite-code-roll {animation:graphite-code var(--cycle) linear infinite}
+.graphite-screen[data-animate=true] .graphite-signal {animation:graphite-trace var(--cycle) linear infinite}
+.graphite-screen[data-animate=true] .graphite-row-focus {animation:graphite-read var(--cycle) ease-in-out infinite}
+.graphite-screen[data-animate=true] .graphite-sweep {animation:graphite-scan var(--cycle) ease-in-out infinite alternate}
+.graphite-screen[data-animate=true] .graphite-exhaust {animation:graphite-glow 1.6s ease-in-out infinite alternate}
+.graphite-tools {
+  position:absolute;bottom:8px;right:8px;z-index:2;display:flex;align-items:center;padding:2px;
+  border:1px solid #62686c;border-radius:8px;background:#14181cec;box-shadow:0 2px 8px #0006;cursor:default;
+}
+.graphite-stage .graphite-tools button {
+  display:grid;place-items:center;min-height:28px;min-width:28px;margin:0;padding:3px;border:0;border-radius:4px;
+  background:transparent;color:#eceeea;font:600 11px/1 'Segoe UI',sans-serif;cursor:pointer;
+}
+.graphite-stage .graphite-tools button:is(:hover,:focus-visible) {background:#40494c}
+.graphite-stage .graphite-tools button:disabled {opacity:.38}
+.graphite-stage .graphite-tools .graphite-percent {min-width:40px;font-variant-numeric:tabular-nums}
+.graphite-tools svg {width:15px;height:15px}
+@keyframes graphite-code {to{transform:translateY(-54px)}}
+@keyframes graphite-trace {to{stroke-dashoffset:-86}}
+@keyframes graphite-read {0%,14%,100%{transform:translateY(0)}33%,47%,84%{transform:translateY(18px)}62%,70%{transform:translateY(36px)}}
+@keyframes graphite-scan {to{transform:translateX(76px)}}
+@keyframes graphite-glow {from{opacity:.4}to{opacity:1;stroke-width:4}}
+.graphite-overlay {overflow:visible}
+.graphite-active-room {fill:#a2df620c;stroke:var(--office-working);stroke-opacity:.76;stroke-width:1.5px;vector-effect:non-scaling-stroke}
+.graphite-outline {fill:#fff2d710;stroke:#f4d69c;stroke-width:1.3px;vector-effect:non-scaling-stroke}
+.graphite-pulse {fill:#a4faed;filter:drop-shadow(0 0 4px #6dd3cb)}
+.officina .graphite-room,.graphite-stage:fullscreen .graphite-room {
+  position:absolute; max-width:none; min-height:0; margin:0; padding:0; border:0;
+  background:transparent; outline:none; cursor:pointer;
+}
+.officina .graphite-room:is(:hover,:focus-visible,:active) {background:transparent;box-shadow:none}
+.graphite-label {
+  position:absolute;pointer-events:none;transform:translate(-50%,-50%);
+  display:grid;gap:2px;width:max-content;box-sizing:border-box;
+  padding:4px 7px;border:1px solid #909ba36b;border-radius:6px;
+  background:#181b20f3;color:#f3f2ee;font:650 clamp(10px,1.9cqw,12px)/1.12 "Segoe UI",sans-serif;
+  box-shadow:0 2px 6px #0009;
+}
+.graphite-label strong,.graphite-label small,.graphite-status {overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.graphite-label strong {text-align:center}
+.graphite-label[data-selected=true] {border-color:var(--office-cyan)}
+.graphite-label[data-state=working] {background:var(--office-working-surface);border-color:var(--office-state);box-shadow:0 0 9px var(--office-working-glow)}
+.graphite-label[data-action=true] {background:#362a19f7;border-color:#cd9e5c}
+.graphite-status {display:block;color:var(--office-state,var(--office-muted));text-align:center;font-size:.89em;font-weight:600}
+.graphite-status i {display:inline-block;width:5px;height:5px;margin-right:4px;border-radius:50%;background:currentColor;vertical-align:.1em}
+.graphite-label[data-action=true] .graphite-status {color:#ffe0a7}
+.graphite-status svg {vertical-align:-.1em;width:1em;height:1em;margin-right:3px}
+.graphite-label small {order:-1;font-size:.85em;font-weight:400;border-bottom:1px solid #e9edf326;padding-bottom:2px}
+.graphite-crossfade {position:absolute;inset:0;overflow:hidden;display:grid;place-items:center;background:#222327;pointer-events:none}
+.graphite-crossfade .graphite-approach-plate {position:absolute;max-width:none}
+.graphite-crossfade[data-loaded=true] {animation:graphite-cut .35s ease-out both}
+.graphite-crossfade[data-loaded=true] .graphite-approach-plate {animation:graphite-approach .35s ease-out both}
+.graphite-retry {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:#232428}
+.officina-layout[data-engine=graphite] > .officina-floor {flex-direction:column}
+@container (min-width:691px) {
+  .officina-layout[data-engine=graphite]:not([data-room]) {
+    display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,28cqi,332px);grid-template-rows:minmax(0,1fr);
+  }
+  .officina-layout[data-engine=graphite]:not([data-room]) > .officina-side {grid-area:1/2}
+}
+@container (max-width:690px) {
+  .officina-layout[data-engine=graphite]:not([data-room]) {display:flex;flex-direction:column;overflow:auto}
+  .officina-layout[data-engine=graphite] .officina-floor {order:-1;flex:none}
+  .officina-layout[data-engine=graphite] .officina-team-map {display:contents}
+  .officina-layout[data-engine=graphite] .officina-map-toggle {display:none}
+  .officina-layout[data-engine=graphite] .graphite-stage {height:clamp(330px,112cqi,620px);flex:none}
+  .officina-layout[data-engine=graphite]:not([data-room]) > .officina-side {flex:none;overflow:visible}
+}
+@keyframes graphite-approach {to{transform:scale(1.14)}}
+@keyframes graphite-cut {from{opacity:1}to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce) {
+  .graphite-stage .graphite-instrument *,.graphite-crossfade .graphite-approach-plate {animation:none!important}
+  .graphite-crossfade[data-loaded=true] {display:none}
+}
+
+/* Fullscreen belongs to the workspace so the room panel and its dialogs stay interactive. */
+.officina:fullscreen {
+  box-sizing:border-box; width:100%; height:100%; max-width:none; max-height:none;
+  grid-template-rows:minmax(0,1fr); padding:0; gap:0; background:#12151b;
+}
+.officina:fullscreen > :is(.officina-chat-compose,.officina-chat-retained),
+.officina:fullscreen:not([data-desk]) > .officina-header,
+.officina:fullscreen:not([data-desk]) .officina-side {display:none}
+.officina:fullscreen .officina-layout[data-engine=graphite] {
+  display:grid; grid-template: minmax(0,1fr) / minmax(0,1fr); gap:0; overflow:hidden;
+}
+.officina:fullscreen .officina-layout[data-engine=graphite] .graphite-stage {
+  flex:1; height:100%; min-height:0; border:0; border-radius:0;
+}
+.officina:fullscreen .graphite-label {font-size:clamp(12px,1cqw,16px); padding:5px 10px}
+.officina:fullscreen .graphite-tools {bottom:12px;right:12px}
+.officina:fullscreen .graphite-tools button {min-width:32px;min-height:32px}
+.officina:fullscreen[data-desk] {grid-template-rows:auto minmax(0,1fr)}
+.officina:fullscreen[data-desk] > .officina-header {min-height:42px;padding:4px 12px;border-bottom:1px solid var(--office-line)}
+.officina:fullscreen[data-desk] .officina-header > :not(.officina-brand,.officina-room-back,.officina-room-camera,.officina-immersive-project,.officina-error) {display:none}
+.officina-room-camera {display:flex;align-items:center;gap:5px}
+.officina-immersive-project {margin-left:auto;color:var(--office-muted)}
+.officina:fullscreen .officina-layout[data-room] {
+  grid-template-columns:minmax(0,min(75dvh,65vw)) minmax(0,1fr);
+}
+.officina:fullscreen .officina-room-panel {grid-area:1 / -2; min-height:0; overflow:auto; border:0; border-radius:0}
+.officina:fullscreen .officina-desk-nav-title {margin:12px 8px;font-size:18px}
+@media (min-width:1050px) and (min-aspect-ratio:3/2) {
+  .officina:fullscreen .officina-layout[data-room] {
+    grid-template-columns:minmax(190px,.8fr) min(68vw,calc((100dvh - 51px) * .75)) minmax(280px,1fr);
+  }
+  .officina:fullscreen .officina-layout[data-room] > .officina-floor {grid-area:1/2}
+  .officina:fullscreen .officina-layout[data-room] > .officina-side {
+    display:flex; grid-area:1/1; border:0; border-radius:0; overflow:auto; padding:clamp(8px,1vw,18px);
+  }
+  .officina:fullscreen .officina-side .officina-team-filters {display:none}
+}
+@media (max-width:690px) and (orientation:portrait) {
+  .officina:fullscreen .officina-layout[data-room] {
+    grid-template:minmax(0,64fr) minmax(0,36fr) / minmax(0,1fr);
+  }
+  .officina:fullscreen .officina-room-panel {grid-area:2/1}
+}
+.officina:fullscreen[data-closeup] {display:grid;grid-template-rows:minmax(0,1fr)}
+.officina:fullscreen[data-closeup] .officina-header {
+  position:absolute; z-index:3; top:10px; left:10px; max-width:calc(100% - 20px); box-sizing:border-box;
+  min-height:0; padding:5px; background:#141820ed; border:1px solid var(--office-line); border-radius:10px;
+}
+.officina:fullscreen[data-closeup] .officina-header :is(.officina-immersive-project,.officina-brand),
+.officina:fullscreen[data-closeup] .officina-layout[data-room] > :is(.officina-room-panel,.officina-side) {display:none}
+.officina:fullscreen[data-closeup] .officina-layout[data-room] {grid-template:minmax(0,1fr) / minmax(0,1fr)}
+.officina:fullscreen[data-closeup] .officina-layout[data-room] > .officina-floor {grid-area:1/1}

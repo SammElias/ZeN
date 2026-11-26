@@ -1,21 +1,24 @@
 import {existsSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {
-  OfficinaActor, OfficinaProject, type OfficinaDestination, type OfficinaGlance, type OfficinaGlanceItem,
+  OfficinaActor, OfficinaProject, officinaActorName, type OfficinaDecision, type OfficinaDestination, type OfficinaGlance, type OfficinaGlanceItem,
   type OfficinaRun,
 } from '../shared/companion-officina';
 import type {CompanionTarget} from '../shared/codex-companion';
-import {officinaAttentionItems} from '../shared/officina-attention';
+import {officinaWaitingRuns} from '../shared/officina-attention';
+import {officinaPermissionDecision, officinaProjectDecisions, sortOfficinaDecisions} from '../shared/officina-decisions';
 import {officinaReply} from './companion-officina-turn';
 import type {CodexReplyReader} from './companion-codex-reader';
 
-type Reading = {items: Map<string, OfficinaGlanceItem>; completed: Set<string>; unknown: boolean};
+type Reading = {items: Map<string, OfficinaGlanceItem>; completed: Set<string>; unknown: boolean; queued: number;
+  decisions?: OfficinaDecision[]};
 
 export async function readOfficinaGlance(path: string,
   reader: Pick<CodexReplyReader, 'probeOfficinaTurn' | 'probeOfficinaDirectTurn' | 'readOfficinaTurnReply'>, disconnected: boolean,
   verify: (binding: OfficinaDestination) => Promise<boolean>, permission: (target: CompanionTarget, turn: string) => boolean,
   wasWorking: (key: string) => boolean = () => false): Promise<Reading> {
-  const reading: Reading = {items: new Map(), completed: new Set(), unknown: false};
+  const decisions: OfficinaDecision[] = [];
+  const reading: Reading = {items: new Map(), completed: new Set(), unknown: false, queued: 0, decisions};
   if (!existsSync(path)) return reading;
   const db = new DatabaseSync(path, {readOnly: true});
   let projects: OfficinaProject[];
@@ -25,14 +28,14 @@ export async function readOfficinaGlance(path: string,
   } finally { db.close(); }
   const probes: (() => Promise<void>)[] = [];
   for (const project of projects) {
+    reading.queued += officinaWaitingRuns(project).length;
     const destination = (role: OfficinaActor, run?: OfficinaRun) => ({
-      project: project.id, projectName: project.name, role, task: run?.task,
+      project: project.id, projectName: project.name, role, task: run?.task, roleName: officinaActorName(role, project),
       title: project.tasks.find(task => task.id === run?.task)?.title,
     });
-    for (const item of officinaAttentionItems(project)) {
-      if (item.kind !== 'question' && item.kind !== 'request') continue;
-      reading.items.set(item.task.id, {...destination(item.kind === 'request' ? item.run.role : 'coordinator'),
-        task: item.task.id, title: item.task.title, kind: 'question'});
+    for (const item of officinaProjectDecisions(project)) {
+      decisions.push(item);
+      if (item.status === 'pending') reading.items.set(`${project.id}:${item.id}`, item);
     }
     for (const run of project.runs) {
       const binding = run.destination;
@@ -53,8 +56,8 @@ export async function readOfficinaGlance(path: string,
         if (!observation) { reading.unknown = true; return; }
         const turn = observation.turn;
         if (!turn || run.turn && turn.turn !== run.turn) { if (run.state === 'uncertain') reading.unknown = true; return; }
-        if (permission(target, turn.turn)) reading.items.set(run.id, {...destination(run.role, run), kind: 'permission'});
-        else if (turn.state === 'working') reading.items.set(run.id, {...destination(run.role, run), kind: 'working'});
+        if (permission(target, turn.turn)) reading.items.set(run.id, {...destination(run.role, run), id: run.id, at: turn.at, kind: 'permission'});
+        else if (turn.state === 'working') reading.items.set(run.id, {...destination(run.role, run), id: run.id, at: turn.at, kind: 'working'});
         else if (turn.state === 'finished' && wasWorking(run.id)) {
           const reply = officinaReply(await reader.readOfficinaTurnReply(target, turn.turn), project.id, {...run, turn: turn.turn});
           if (reply && reply.result.kind !== 'limited' && reply.result.kind !== 'blocker' && reply.result.kind !== 'question' && reply.result.kind !== 'request' &&
@@ -80,7 +83,7 @@ export async function readOfficinaGlance(path: string,
           if (reply && !reply.truncated) reading.completed.add(key);
         }
         if (turn.state !== 'working') return;
-        if (!reading.items.has(key)) reading.items.set(key, {...destination(role),
+        if (!reading.items.has(key)) reading.items.set(key, {...destination(role), id: key, at: turn.at,
           kind: permission(target, turn.turn) ? 'permission' : 'working'});
       });
     }
@@ -91,25 +94,41 @@ export async function readOfficinaGlance(path: string,
 
 export class OfficinaGlanceState {
   private previous?: Map<string, OfficinaGlanceItem>;
-  private previousRoles = new Set<OfficinaActor>();
+  private previousRoles = new Set<string>();
   private finishedAt = 0;
+  private finishedItems: OfficinaGlanceItem[] = [];
+  private lastSync?: number;
   private pulse = 0;
 
-  reset() { this.previous = undefined; this.finishedAt = 0; }
+  reset() { this.previous = undefined; this.finishedAt = 0; this.finishedItems = []; this.lastSync = undefined; this.previousRoles.clear(); }
   wasWorking(key: string) { return this.previous?.has(key) ?? false; }
 
-  update(reading: Reading, now: number): {badge?: OfficinaGlance; items: OfficinaGlanceItem[]} {
+  update(reading: Reading, now: number): {badge?: OfficinaGlance; items: OfficinaGlanceItem[]; queued?: number; decisions?: OfficinaDecision[]} {
     const active = new Map([...reading.items].filter(([, item]) => item.kind === 'working'));
-    const roles = new Set([...active.values()].map(item => item.role));
+    const actor = (item: OfficinaGlanceItem) => `${item.project}:${item.role}`;
+    const roles = new Set([...active.values()].map(actor));
     if (this.previous && !reading.unknown && [...roles].some(role => !this.previousRoles.has(role))) this.pulse++;
     const decisions = [...reading.items.values()].filter(item => item.kind !== 'working');
-    if (reading.unknown || active.size || decisions.length) this.finishedAt = 0;
-    else if (this.previous?.size && [...this.previous.keys()].every(key => reading.completed.has(key))) this.finishedAt = now + 3000;
+    const permissions = [...reading.items].flatMap(([id, item]) => item.kind === 'permission' ? [officinaPermissionDecision(item, item.id ?? id)] : []);
+    const inbox = sortOfficinaDecisions([...(reading.decisions ?? []), ...permissions]);
+    if (!reading.unknown) this.lastSync = now;
+    if (reading.unknown || active.size || decisions.length) {
+      this.finishedAt = 0;
+      this.finishedItems = [];
+    } else if (this.previous?.size && [...this.previous.keys()].every(key => reading.completed.has(key))) {
+      this.finishedAt = now + 3000;
+      this.finishedItems = [...this.previous.values()].map(item => ({...item, kind: 'finished'}));
+    }
     this.previous = reading.unknown ? undefined : active;
-    this.previousRoles = new Set([...reading.items.values()].filter(item => item.kind !== 'question').map(item => item.role));
-    return decisions.length ? {badge: {kind: 'decision'}, items: decisions}
-      : reading.unknown ? {badge: {kind: 'unknown'}, items: []}
-      : roles.size ? {badge: {kind: 'working', count: roles.size, pulse: this.pulse}, items: [...active.values()]}
-      : {badge: this.finishedAt > now ? {kind: 'finished'} : undefined, items: []};
+    this.previousRoles = new Set([...reading.items.values()].filter(item => item.kind !== 'question').map(actor));
+    const queued = reading.queued || undefined;
+    const link = reading.unknown ? {offline: true, lastSync: this.lastSync} : undefined;
+    const items = [...decisions, ...active.values()];
+    return decisions.length ? {badge: {kind: 'decision', decisions: decisions.length, count: roles.size || undefined, ...link},
+      items, queued, decisions: inbox}
+      : reading.unknown ? {badge: {kind: 'unknown', ...link}, items, queued, decisions: inbox}
+      : roles.size ? {badge: {kind: 'working', count: roles.size, pulse: this.pulse}, items, queued, decisions: inbox}
+      : {badge: this.finishedAt > now ? {kind: 'finished'} : undefined,
+        items: this.finishedAt > now ? this.finishedItems : [], queued, decisions: inbox};
   }
 }

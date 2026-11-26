@@ -135,7 +135,7 @@
       "dot": "cyan",
       "items": [
         "Una lectura de la sesión puede recuperar un envío anterior. El permiso pendiente se correlaciona antes de registrar la respuesta.",
-        "Coordinación conserva la asignación. Una decisión interna suspende su encargo mientras se despachan los demás turnos habilitados."
+        "Coordinación conserva la asignación. Officina presenta la decisión por proyecto, tarea y ejecución. Aprobar, responder o pedir cambios retoma el flujo por la cola. El rechazo confirmado cierra solo el encargo."
       ]
     },
     {

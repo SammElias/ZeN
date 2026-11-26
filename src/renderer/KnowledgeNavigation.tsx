@@ -1,15 +1,15 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {ArrowRight, BookOpen, ClipboardList, Code2, FolderKanban, HardDrive, KeyRound, Languages, Layers3, Link2, MessageSquareText, NotebookPen, Search, Settings2, SquarePen, X} from 'lucide-react';
+import {ArrowRight, BookOpen, Code2, FolderKanban, HardDrive, KeyRound, Languages, Layers3, Link2, MessageSquareText, NotebookPen, Search, Settings2, SquarePen, X} from 'lucide-react';
 import {kindLabels, kinds, languages, type HubData, type HubEntry} from '../shared/knowledge-hub';
 
 export const entryIcons = {note:BookOpen, snippet:Code2, project:FolderKanban, resource:Link2, prompt:MessageSquareText};
 export const sectionIcons = {
-  prompt:MessageSquareText, passwords:KeyRound, templates:Layers3, discovery:ClipboardList, translator:Languages,
+  prompt:MessageSquareText, passwords:KeyRound, templates:Layers3, translator:Languages,
   settings:Settings2, backup:HardDrive, quickNotes:NotebookPen, whiteboard:SquarePen,
 };
 export type HubSection = keyof typeof sectionIcons | 'entry';
 export const sectionLabels: Record<HubSection,string> = {
-  prompt:'Biblioteca de prompts', quickNotes:'Apuntes', whiteboard:'Pizarra', passwords:'Contraseñas', templates:'Templates', discovery:'Descubrimiento de apps', translator:'Traductor',
+  prompt:'Biblioteca de prompts', quickNotes:'Apuntes', whiteboard:'Pizarra', passwords:'Contraseñas', templates:'Templates', translator:'Traductor',
   settings:'Configuración', backup:'Respaldo y exportación', entry:'Apunte',
 };
 

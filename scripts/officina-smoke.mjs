@@ -7,7 +7,7 @@ import {_electron as electron} from 'playwright';
 
 const profile = randomUUID();
 const executablePath = process.argv[2] && resolve(process.argv[2]);
-const args = [...(executablePath ? [] : ['.']), '--zen-hover-smoke', `--zen-officina-profile=${profile}`];
+const args = ['--disable-3d-apis', ...(executablePath ? [] : ['.']), '--zen-hover-smoke', `--zen-officina-profile=${profile}`];
 const rule = 'Nadie puede aprobar su propio gasto.';
 const version = '1.0.4';
 const evidence = resolve('release', 'officina');
@@ -22,6 +22,12 @@ async function withZen(run) {
   try {
     profileDirectory ??= await app.evaluate(({app}) => app.getPath('userData'));
     const page = await app.firstWindow();
+    await page.evaluate(() => {
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, ...options) {
+        return type.startsWith('webgl') ? null : getContext.call(this, type, ...options);
+      };
+    });
     await page.locator('.capsule-launcher [data-page=officina]:enabled').waitFor();
     await app.evaluate(({BrowserWindow}) => {
       const window = BrowserWindow.getAllWindows()[0];
@@ -413,7 +419,7 @@ await withZen(async (page, app) => {
   await page.getByText('6 chats vinculados', {exact: true}).waitFor();
   await page.locator('.officina-chat').getByText('Objetivo de prueba completado.', {exact: true}).waitFor();
   const formattedGoal = page.locator('.officina-goal').filter({hasText: 'Define la regla de aprobación'});
-  assert.equal(await page.locator('.officina-scene').count(), 0);
+  await page.locator('.officina-scene').waitFor({state: 'hidden'});
   assert.equal(await formattedGoal.locator('.officina-response').count(), 0);
   const authorOrder = await formattedGoal.locator('.officina-chat-author strong').allTextContents();
   assert.equal(authorOrder[0], 'Tú');
@@ -955,7 +961,8 @@ await withZen(async (page) => {
   const removable = 'Proyecto para eliminar';
   await createProject(page, removable);
   const removalId = await selector.inputValue();
-  await page.getByText('Opciones del proyecto', {exact: true}).click();
+  const projectOptions = page.getByText('Opciones del proyecto', {exact: true}).filter({visible: true});
+  await projectOptions.click();
   await page.getByRole('button', {name: 'Eliminar proyecto', exact: true}).click();
   await dialog.getByRole('heading', {name: 'Eliminar proyecto de Officina'}).waitFor();
   await dialog.getByText(/Proyecto para eliminar/).waitFor();
@@ -963,7 +970,7 @@ await withZen(async (page) => {
   await dialog.getByRole('button', {name: 'Cancelar', exact: true}).click();
   assert.equal(await selector.inputValue(), removalId);
   await page.getByRole('button', {name: 'Equipo', exact: true}).click();
-  await page.getByText('Opciones del proyecto', {exact: true}).click();
+  await projectOptions.click();
   await page.getByRole('button', {name: 'Eliminar proyecto', exact: true}).click();
   await dialog.getByRole('button', {name: 'Eliminar de Officina', exact: true}).click();
   await dialog.waitFor({state: 'hidden'});

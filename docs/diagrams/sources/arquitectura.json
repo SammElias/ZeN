@@ -233,7 +233,7 @@
       "title": "Alcance",
       "dot": "slate",
       "items": [
-        "Vista del compañero empaquetado, con detalle de Officina. Las otras superficies comparten ventana y la autorización de Main."
+        "Vista del compañero empaquetado, con detalle de Officina. El plano y los despachos 3D comparten el renderer y consultan el mismo tablero. Main autoriza las decisiones."
       ]
     }
   ]

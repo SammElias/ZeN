@@ -1,9 +1,10 @@
 import {nativeImage} from 'electron';
 import {basename, join} from 'node:path';
 import {imageSize} from 'image-size';
-import {referenceBytes, TemplateImage, type TemplateRecord} from '../shared/knowledge-templates';
+import {referenceBytes, TemplateImage} from '../shared/knowledge-templates';
+import {legacyEnterprisePreviewHashes} from './enterprise-template-preview-hashes';
 import {readHubFile} from './knowledge-hub';
-import {templateImageBytes, validateTemplateImage} from './knowledge-templates';
+import {templateImageBytes, validateTemplateImage, type TemplateSeedRecord} from './knowledge-templates';
 import {templateSeeds} from './knowledge-template-seeds';
 
 export function readTemplateImage(path:string):TemplateImage {
@@ -30,13 +31,13 @@ export function readTemplateImage(path:string):TemplateImage {
   } catch {throw Error('No se pudo decodificar la referencia. Usa una imagen PNG, JPEG o WebP válida de hasta 4 MB.');}
 }
 
-export function loadTemplateSeeds(folder:string):TemplateRecord[] {
+export function loadTemplateSeeds(folder:string):TemplateSeedRecord[] {
   const createdAt=Date.now();
   return templateSeeds.map(({file,...fields})=>{
     let image:TemplateImage|undefined;
     try { image=readTemplateImage(join(folder,file)); }
     catch { /* Keep the prompt usable if the preview is unavailable. */ }
-    return {...fields,image,favorite:false,createdAt,updatedAt:createdAt};
+    return {...fields,image,previousPreviewHash:legacyEnterprisePreviewHashes[file],favorite:false,createdAt,updatedAt:createdAt};
   });
 }
 

@@ -9,7 +9,7 @@ import {CalendarLibrary} from './companion-calendar';
 export const PortableSettings = CompanionSettingsSchema.pick({
   shortcut:true, returnShortcut:true, motion:true, sounds:true, interfaceSounds:true, interfaceVolume:true, notifications:true,
   followPointerDisplay:true, respectFullscreen:true, windowLocked:true, alwaysOnTop:true, dismissCapsuleOnOutsideClick:true,
-  hideCapsuleFromTaskbar:true, collapseOnBlur:true, keepExpanded:true,
+  hideCapsuleFromTaskbar:true, collapseOnBlur:true, keepExpanded:true, officinaDesign:true,
 });
 
 export const PortableAppearance = z.object({

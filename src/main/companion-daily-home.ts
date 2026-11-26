@@ -115,7 +115,7 @@ function greeting(now:Date,zone:string,tip:Tip){
  const hour=Number(new Intl.DateTimeFormat('es',{timeZone:zone,hour:'2-digit',hourCycle:'h23'}).format(now));
  const time=hour<6||hour>=20?'Buenas noches':hour<13?'Buenos días':'Buenas tardes';
  const emoji=time==='Buenas noches'?'🌙':tip==='rain'?'🌧️':tip==='snow'?'❄️':tip==='clear'?'☀️':'☕';
- return `${time} ${emoji}`;
+ return `${time}, Samm ${emoji}`;
 }
 
 export class CompanionDailyHome {

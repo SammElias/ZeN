@@ -24,12 +24,12 @@ const readSummary=()=>JSON.parse(readFileSync(join(profile,'companion-daily-home
 it('reuses a summary across duplicate reads and restarts, while the greeting follows the clock',()=>{
  const read=vi.fn(()=>undefined);
  const brief=new CompanionDailyHome(profile);
- expect(brief.view(localTime,zone,bare,0,read).summary?.greeting).toContain('Buenos días');
+ expect(brief.view(localTime,zone,bare,0,read).summary?.greeting).toContain('Buenos días, Samm');
  brief.view(localTime,zone,bare,0,read);
  expect(read).toHaveBeenCalledTimes(1);
  const generatedAt=readSummary().generatedAt;
  const restarted=new CompanionDailyHome(profile);
- expect(restarted.view(new Date('2026-11-23T21:00:00Z'),zone,bare,0,read).summary?.greeting).toContain('Buenas noches');
+ expect(restarted.view(new Date('2026-11-23T21:00:00Z'),zone,bare,0,read).summary?.greeting).toContain('Buenas noches, Samm');
  expect(readSummary().generatedAt).toBe(generatedAt);
  restarted.view(new Date('2026-11-23T23:05:00Z'),zone,bare,0,read);
  expect(readSummary()).toMatchObject({date:'2026-11-24',zone,source:'local'});

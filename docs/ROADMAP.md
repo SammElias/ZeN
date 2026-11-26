@@ -16,10 +16,9 @@
 | Perfil compartido entre equipos | Syncthing y Tailscale, almacén seguro de Windows, KDBX opcional | Pruebas con dos perfiles aislados para vinculación, conflictos y conservación de dos ediciones de una contraseña. [Instalación](PERSONAL_SYNC.md) |
 | Apuntes rápidos en HUB | SQLite y perfil local | Hoja continua con autoguardado, scroll interno y recuperación de la posición de escritura. |
 | Pizarra en HUB | Canvas y SQLite local | Lienzo persistente con pinceles, goma de tramo, Deshacer y reinicio con confirmación. |
-| Descubrimiento de apps | SQLite de HUB y peticiones de Inicio | Cuestionario bilingüe, propuesta local y valoración opcional en Codex. |
-| Officina | Cápsula, tablero local y puente de Codex | Chat global, seguimiento y resultados en Markdown, perfiles de puesto por proyecto, traspasos versionados, QA y aprobaciones en Codex. ZEN revisa el trabajo y presenta propuestas que el usuario decide. La carpeta del proyecto se puede añadir desde Proyectos de Codex. |
+| Officina | Cápsula, tablero local y puente de Codex | Cuatro diseños para los mismos siete despachos, zoom, desplazamiento y pantallas animadas, decisiones desde el despacho, Chat global, resultados en Markdown, traspasos versionados, QA y permisos de herramientas en Codex. ZEN revisa el trabajo y presenta propuestas que el usuario decide. La carpeta del proyecto se puede añadir desde Proyectos de Codex. |
 | Traductor dentro de HUB | Azure Translator Global y almacén seguro de Windows | Traducción en ambos sentidos, copia y uso en ancho estrecho. La validación automatizada usa un servicio simulado. |
-| Templates dentro de HUB | SQLite e imágenes administradas en el perfil | Treinta diseños empresariales en seis áreas de trabajo con prompts para Power Apps Canvas y React, personalización local, favoritos y edición. El recorrido aislado comprueba galería, detalle, filtros, scroll y borradores; las pruebas de datos cubren persistencia y respaldo. |
+| Templates dentro de HUB | SQLite e imágenes administradas en el perfil | Treinta diseños empresariales en seis áreas de trabajo con imágenes en inglés y prompts para Power Apps Canvas y React, personalización local, favoritos y edición. El recorrido aislado comprueba galería, detalle, filtros, scroll y borradores; las pruebas de datos cubren persistencia y respaldo. |
 
 ## 02 · En curso ![](assets/azul.svg)
 

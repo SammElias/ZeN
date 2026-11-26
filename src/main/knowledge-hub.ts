@@ -8,10 +8,10 @@ import {hubName} from '../shared/companion-navigation';
 import {discoveryBrief,discoveryLimits,type DiscoveryRecord} from '../shared/app-discovery';
 import {emptyQuickNotes, QuickNotes} from '../shared/quick-notes';
 import {emptyWhiteboard,WhiteboardDocument} from '../shared/whiteboard';
-import type {TemplateDraft, TemplateImage, TemplateRecord, TemplateRequest} from '../shared/knowledge-templates';
+import type {TemplateDraft, TemplateImage, TemplateRequest} from '../shared/knowledge-templates';
 import {
   changeTemplates, createTemplateTable, restoreTemplates, seedTemplates, templateBackup,
-  templateImage, validateTemplateDraft, validateTemplates,
+  templateImage, validateTemplateDraft, validateTemplates, type TemplateSeedRecord,
 } from './knowledge-templates';
 import {
   HubAction, HubData, HubDraft, HubEntry, HubFolder, hubContentError, newFields, variables,
@@ -88,7 +88,7 @@ export function validateHubBackup(raw: unknown) {
 }
 
 export class KnowledgeHub {
-  constructor(private readonly path: string, private readonly legacyPath: string, private readonly seeds:()=>TemplateRecord[]=()=>[],
+  constructor(private readonly path: string, private readonly legacyPath: string, private readonly seeds:()=>TemplateSeedRecord[]=()=>[],
     private readonly decodeReference?:(image:TemplateImage)=>void) {}
 
   isStoragePath(path: string) {
@@ -233,7 +233,7 @@ export class KnowledgeHub {
       this.replace(db, data);
       if (data.templates !== undefined) {
         createTemplateTable(db);
-        restoreTemplates(db,data.templates,templateDraft);
+        restoreTemplates(db,data.templates,this.seeds,templateDraft);
       }
       if (recovered) db.prepare("INSERT INTO hub_state VALUES ('draft', ?)").run(JSON.stringify(recovered));
       return this.snapshot(db);

@@ -226,7 +226,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   const snapshot=(status=hub.status())=>displayStatus({
    ...status,
    officinaGlance:glanceAllowed()?glance?.badge:undefined,
+   officinaQueueCount:glanceAllowed()?glance?.queued:undefined,
    officinaGlanceItems:glanceAllowed()&&workspaceVisible('officina')?glance?.items:undefined,
+   officinaDecisions:glanceAllowed()&&workspaceVisible('officina')?glance?.decisions:undefined,
    oura:privateEffectsAllowed()&&workspaceVisible('metrics')?oura.snapshot():undefined,
    ouraGlance:privateEffectsAllowed()&&!expanded&&surfaceVisible()?oura.glance():undefined,
    ouraHomeSleep:privateEffectsAllowed()&&workspaceVisible('home')?oura.homeSleep():undefined,
@@ -370,9 +372,8 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
     if(JSON.stringify(next)!==JSON.stringify(glance)){glance=next;broadcast();}
    }catch{
     if(generation!==glanceGeneration||!glanceAllowed())return;
-    const changed=glance?.badge?.kind!=='unknown';
-    resetOfficinaGlance();glance={badge:{kind:'unknown'},items:[]};
-    if(changed)broadcast();
+    const next=glanceState.update({items:new Map(),completed:new Set(),unknown:true,queued:0,decisions:glance?.decisions},Date.now());
+    if(JSON.stringify(next)!==JSON.stringify(glance)){glance=next;broadcast();}
    }finally{glanceBusy=false;}
   };
   const connectOfficina=async()=>{
@@ -1065,13 +1066,21 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
    if(!workspaceVisible(page))throw Error('Abre la sección correspondiente en ZEN.');
   };
   handle('officina',OfficinaAction,async action=>{
+   if((action.type==='resolve-request'||action.type==='answer-goal')&&
+     (hub.connection.state==='unavailable'||glance?.badge?.offline))throw Error('Vuelve a conectar con Codex antes de resolver la decisión.');
    if(action.type!=='select-activity')return officina.handle(action);
    if(!officinaAllowed())throw Error('La vista de Officina cambió.');
+   const matches=(item:import('../shared/companion-officina').OfficinaGlanceItem)=>
+    item.project===action.project&&item.task===action.task&&item.role===action.role&&item.kind===action.kind&&
+    (action.id===undefined||item.id===action.id);
+   if(action.kind==='finished'){
+    if(!glance?.items.some(matches))throw Error('La señal de finalización ya cambió.');
+    return officina.handle({type:'select',project:action.project});
+   }
    const generation=glanceGeneration;
    const reading=await readOfficinaGlance(join(profile,'officina.sqlite'),replyReader,hub.connection.state==='unavailable',
      verifyOfficinaBinding,(selected,turn)=>hub.turnNeedsPermission(selected,turn));
-   if(generation!==glanceGeneration||!officinaAllowed()||![...reading.items.values()].some(item=>
-     item.project===action.project&&item.task===action.task&&item.role===action.role&&item.kind===action.kind))
+   if(generation!==glanceGeneration||!officinaAllowed()||![...reading.items.values()].some(matches))
     throw Error('La actividad de Officina cambió.');
    return officina.handle({type:'select',project:action.project});
   });

@@ -60,7 +60,7 @@ const observer = [
 
 export function officinaTurnProtocol(role: OfficinaActor, projectName?: string) {
   return [contract, profile, ...(role === 'observer' ? observer : role === 'coordinator' ? coordinator : specialist),
-    ...(role !== 'observer' ? ['Si el usuario debe decidir cómo sigue el plan, usa result={kind:"request",mode:"approval" o "review" o "question",text:"qué debe decidir y qué ocurrirá",markdown:"evidencia"}. Aprobar un paso de especialista avanza al siguiente; pedir cambios o aclarar vuelve al mismo puesto. Solicita aprobación de Officina solo para una propuesta lista para pasar al paso siguiente. Las autorizaciones de herramientas y acciones sensibles se gestionan en Permisos de Codex. Omite campos adicionales del JSON.'] : []),
+    ...(role !== 'observer' ? ['Si el usuario debe decidir cómo sigue el plan, usa result={kind:"request",mode:"approval" o "review" o "question",text:"qué debe decidir y qué ocurrirá",markdown:"evidencia"}. Puedes añadir priority ("blocking", "high" o "normal"), impact (alcance y consecuencias en hasta 360 caracteres) y sensitive:true si afecta datos, permisos, despliegue o eliminación. Aprobar un paso de especialista avanza al siguiente. Pedir cambios o aclarar vuelve al mismo puesto. Las autorizaciones de herramientas se gestionan en Permisos de Codex.'] : []),
     ...(role === 'alm' ? alm : []), ...(role === 'alm' && projectName?.toLowerCase() === 'zen' ? zenDeployment : [])].join('\n');
 }
 

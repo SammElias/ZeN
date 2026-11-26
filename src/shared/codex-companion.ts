@@ -19,10 +19,12 @@ import type {TemplateReply,TemplateRequest} from './knowledge-templates';
 import type {QuickNotes,QuickNotesAction} from './quick-notes';
 import type {WhiteboardAction,WhiteboardDocument} from './whiteboard';
 import type {InterfaceEffect} from './companion-interface-audio';
+import {OfficinaDesign} from './officina-design';
 export const CompanionSettingsSchema=z.object({
  shortcut:z.string().min(3).max(80).default('Control+Alt+Z'),
  returnShortcut:z.string().min(3).max(80).default('Control+Alt+C'),
  motion:z.boolean().default(true),sounds:z.boolean().default(true),notifications:z.boolean().default(true),
+ officinaDesign:OfficinaDesign.default('graphite'),
  interfaceSounds:z.boolean().optional(),interfaceVolume:z.number().int().min(0).max(100).default(18),
  paused:z.boolean().default(false),presentation:z.boolean().default(false),
  followPointerDisplay:z.boolean().default(true),respectFullscreen:z.boolean().default(true),
@@ -52,7 +54,7 @@ export type CompanionSession={id:string;turn?:string;runKey?:string;summary?:Com
 export type CompanionApproval={id:string;session:string;turn:string;label:string;tool:string;preview:string;expiresAt:number};
 export type CompanionNotice={id:string;session:string;title:string;kind:'permission'|'finished'|'error';read:boolean;audible?:boolean;at:number};
 export type CompanionConnection={state:'unchecked'|'missing'|'review'|'disabled'|'ready'|'unavailable';checkedAt?:number;total:number;trusted:number;enabled:number};
-export type CompanionStatus={officinaGlance?:import('./companion-officina').OfficinaGlance;officinaGlanceItems?:import('./companion-officina').OfficinaGlanceItem[];oura?:OuraStatus;ouraGlance?:OuraGlance;ouraHomeSleep?:OuraHomeSleep;homeBrief?:HomeBrief;appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvalCount?:number;approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
+export type CompanionStatus={officinaGlance?:import('./companion-officina').OfficinaGlance;officinaQueueCount?:number;officinaGlanceItems?:import('./companion-officina').OfficinaGlanceItem[];officinaDecisions?:import('./companion-officina').OfficinaDecision[];oura?:OuraStatus;ouraGlance?:OuraGlance;ouraHomeSleep?:OuraHomeSleep;homeBrief?:HomeBrief;appearance?:AppearanceState;workspace?:WorkspaceState;revision?:number;desktop?:{available:boolean;name?:string;error?:string};settings:CompanionSettings;target?:CompanionTarget;ignoredEvents?:number;targetError?:string;account:'unchecked'|'chatgpt'|'missing'|'unsupported';checking:boolean;integration:'missing'|'waiting'|'receiving';connection?:CompanionConnection;sessions:CompanionSession[];activitySessions?:CompanionSession[];approvalCount?:number;approvals:CompanionApproval[];notices:CompanionNotice[];lastEventAt?:number;error?:string};
 export type CompanionResult<T>={ok:true;value:T}|{ok:false;error:string};
 export interface CompanionBridge{
  vault(action:import('./password-vault').VaultRequest):Promise<CompanionResult<import('./password-vault').VaultReply>>;

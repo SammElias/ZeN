@@ -20,7 +20,6 @@ import {CompanionHome} from './CompanionHome';
 import {CompanionMusic, useMediaPlayer, useNowPlaying} from './CompanionMusic';
 import {CompanionNotices} from './CompanionNotices';
 import {CompanionSettings} from './CompanionSettings';
-import {CodexRequest} from '../shared/companion-request';
 import {CompanionCalendar} from './CompanionCalendar';
 import {OfficinaWorkspace} from './OfficinaWorkspace';
 import {CompanionMetrics} from './CompanionMetrics';
@@ -173,22 +172,23 @@ export function CodexCompanion(){
  const panelPaint=status.workspace?.panelPaint;
  const actions=useRef<Promise<unknown>>(Promise.resolve());
  const [homeDraft,setHomeDraft]=useState('');
- const [assessmentDraft,setAssessmentDraft]=useState<string>();
  const contextKey=JSON.stringify([status.target?.session,status.target?.cwd,status.targetError,status.settings.paused,status.settings.presentation]);
  const contextMemory=useMemo<{current?:ContextDraft}>(()=>({}),[contextKey]);
  const [notesOpened,setNotesOpened]=useState(false);
  const [notesRevision,setNotesRevision]=useState(0);
  const focusDestination=useRef(false);
  const activationAttempt=useRef(0);
- const [openOfficinaDecision,setOpenOfficinaDecision]=useState(false);
+ const [officinaEntry,setOfficinaEntry]=useState<import('../shared/companion-officina').OfficinaGlance['kind']>();
+ const officinaDecisionDrafts=useRef(new Map<string,string>());
  useEffect(()=>{
-  if(!expanded||page!=='officina')setOpenOfficinaDecision(false);
+  if(!expanded||page!=='officina')setOfficinaEntry(undefined);
  },[expanded,page]);
  const [sectionFocus,setSectionFocus]=useState<(SectionActivation&{section:SectionPage})>();
  const menuOpener=useRef<HTMLElement|null>(null);
  const [themePreview,setThemePreview]=useState<AppearanceState>();
  const notesVisible=page==='notes'&&!status.settings.presentation&&!status.settings.paused;
  const safeNotes=!status.settings.presentation&&!status.settings.paused;
+ useEffect(()=>{if(!safeNotes)officinaDecisionDrafts.current.clear();},[safeNotes]);
  useEffect(()=>{if(notesVisible&&expanded)setNotesOpened(true);},[notesVisible,expanded]);
  useEffect(()=>{
   function clearWhenHidden(){if(document.hidden)contextMemory.current=undefined;}
@@ -196,7 +196,6 @@ export function CodexCompanion(){
   return ()=>document.removeEventListener('visibilitychange',clearWhenHidden);
  },[contextMemory]);
  useEffect(()=>{if(status.settings.presentation||status.settings.paused)setHomeDraft('');},[status.settings.presentation,status.settings.paused]);
- useEffect(()=>{if(!safeNotes&&assessmentDraft!==undefined)setAssessmentDraft(undefined);},[safeNotes,assessmentDraft]);
  const savedAppearance = status.appearance ?? defaultAppearance;
  const appearance: AppearanceState = status.settings.presentation
   ? {...savedAppearance, background: 'aurora', imageUrl: undefined, imageName: undefined}
@@ -207,13 +206,6 @@ export function CodexCompanion(){
  useCompanionAudio(status,ready);
  useEffect(()=>{const q=matchMedia('(prefers-reduced-motion: reduce)'),fn=()=>setReduced(q.matches);q.addEventListener('change',fn);return()=>q.removeEventListener('change',fn);},[]);
  const navigate=(v:WorkspacePage)=>void window.companion.navigate(v).then(r=>{if(!r.ok)setError(r.error);});
- async function prepareAssessment(text:string) {
-  if(!safeNotes||!CodexRequest.safeParse(text).success)throw Error('No se puede preparar esta valoración para Codex.');
-  if(assessmentDraft&&assessmentDraft!==text)throw Error('Ya hay una valoración pendiente en Inicio. Revísala o vuelve a la petición habitual antes de preparar otra.');
-  const result=await window.companion.navigate('home');
-  if(!result.ok)throw Error(result.error);
-  setAssessmentDraft(text);
- }
  const returnFromSettings=()=>navigate(previousSettingsPage.current);
  function settlePanel(element:HTMLElement){
   const {opacity,translate}=getComputedStyle(element);
@@ -244,7 +236,7 @@ export function CodexCompanion(){
   }).catch(()=>{focusDestination.current=false;setError('No se pudo abrir la revisión de permisos.');});
  };
  const activateSection=async(section:SectionPage,keyboard:boolean)=>{
-  setOpenOfficinaDecision(section==='officina'&&!expanded&&status.officinaGlance?.kind==='decision');
+  setOfficinaEntry(section==='officina'&&!expanded?status.officinaGlance?.kind:undefined);
   const attempt=++activationAttempt.current;
   focusDestination.current=false;
   setSectionFocus(undefined);
@@ -398,17 +390,20 @@ export function CodexCompanion(){
     onScroll={event=>{if(expanded&&event.target===event.currentTarget)scroll.current[page]=event.currentTarget.scrollTop;}}>
     {(openedPages.includes('home')||page==='home')&&<div hidden={!expanded||page!=='home'} inert={!expanded||page!=='home'}>
      <CompanionHome status={status} ready={ready} visible={expanded&&page==='home'} weatherVisible={expanded&&page==='home'&&surfaceVisible&&!hoverClosing}
-      draft={assessmentDraft??homeDraft} setDraft={assessmentDraft===undefined?setHomeDraft:setAssessmentDraft}
-      onDismissAssessment={assessmentDraft===undefined?undefined:()=>setAssessmentDraft(undefined)}
+      draft={homeDraft} setDraft={setHomeDraft}
       nowPlaying={nowPlaying} onNavigate={navigate}/>
     </div>}
     {safeNotes&&(openedPages.includes('calendar')||page==='calendar')&&<div hidden={!expanded||page!=='calendar'} inert={!expanded||page!=='calendar'}>
      <CompanionCalendar visible={expanded&&page==='calendar'} revision={status.revision} simpleMode={status.workspace?.simpleMode===true}/>
     </div>}
-    {expanded&&page==='officina'&&(safeNotes
-      ? surfaceVisible&&<OfficinaWorkspace motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening} approvals={status.approvals}
-        glanceItems={status.officinaGlanceItems} openDecisionOnEntry={openOfficinaDecision}/>
-      : <div className="companion-empty"><h2>Officina en pausa</h2><p>Desactiva Pausa o Presentación para abrir el tablero.</p></div>)}
+    {safeNotes&&(openedPages.includes('officina')||expanded&&page==='officina')&&
+      <div className="officina-retained" hidden={!expanded||page!=='officina'||!surfaceVisible} inert={!expanded||page!=='officina'||!surfaceVisible}>
+       <OfficinaWorkspace design={status.settings.officinaDesign} visible={expanded&&page==='officina'&&surfaceVisible}
+         motion={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening}
+         approvals={status.approvals} glance={status.officinaGlance} glanceItems={status.officinaGlanceItems} inbox={status.officinaDecisions}
+         entry={officinaEntry} drafts={officinaDecisionDrafts.current}/>
+      </div>}
+    {!safeNotes&&expanded&&page==='officina'&&<div className="companion-empty"><h2>Officina en pausa</h2><p>Desactiva Pausa o Presentación para abrir el tablero.</p></div>}
     {status.oura&&expanded&&page==='metrics'&&<CompanionMetrics status={status.oura} simpleMode={simpleMode}/>}
     {!safeNotes&&expanded&&page==='metrics'&&<div className="companion-empty"><h2>Métricas ocultas</h2><p>Desactiva Pausa o Presentación para consultar Oura.</p></div>}
     {(openedPages.includes('spotify')||page==='spotify')&&<div hidden={!expanded||page!=='spotify'} inert={!expanded||page!=='spotify'}>
@@ -433,7 +428,7 @@ export function CodexCompanion(){
     {safeNotes&&(notesOpened||notesVisible&&expanded)&&<div className="notes-retained" hidden={!notesVisible||!expanded} inert={!notesVisible||!expanded}>
      <Suspense fallback={<p role="status">Abriendo {hubName}…</p>}><NotesWorkspace key={notesRevision} appearance={appearance} visible={notesVisible&&expanded}
       surfaceVisible={surfaceVisible} animate={status.settings.motion&&!reduced&&!hoverClosing&&!panelOpening}
-      hoverEnabled={status.workspace?.nativeCaption===true&&!status.settings.windowLocked&&!hoverClosing&&!panelOpening} onAssess={prepareAssessment}/></Suspense>
+      hoverEnabled={status.workspace?.nativeCaption===true&&!status.settings.windowLocked&&!hoverClosing&&!panelOpening}/></Suspense>
     </div>}
    </section>
    <WorkspaceNeonBorder options={neon} visible={expanded&&surfaceVisible&&page!=='permissions'} animation={neonAnimation}/>
