@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>ZeN · Diagramas de arquitectura</title>
+<link rel="stylesheet" href="sources/jetbrains-mono.css">
 <style>
-  :root { color-scheme: dark; font-family: Consolas, monospace; color: #f5fbff; background: #030711; }
+  :root { color-scheme: dark; font-family: "JetBrains Mono", Consolas, monospace; color: #f5fbff; background: #030711; }
   body { margin: 0; background-image: linear-gradient(#15233a55 1px, transparent 1px), linear-gradient(90deg, #15233a55 1px, transparent 1px); background-size: 40px 40px; }
   main { max-width: 68rem; min-height: 100vh; margin: auto; padding: clamp(1rem, 5vw, 4rem); box-sizing: border-box; }
   h1 { font-size: clamp(1.6rem, 4vw, 2.75rem); }
@@ -22,10 +23,10 @@
 <h1>Arquitectura de ZeN</h1>
 <p>Explora el compañero de escritorio y sigue un encargo de Officina desde Chat global hasta el tablero. El plano y los despachos leen los mismos estados, traspasos y decisiones.</p>
 <nav aria-label="Vistas de arquitectura">
-  <section style="--accent:#67e8f9"><h2><a href="arquitectura.svg">Arquitectura activa</a></h2><p>Ventana, autorización en Main, persistencia y conexión local con Codex.</p></section>
-  <section style="--accent:#5eead4"><h2><a href="secuencia-officina.svg">Secuencia de Officina</a></h2><p>Envío, lectura correlacionada y actualización del tablero.</p></section>
-  <section style="--accent:#c4b5fd"><h2><a href="estados-officina.svg">Estados de envío</a></h2><p>Cola, acuse, caducidad, revisión y recuperación de envíos.</p></section>
-  <section style="--accent:#fda4af"><h2><a href="limites-de-datos.svg">Límites de datos</a></h2><p>Alcance del contexto local, persistencia y datos del turno.</p></section>
+  <section style="--accent:#67e8f9"><h2><a href="arquitectura.html">Arquitectura activa</a></h2><p>Ventana, autorización en Main, HUB, Windows y conexión local con Codex.</p><a href="arquitectura.svg" aria-label="Arquitectura activa, SVG">SVG</a></section>
+  <section style="--accent:#5eead4"><h2><a href="secuencia-officina.html">Secuencia de Officina</a></h2><p>Envío, lectura correlacionada y actualización del tablero.</p><a href="secuencia-officina.svg" aria-label="Secuencia de Officina, SVG">SVG</a></section>
+  <section style="--accent:#c4b5fd"><h2><a href="estados-officina.html">Estados de envío</a></h2><p>Cola, acuse, caducidad, revisión y recuperación de envíos.</p><a href="estados-officina.svg" aria-label="Estados de envío, SVG">SVG</a></section>
+  <section style="--accent:#fda4af"><h2><a href="limites-de-datos.html">Límites de datos</a></h2><p>Alcance del contexto local, persistencia y datos del turno.</p><a href="limites-de-datos.svg" aria-label="Límites de datos, SVG">SVG</a></section>
 </nav>
 <p><a href="sources/README.md">Fuentes, revisión y regeneración</a></p>
 </main></body></html>

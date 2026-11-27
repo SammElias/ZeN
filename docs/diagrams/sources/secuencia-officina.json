@@ -9,14 +9,15 @@
     "animation": "trace",
     "repository": {
       "url": "https://github.com/SammElias/ZeN.git",
-      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
-      "link_mode": "local-only"
+      "revision": "e815aa3a319bd46ed87fa7681170c2ea6c990877",
+      "link_mode": "web"
     },
     "viewBox": [
       1080,
       570
     ],
-    "column_fit": "spread"
+    "column_fit": "spread",
+    "locale": "es"
   },
   "participants": [
     {
@@ -26,9 +27,14 @@
       "sublabel": "Objetivo o puesto",
       "sources": [
         {
+          "path": "src/renderer/OfficinaWorkspace.tsx",
+          "line": 1230,
+          "end_line": 1247
+        },
+        {
           "path": "src/renderer/CodexCompanion.tsx",
-          "line": 396,
-          "end_line": 407
+          "line": 381,
+          "end_line": 405
         }
       ]
     },
@@ -40,18 +46,18 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 485,
-          "end_line": 539
+          "line": 933,
+          "end_line": 978
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 561,
-          "end_line": 615
+          "line": 1081,
+          "end_line": 1105
         },
         {
-          "path": "src/main/companion-main.ts",
-          "line": 935,
-          "end_line": 945
+          "path": "src/main/companion-ipc.ts",
+          "line": 12,
+          "end_line": 34
         }
       ]
     },
@@ -63,8 +69,13 @@
       "sources": [
         {
           "path": "src/main/companion-main.ts",
-          "line": 360,
-          "end_line": 369
+          "line": 390,
+          "end_line": 423
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 942,
+          "end_line": 978
         }
       ]
     },
@@ -76,13 +87,13 @@
       "sources": [
         {
           "path": "src/main/companion-main.ts",
-          "line": 370,
-          "end_line": 372
+          "line": 282,
+          "end_line": 290
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 561,
-          "end_line": 573
+          "line": 1019,
+          "end_line": 1098
         }
       ]
     }
@@ -134,15 +145,21 @@
       "title": "IMPLEMENTADO",
       "dot": "cyan",
       "items": [
-        "Una lectura de la sesión puede recuperar un envío anterior. El permiso pendiente se correlaciona antes de registrar la respuesta.",
-        "Coordinación conserva la asignación. Officina presenta la decisión por proyecto, tarea y ejecución. Aprobar, responder o pedir cambios retoma el flujo por la cola. El rechazo confirmado cierra solo el encargo."
+        "Main verifica proyecto, chat, carpeta y archivos antes de enviar. El lector correlaciona el turno y la ejecución antes de actualizar el tablero."
+      ]
+    },
+    {
+      "title": "Decisión humana",
+      "dot": "rose",
+      "items": [
+        "Officina registra la decisión con su ejecución. Las continuaciones vuelven a la cola. Un rechazo confirmado cierra ese objetivo."
       ]
     },
     {
       "title": "PROBADO",
       "dot": "amber",
       "items": [
-        "El smoke de Electron usa un puente simulado. Codex real queda sin verificar para esta entrega."
+        "El recorrido de Grafito usa un tablero sintético. NO VERIFICADO: envío de este recorrido con una cuenta de Codex real."
       ]
     }
   ]

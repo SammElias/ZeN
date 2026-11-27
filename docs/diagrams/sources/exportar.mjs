@@ -36,6 +36,8 @@ try {
         }
       }
       await page.evaluate(() => document.fonts.ready);
+      assert.ok(await page.evaluate(() => [...document.fonts].some(font =>
+        font.family.includes('JetBrains Mono') && font.status === 'loaded')), name);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), name);
       if (name !== 'index') {
         const navigation = page.locator('.diagram-nav');
@@ -72,16 +74,38 @@ try {
         const node = page.locator('svg [data-node-id][tabindex="0"]').first();
         await node.press('Enter');
         await page.locator('#focus-chip').waitFor({state: 'visible'});
+        const source = await page.locator('#focus-chip a.semantic-passport-source').first().getAttribute('href');
+        assert.match(source, /^https:\/\/github\.com\/SammElias\/ZeN\/blob\/[a-f0-9]{40}\/.+#L\d+/u);
         await page.locator('#btn-focus-clear').click();
+        if (name === 'arquitectura') {
+          await page.locator('#btn-route-probe').click();
+          for (const id of ['renderer', 'codex']) {
+            await page.locator(`svg [data-node-id="${id}"][tabindex="0"]`).press('Enter');
+          }
+          await page.locator('#route-probe[data-state="result"]').waitFor({state: 'visible'});
+          await page.locator('#route-probe-clear').click();
+          await page.locator('[data-view="in"]').click();
+          const canvas = page.locator('.diagram-container');
+          const box = await canvas.boundingBox();
+          const drawing = canvas.locator('svg[data-preset="signal-flow"]').first();
+          const left = await drawing.evaluate(svg => svg.getBoundingClientRect().left);
+          await page.mouse.move(box.x + 30, box.y + 30);
+          await page.mouse.down();
+          await page.mouse.move(box.x + 100, box.y + 30, {steps: 5});
+          await page.mouse.up();
+          assert.notEqual(await drawing.evaluate(svg => svg.getBoundingClientRect().left), left);
+          await page.locator('[data-view="reset"]').click();
+        }
         await page.locator('#btn-export').click();
         const download = page.waitForEvent('download');
         await page.locator('[data-format="svg-dark"]').click();
         const path = resolve(folder, name + '.svg');
         await (await download).saveAs(path);
-        const svg = (await readFile(path, 'utf8')).replace(/\s*@font-face\s*\{[^{}]*\}\s*/gu, '\n').replace(/[ \t]+$/gm, '');
+        const svg = (await readFile(path, 'utf8')).replace(/[ \t]+$/gm, '');
         await writeFile(path, svg, 'utf8');
         assert.match(svg, /<svg\b[^>]*data-theme="dark"/u);
         assert.match(svg, /<svg\b[^>]*data-preset="signal-flow"/u);
+        assert.match(svg, /@font-face[\s\S]*data:font\/woff2/u);
         await page.goto(pathToFileURL(path).href);
         assert.equal(await page.locator('parsererror').count(), 0);
         await page.locator('svg[data-theme="dark"]').first().waitFor();

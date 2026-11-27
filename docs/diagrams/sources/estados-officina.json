@@ -9,9 +9,10 @@
     "animation": "trace",
     "repository": {
       "url": "https://github.com/SammElias/ZeN.git",
-      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
-      "link_mode": "local-only"
-    }
+      "revision": "e815aa3a319bd46ed87fa7681170c2ea6c990877",
+      "link_mode": "web"
+    },
+    "locale": "es"
   },
   "mainPath": [
     "waiting",
@@ -28,8 +29,13 @@
       "sources": [
         {
           "path": "src/main/companion-officina-workflow.ts",
-          "line": 10,
-          "end_line": 13
+          "line": 21,
+          "end_line": 25
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 986,
+          "end_line": 1004
         }
       ]
     },
@@ -41,13 +47,8 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 509,
-          "end_line": 546
-        },
-        {
-          "path": "src/main/companion-officina.ts",
-          "line": 69,
-          "end_line": 76
+          "line": 925,
+          "end_line": 942
         }
       ]
     },
@@ -59,13 +60,13 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 542,
-          "end_line": 550
+          "line": 965,
+          "end_line": 981
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 572,
-          "end_line": 584
+          "line": 1113,
+          "end_line": 1129
         }
       ]
     },
@@ -77,8 +78,8 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 591,
-          "end_line": 614
+          "line": 1081,
+          "end_line": 1105
         }
       ]
     },
@@ -90,13 +91,18 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 69,
-          "end_line": 76
+          "line": 84,
+          "end_line": 94
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 572,
-          "end_line": 588
+          "line": 981,
+          "end_line": 991
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 1036,
+          "end_line": 1047
         }
       ]
     },
@@ -108,13 +114,18 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 493,
-          "end_line": 507
+          "line": 897,
+          "end_line": 930
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 605,
-          "end_line": 615
+          "line": 992,
+          "end_line": 1003
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 1081,
+          "end_line": 1089
         }
       ]
     },
@@ -126,8 +137,8 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 265,
-          "end_line": 275
+          "line": 443,
+          "end_line": 462
         }
       ]
     }
@@ -213,11 +224,16 @@
   "cards": [
     {
       "title": "IMPLEMENTADO",
-      "dot": "amber",
+      "dot": "cyan",
       "items": [
-        "Si el envío se vuelve incierto, Officina intenta confirmar la respuesta mediante el historial. Un fallo del despacho suspende la cola.",
-        "Enviado → Sin confirmar: 15 minutos sin respuesta verificable.",
-        "El turno completo puede dejar una decisión humana que pausa solo su objetivo. La respuesta y su continuación quedan guardadas juntas."
+        "Los reintentos automáticos se reservan a fallos previos a la entrega. Si se pierde el acuse, se busca el turno original antes de continuar."
+      ]
+    },
+    {
+      "title": "NO VERIFICADO",
+      "dot": "slate",
+      "items": [
+        "Este mapa describe el estado de cada ejecución. La cola activa, las decisiones humanas y los permisos nativos se consultan aparte."
       ]
     }
   ]

@@ -9,9 +9,10 @@
     "animation": "trace",
     "repository": {
       "url": "https://github.com/SammElias/ZeN.git",
-      "revision": "86ebba0220775cf3249d28083db67b4ab57b5279",
-      "link_mode": "local-only"
-    }
+      "revision": "e815aa3a319bd46ed87fa7681170c2ea6c990877",
+      "link_mode": "web"
+    },
+    "locale": "es"
   },
   "components": [
     {
@@ -22,8 +23,8 @@
       "sources": [
         {
           "path": "src/renderer/CodexCompanion.tsx",
-          "line": 396,
-          "end_line": 407
+          "line": 381,
+          "end_line": 405
         },
         {
           "path": "src/renderer/main.tsx",
@@ -33,7 +34,7 @@
       ],
       "pos": [
         55,
-        125
+        185
       ],
       "size": [
         175,
@@ -48,13 +49,18 @@
       "sources": [
         {
           "path": "src/preload/companion.ts",
-          "line": 88,
-          "end_line": 101
+          "line": 1,
+          "end_line": 10
+        },
+        {
+          "path": "src/preload/companion.ts",
+          "line": 97,
+          "end_line": 102
         }
       ],
       "pos": [
         295,
-        125
+        185
       ],
       "size": [
         175,
@@ -68,19 +74,24 @@
       "sublabel": "Autoriza acciones",
       "sources": [
         {
-          "path": "src/main/companion-main.ts",
-          "line": 935,
-          "end_line": 945
+          "path": "src/main/companion-ipc.ts",
+          "line": 12,
+          "end_line": 34
         },
         {
           "path": "src/main/companion-main.ts",
-          "line": 140,
-          "end_line": 144
+          "line": 156,
+          "end_line": 159
+        },
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 528,
+          "end_line": 547
         }
       ],
       "pos": [
         540,
-        125
+        185
       ],
       "size": [
         175,
@@ -95,13 +106,18 @@
       "sources": [
         {
           "path": "src/main/companion-main.ts",
-          "line": 344,
-          "end_line": 370
+          "line": 390,
+          "end_line": 423
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 933,
+          "end_line": 978
         }
       ],
       "pos": [
         790,
-        125
+        185
       ],
       "size": [
         175,
@@ -116,13 +132,18 @@
       "sources": [
         {
           "path": "src/main/companion-main.ts",
-          "line": 360,
-          "end_line": 369
+          "line": 390,
+          "end_line": 423
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 942,
+          "end_line": 978
         }
       ],
       "pos": [
         1040,
-        125
+        185
       ],
       "size": [
         175,
@@ -137,13 +158,18 @@
       "sources": [
         {
           "path": "src/main/companion-officina.ts",
-          "line": 58,
+          "line": 78,
           "end_line": 96
+        },
+        {
+          "path": "src/main/companion-officina.ts",
+          "line": 104,
+          "end_line": 124
         }
       ],
       "pos": [
         790,
-        325
+        390
       ],
       "size": [
         195,
@@ -158,22 +184,84 @@
       "sources": [
         {
           "path": "src/main/companion-main.ts",
-          "line": 370,
-          "end_line": 372
+          "line": 282,
+          "end_line": 290
         },
         {
           "path": "src/main/companion-officina.ts",
-          "line": 561,
-          "end_line": 573
+          "line": 1019,
+          "end_line": 1098
         }
       ],
       "pos": [
         1040,
-        325
+        390
       ],
       "size": [
         175,
         78
+      ]
+    },
+    {
+      "id": "hub",
+      "type": "database",
+      "label": "HUB",
+      "sublabel": "Biblioteca local y plantillas",
+      "pos": [
+        540,
+        390
+      ],
+      "size": [
+        175,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 102,
+          "end_line": 108
+        },
+        {
+          "path": "src/main/knowledge-hub.ts",
+          "line": 101,
+          "end_line": 114
+        },
+        {
+          "path": "src/main/knowledge-hub.ts",
+          "line": 225,
+          "end_line": 240
+        }
+      ]
+    },
+    {
+      "id": "windows",
+      "type": "external",
+      "label": "Auxiliares de Windows",
+      "sublabel": "Marco nativo y audio",
+      "pos": [
+        540,
+        30
+      ],
+      "size": [
+        175,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 294,
+          "end_line": 303
+        },
+        {
+          "path": "src/main/companion-main.ts",
+          "line": 524,
+          "end_line": 539
+        },
+        {
+          "path": "native/Zen.CompanionDesktop/Program.cs",
+          "line": 6,
+          "end_line": 17
+        }
       ]
     }
   ],
@@ -219,6 +307,20 @@
       "variant": "dashed",
       "from": "history",
       "to": "officina"
+    },
+    {
+      "id": "main-hub",
+      "from": "main",
+      "to": "hub",
+      "label": "Lee y guarda",
+      "variant": "default"
+    },
+    {
+      "id": "main-windows",
+      "from": "main",
+      "to": "windows",
+      "label": "Invoca auxiliares",
+      "variant": "dashed"
     }
   ],
   "cards": [
@@ -226,15 +328,33 @@
       "title": "IMPLEMENTADO",
       "dot": "cyan",
       "items": [
-        "Main controla los efectos y el acceso a la cola. Codex conserva sus chats, cuenta y conectores."
+        "Main valida el emisor y el frame principal antes de autorizar acciones. Codex conserva sus chats, identidad y conectores."
+      ]
+    },
+    {
+      "title": "PROBADO",
+      "dot": "amber",
+      "items": [
+        "El portable de Work arrancó en Windows. Las fichas de Officina se cerraron en las cuatro posiciones, a escala del 100 % y del 150 %."
       ]
     },
     {
       "title": "Alcance",
       "dot": "slate",
       "items": [
-        "Vista del compañero empaquetado, con detalle de Officina. El plano y los despachos 3D comparten el renderer y consultan el mismo tablero. Main autoriza las decisiones."
+        "La vista cubre la ventana Electron, la cola de Officina y sus almacenes. Calendario, Clima, Traductor y Oura son integraciones opcionales gestionadas por Main."
       ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Renderer aislado",
+      "wraps": [
+        "renderer",
+        "preload"
+      ],
+      "pad": 18
     }
   ]
 }

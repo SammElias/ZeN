@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,13 @@ def main():
         shutil.copytree(checkout / 'archify', engine)
         template = engine / 'assets/template.html'
         html = template.read_text(encoding='utf8')
+        font_faces = re.findall(r"@font-face\s*\{\s*font-family:\s*'JetBrains Mono';[^}]+\}", html)
+        if not font_faces:
+            raise SystemExit('La plantilla de Archify no contiene JetBrains Mono.')
+        shutil.copyfile(engine / 'assets/JetBrainsMono-OFL.txt', SOURCES / 'jetbrains-mono-OFL.txt')
+        (SOURCES / 'jetbrains-mono.css').write_text(
+            '/* JetBrains Mono, SIL Open Font License 1.1. Ver jetbrains-mono-OFL.txt. */\n'
+            + '\n'.join(font_faces) + '\n', encoding='utf8')
         system_default = "window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'"
         system_update = "apply(e.matches ? 'light' : 'dark');"
         if html.count(system_default) != 2 or html.count(system_update) != 1:
