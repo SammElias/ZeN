@@ -110,6 +110,11 @@ export async function checkGraphite({app,page,office,resize,load,update,db,board
       return ['top','left','width','height'].every(axis=>Math.abs(sheet[axis]-bounds[axis])<=1);
     },await office.elementHandle());
     assert.equal(await sheet.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor),'rgba(0, 0, 0, 0)');
+    assert.ok(await sheet.getByRole('button',{name:'Cerrar ficha'}).evaluate(button=>{
+      const overlay=navigator.windowControlsOverlay;
+      return !overlay?.visible||document.fullscreenElement!==null||
+        button.getBoundingClientRect().top>=overlay.getTitlebarAreaRect().bottom;
+    }),'El botón de cierre invade los controles de Windows');
     return sheet;
   }
   await fullscreen();

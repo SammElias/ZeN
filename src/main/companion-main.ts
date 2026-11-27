@@ -472,6 +472,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
   const leaveOfficinaFullscreen=()=>{if(cap.isFullScreen())cap.setFullScreen(false);};
   let hoverRegion:Area[]=[],capsuleRegion:Area[]=[];
   const desktopHelper=nativeHelper(__dirname,'desktop');
+  // The hidden Windows caption removes the top frame, but leaves the standard
+  // horizontal resize border. Keep the shape aligned even without the .NET helper.
+  const defaultWindowsClientInset={x:8,y:0};
   const frameInsets=new Map<string,{x:number;y:number}>();
   const insetKey=(display:number,workspace=workspaceFrame)=>`${display}:${workspace}`;
   let frameInsetRevision=0;
@@ -489,8 +492,9 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
    // Keep the new area clipped until the renderer has drawn its glass and content.
    const geometry=panelTransition.paintToken===undefined?layout:{...layout,panel:undefined};
    const display=screen.getDisplayMatching(bounds).id;
-   const inset=(nativeCaption&&!cap.isMaximized()&&
-    (frameInsets.get(insetKey(display))??frameInsets.get(insetKey(display,!workspaceFrame))))||{x:0,y:0};
+   const inset=nativeCaption&&!cap.isMaximized()
+    ?frameInsets.get(insetKey(display))??frameInsets.get(insetKey(display,!workspaceFrame))??defaultWindowsClientInset
+    :{x:0,y:0};
    const side=isEdge()?dock.side:undefined;
    const shown=retractCapsulePanel(geometry,side,panelTransition.retraction);
    const key=JSON.stringify([geometry,shown.panel,side,inset]);
@@ -526,7 +530,11 @@ let reveal=()=>{};if(!app.requestSingleInstanceLock({deploymentQuit})||deploymen
     execFile(desktopHelper,['--client-inset',cap.getNativeWindowHandle().readBigUInt64LE().toString(),String(process.pid)],{windowsHide:true,timeout:1500},(error,stdout)=>{
      if(revision!==frameInsetRevision){resolve();return;}
      if(!error&&!cap.isDestroyed()&&!cap.isMaximized()&&!cap.isMinimized()&&insetDisplay().id===id){
-      try{frameInsets.set(key,insetSchema.parse(JSON.parse(stdout)));updateShape();}catch{/* Retain Windows' usual inset if the sample is unavailable. */}
+      try{
+       const {x,y}=insetSchema.parse(JSON.parse(stdout));
+       frameInsets.set(key,{x:Math.round(x),y:Math.round(y)});
+       updateShape();
+      }catch{/* Keep the fallback if the sample is unavailable. */}
      }
      insetProbe=undefined;
      resolve();
