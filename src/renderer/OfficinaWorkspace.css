@@ -564,6 +564,10 @@
   padding: 10px clamp(12px, 2.2cqi, 22px);
   border-bottom: 1px solid var(--office-line); background: #1a1f2b;
 }
+/* Native Windows caption buttons can still receive input above the dialog. */
+.companion-capsule[data-native-caption=true] .officina:not(:fullscreen) .officina-modal > header {
+  padding-block-start: max(10px, calc(env(titlebar-area-y, 0px) + env(titlebar-area-height, var(--caption-reserve)) + 4px - var(--panel-top)));
+}
 .officina-modal > header button { flex: none; }
 .officina-sheet-scroll { min-height: 0; overflow: auto; scrollbar-width: thin; }
 .officina-sheet-content { box-sizing: border-box; max-width: 640px; margin-inline: auto; padding: 16px clamp(12px, 2.2cqi, 22px) 22px; }
